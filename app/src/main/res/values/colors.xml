@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="orange">#D3460E</color>
+    <color name="grey_background">#101010</color>
+    <color name="grey">#181818</color>
+    <color name="grey_light">#1E1E1E</color>
+    <color name="grey_light_2">#2E2E2E</color>
+    <color name="grey_light_4">#4E4E4E</color>
+    <color name="grey_light_6">#6E6E6E</color>
+    <color name="grey_light_8">#8E8E8E</color>
+    <color name="white_text_primary">#FAFAFA</color>
+    <color name="white_text_secondary">#BABABA</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

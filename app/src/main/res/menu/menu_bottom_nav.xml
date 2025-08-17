@@ -1,0 +1,15 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:title="Home" />
+    <item
+        android:id="@+id/nav_search"
+        android:title="Apps"/>
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/nav_layers_icon"
+        android:title="Plugins" />
+    <item
+        android:id="@+id/nav_settings"
+        android:title="Settings"/>
+</menu>

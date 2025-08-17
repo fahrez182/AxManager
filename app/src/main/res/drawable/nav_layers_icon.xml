@@ -1,0 +1,7 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:drawable="@drawable/ic_layers_filled" android:state_checked="true"/>
+    <!-- Saat non-aktif -->
+    <item android:drawable="@drawable/ic_layers" android:state_checked="false"/>
+
+</selector>
