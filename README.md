@@ -49,5 +49,10 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 Contributions are welcome!  
 Feel free to open **issues**, submit **pull requests**, or start a discussion for new ideas and improvements.
 
+
+## 🙏 Credits
+- **[Shizuku](https://github.com/RikkaApps/Shizuku) / [API](https://github.com/RikkaApps/Shizuku-API)** "The starting point and transition to learning IPC, also the reference for ADB handling."
+- **[KernelSU](https://github.com/tiann/KernelSU) / [Next](https://github.com/KernelSU-Next/KernelSU-Next)** "Inspiration for the UI and WebUI features."
+
 ## 📜 License
 Licensed under the [Apache License 2.0](LICENSE).  
