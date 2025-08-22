@@ -1,6 +1,7 @@
 package com.frb.axmanager.ui
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,8 +17,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,16 +27,27 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.frb.axmanager.ui.navigation.BottomNavItem
 import com.frb.axmanager.ui.navigation.NavHostContainer
+import com.frb.axmanager.ui.navigation.ScreenItem
 import com.frb.axmanager.ui.theme.AxManagerTheme
+import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
+import com.frb.axmanager.ui.viewmodel.HomeViewModel
+import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.frb.engine.Axeron
+
 
 class AxActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (Axeron.pingBinder()) {
+            Log.i("AxManagerBinder", "pingBinder Success!")
+        } else {
+            Log.i("AxManagerBinder", "pingBinder Failed!")
+        }
         setContent {
             AxManagerTheme {
                 MainScreen()
@@ -47,20 +60,44 @@ class AxActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-    val appsViewModel: AppsViewModel = viewModel()
-
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
 
-    val items = listOf(
-        BottomNavItem.Home,
-        BottomNavItem.Apps,
-        BottomNavItem.Plugins,
-        BottomNavItem.Settings
-    )
+    val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
+    val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
+    val adbViewModel: AdbViewModel = viewModel<AdbViewModel>()
+
+    DisposableEffect(Unit) {
+        val receivedListener = Axeron.OnBinderReceivedListener {
+            homeViewModel.checkAxeronService()
+        }
+        val deadListener = Axeron.OnBinderDeadListener {
+            homeViewModel.checkAxeronService()
+        }
+
+        Axeron.addBinderReceivedListener(receivedListener)
+        Axeron.addBinderDeadListener(deadListener)
+
+        onDispose {
+            Axeron.removeBinderReceivedListener(receivedListener)
+            Axeron.removeBinderDeadListener(deadListener)
+        }
+    }
+
+    val viewModelGlobal = remember {
+        ViewModelGlobal(
+            appsViewModel,
+            homeViewModel,
+            adbViewModel
+        )
+    }
+
+    val axeronServiceInfo by homeViewModel.axeronServiceInfo.collectAsState()
 
     val showBottomBar = when (currentDestination?.route) {
-        BottomNavItem.AddApps.route -> false // Hide for AddApps
+        ScreenItem.AddApps.route -> false // Hide for AddApps
+        ScreenItem.Activate.route -> false // Hide for Activate
+        ScreenItem.QuickShell.route -> false // Hide for QuickShell
         else -> true
     }
 
@@ -71,7 +108,7 @@ fun MainScreen() {
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
             ) {
-                BottomBar(navController, items)
+                BottomBar(navController, axeronServiceInfo)
             }
 
         }
@@ -79,29 +116,40 @@ fun MainScreen() {
         NavHostContainer(
             navController = navController,
             modifier = Modifier.padding(innerPadding),
-            appsViewModel = appsViewModel)
+            viewModelGlobal = viewModelGlobal)
     }
 }
 
 @Composable
-fun BottomBar(navController: NavHostController, items: List<BottomNavItem>) {
+fun BottomBar(navController: NavHostController, axeronServiceInfo: HomeViewModel.AxeronServiceInfo) {
+    val items = listOf(
+        ScreenItem.Home,
+        ScreenItem.Apps,
+        ScreenItem.Plugins,
+        ScreenItem.Settings
+    )
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     NavigationBar {
         items.forEach { item ->
-            val route by remember {
-                mutableStateOf(item.route)
-            }
-            val selected = currentRoute == route
+            if (!axeronServiceInfo.isRunning() && item.needAxeron) return@forEach
+            val selected = currentRoute == item.route
             NavigationBarItem(
                 icon = {
-                    Icon(
-                        imageVector = if (selected) item.iconSelected else item.iconNotSelected,
-                        contentDescription = item.title
-                    )
+                    if (selected) item.iconSelected?.let {
+                        Icon(
+                            imageVector = it,
+                            contentDescription = item.route
+                        )
+                    } else item.iconNotSelected?.let {
+                        Icon(
+                            imageVector = it,
+                            contentDescription = item.route
+                        )
+                    }
                 },
-                label = { Text(item.title) },
+                label = { Text(item.route) },
                 selected = selected,
                 onClick = {
                     if (selected) {

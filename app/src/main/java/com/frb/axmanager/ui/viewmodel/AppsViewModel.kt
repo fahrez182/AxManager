@@ -41,11 +41,11 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("apps_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
 
-    private val mutableAddedApps = MutableStateFlow<List<AppInfo>>(emptyList())
-    val addedApps: StateFlow<List<AppInfo>> = mutableAddedApps
+    private val _addApps = MutableStateFlow<List<AppInfo>>(emptyList())
+    val addedApps: StateFlow<List<AppInfo>> = _addApps
 
-    private val mutableInstalledApps = MutableStateFlow<List<AppInfo>>(emptyList())
-    val installedApps: StateFlow<List<AppInfo>> = mutableInstalledApps
+    private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
+    val installedApps: StateFlow<List<AppInfo>> = _installedApps
 
     init {
         loadInstalledApps()
@@ -68,28 +68,28 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .sortedBy { it.label.lowercase() }
 
-            mutableInstalledApps.value = apps
-            mutableAddedApps.value = apps.filter { it.isAdded }
+            _installedApps.value = apps
+            _addApps.value = apps.filter { it.isAdded }
         }
     }
 
     fun addApp(app: AppInfo) {
-        if (!mutableAddedApps.value.any { it.packageName == app.packageName }) {
+        if (!_addApps.value.any { it.packageName == app.packageName }) {
             val updatedApp = app.copy(isAdded = true)
-            mutableAddedApps.value = mutableAddedApps.value + updatedApp
-            mutableInstalledApps.value = mutableInstalledApps.value.map {
+            _addApps.value = _addApps.value + updatedApp
+            _installedApps.value = _installedApps.value.map {
                 if (it.packageName == app.packageName) it.copy(isAdded = true) else it
             }
-            saveAddedPackageNames(mutableAddedApps.value.map { it.packageName })
+            saveAddedPackageNames(_addApps.value.map { it.packageName })
         }
     }
 
     fun removeApp(packageName: String) {
-        mutableAddedApps.value = mutableAddedApps.value.filterNot { it.packageName == packageName }
-        mutableInstalledApps.value = mutableInstalledApps.value.map {
+        _addApps.value = _addApps.value.filterNot { it.packageName == packageName }
+        _installedApps.value = _installedApps.value.map {
             if (it.packageName == packageName) it.copy(isAdded = false) else it
         }
-        saveAddedPackageNames(mutableAddedApps.value.map { it.packageName })
+        saveAddedPackageNames(_addApps.value.map { it.packageName })
     }
 
     // ==== Penyimpanan hanya packageName ====

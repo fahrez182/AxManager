@@ -19,3 +19,27 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keepclassmembers class * implements android.os.Parcelable {
+    public static final ** CREATOR;
+}
+
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
+}
+
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+	public static void check*(...);
+	public static void throw*(...);
+}
+
+-assumenosideeffects class java.util.Objects{
+    ** requireNonNull(...);
+}
+
+-keep class com.frb.engine.Starter {
+    public static void main(java.lang.String[]);
+}
+
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

@@ -36,10 +36,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.frb.axmanager.ui.util.toBitmapSafely
-import com.frb.axmanager.ui.viewmodel.AppsViewModel
+import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -47,9 +46,10 @@ import kotlinx.coroutines.withContext
 @Composable
 fun AddAppsScreen(
     navController: NavHostController,
-    viewModel: AppsViewModel = viewModel()
+    viewModelGlobal: ViewModelGlobal
 ) {
-    val installedApps by viewModel.installedApps.collectAsState()
+    val appsViewModel = viewModelGlobal.appsViewModel
+    val installedApps by appsViewModel.installedApps.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
@@ -59,7 +59,13 @@ fun AddAppsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Select App") },
+                title = {
+                    Text(
+                        text = "Select App",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -81,9 +87,6 @@ fun AddAppsScreen(
                 installedApps,
                 key = { it.packageName + it.uid }
             ) { app ->
-//                val appIcon by remember(app.packageName) {
-//                    mutableStateOf(pm.getApplicationIcon(app.packageName))
-//                }
 
                 var appIcon by remember { mutableStateOf<ImageBitmap?>(null) }
 
@@ -101,23 +104,27 @@ fun AddAppsScreen(
                 // Side-effect pindah ke sini
                 LaunchedEffect(isAdded) {
                     if (isAdded) {
-                        viewModel.addApp(app)
+                        appsViewModel.addApp(app)
                     } else {
-                        viewModel.removeApp(app.packageName)
+                        appsViewModel.removeApp(app.packageName)
                     }
                 }
 
                 ListItem(
                     modifier = Modifier.padding(16.dp),
-                    headlineContent = { Text(
-                        text = app.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    ) },
-                    supportingContent = { Text(
-                        text = app.packageName,
-                        style = MaterialTheme.typography.bodySmall
-                    ) },
+                    headlineContent = {
+                        Text(
+                            text = app.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = app.packageName,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
                     leadingContent = {
 //                        AsyncImage(
 //                            model = appIcon,

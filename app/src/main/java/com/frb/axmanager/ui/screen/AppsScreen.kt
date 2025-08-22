@@ -36,16 +36,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import com.frb.axmanager.ui.navigation.BottomNavItem
-import com.frb.axmanager.ui.viewmodel.AppsViewModel
+import com.frb.axmanager.ui.navigation.ScreenItem
+import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppsScreen(navController: NavHostController, viewModel: AppsViewModel = viewModel()) {
-    val addedApps by viewModel.addedApps.collectAsState()
+fun AppsScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
+    val addedApps by viewModelGlobal.appsViewModel.addedApps.collectAsState()
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -53,7 +52,7 @@ fun AppsScreen(navController: NavHostController, viewModel: AppsViewModel = view
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(BottomNavItem.AddApps.route) }) {
+            FloatingActionButton(onClick = { navController.navigate(ScreenItem.AddApps.route) }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add App")
             }
         },
@@ -64,7 +63,7 @@ fun AppsScreen(navController: NavHostController, viewModel: AppsViewModel = view
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Application",
+                            text = "Applications",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
                         )

@@ -1,6 +1,7 @@
 [versions]
 agp = "8.12.0"
 api = "13.1.5"
+boringssl = "20250114"
 core = "4.6.2"
 gson = "2.13.1"
 hiddenapibypass = "6.1"
@@ -26,10 +27,13 @@ navigationCompose = "2.9.3"
 coil-compose = "2.7.0"
 appiconloader-coil = "1.5.0"
 mmrl = "v33890"
+hidden-api = "4.4.0"
+refine = "4.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
+boringssl = { module = "io.github.vvb2060.ndk:boringssl", version.ref = "boringssl" }
 markwon-core = { module = "io.noties.markwon:core", version.ref = "core" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version.ref = "hiddenapibypass" }
@@ -65,6 +69,12 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 appiconloader-coil = { group = "me.zhanghai.android.appiconloader", name = "appiconloader-coil", version.ref = "appiconloader-coil" }
 mmrl-ui = { group = "com.github.MMRLApp.MMRL", name = "ui", version.ref = "mmrl" }
 
+hidden-compat = { group = "dev.rikka.hidden", name = "compat", version.ref = "hidden-api" }
+hidden-stub = { group = "dev.rikka.hidden", name = "stub", version.ref = "hidden-api" }
+
+refine-runtime = { group = "dev.rikka.tools.refine", name = "runtime", version.ref = "refine" }
+refine-annotation = { group = "dev.rikka.tools.refine", name = "annotation", version.ref = "refine" }
+refine-annotation-processor = { group = "dev.rikka.tools.refine", name = "annotation-processor", version.ref = "refine" }
 
 
 [plugins]
@@ -72,4 +82,5 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+tools-refine = { id = "dev.rikka.tools.refine", version.ref = "refine" }
 

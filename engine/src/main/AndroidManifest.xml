@@ -1,4 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
+    <permission
+        android:name="com.frb.axmanager.permission.MANAGER"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="com.frb.axmanager.permission.MANAGER" />
+
+    <application>
+        <service
+            android:name=".adb.AdbPairingService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="shortService"
+            tools:targetApi="30" />
+
+        <provider
+            android:name=".AxeronProvider"
+            android:authorities="${applicationId}.server"
+            android:directBootAware="true"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+    </application>
 </manifest>

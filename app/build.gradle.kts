@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.tools.refine)
     id("kotlin-parcelize")
 }
 
@@ -15,10 +16,15 @@ android {
         applicationId = "com.frb.axmanager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 10
+        versionName = "1.0.0-InitialVersion"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                arguments.add("-DANDROID_STL=none")
+            }
+        }
     }
 
     buildTypes {
@@ -32,6 +38,23 @@ android {
         }
     }
 
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/jni/CMakeLists.txt")
+            version = "3.31.0"
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes.add("**")
+        }
+    }
+
+
     applicationVariants.all {
         outputs.all {
             val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
@@ -40,13 +63,18 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
+        prefab = true
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    buildToolsVersion = "36.0.0"
+    ndkVersion = "29.0.13113456"
 }
 
 kotlin {
@@ -86,4 +114,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("com.github.Fox2Code.AndroidANSI:library:1.2.0")
+    implementation("com.github.Fox2Code.AndroidANSI:library-ktx:1.2.1")
+//    implementation("io.github.aghajari:AnnotatedText:1.0.3")
+
+    implementation(libs.boringssl)
+    implementation("org.lsposed.libcxx:libcxx:27.0.12077973")
 }
