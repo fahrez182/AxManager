@@ -22,6 +22,9 @@ Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager*
 - 🌐 Provides **WebShell UI** as a unique feature.  
 
 ## 📖 Roadmap
+- [x] Wireless Debugging Activator.
+- [x] Command-line / Root Activator.
+- [x] Shell Executor basic support (ADB/Non-Root).
 - [ ] App optimization based on profiles.  
 - [ ] WebShell with multi-session support.  
 - [ ] Plugin system for third-party extensions.  
