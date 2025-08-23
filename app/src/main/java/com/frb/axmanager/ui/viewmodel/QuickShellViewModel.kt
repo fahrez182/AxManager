@@ -1,5 +1,10 @@
 package com.frb.axmanager.ui.viewmodel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.frb.engine.Axeron
@@ -10,9 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,22 +27,38 @@ class QuickShellViewModel : ViewModel() {
     private val _output = MutableSharedFlow<String>(extraBufferCapacity = 64)
     val output: SharedFlow<String> = _output
 
-    private val _isRunning = MutableStateFlow(false)
-    val isRunning: StateFlow<Boolean> = _isRunning
+//    private val _isRunning = MutableStateFlow(false)
+////    val isRunning: StateFlow<Boolean> = _isRunning
 
-    private val _commandText = MutableStateFlow("")
-    val commandText: StateFlow<String> = _commandText
+//    private val _commandText = MutableStateFlow("")
+//    val commandText: StateFlow<String> = _commandText
+
+    var isRunning by mutableStateOf(false)
+        private set
+
+    var commandText by mutableStateOf(TextFieldValue(""))
+        private set
+
+    var clear by mutableStateOf(false)
+        private set
+
+    var execMode by mutableStateOf("Commands")
+        private set
 
     private var job: Job? = null
+    private var debounceJob: Job? = null
     private var process: AxeronNewProcess? = null
     private var writer: BufferedWriter? = null
 
-    fun setCommand(text: String) {
-        _commandText.value = text
+    private var savedCommand: TextFieldValue? = null
+
+    fun setCommand(text: TextFieldValue) {
+        commandText = text
     }
 
     fun clear() {
-        _output.tryEmit("__CLEAR__")
+        //make a toggle state
+        clear = !clear
     }
 
     fun stop() {
@@ -52,26 +71,22 @@ class QuickShellViewModel : ViewModel() {
         }
         writer = null
         process = null
-        _isRunning.value = false
+        isRunning = false
+        execMode = "Commands"
+        if (savedCommand != null) {
+            commandText = savedCommand!!
+            savedCommand = null
+        }
         appendLine("\n[stopped]")
     }
 
-    fun runDummy() {
-        launchSafely {
-            appendLine("[dummy] start")
-            repeat(5) { i ->
-                delay(400)
-                appendLine("dummy line ${i + 1}")
-            }
-            appendLine("[dummy] done")
-        }
-    }
-
     fun runShell() {
-        val cmd = commandText.value.ifBlank { "echo 'no command'" }
+        val cmd = commandText.text.ifBlank {
+            return
+        }
 
         // kalau sudah jalan → tulis command ke stdin
-        if (_isRunning.value && writer != null) {
+        if (isRunning && writer != null) {
             try {
                 writer!!.write(cmd)
                 writer!!.newLine()
@@ -84,7 +99,7 @@ class QuickShellViewModel : ViewModel() {
         }
 
         // kalau belum jalan → buat shell baru
-        launchSafely(io = true) {
+        launchSafely(io = true, cmd) {
             process = Axeron.newProcess(arrayOf("sh", "-c", cmd), null, null)
 
             writer = BufferedWriter(OutputStreamWriter(process!!.outputStream))
@@ -110,7 +125,7 @@ class QuickShellViewModel : ViewModel() {
                     val len = stderr.read(buf)
                     if (len <= 0) break
                     val chunk = String(buf, 0, len)
-                    appendRaw("[err] $chunk")
+                    appendRaw(chunk)
                 }
             }
 
@@ -122,17 +137,33 @@ class QuickShellViewModel : ViewModel() {
         }
     }
 
-    private fun launchSafely(io: Boolean = false, block: suspend CoroutineScope.() -> Unit) {
-        if (_isRunning.value) return
-        _isRunning.value = true
+    private fun launchSafely(io: Boolean = false, cmd: String, block: suspend CoroutineScope.() -> Unit) {
+        if (isRunning) return
+        debounceJob?.cancel()
+        debounceJob = viewModelScope.launch {
+            delay(80)
+            isRunning = true
+            savedCommand = TextFieldValue(text = cmd, selection = TextRange(cmd.length))
+            commandText = TextFieldValue(text = "")
+            execMode = "Inputs"
+        }
+
         job = viewModelScope.launch(if (io) Dispatchers.IO else Dispatchers.Default) {
             try {
                 block()
             } catch (ce: CancellationException) { /* ignore */
             } catch (t: Throwable) {
-                appendLine("[error] ${t.message}")
+                appendLine("[throw] ${t.message}")
             } finally {
-                withContext(Dispatchers.Main) { _isRunning.value = false }
+                withContext(Dispatchers.Main) {
+                    debounceJob?.cancel()
+                    isRunning = false
+                    execMode = "Commands"
+                    if (savedCommand != null) {
+                        commandText = savedCommand!!
+                        savedCommand = null
+                    }
+                }
                 try {
                     process?.destroy()
                 } catch (_: Throwable) {
