@@ -17,7 +17,7 @@ android {
         minSdk = 27
         targetSdk = 36
         versionCode = 101
-        versionName = "1.0.1-QuickShell"
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -58,7 +58,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputImpl.outputFileName = "AxManager ${versionName}-${versionCode}-${buildType.name}.apk"
+            outputImpl.outputFileName = "AxManager_${versionName}_${versionCode}-${buildType.name}.apk"
         }
     }
 
