@@ -16,8 +16,8 @@ android {
         applicationId = "com.frb.axmanager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 10
-        versionName = "1.0.0-InitialVersion"
+        versionCode = 101
+        versionName = "1.0.1-QuickShell"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
