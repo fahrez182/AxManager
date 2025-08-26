@@ -110,6 +110,7 @@ class AdbViewModel : ViewModel() {
     /**
      * Update state apakah notifikasi aktif atau tidak
      */
+    @RequiresApi(Build.VERSION_CODES.R)
     fun updateNotificationState(context: Context) {
         viewModelScope.launch {
             isNotificationEnabled = checkNotificationEnabled(context)
@@ -196,6 +197,7 @@ class AdbViewModel : ViewModel() {
     /**
      * Cek notifikasi aktif atau tidak
      */
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun checkNotificationEnabled(context: Context): Boolean {
         val nm = context.getSystemService(NotificationManager::class.java)
         val channel = nm.getNotificationChannel(AdbPairingService.notificationChannel)
