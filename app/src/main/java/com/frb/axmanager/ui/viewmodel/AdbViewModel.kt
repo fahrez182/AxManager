@@ -41,11 +41,11 @@ class AdbViewModel : ViewModel() {
         val selinuxContext: String? = null
     ) {
         fun isRunning(): Boolean {
-            return Axeron.pingBinder()
+            return Axeron.pingBinder() && AxeronService.VERSION_CODE <= versionCode
         }
 
         fun isNeedUpdate(): Boolean {
-            return AxeronService.VERSION_CODE > versionCode
+            return AxeronService.VERSION_CODE > versionCode && Axeron.pingBinder()
         }
 
         fun getMode(): String {

@@ -131,8 +131,8 @@ fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
                 when {
-                    axeronServiceInfo.isNeedUpdate() -> MaterialTheme.colorScheme.errorContainer
                     axeronServiceInfo.isRunning() -> MaterialTheme.colorScheme.primaryContainer
+                    axeronServiceInfo.isNeedUpdate() -> MaterialTheme.colorScheme.errorContainer
                     else -> MaterialTheme.colorScheme.errorContainer
                 }
             }
@@ -142,33 +142,12 @@ fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    onClick(axeronServiceInfo.isRunning() && !axeronServiceInfo.isNeedUpdate())
+                    onClick(axeronServiceInfo.isRunning())
                 }
                 .padding(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             when {
-                axeronServiceInfo.isNeedUpdate() -> {
-                    Icon(
-                        imageVector = Icons.Filled.Update,
-                        contentDescription = "Update"
-                    )
-                    Column(
-                        modifier = Modifier.padding(start = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.home_update),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Version: ${axeronServiceInfo.versionCode} > ${AxeronService.VERSION_CODE}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
                 axeronServiceInfo.isRunning() -> {
                     Icon(
                         imageVector = Icons.Filled.KeyboardCommandKey,
@@ -205,6 +184,27 @@ fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
 
                         Text(
                             text = "Version: ${axeronServiceInfo.versionCode}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                axeronServiceInfo.isNeedUpdate() -> {
+                    Icon(
+                        imageVector = Icons.Filled.Update,
+                        contentDescription = "Update"
+                    )
+                    Column(
+                        modifier = Modifier.padding(start = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.home_update),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Version: ${axeronServiceInfo.versionCode} > ${AxeronService.VERSION_CODE}",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -356,7 +356,7 @@ fun InfoCard(adbViewModel: AdbViewModel) {
 
             InfoCardItem(
                 label = "Manager Version",
-                content = BuildConfig.VERSION_NAME,
+                content = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                 icon = painterResource(R.drawable.ic_axeron),
             )
 
