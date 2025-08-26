@@ -14,16 +14,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.frb.engine.Axeron
 import com.frb.engine.AxeronSettings
 import com.frb.engine.adb.AdbClient
 import com.frb.engine.adb.AdbKey
 import com.frb.engine.adb.AdbMdns
 import com.frb.engine.adb.AdbPairingService
 import com.frb.engine.adb.PreferenceAdbKeyStore
+import com.frb.engine.implementation.AxeronService
 import com.frb.engine.utils.Starter
 import kotlinx.coroutines.launch
 
-@RequiresApi(Build.VERSION_CODES.R)
 class AdbViewModel : ViewModel() {
 
     companion object {
@@ -31,6 +32,34 @@ class AdbViewModel : ViewModel() {
         const val STATUS_LOST = 0
         const val STATUS_RESOLVED = 1
     }
+
+    data class AxeronServiceInfo(
+        val versionName: String? = null,
+        val versionCode: Long = -1,
+        val uid: Int = -1,
+        val pid: Int = -1,
+        val selinuxContext: String? = null
+    ) {
+        fun isRunning(): Boolean {
+            return Axeron.pingBinder()
+        }
+
+        fun isNeedUpdate(): Boolean {
+            return AxeronService.VERSION_CODE > versionCode
+        }
+
+        fun getMode(): String {
+            return when (uid) {
+                -1 -> "Not Activated"
+                0 -> "Root"
+                2000 -> "Shell"
+                else -> "User"
+            }
+        }
+    }
+
+    var axeronServiceInfo: AxeronServiceInfo by mutableStateOf(AxeronServiceInfo())
+        private set
 
     var isNotificationEnabled by mutableStateOf(false)
         private set
@@ -40,6 +69,43 @@ class AdbViewModel : ViewModel() {
 
     var status by mutableIntStateOf(0)
         private set
+
+    init {
+        checkAxeronService()
+    }
+
+    fun checkAxeronService() {
+        viewModelScope.launch {
+            if (Axeron.pingBinder()) {
+                axeronServiceInfo = AxeronServiceInfo(
+                    Axeron.getVersionName(),
+                    Axeron.getVersionCode(),
+                    Axeron.getUid(),
+                    Axeron.getPid(),
+                    Axeron.getSELinuxContext()
+                )
+            } else {
+                axeronServiceInfo = AxeronServiceInfo()
+            }
+        }
+    }
+
+//    fun updateAxeronService() {
+//        viewModelScope.launch {
+//            if (Axeron.pingBinder()) {
+//                val exitCode: Int
+//                try {
+//                    val process = Axeron.newProcess(Starter.userCommand)
+//                    exitCode = process.waitFor()
+//                } catch (e: Throwable) {
+//                    throw IllegalStateException(e.message)
+//                }
+//                check(exitCode == 0) {
+//                    "sh exited with $exitCode"
+//                }
+//            }
+//        }
+//    }
 
     /**
      * Update state apakah notifikasi aktif atau tidak
@@ -52,6 +118,7 @@ class AdbViewModel : ViewModel() {
 
     var adbMdns: AdbMdns? = null
 
+    @RequiresApi(Build.VERSION_CODES.R)
     fun startAdb(context: Context) {
         viewModelScope.launch {
             val key = try {
@@ -91,6 +158,7 @@ class AdbViewModel : ViewModel() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     fun startPairingService(context: Context) {
         viewModelScope.launch {
             if (!isNotificationEnabled) return@launch
