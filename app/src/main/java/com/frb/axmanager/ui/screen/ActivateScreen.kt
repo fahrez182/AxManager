@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,7 +56,7 @@ import com.frb.engine.utils.Starter
 @Composable
 fun ActivateScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
     val adbViewModel = viewModelGlobal.adbViewModel
-    val axeronServiceInfo = adbViewModel.axeronServiceInfo
+    val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
 
     if (axeronServiceInfo.isRunning() && !axeronServiceInfo.isNeedUpdate()) {
         navController.popBackStack()

@@ -1,6 +1,6 @@
 package com.frb.engine.utils
 
-import com.frb.engine.application
+import com.frb.engine.Engine.Companion.application
 import java.io.File
 
 object Starter {

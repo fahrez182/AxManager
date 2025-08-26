@@ -7,7 +7,8 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.frb.engine.Axeron
+import com.frb.engine.Environment
+import com.frb.engine.client.Axeron
 import com.frb.engine.client.AxeronNewProcess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -100,7 +101,13 @@ class QuickShellViewModel : ViewModel() {
 
         // kalau belum jalan → buat shell baru
         launchSafely(io = true, cmd) {
-            process = Axeron.newProcess(arrayOf("sh", "-c", cmd), null, null)
+            process = Axeron.newProcess(
+                arrayOf("sh", "-c", cmd),
+                Environment.Builder(false)
+                    .put("AXERON_MANAGER", "true")
+                    .put("PATH", "\$PATH:/data/local/tmp/AxManager/bin:/data/local/tmp/AxManager/bin/busybox")
+                    .build(), null
+            )
 
             writer = BufferedWriter(OutputStreamWriter(process!!.outputStream))
 
@@ -132,12 +139,17 @@ class QuickShellViewModel : ViewModel() {
             // tunggu proses selesai (misal user stop)
             withContext(Dispatchers.IO) {
                 val code = process?.waitFor() ?: -1
+                delay(100)
                 appendLine("[exit] code=$code")
             }
         }
     }
 
-    private fun launchSafely(io: Boolean = false, cmd: String, block: suspend CoroutineScope.() -> Unit) {
+    private fun launchSafely(
+        io: Boolean = false,
+        cmd: String,
+        block: suspend CoroutineScope.() -> Unit
+    ) {
         if (isRunning) return
         debounceJob?.cancel()
         debounceJob = viewModelScope.launch {

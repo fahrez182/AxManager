@@ -15,6 +15,7 @@ import android.os.SELinux;
 import android.os.ServiceManager;
 import android.system.Os;
 
+import com.frb.engine.Environment;
 import com.frb.engine.IAxeronService;
 import com.frb.engine.IFileService;
 import com.frb.engine.IRuntimeService;
@@ -37,11 +38,11 @@ import rikka.hidden.compat.UserManagerApis;
 public class AxeronService extends IAxeronService.Stub {
 
     public static final String VERSION_NAME = "V1.0.1";
-    public static final long VERSION_CODE = 10200;
+    public static final long VERSION_CODE = 10203;
     private static final String TAG = "AxeronService";
     private static final Logger LOGGER = new Logger(TAG);
     private final Handler mainHandler = new Handler(Looper.myLooper());
-    private final int managerAppId;
+//    private final int managerAppId;
 
     public AxeronService() {
         HandlerUtil.setMainHandler(mainHandler);
@@ -57,7 +58,7 @@ public class AxeronService extends IAxeronService.Stub {
         }
 
         assert ai != null;
-        managerAppId = ai.uid;
+//        managerAppId = ai.uid;
 
         ApkChangedObservers.start(ai.sourceDir, () -> {
             if (getManagerApplicationInfo() == null) {
@@ -182,10 +183,10 @@ public class AxeronService extends IAxeronService.Stub {
     }
 
     @Override
-    public IRuntimeService getRuntimeService(String[] command, String[] env, String dir) throws RemoteException {
+    public IRuntimeService getRuntimeService(String[] command, Environment env, String dir) throws RemoteException {
         Process process;
         try {
-            process = Runtime.getRuntime().exec(command, env, dir != null ? new File(dir) : null);
+            process = Runtime.getRuntime().exec(command, env.getEnv(), dir != null ? new File(dir) : null);
         } catch (IOException e) {
             throw new IllegalStateException(e.getMessage());
         }

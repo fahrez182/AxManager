@@ -103,7 +103,7 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
         Column(
             Modifier
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
             TextField(
@@ -167,7 +167,7 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
             val hScroll = rememberScrollState()
 
             SelectionContainer(
-                modifier = Modifier.padding(horizontal = 12.dp)
+                modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Box(
                     modifier = Modifier
@@ -179,8 +179,8 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
                         items(logs) { line ->
                             Text(
                                 text = line.parseAsAnsiAnnotatedString(),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    lineHeight = MaterialTheme.typography.bodySmall.fontSize, // samain dengan fontSize
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
                                     lineHeightStyle = LineHeightStyle(
                                         alignment = LineHeightStyle.Alignment.Center,
                                         trim = LineHeightStyle.Trim.Both

@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -32,7 +33,7 @@ import com.frb.axmanager.ui.theme.AxManagerTheme
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
-import com.frb.engine.Axeron
+import com.frb.engine.client.Axeron
 
 
 class AxActivity : ComponentActivity() {
@@ -66,9 +67,11 @@ fun MainScreen() {
 
     DisposableEffect(Unit) {
         val receivedListener = Axeron.OnBinderReceivedListener {
+            Log.i("AxManagerBinder", "onBinderReceived")
             adbViewModel.checkAxeronService()
         }
         val deadListener = Axeron.OnBinderDeadListener {
+            Log.i("AxManagerBinder", "onBinderDead")
             adbViewModel.checkAxeronService()
         }
 
@@ -88,7 +91,7 @@ fun MainScreen() {
         )
     }
 
-    val axeronServiceInfo = adbViewModel.axeronServiceInfo
+    val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
 
     val showBottomBar = when (currentDestination?.route) {
         ScreenItem.AddApps.route -> false // Hide for AddApps

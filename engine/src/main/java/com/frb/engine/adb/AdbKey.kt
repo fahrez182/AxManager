@@ -9,7 +9,6 @@ import android.util.Base64
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.edit
-import com.frb.engine.AxeronData
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509v3CertificateBuilder
@@ -293,7 +292,6 @@ class PreferenceAdbKeyStore(private val preference: SharedPreferences) : AdbKeyS
 
     override fun put(bytes: ByteArray) {
         Log.d("AxData", "put: ${String(bytes)}")
-        AxeronData.put(String(Base64.encode(bytes, Base64.NO_WRAP)))
         preference.edit { putString(preferenceKey, String(Base64.encode(bytes, Base64.NO_WRAP))) }
     }
 

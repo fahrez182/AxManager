@@ -2,7 +2,6 @@ package com.frb.axmanager
 
 import android.content.Context
 import android.os.Build
-import com.frb.engine.AxeronData
 import com.frb.engine.AxeronSettings
 import com.frb.engine.Engine
 import org.lsposed.hiddenapibypass.HiddenApiBypass
@@ -30,6 +29,5 @@ class AxeronApplication : Engine() {
     override fun onCreate() {
         super.onCreate()
         init(this)
-        AxeronData.init()
     }
 }

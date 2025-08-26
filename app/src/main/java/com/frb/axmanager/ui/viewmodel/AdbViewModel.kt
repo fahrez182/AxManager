@@ -14,15 +14,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.frb.engine.Axeron
 import com.frb.engine.AxeronSettings
 import com.frb.engine.adb.AdbClient
 import com.frb.engine.adb.AdbKey
 import com.frb.engine.adb.AdbMdns
 import com.frb.engine.adb.AdbPairingService
 import com.frb.engine.adb.PreferenceAdbKeyStore
+import com.frb.engine.client.Axeron
+import com.frb.engine.client.AxeronFile
 import com.frb.engine.implementation.AxeronService
 import com.frb.engine.utils.Starter
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class AdbViewModel : ViewModel() {
@@ -58,8 +60,8 @@ class AdbViewModel : ViewModel() {
         }
     }
 
-    var axeronServiceInfo: AxeronServiceInfo by mutableStateOf(AxeronServiceInfo())
-        private set
+    val _axeronServiceInfo= MutableStateFlow(AxeronServiceInfo())
+    val axeronServiceInfo = _axeronServiceInfo
 
     var isNotificationEnabled by mutableStateOf(false)
         private set
@@ -77,15 +79,16 @@ class AdbViewModel : ViewModel() {
     fun checkAxeronService() {
         viewModelScope.launch {
             if (Axeron.pingBinder()) {
-                axeronServiceInfo = AxeronServiceInfo(
+                _axeronServiceInfo.value = AxeronServiceInfo(
                     Axeron.getVersionName(),
                     Axeron.getVersionCode(),
                     Axeron.getUid(),
                     Axeron.getPid(),
                     Axeron.getSELinuxContext()
                 )
+                AxeronFile().extractBusyBoxFromSo()
             } else {
-                axeronServiceInfo = AxeronServiceInfo()
+                _axeronServiceInfo.value = AxeronServiceInfo()
             }
         }
     }

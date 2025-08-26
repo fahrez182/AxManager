@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
-import com.frb.engine.Axeron
+import com.frb.engine.client.Axeron
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

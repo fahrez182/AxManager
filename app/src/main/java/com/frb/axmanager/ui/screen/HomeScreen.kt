@@ -124,7 +124,7 @@ fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGloba
 
 @Composable
 fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
-    val axeronServiceInfo = adbViewModel.axeronServiceInfo
+    val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
     Log.d("AxManager", "NeedUpdate: ${axeronServiceInfo.isNeedUpdate()}")
 
     ElevatedCard(
@@ -303,7 +303,7 @@ fun AppsCard(appsViewModel: AppsViewModel, modifier: Modifier) {
 
 @Composable
 fun InfoCard(adbViewModel: AdbViewModel) {
-    val axeronServiceInfo = adbViewModel.axeronServiceInfo
+    val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(

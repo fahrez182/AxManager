@@ -32,9 +32,8 @@ interface IFileService {
 
     // ---- Time & permission
     boolean setLastModified(String path, long newLastModified);
-    boolean setReadable(String path, boolean readable, boolean ownerOnly);
-    boolean setWritable(String path, boolean writable, boolean ownerOnly);
-    boolean setExecutable(String path, boolean executable, boolean ownerOnly);
+    boolean chmod(String path, int mode);
+    boolean chown(String path, int uid, int gid);
 
     // ---- Open file dgn flags PFD; ensureParents = auto-mkdir parent jika true
     ParcelFileDescriptor open(String path, int flags, boolean ensureParents);

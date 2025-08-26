@@ -2,6 +2,8 @@ package com.frb.engine.implementation;
 
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
+import android.system.ErrnoException;
+import android.system.Os;
 
 import com.frb.engine.FileStat;
 import com.frb.engine.IFileService;
@@ -166,17 +168,37 @@ public class FileService extends IFileService.Stub {
         return f(path).setLastModified(newLastModified);
     }
 
-    @Override public boolean setReadable(String path, boolean readable, boolean ownerOnly) {
-        return f(path).setReadable(readable, ownerOnly);
+//    @Override public boolean setReadable(String path, boolean readable, boolean ownerOnly) {
+//        return f(path).setReadable(readable, ownerOnly);
+//    }
+//
+//    @Override public boolean setWritable(String path, boolean writable, boolean ownerOnly) {
+//        return f(path).setWritable(writable, ownerOnly);
+//    }
+//
+//    @Override public boolean setExecutable(String path, boolean executable, boolean ownerOnly) {
+//        return f(path).setExecutable(executable, ownerOnly);
+//    }
+
+    @Override public boolean chmod(String path, int mode) {
+        try {
+            Os.chmod(path, mode);
+            return true;
+        } catch (ErrnoException e) {
+            return false;
+        }
     }
 
-    @Override public boolean setWritable(String path, boolean writable, boolean ownerOnly) {
-        return f(path).setWritable(writable, ownerOnly);
+    @Override public boolean chown(String path, int uid, int gid) {
+        try {
+            Os.chown(path, uid, gid);
+            return true;
+        } catch (ErrnoException e) {
+            return false;
+        }
     }
 
-    @Override public boolean setExecutable(String path, boolean executable, boolean ownerOnly) {
-        return f(path).setExecutable(executable, ownerOnly);
-    }
+
 
     @Override
     public ParcelFileDescriptor open(String path, int flags, boolean ensureParents) throws RemoteException {

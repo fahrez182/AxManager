@@ -1,4 +1,4 @@
-package com.frb.engine;
+package com.frb.engine.client;
 
 import android.os.Handler;
 import android.os.IBinder;
@@ -9,7 +9,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.frb.engine.client.AxeronNewProcess;
+import com.frb.engine.Environment;
+import com.frb.engine.IAxeronService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,8 @@ public class Axeron {
     private static final List<ListenerHolder<OnBinderReceivedListener>> RECEIVED_LISTENERS = new ArrayList<>();
     private static final List<ListenerHolder<OnBinderDeadListener>> DEAD_LISTENERS = new ArrayList<>();
 //    private static final List<ListenerHolder<OnRequestPermissionResultListener>> PERMISSION_LISTENERS = new ArrayList<>();
+    
+    protected static String TAG = "AxeronApplication";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static IBinder binder;
     private static IAxeronService service;
@@ -140,7 +143,7 @@ public class Axeron {
             try {
                 binder.linkToDeath(DEATH_RECIPIENT, 0);
             } catch (Throwable e) {
-                Log.i("AxeronApplication", "attachApplication");
+                Log.i(TAG, "attachApplication");
             }
 
             binderReady = true;
@@ -173,7 +176,7 @@ public class Axeron {
         return newProcess(new String[]{"sh", "-c", cmd}, null, null);
     }
 
-    public static AxeronNewProcess newProcess(@NonNull String[] cmd, @Nullable String[] env, @Nullable String dir) {
+    public static AxeronNewProcess newProcess(@NonNull String[] cmd, @Nullable Environment env, @Nullable String dir) {
         try {
             return new AxeronNewProcess(requireService().getRuntimeService(cmd, env, dir));
         } catch (RemoteException | NullPointerException e) {
@@ -187,7 +190,7 @@ public class Axeron {
             try {
                 serverUid = requireService().getUid();
             } catch (RemoteException e) {
-                Log.e("AxeronApplication", "getServerUid", e);
+                Log.e(TAG, "getServerUid", e);
             }
         }
         return serverUid;
@@ -198,7 +201,7 @@ public class Axeron {
             try {
                 serverPid = requireService().getPid();
             } catch (RemoteException e) {
-                Log.e("AxeronApplication", "getServerPid", e);
+                Log.e(TAG, "getServerPid", e);
             }
         }
         return serverPid;
@@ -209,7 +212,7 @@ public class Axeron {
         try {
             serverContext = requireService().getSELinuxContext();
         } catch (RemoteException e) {
-            Log.e("AxeronApplication", "getSELinuxContext", e);
+            Log.e(TAG, "getSELinuxContext", e);
         }
         return serverContext;
     }
@@ -219,7 +222,7 @@ public class Axeron {
         try {
             serverVersionName = requireService().getVersionName();
         } catch (RemoteException e) {
-            Log.e("AxeronApplication", "getServerVersionName", e);
+            Log.e(TAG, "getServerVersionName", e);
         }
         return serverVersionName;
     }
@@ -229,7 +232,7 @@ public class Axeron {
             try {
                 serverVersionCode = requireService().getVersionCode();
             } catch (RemoteException e) {
-                Log.e("AxeronApplication", "getServerVersionCode", e);
+                Log.e(TAG, "getServerVersionCode", e);
             }
         }
         return serverVersionCode;
@@ -240,7 +243,7 @@ public class Axeron {
             try {
                 requireService().destroy();
             } catch (RemoteException e) {
-                Log.e("AxeronApplication", "destroy", e);
+                Log.e(TAG, "destroy", e);
             }
             binder = null;
             service = null;
