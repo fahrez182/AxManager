@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.0"
+agp = "8.12.1"
 api = "13.1.5"
 boringssl = "20250114"
 core = "4.6.2"

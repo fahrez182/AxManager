@@ -1,13 +1,13 @@
 // IAxeronService.aidl
 package com.frb.engine;
 
-import com.frb.engine.IAxeronFile;
+import com.frb.engine.IFileService;
 import com.frb.engine.IRuntimeService;
 //import android.os.ParcelFileDescriptor;
 
 interface IAxeronService {
     void destroy() = 16777114;
-    IAxeronFile getAxeronFile() = 1;
+    IFileService getFileService() = 1;
     IRuntimeService getRuntimeService(in String[] command, in String[] env, in String dir) = 2;
     long getVersionCode() = 3;
     String getVersionName() = 4;

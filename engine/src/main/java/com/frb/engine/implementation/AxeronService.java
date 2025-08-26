@@ -15,8 +15,8 @@ import android.os.SELinux;
 import android.os.ServiceManager;
 import android.system.Os;
 
-import com.frb.engine.IAxeronFile;
 import com.frb.engine.IAxeronService;
+import com.frb.engine.IFileService;
 import com.frb.engine.IRuntimeService;
 import com.frb.engine.utils.ApkChangedObservers;
 import com.frb.engine.utils.BinderContainer;
@@ -36,8 +36,8 @@ import rikka.hidden.compat.UserManagerApis;
 
 public class AxeronService extends IAxeronService.Stub {
 
-    public static final String VERSION_NAME = "V1.00-Build";
-    public static final long VERSION_CODE = 10;
+    public static final String VERSION_NAME = "V1.0.1";
+    public static final long VERSION_CODE = 10100;
     private static final String TAG = "AxeronService";
     private static final Logger LOGGER = new Logger(TAG);
     private final Handler mainHandler = new Handler(Looper.myLooper());
@@ -177,8 +177,8 @@ public class AxeronService extends IAxeronService.Stub {
     }
 
     @Override
-    public IAxeronFile getAxeronFile() {
-        return new AxeronFile();
+    public IFileService getFileService() {
+        return new FileService();
     }
 
     @Override

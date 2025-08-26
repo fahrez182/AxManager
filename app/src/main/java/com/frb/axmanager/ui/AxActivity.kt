@@ -18,7 +18,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -32,7 +31,6 @@ import com.frb.axmanager.ui.navigation.ScreenItem
 import com.frb.axmanager.ui.theme.AxManagerTheme
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
-import com.frb.axmanager.ui.viewmodel.HomeViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.Axeron
 
@@ -64,15 +62,14 @@ fun MainScreen() {
 
 
     val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
-    val homeViewModel: HomeViewModel = viewModel<HomeViewModel>()
     val adbViewModel: AdbViewModel = viewModel<AdbViewModel>()
 
     DisposableEffect(Unit) {
         val receivedListener = Axeron.OnBinderReceivedListener {
-            homeViewModel.checkAxeronService()
+            adbViewModel.checkAxeronService()
         }
         val deadListener = Axeron.OnBinderDeadListener {
-            homeViewModel.checkAxeronService()
+            adbViewModel.checkAxeronService()
         }
 
         Axeron.addBinderReceivedListener(receivedListener)
@@ -87,12 +84,11 @@ fun MainScreen() {
     val viewModelGlobal = remember {
         ViewModelGlobal(
             appsViewModel,
-            homeViewModel,
             adbViewModel
         )
     }
 
-    val axeronServiceInfo by homeViewModel.axeronServiceInfo.collectAsState()
+    val axeronServiceInfo = adbViewModel.axeronServiceInfo
 
     val showBottomBar = when (currentDestination?.route) {
         ScreenItem.AddApps.route -> false // Hide for AddApps
@@ -121,7 +117,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun BottomBar(navController: NavHostController, axeronServiceInfo: HomeViewModel.AxeronServiceInfo) {
+fun BottomBar(navController: NavHostController, axeronServiceInfo: AdbViewModel.AxeronServiceInfo) {
     val items = listOf(
         ScreenItem.Home,
         ScreenItem.Apps,

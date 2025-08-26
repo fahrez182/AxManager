@@ -1,6 +1,7 @@
 package com.frb.axmanager.ui.screen
 
 import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,10 +21,12 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,16 +53,17 @@ import com.dergoogler.mmrl.ui.component.text.TextRow
 import com.frb.axmanager.BuildConfig
 import com.frb.axmanager.R
 import com.frb.axmanager.ui.navigation.ScreenItem
+import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
-import com.frb.axmanager.ui.viewmodel.HomeViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.frb.engine.implementation.AxeronService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val appsViewModel = viewModelGlobal.appsViewModel
-    val homeViewModel = viewModelGlobal.homeViewModel
+    val adbViewModel = viewModelGlobal.adbViewModel
 
     Scaffold(
         topBar = {
@@ -95,7 +100,7 @@ fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGloba
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            StatusCard(homeViewModel) {
+            StatusCard(adbViewModel) {
                 if (it) {
                     navController.navigate(ScreenItem.QuickShell.route)
                 } else {
@@ -111,20 +116,25 @@ fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGloba
                 PluginCard(modifier = Modifier.weight(1f))
             }
 
-            InfoCard(homeViewModel)
+            InfoCard(adbViewModel)
+            IssueReportCard()
         }
     }
 }
 
 @Composable
-fun StatusCard(homeViewModel: HomeViewModel, onClick: (Boolean) -> Unit = {}) {
-    val axeronServiceInfo by homeViewModel.axeronServiceInfo.collectAsState()
+fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
+    val axeronServiceInfo = adbViewModel.axeronServiceInfo
+    Log.d("AxManager", "NeedUpdate: ${axeronServiceInfo.isNeedUpdate()}")
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
-                if (axeronServiceInfo.isRunning()) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.errorContainer
+                when {
+                    axeronServiceInfo.isNeedUpdate() -> MaterialTheme.colorScheme.errorContainer
+                    axeronServiceInfo.isRunning() -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.errorContainer
+                }
             }
         )
     ) {
@@ -132,12 +142,33 @@ fun StatusCard(homeViewModel: HomeViewModel, onClick: (Boolean) -> Unit = {}) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    onClick(axeronServiceInfo.isRunning())
+                    onClick(axeronServiceInfo.isRunning() && !axeronServiceInfo.isNeedUpdate())
                 }
                 .padding(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             when {
+                axeronServiceInfo.isNeedUpdate() -> {
+                    Icon(
+                        imageVector = Icons.Filled.Update,
+                        contentDescription = "Update"
+                    )
+                    Column(
+                        modifier = Modifier.padding(start = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.home_update),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Version: ${axeronServiceInfo.versionCode} > ${AxeronService.VERSION_CODE}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
                 axeronServiceInfo.isRunning() -> {
                     Icon(
                         imageVector = Icons.Filled.KeyboardCommandKey,
@@ -178,15 +209,18 @@ fun StatusCard(homeViewModel: HomeViewModel, onClick: (Boolean) -> Unit = {}) {
                         )
                     }
                 }
+
                 else -> {
                     Icon(Icons.Filled.Cancel, "NotActivated")
-                    Column(Modifier.padding(start = 20.dp)) {
+                    Column(
+                        Modifier.padding(start = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
                             text = "Need to Activate",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(Modifier.height(4.dp))
                         Text(
                             text = "Please click me to activating AxManager",
                             style = MaterialTheme.typography.bodyMedium
@@ -200,7 +234,7 @@ fun StatusCard(homeViewModel: HomeViewModel, onClick: (Boolean) -> Unit = {}) {
 
 @Composable
 fun PluginCard(modifier: Modifier) {
-    val count = 0
+    val count = 1
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -268,8 +302,8 @@ fun AppsCard(appsViewModel: AppsViewModel, modifier: Modifier) {
 }
 
 @Composable
-fun InfoCard(homeViewModel: HomeViewModel) {
-    val axeronServiceInfo by homeViewModel.axeronServiceInfo.collectAsState()
+fun InfoCard(adbViewModel: AdbViewModel) {
+    val axeronServiceInfo = adbViewModel.axeronServiceInfo
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(
@@ -290,14 +324,16 @@ fun InfoCard(homeViewModel: HomeViewModel) {
                             is ImageVector -> Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                modifier = Modifier.padding(end = 20.dp)
+                                modifier = Modifier
+                                    .padding(end = 20.dp)
                                     .size(26.dp)
                             )
 
                             is Painter -> Icon(
                                 painter = icon,
                                 contentDescription = null,
-                                modifier = Modifier.padding(end = 20.dp)
+                                modifier = Modifier
+                                    .padding(end = 20.dp)
                                     .size(26.dp)
                             )
                         }
@@ -345,6 +381,54 @@ fun InfoCard(homeViewModel: HomeViewModel) {
                 icon = Icons.Filled.Security,
             )
 
+        }
+    }
+}
+
+@Composable
+fun IssueReportCard() {
+    val uriHandler = LocalUriHandler.current
+    val githubIssueUrl = "https://github.com/fahrez182/AxManager/issues"
+    val telegramUrl = "https://t.me/axeron_manager"
+
+    ElevatedCard {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Having Trouble?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Encountered a bug or have feedback?",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Report it as soon as possible!",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                IconButton(onClick = { uriHandler.openUri(githubIssueUrl) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_github),
+                        contentDescription = "Report to github",
+                    )
+                }
+                IconButton(onClick = { uriHandler.openUri(telegramUrl) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_telegram),
+                        contentDescription = "Report to telegram",
+                    )
+                }
+            }
         }
     }
 }
