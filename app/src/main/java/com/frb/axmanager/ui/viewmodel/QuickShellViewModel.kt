@@ -104,8 +104,9 @@ class QuickShellViewModel : ViewModel() {
             process = Axeron.newProcess(
                 arrayOf("sh", "-c", cmd),
                 Environment.Builder(false)
-                    .put("AXERON_MANAGER", "true")
-                    .put("PATH", "\$PATH:/data/local/tmp/AxManager/bin:/data/local/tmp/AxManager/bin/busybox")
+                    .put("AXERON", "true")
+                    .put("AXERONBIN", "/data/local/tmp/AxManager/bin")
+                    .put("PATH", "\$PATH:\$AXERONBIN:/data/local/tmp/AxManager/bin/busybox")
                     .build(), null
             )
 
@@ -139,7 +140,7 @@ class QuickShellViewModel : ViewModel() {
             // tunggu proses selesai (misal user stop)
             withContext(Dispatchers.IO) {
                 val code = process?.waitFor() ?: -1
-                delay(100)
+                delay(60)
                 appendLine("[exit] code=$code")
             }
         }
@@ -153,7 +154,7 @@ class QuickShellViewModel : ViewModel() {
         if (isRunning) return
         debounceJob?.cancel()
         debounceJob = viewModelScope.launch {
-            delay(80)
+            delay(100)
             isRunning = true
             savedCommand = TextFieldValue(text = cmd, selection = TextRange(cmd.length))
             commandText = TextFieldValue(text = "")

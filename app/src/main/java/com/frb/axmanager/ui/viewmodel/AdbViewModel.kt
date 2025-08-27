@@ -60,7 +60,7 @@ class AdbViewModel : ViewModel() {
         }
     }
 
-    val _axeronServiceInfo= MutableStateFlow(AxeronServiceInfo())
+    val _axeronServiceInfo = MutableStateFlow(AxeronServiceInfo())
     val axeronServiceInfo = _axeronServiceInfo
 
     var isNotificationEnabled by mutableStateOf(false)
@@ -92,23 +92,6 @@ class AdbViewModel : ViewModel() {
             }
         }
     }
-
-//    fun updateAxeronService() {
-//        viewModelScope.launch {
-//            if (Axeron.pingBinder()) {
-//                val exitCode: Int
-//                try {
-//                    val process = Axeron.newProcess(Starter.userCommand)
-//                    exitCode = process.waitFor()
-//                } catch (e: Throwable) {
-//                    throw IllegalStateException(e.message)
-//                }
-//                check(exitCode == 0) {
-//                    "sh exited with $exitCode"
-//                }
-//            }
-//        }
-//    }
 
     /**
      * Update state apakah notifikasi aktif atau tidak
