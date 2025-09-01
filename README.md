@@ -1,4 +1,8 @@
-# Axeron Manager (AxManager)
+# Axeron Manager (AxManager) (Not-Final)
+
+
+> Hi! This project is still in early development.  I’m learning and experimenting while building it, so things may not be complete or could change later.  
+Thanks for checking it out!
 
 **AxManager** is an Android application designed to provide deeper control over apps and the system.  
 Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager** is dedicated to **ADB/Non-Root mode** — while still allowing execution with **Root access** if available.
@@ -58,5 +62,6 @@ Feel free to open **issues**, submit **pull requests**, or start a discussion fo
 ## 📜 License
 Licensed under the [Apache License 2.0](LICENSE).
 
-I am still learning and building this project as a personal exploration. I don’t intend to violate or misuse any third-party license/code.
+
+> I am still learning and building this project as a personal exploration. I don’t intend to violate or misuse any third-party license/code.
 If you notice that I accidentally used or included something under another license in a way that is not correct, please kindly let me know by opening an issue or contacting me. I will fix it as soon as possible.
