@@ -2,6 +2,7 @@ package com.frb.axmanager.ui.screen
 
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -41,29 +43,56 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.dergoogler.mmrl.ui.component.text.TextRow
 import com.frb.axmanager.BuildConfig
 import com.frb.axmanager.R
-import com.frb.axmanager.ui.navigation.ScreenItem
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.frb.engine.client.Axeron
 import com.frb.engine.implementation.AxeronService
+import com.frb.engine.utils.Starter
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>(start = true)
 @Composable
-fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
+fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
+    LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val appsViewModel = viewModelGlobal.appsViewModel
     val adbViewModel = viewModelGlobal.adbViewModel
+    val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
+
+    LaunchedEffect(axeronServiceInfo) {
+        if (axeronServiceInfo.isNeedUpdate()) {
+            adbViewModel.isUpdating = true
+            Axeron.newProcess(
+                arrayOf(
+                    "setsid",
+                    "sh",
+                    "-c",
+                    "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec sh -c \"$0\"",
+                    Starter.internalCommand
+                )
+            )
+        } else {
+            adbViewModel.isUpdating = false
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -102,9 +131,9 @@ fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGloba
         ) {
             StatusCard(adbViewModel) {
                 if (it) {
-                    navController.navigate(ScreenItem.QuickShell.route)
+                    navigator.navigate(QuickShellScreenDestination)
                 } else {
-                    navController.navigate(ScreenItem.Activate.route)
+                    navigator.navigate(ActivateScreenDestination)
                 }
             }
 
@@ -123,16 +152,20 @@ fun HomeScreen(navController: NavHostController, viewModelGlobal: ViewModelGloba
 }
 
 @Composable
-fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
+fun StatusCard(
+    adbViewModel: AdbViewModel,
+    onClick: (Boolean) -> Unit = {}
+) {
     val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
+    val context = LocalContext.current
     Log.d("AxManager", "NeedUpdate: ${axeronServiceInfo.isNeedUpdate()}")
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
                 when {
+                    adbViewModel.isUpdating -> MaterialTheme.colorScheme.primaryContainer
                     axeronServiceInfo.isRunning() -> MaterialTheme.colorScheme.primaryContainer
-                    axeronServiceInfo.isNeedUpdate() -> MaterialTheme.colorScheme.errorContainer
                     else -> MaterialTheme.colorScheme.errorContainer
                 }
             }
@@ -142,12 +175,36 @@ fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
+                    if (adbViewModel.isUpdating) {
+                        Toast.makeText(context, "Updating...", Toast.LENGTH_SHORT).show()
+                        return@clickable
+                    }
                     onClick(axeronServiceInfo.isRunning())
                 }
                 .padding(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             when {
+                adbViewModel.isUpdating -> {
+                    Icon(
+                        imageVector = Icons.Filled.Update,
+                        contentDescription = "Update"
+                    )
+                    Column(
+                        modifier = Modifier.padding(start = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Updating...",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Version: ${axeronServiceInfo.versionCode} > ${AxeronService.VERSION_CODE}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
                 axeronServiceInfo.isRunning() -> {
                     Icon(
                         imageVector = Icons.Filled.KeyboardCommandKey,
@@ -188,44 +245,22 @@ fun StatusCard(adbViewModel: AdbViewModel, onClick: (Boolean) -> Unit = {}) {
                         )
                     }
                 }
-
-                axeronServiceInfo.isNeedUpdate() -> {
-                    Icon(
-                        imageVector = Icons.Filled.Update,
-                        contentDescription = "Update"
-                    )
-                    Column(
-                        modifier = Modifier.padding(start = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.home_update),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Version: ${axeronServiceInfo.versionCode} > ${AxeronService.VERSION_CODE}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
                 else -> {
-                    Icon(Icons.Filled.Cancel, "NotActivated")
-                    Column(
-                        Modifier.padding(start = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "Need to Activate",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Please click me to activating AxManager",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                        Icon(Icons.Filled.Cancel, "NotActivated")
+                        Column(
+                            Modifier.padding(start = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Need to Activate",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Please click me to activating AxManager",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                 }
             }
         }

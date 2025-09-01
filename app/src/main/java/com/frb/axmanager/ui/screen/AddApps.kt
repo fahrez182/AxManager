@@ -36,16 +36,19 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.frb.axmanager.ui.util.toBitmapSafely
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>
 @Composable
 fun AddAppsScreen(
-    navController: NavHostController,
+    navigator: DestinationsNavigator,
     viewModelGlobal: ViewModelGlobal
 ) {
     val appsViewModel = viewModelGlobal.appsViewModel
@@ -67,7 +70,7 @@ fun AddAppsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },

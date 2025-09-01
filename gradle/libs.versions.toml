@@ -5,6 +5,7 @@ boringssl = "20250114"
 core = "4.6.2"
 gson = "2.13.1"
 hiddenapibypass = "6.1"
+ksp = "2.1.21-2.0.2"
 kotlin = "2.2.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -29,6 +30,7 @@ appiconloader-coil = "1.5.0"
 mmrl = "v33890"
 hidden-api = "4.4.0"
 refine = "4.4.0"
+compose-destination = "2.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -65,6 +67,9 @@ compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
+compose-destinations-core = { group = "io.github.raamcosta.compose-destinations", name = "core", version.ref = "compose-destination" }
+compose-destinations-ksp = { group = "io.github.raamcosta.compose-destinations", name = "ksp", version.ref = "compose-destination" }
+
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil-compose" }
 appiconloader-coil = { group = "me.zhanghai.android.appiconloader", name = "appiconloader-coil", version.ref = "appiconloader-coil" }
 mmrl-ui = { group = "com.github.MMRLApp.MMRL", name = "ui", version.ref = "mmrl" }
@@ -83,4 +88,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 tools-refine = { id = "dev.rikka.tools.refine", version.ref = "refine" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 

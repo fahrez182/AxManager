@@ -36,6 +36,7 @@ kotlin {
 
 dependencies {
 
+    implementation("com.github.topjohnwu.libsu:nio:6.0.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.0")
     implementation("dev.rikka.rikkax.core:core-ktx:1.4.1")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.80")

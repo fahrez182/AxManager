@@ -36,14 +36,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import com.frb.axmanager.ui.navigation.ScreenItem
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.AddAppsScreenDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>
 @Composable
-fun AppsScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
+fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     val addedApps by viewModelGlobal.appsViewModel.addedApps.collectAsState()
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -52,7 +55,9 @@ fun AppsScreen(navController: NavHostController, viewModelGlobal: ViewModelGloba
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(ScreenItem.AddApps.route) }) {
+            FloatingActionButton(onClick = {
+                navigator.navigate(AddAppsScreenDestination)
+            }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add App")
             }
         },

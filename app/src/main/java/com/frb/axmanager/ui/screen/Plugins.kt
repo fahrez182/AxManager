@@ -62,20 +62,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.frb.axmanager.R
-import com.frb.axmanager.ui.navigation.ScreenItem
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.AddAppsScreenDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>
 @Composable
-fun PluginsScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
+fun PluginsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(ScreenItem.AddApps.route) }) {
+            FloatingActionButton(onClick = { navigator.navigate(AddAppsScreenDestination) }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Plugin")
             }
         },

@@ -7,11 +7,14 @@ import android.system.Os;
 
 import com.frb.engine.FileStat;
 import com.frb.engine.IFileService;
+import com.frb.engine.IWriteCallback;
+import com.frb.engine.utils.Logger;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +24,12 @@ import java.util.Comparator;
 import java.util.List;
 
 public class FileService extends IFileService.Stub {
-    private static File f(String path) { return new File(path); }
+    private static final String TAG = "FileService";
+    private static final Logger LOGGER = new Logger(TAG);
+
+    private static File f(String path) {
+        return new File(path);
+    }
 
     // ---------- Helpers ----------
 
@@ -102,32 +110,56 @@ public class FileService extends IFileService.Stub {
 
     // ---------- Implementasi IAxFile ----------
 
-    @Override public boolean mkdirs(String dirPath) { return f(dirPath).mkdirs(); }
+    @Override
+    public boolean mkdirs(String dirPath) {
+        return f(dirPath).mkdirs();
+    }
 
-    @Override public boolean createNewFile(String path) {
+    @Override
+    public boolean createNewFile(String path) {
+        File file = new File(path);
+        if (file.exists()) return false;
         try {
-            File file = f(path);
-            File p = file.getParentFile();
-            if (p != null && !p.exists()) p.mkdirs();
-            return file.createNewFile();
+            FileOutputStream fos = new FileOutputStream(path, false);
+            fos.close();
+            return true;
         } catch (IOException e) {
             return false;
         }
     }
 
-    @Override public boolean delete(String path) { return f(path).delete(); }
+    @Override
+    public boolean delete(String path) {
+        return f(path).delete();
+    }
 
-    @Override public boolean deleteRecursive(String path) { return deleteRecursiveInternal(f(path)); }
+    @Override
+    public boolean deleteRecursive(String path) {
+        return deleteRecursiveInternal(f(path));
+    }
 
-    @Override public boolean rename(String from, String to) { return f(from).renameTo(f(to)); }
+    @Override
+    public boolean rename(String from, String to) {
+        return f(from).renameTo(f(to));
+    }
 
-    @Override public boolean exists(String path) { return f(path).exists(); }
+    @Override
+    public boolean exists(String path) {
+        return f(path).exists();
+    }
 
-    @Override public FileStat stat(String path) { return toStat(f(path)); }
+    @Override
+    public FileStat stat(String path) {
+        return toStat(f(path));
+    }
 
     @Override
     public String getCanonicalPath(String path) {
-        try { return f(path).getCanonicalPath(); } catch (IOException e) { return ""; }
+        try {
+            return f(path).getCanonicalPath();
+        } catch (IOException e) {
+            return "";
+        }
     }
 
     @Override
@@ -164,23 +196,13 @@ public class FileService extends IFileService.Stub {
         return out;
     }
 
-    @Override public boolean setLastModified(String path, long newLastModified) {
+    @Override
+    public boolean setLastModified(String path, long newLastModified) {
         return f(path).setLastModified(newLastModified);
     }
 
-//    @Override public boolean setReadable(String path, boolean readable, boolean ownerOnly) {
-//        return f(path).setReadable(readable, ownerOnly);
-//    }
-//
-//    @Override public boolean setWritable(String path, boolean writable, boolean ownerOnly) {
-//        return f(path).setWritable(writable, ownerOnly);
-//    }
-//
-//    @Override public boolean setExecutable(String path, boolean executable, boolean ownerOnly) {
-//        return f(path).setExecutable(executable, ownerOnly);
-//    }
-
-    @Override public boolean chmod(String path, int mode) {
+    @Override
+    public boolean chmod(String path, int mode) {
         try {
             Os.chmod(path, mode);
             return true;
@@ -189,7 +211,8 @@ public class FileService extends IFileService.Stub {
         }
     }
 
-    @Override public boolean chown(String path, int uid, int gid) {
+    @Override
+    public boolean chown(String path, int uid, int gid) {
         try {
             Os.chown(path, uid, gid);
             return true;
@@ -198,26 +221,88 @@ public class FileService extends IFileService.Stub {
         }
     }
 
-
+//    @Override
+//    public ParcelFileDescriptor open(String path, int flags, boolean ensureParents) throws RemoteException {
+//        File file = new File(path);
+//        try {
+//            if (ensureParents) {
+//                File p = file.getParentFile();
+//                if (p != null && !p.exists()) {
+//                    p.mkdirs();
+//                }
+//                if (!file.exists()) file.createNewFile();
+//            }
+//            FileDescriptor fd = Os.open(path, flags, 0666);
+//            return ParcelFileDescriptor.dup(fd);
+//        } catch (IOException | ErrnoException e) {
+//            LOGGER.e("open failed: %s: %s", path, e);
+//            return null;
+////            throw new RemoteException(e.getMessage());
+//        }
+//    }
 
     @Override
-    public ParcelFileDescriptor open(String path, int flags, boolean ensureParents) throws RemoteException {
-        File file = f(path);
+    public ParcelFileDescriptor read(String path) throws RemoteException {
         try {
-            if (ensureParents) {
-                File p = file.getParentFile();
-                if (p != null && !p.exists()) p.mkdirs();
-            }
-            return ParcelFileDescriptor.open(file, flags);
-        } catch (IOException e) {
-            throw new RemoteException("open failed: " + e.getMessage());
+            return ParcelFileDescriptor.open(f(path), ParcelFileDescriptor.MODE_READ_ONLY);
+        } catch (FileNotFoundException e) {
+            return null;
         }
     }
 
     @Override
+    public void write(String path, ParcelFileDescriptor stream, IWriteCallback callback, boolean append) throws RemoteException {
+        new Thread(() -> {
+            try (FileInputStream fis = new FileInputStream(stream.getFileDescriptor());
+                 FileOutputStream fos = new FileOutputStream(path, append)) {
+
+                byte[] buffer = new byte[8192];
+                int len;
+                while ((len = fis.read(buffer)) != -1) {
+                    fos.write(buffer, 0, len);
+                }
+                fos.flush();
+
+                if (callback != null) callback.onComplete();
+
+            } catch (IOException | RemoteException e) {
+                if (callback != null) {
+                    try {
+                        callback.onError(-1, e.getMessage());
+                    } catch (RemoteException ignored) {
+                    }
+                }
+            } finally {
+                try {
+                    if (stream != null) stream.close();
+                } catch (IOException ignored) {}
+            }
+        }).start();
+//        new Thread(() -> {
+//            try {
+//                FileInputStream fis = new FileInputStream(stream.getFileDescriptor());
+//                FileOutputStream fos = new FileOutputStream(path, append);
+//                byte[] buffer = new byte[8192];
+//                int len;
+//
+//                while ((len = fis.read(buffer)) != -1) {
+//                    fos.write(buffer, 0, len);
+//                }
+//                fos.flush();
+//                fos.close();
+//                fis.close();
+//            } catch (IOException ignored) {
+//            }
+//        }).start();
+    }
+
+    @Override
     public boolean copy(String from, String to, boolean overwrite) {
-        try { return copyFile(f(from), f(to), overwrite); }
-        catch (IOException e) { return false; }
+        try {
+            return copyFile(f(from), f(to), overwrite);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     @Override

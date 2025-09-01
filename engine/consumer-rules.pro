@@ -31,11 +31,6 @@
     public *** d(...);
 }
 
-#noinspection ShrinkerUnresolvedReference
--assumenosideeffects class com.frb.engine.utils.Logger {
-    public *** d(...);
-}
-
 # Hindari penghapusan method native
 -keepclassmembers class * {
     native <methods>;

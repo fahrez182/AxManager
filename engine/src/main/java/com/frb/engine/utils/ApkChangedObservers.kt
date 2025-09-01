@@ -62,7 +62,7 @@ class ApkChangedObserver(private val path: String) : FileObserver(path, DELETE) 
     }
 
     override fun onEvent(event: Int, path: String?) {
-        Log.d("ShizukuServer", "onEvent: ${eventToString(event)} $path")
+        Log.d("AxeronServer", "onEvent: ${eventToString(event)} $path")
 
         if ((event and 0x00008000 /* IN_IGNORED */) != 0 || path == null) {
             return
@@ -76,12 +76,12 @@ class ApkChangedObserver(private val path: String) : FileObserver(path, DELETE) 
 
     override fun startWatching() {
         super.startWatching()
-        Log.d("ShizukuServer", "start watching $path")
+        Log.d("AxeronServer", "start watching $path")
     }
 
     override fun stopWatching() {
         super.stopWatching()
-        Log.d("ShizukuServer", "stop watching $path")
+        Log.d("AxeronServer", "stop watching $path")
     }
 }
 

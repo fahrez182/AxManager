@@ -3,7 +3,6 @@ package com.frb.engine.adb
 import android.util.Log
 import com.frb.engine.adb.AdbProtocol.ADB_AUTH_RSAPUBLICKEY
 import com.frb.engine.adb.AdbProtocol.ADB_AUTH_SIGNATURE
-import com.frb.engine.adb.AdbProtocol.ADB_AUTH_TOKEN
 import com.frb.engine.adb.AdbProtocol.A_AUTH
 import com.frb.engine.adb.AdbProtocol.A_CLSE
 import com.frb.engine.adb.AdbProtocol.A_CNXN
@@ -66,7 +65,6 @@ class AdbClient(private val host: String, private val port: Int, private val key
 
             message = read()
         } else if (message.command == A_AUTH) {
-            if (message.command != A_AUTH && message.arg0 != ADB_AUTH_TOKEN) error("not A_AUTH ADB_AUTH_TOKEN")
             write(A_AUTH, ADB_AUTH_SIGNATURE, 0, key.sign(message.data))
 
             message = read()

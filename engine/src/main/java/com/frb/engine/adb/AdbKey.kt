@@ -225,6 +225,7 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
     private val trustManager
         get() =
             @RequiresApi(Build.VERSION_CODES.R)
+            @SuppressLint("CustomX509TrustManager")
             object : X509ExtendedTrustManager() {
 
                 @SuppressLint("TrustAllX509TrustManager")
@@ -270,21 +271,6 @@ interface AdbKeyStore {
 
     fun get(): ByteArray?
 }
-
-//class AxeronAdbKeyStore : AdbKeyStore {
-//
-//    private val preferenceKey = "adbkey"
-//
-//    override fun put(bytes: ByteArray) {
-//        Log.d("AxeronData", "put: ${String(Base64.encode(bytes, Base64.NO_WRAP))}")
-//        AxeronData.put(String(Base64.encode(bytes, Base64.NO_WRAP)))
-//    }
-//
-//    override fun get(): ByteArray? {
-////        if (!AxeronData.contains(preferenceKey)) return null
-//        return Base64.decode(AxeronData.get(), Base64.NO_WRAP)
-//    }
-//}
 
 class PreferenceAdbKeyStore(private val preference: SharedPreferences) : AdbKeyStore {
 

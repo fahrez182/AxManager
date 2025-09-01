@@ -1,8 +1,10 @@
 package com.frb.engine.client;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Parcel;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -10,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.frb.engine.Environment;
+import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
 
 import java.util.ArrayList;
@@ -20,7 +23,6 @@ public class Axeron {
 
     private static final List<ListenerHolder<OnBinderReceivedListener>> RECEIVED_LISTENERS = new ArrayList<>();
     private static final List<ListenerHolder<OnBinderDeadListener>> DEAD_LISTENERS = new ArrayList<>();
-//    private static final List<ListenerHolder<OnRequestPermissionResultListener>> PERMISSION_LISTENERS = new ArrayList<>();
     
     protected static String TAG = "AxeronApplication";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
@@ -146,8 +148,17 @@ public class Axeron {
                 Log.i(TAG, "attachApplication");
             }
 
-            binderReady = true;
-            scheduleBinderReceivedListeners();
+            try {
+                service.bindAxeronApplication(new IAxeronApplication.Stub() {
+                    @Override
+                    public void bindApplication(Bundle data) {
+                        Log.d(TAG, "bindApplication");
+                        scheduleBinderReceivedListeners();
+                    }
+                });
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
 
         }
     }
@@ -173,7 +184,11 @@ public class Axeron {
     };
 
     public static AxeronNewProcess newProcess(@NonNull String cmd) {
-        return newProcess(new String[]{"sh", "-c", cmd}, null, null);
+        return newProcess(new String[]{"sh", "-c", cmd});
+    }
+
+    public static AxeronNewProcess newProcess(@NonNull String[] cmd) {
+        return newProcess(cmd, null, null);
     }
 
     public static AxeronNewProcess newProcess(@NonNull String[] cmd, @Nullable Environment env, @Nullable String dir) {
@@ -252,6 +267,19 @@ public class Axeron {
             serverVersionName = null;
             serverVersionCode = -1;
             serverContext = null;
+        }
+    }
+
+    private static RuntimeException rethrowAsRuntimeException(RemoteException e) {
+        return new RuntimeException(e);
+    }
+
+    public static void transactRemote(@NonNull Parcel data, @Nullable Parcel reply, int flags) {
+        try {
+            requireService().asBinder().transact(1, data, reply, flags);
+            Log.d(TAG, "transactRemote");
+        } catch (RemoteException e) {
+            throw rethrowAsRuntimeException(e);
         }
     }
 

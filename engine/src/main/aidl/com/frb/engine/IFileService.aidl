@@ -1,6 +1,7 @@
 // IFileService.aidl
 package com.frb.engine;
 
+import com.frb.engine.IWriteCallback;
 parcelable FileStat;
 // Declare any non-default types here with import statements
 
@@ -36,7 +37,9 @@ interface IFileService {
     boolean chown(String path, int uid, int gid);
 
     // ---- Open file dgn flags PFD; ensureParents = auto-mkdir parent jika true
-    ParcelFileDescriptor open(String path, int flags, boolean ensureParents);
+//    ParcelFileDescriptor open(String path, int flags, boolean ensureParents);
+    ParcelFileDescriptor read(String path);
+    void write(String path, in ParcelFileDescriptor stream, in IWriteCallback callback, boolean append);
 
     // ---- Copy/Move (overwrite optional)
     boolean copy(String from, String to, boolean overwrite);

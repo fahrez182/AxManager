@@ -1,6 +1,7 @@
-package com.frb.engine
+package com.frb.engine.core
 
 import android.app.Application
+import android.os.Process
 import android.util.Log
 import com.frb.engine.client.Axeron
 import java.io.File
@@ -42,7 +43,7 @@ open class Engine: Application() {
             // contoh: simpan ke file log
             saveCrashLog(throwable)
 
-            android.os.Process.killProcess(android.os.Process.myPid())
+            Process.killProcess(Process.myPid())
             exitProcess(1) // exit code bebas
         }
     }

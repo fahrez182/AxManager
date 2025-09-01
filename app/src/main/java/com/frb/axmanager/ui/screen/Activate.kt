@@ -43,7 +43,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.dergoogler.mmrl.ui.component.HtmlText
 import com.frb.axmanager.R
 import com.frb.axmanager.ui.component.MaterialDialog
@@ -51,15 +50,19 @@ import com.frb.axmanager.ui.util.ClipboardUtil
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.utils.Starter
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>
 @Composable
-fun ActivateScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
+fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     val adbViewModel = viewModelGlobal.adbViewModel
     val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
 
     if (axeronServiceInfo.isRunning() && !axeronServiceInfo.isNeedUpdate()) {
-        navController.popBackStack()
+        navigator.popBackStack()
     }
 
     Scaffold(
@@ -73,7 +76,7 @@ fun ActivateScreen(navController: NavHostController, viewModelGlobal: ViewModelG
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -117,7 +120,7 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-         // auto re-check izin
+        adbViewModel.startAdb(context, true)
     }
 
     var showDialogDeveloper by remember { mutableStateOf(false) }
@@ -160,14 +163,15 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
             }
             Spacer(modifier = Modifier.size(8.dp))
 
-            LaunchedEffect(adbViewModel.isWirelessActive, adbViewModel.status) {
-                showDialogDeveloper = false
-                if (adbViewModel.isWirelessActive && adbViewModel.status == AdbViewModel.STATUS_FAILED) {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                        putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-                    }
-                    launcherDeveloper.launch(intent)
+//            LaunchedEffect(adbViewModel.launchDevSettings) {
+//
+//            }
+
+            if (adbViewModel.launchDevSettings) {
+                val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                    putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
                 }
+                launcherDeveloper.launch(intent)
             }
 
             Button(
@@ -180,7 +184,7 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                         return@Button
                     } else {
                         adbViewModel.startAdb(context)
-                        showDialogDeveloper = true
+//                        showDialogDeveloper = true
                     }
                 }
             ) {

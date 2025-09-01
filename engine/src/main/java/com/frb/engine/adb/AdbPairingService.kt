@@ -17,8 +17,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
-import com.frb.engine.AxeronSettings
 import com.frb.engine.R
+import com.frb.engine.core.AxeronSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch

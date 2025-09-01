@@ -1,5 +1,16 @@
 package com.frb.axmanager.ui.screen
 
+import android.app.Activity
+import android.content.Context
+import android.os.Environment
+import android.util.Log
+import android.view.WindowManager
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +31,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,35 +44,81 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.frb.axmanager.R
 import com.frb.axmanager.ui.viewmodel.QuickShellViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
+import com.frb.engine.client.AxeronFile
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.io.File
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Destination<RootGraph>
 @Composable
-fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewModelGlobal) {
+fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
+    val context = LocalContext.current
     val viewModel: QuickShellViewModel = viewModel()
-//    val output by vm.output.collectAsState()
     val running = viewModel.isRunning
-    rememberScrollState()
 
-//    LaunchedEffect(output) {
-//        scroll.animateScrollTo(scroll.maxValue.coerceAtLeast(0))
-//    }
+    val listState = rememberLazyListState()
+    val logs = remember { mutableStateListOf<QuickShellViewModel.Output>() }
+
+    var previousIndex by remember { mutableIntStateOf(0) }
+    var previousScrollOffset by remember { mutableIntStateOf(0) }
+
+    // FAB visibility
+    var fabVisible by remember { mutableStateOf(true) }
+
+    DisposableEffect(running) {
+        val window = (context as Activity).window
+        if (running) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+
+        onDispose {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    LaunchedEffect(listState, viewModel.isRunning) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) ->
+                if (!viewModel.isRunning) {  // hanya update FAB kalau sedang tidak running
+                    if (index > previousIndex || (index == previousIndex && offset > previousScrollOffset)) {
+                        fabVisible = false
+                    } else if (index < previousIndex || offset < previousScrollOffset) {
+                        fabVisible = true
+                    }
+                }
+                previousIndex = index
+                previousScrollOffset = offset
+            }
+    }
+
 
     Scaffold(
         topBar = {
@@ -76,7 +135,7 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navigator.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -97,6 +156,24 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
                 },
                 windowInsets = WindowInsets(top = 0)
             )
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = fabVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+            ) {
+                FloatingActionButton(onClick = {
+                    saveLogsToDownload(
+                        logs,
+                        context
+                    )
+                }) {
+                    Icon(Icons.Default.Save, contentDescription = "Save")
+                }
+            }
         },
         contentWindowInsets = WindowInsets(top = 0, bottom = 0)
     ) { paddingValues ->
@@ -144,9 +221,6 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
 
             Spacer(Modifier.height(16.dp))
 
-            val listState = rememberLazyListState()
-            val logs = remember { mutableStateListOf<String>() }
-
             LaunchedEffect(viewModel.clear) {
                 logs.clear()
             }
@@ -160,6 +234,7 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
             // collect flow
             LaunchedEffect(Unit) {
                 viewModel.output.collect { line ->
+//                    Log.d("QuickShellViewModel", line.output)
                     logs.add(line)
                 }
             }
@@ -174,11 +249,13 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
                         .horizontalScroll(hScroll)
                 ) {
                     LazyColumn(
-                        state = listState
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         items(logs) { line ->
+                            if (line.type == QuickShellViewModel.OutputType.TYPE_COMMAND) return@items
                             Text(
-                                text = line.parseAsAnsiAnnotatedString(),
+                                text = line.output.parseAsAnsiAnnotatedString(),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
                                     lineHeightStyle = LineHeightStyle(
@@ -187,9 +264,8 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
                                     )
                                 ),
                                 softWrap = false,   // MATIIN WRAP
-                                modifier = Modifier.fillMaxWidth(),
                                 fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -198,4 +274,40 @@ fun QuickShellScreen(navController: NavHostController, viewModelGlobal: ViewMode
         }
     }
 }
+
+
+fun saveLogsToDownload(logs: List<QuickShellViewModel.Output>, context: Context) {
+    val now = Calendar.getInstance()
+    val year = now.get(Calendar.YEAR)
+    val dayOfYear = now.get(Calendar.DAY_OF_YEAR)
+    val hour = now.get(Calendar.HOUR_OF_DAY)
+    val minute = now.get(Calendar.MINUTE)
+    val second = now.get(Calendar.SECOND)
+
+    // Jangan pakai ":" → ganti pakai "-" atau "_"
+    val fileName = "QuickShell_${year}-${dayOfYear}-${hour}-${minute}-${second}.log"
+
+    // Path manual
+    val baseDir = File(Environment.getExternalStorageDirectory(), "AxManager/logs")
+    if (!baseDir.exists()) {
+        baseDir.mkdirs() // bikin folder kalau belum ada
+    }
+
+    val file = File(baseDir, fileName)
+
+    try {
+        val fos = AxeronFile().getStreamSession(file.absolutePath, true, false).outputStream
+        logs.forEach { line ->
+            fos.write("${line.output}\n".toByteArray())
+        }
+        fos.flush()
+
+        Toast.makeText(context, "Saved to AxManager/logs/$fileName", Toast.LENGTH_SHORT).show()
+    } catch (e: Exception) {
+        Log.e("QuickShellViewModel", "Failed to save logs: ${e.message}", e)
+        Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+
 

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.tools.refine)
     id("kotlin-parcelize")
 }
@@ -102,6 +103,9 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+
+    implementation(libs.compose.destinations.core)
+    ksp(libs.compose.destinations.ksp)
 
     implementation(libs.gson)
 

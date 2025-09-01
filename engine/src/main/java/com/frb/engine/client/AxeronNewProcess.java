@@ -91,7 +91,7 @@ public class AxeronNewProcess extends Process implements Parcelable {
     }
 
     @Override
-    public int waitFor() throws InterruptedException {
+    public int waitFor() {
         try {
             return remote.waitFor();
         } catch (RemoteException e) {

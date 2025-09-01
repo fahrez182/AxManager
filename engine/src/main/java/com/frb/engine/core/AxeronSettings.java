@@ -1,4 +1,4 @@
-package com.frb.engine;
+package com.frb.engine.core;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -65,6 +66,7 @@ public class AxeronSettings {
     }
 
     public static void setLastLaunchMode(@LaunchMethod int method) {
+        Log.d("AxeronSettings", "setLastLaunchMode: $method");
         getPreferences().edit().putInt("mode", method).apply();
     }
 
