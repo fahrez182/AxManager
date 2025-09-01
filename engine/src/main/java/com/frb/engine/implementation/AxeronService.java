@@ -58,7 +58,7 @@ import rikka.hidden.compat.UserManagerApis;
 public class AxeronService extends IAxeronService.Stub {
 
     public static final String VERSION_NAME = "V1.0.3";
-    public static final int VERSION_CODE = 10320;
+    public static final int VERSION_CODE = 10400;
     private static final String TAG = "AxeronService";
     private static final Logger LOGGER = new Logger(TAG);
     private final Handler mainHandler = new Handler(Looper.myLooper());
