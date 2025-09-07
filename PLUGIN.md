@@ -40,7 +40,7 @@ A AxManager plugins is a folder placed in `/data/local/tmp/AxManager/plugins` wi
 /data/adb/modules
 ├── .
 ├── .
-|
+│
 ├── $MODID                  <--- The folder is named with the ID of the module
 │   │
 │   │      *** Module Identity ***
@@ -66,8 +66,8 @@ A AxManager plugins is a folder placed in `/data/local/tmp/AxManager/plugins` wi
 │   ├── post-mount.sh       <--- This script will be executed in post-mount
 │   ├── service.sh          <--- This script will be executed in late_start service
 │   ├── boot-completed.sh   <--- This script will be executed on boot completed
-|   ├── uninstall.sh        <--- This script will be executed when KernelSU removes your module
-|   ├── action.sh           <--- This script will be executed when user click the Action button in KernelSU app
+│   ├── uninstall.sh        <--- This script will be executed when KernelSU removes your module
+│   ├── action.sh           <--- This script will be executed when user click the Action button in KernelSU app
 │   ├── system.prop         <--- Properties in this file will be loaded as system properties by resetprop
 │   ├── sepolicy.rule       <--- Additional custom sepolicy rules
 │   │
@@ -81,7 +81,7 @@ A AxManager plugins is a folder placed in `/data/local/tmp/AxManager/plugins` wi
 │   │
 │   ├── ...
 │   └── ...
-|
+│
 ├── another_module
 │   ├── .
 │   └── .
