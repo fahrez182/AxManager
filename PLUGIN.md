@@ -104,7 +104,7 @@ version=<string>
 versionCode=<int>
 author=<string>
 description=<string>
-axeronPlugin=<int> <--- A field for targeting AxManager server supported
+axeronPlugin=<int> <--- A field for targeting AxManager server version supported
 
 ```
 
