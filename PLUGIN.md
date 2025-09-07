@@ -114,7 +114,7 @@ This is the **unique identifier** of your module. You should not change it once 
 - `versionCode` has to be an **integer**. This is used to compare versions.
 - Others that were not mentioned above can be any **single line string.**
 - Make sure to use the `UNIX (LF)` line break type and not the `Windows (CR+LF)` or `Macintosh (CR)`.
-- Make sure the AxManager **server version** you are using is **equal to or lower** than your AxManager version. If the server version is higher, you **won’t** be able to flash it on AxManager.
+- Make sure the AxManager `server version` you are using is **equal to or lower** than your AxManager `server version`. If the `server version` is higher, you **won’t** be able to flash it on AxManager.
 
 
 ### Shell scripts
