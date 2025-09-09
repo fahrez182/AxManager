@@ -225,7 +225,6 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
     private val trustManager
         get() =
             @RequiresApi(Build.VERSION_CODES.R)
-            @SuppressLint("CustomX509TrustManager")
             object : X509ExtendedTrustManager() {
 
                 @SuppressLint("TrustAllX509TrustManager")

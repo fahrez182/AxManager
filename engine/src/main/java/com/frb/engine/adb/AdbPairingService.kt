@@ -49,7 +49,9 @@ class AdbPairingService : Service() {
             return Intent(context, AdbPairingService::class.java).setAction(startAction)
         }
 
-        private fun stopIntent(context: Context): Intent {
+
+        @JvmStatic
+        fun stopIntent(context: Context): Intent {
             return Intent(context, AdbPairingService::class.java).setAction(stopAction)
         }
 
@@ -218,7 +220,7 @@ class AdbPairingService : Service() {
             notificationId,
             Notification.Builder(this, notificationChannel)
                 .setColor(getColor(R.color.notification))
-                .setSmallIcon(R.drawable.ic_system_icon)
+                .setSmallIcon(R.drawable.ic_axeron)
                 .setContentTitle(title)
                 .setContentText(text)
                 /*.apply {
@@ -289,9 +291,7 @@ class AdbPairingService : Service() {
             null,
             "Enter pairing code",
             pendingIntent
-        )
-            .addRemoteInput(remoteInput)
-            .build()
+        ).addRemoteInput(remoteInput).build()
     }
 
     private fun replyNotificationAction(host: String, port: Int): Notification.Action {
@@ -314,7 +314,7 @@ class AdbPairingService : Service() {
     private val searchingNotification by unsafeLazy {
         Notification.Builder(this, notificationChannel)
             .setColor(getColor(R.color.notification))
-            .setSmallIcon(R.drawable.ic_system_icon)
+            .setSmallIcon(R.drawable.ic_axeron)
             .setContentTitle("Searching for pairing service")
             .addAction(stopNotificationAction)
             .build()
@@ -323,8 +323,8 @@ class AdbPairingService : Service() {
     private fun createInputNotification(host: String, port: Int): Notification {
         return Notification.Builder(this, notificationChannel)
             .setColor(getColor(R.color.notification))
-            .setContentTitle("Pairing service found at $host:$port")
-            .setSmallIcon(R.drawable.ic_system_icon)
+            .setContentTitle("Pairing service found")
+            .setSmallIcon(R.drawable.ic_axeron)
             .addAction(replyNotificationAction(host, port))
             .build()
     }
@@ -333,7 +333,7 @@ class AdbPairingService : Service() {
         Notification.Builder(this, notificationChannel)
             .setColor(getColor(R.color.notification))
             .setContentTitle("Pairing in progress")
-            .setSmallIcon(R.drawable.ic_system_icon)
+            .setSmallIcon(R.drawable.ic_axeron)
             .build()
     }
 

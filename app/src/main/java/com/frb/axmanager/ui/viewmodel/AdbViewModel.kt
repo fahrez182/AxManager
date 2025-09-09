@@ -22,52 +22,24 @@ import com.frb.engine.adb.AdbMdns
 import com.frb.engine.adb.AdbPairingService
 import com.frb.engine.adb.PreferenceAdbKeyStore
 import com.frb.engine.client.Axeron
-import com.frb.engine.client.AxeronFile
 import com.frb.engine.core.AxeronSettings
 import com.frb.engine.core.Engine
-import com.frb.engine.implementation.AxeronService
+import com.frb.engine.implementation.AxeronInfo
 import com.frb.engine.utils.Starter
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+
+const val TAG = "AdbViewModel"
 
 class AdbViewModel : ViewModel() {
 
-    data class AxeronServiceInfo(
-        val versionName: String? = null,
-        val versionCode: Long = -1,
-        val uid: Int = -1,
-        val pid: Int = -1,
-        val selinuxContext: String? = null
-    ) {
-        fun isRunning(): Boolean {
-            return Axeron.pingBinder() && AxeronService.VERSION_CODE <= versionCode
-        }
-
-        fun isNeedUpdate(): Boolean {
-            return AxeronService.VERSION_CODE > versionCode && Axeron.pingBinder()
-        }
-
-        fun getMode(): String {
-            AxeronSettings.setLastLaunchMode(if (uid == 0) AxeronSettings.LaunchMethod.ROOT else AxeronSettings.LaunchMethod.ADB)
-            return when (uid) {
-                -1 -> "Not Activated"
-                0 -> "Root"
-                2000 -> "Shell"
-                else -> "User"
-            }
-        }
-    }
-
-    val _axeronServiceInfo = MutableStateFlow(AxeronServiceInfo())
-    val axeronServiceInfo = _axeronServiceInfo
+    var axeronInfo by mutableStateOf(AxeronInfo())
+        private set
 
     var isNotificationEnabled by mutableStateOf(false)
         private set
 
     var launchDevSettings by mutableStateOf(false)
-        private set
 
     var tryActivate by mutableStateOf(false)
         private set
@@ -82,37 +54,13 @@ class AdbViewModel : ViewModel() {
         viewModelScope.launch {
             if (Axeron.pingBinder()) {
                 tryActivate = false
-                _axeronServiceInfo.value = AxeronServiceInfo(
-                    Axeron.getVersionName(),
-                    Axeron.getVersionCode(),
-                    Axeron.getUid(),
-                    Axeron.getPid(),
-                    Axeron.getSELinuxContext()
-                )
-                AxeronFile().extractBusyBoxFromSo()
-//                allowPermission()
+                axeronInfo = Axeron.getInfo()
             } else {
                 if (isUpdating) return@launch
-                _axeronServiceInfo.value = AxeronServiceInfo()
+                axeronInfo = AxeronInfo()
             }
         }
     }
-
-//    fun allowPermission() {
-//        viewModelScope.launch {
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-//                AxeronAppOpsManager.setMode(
-//                    BuildConfig.APPLICATION_ID,
-//                    ConstantEngine.permission.ops.OP_MANAGE_EXTERNAL_STORAGE,
-//                    AppOpsManager.MODE_ALLOWED
-//                ) {
-//                    Environment.isExternalStorageManager()
-//                }.apply {
-//                    Log.d("AxManager", "MANAGE_EXTERNAL_STORAGE: $this")
-//                }
-//            }
-//        }
-//    }
 
     /**
      * Update state apakah notifikasi aktif atau tidak
@@ -124,16 +72,16 @@ class AdbViewModel : ViewModel() {
         }
     }
 
-//    var adbMdns: AdbMdns? = null
-
     @RequiresApi(Build.VERSION_CODES.R)
     fun startAdb(context: Context, tryConnect: Boolean = false) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (tryActivate) return@launch
+            tryActivate = true
+
             val cr = Engine.application.contentResolver
             if (Engine.application.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED &&
-                AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB) {
-
-                tryActivate = true
+                AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
+            ) {
                 Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
                 Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
                 Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
@@ -142,38 +90,51 @@ class AdbViewModel : ViewModel() {
             val adbWifiEnabled = Settings.Global.getInt(cr, "adb_wifi_enabled", 0) == 1
 
             if (!adbWifiEnabled && !tryConnect) {
+                tryActivate = false
+                launchDevSettings = true
                 startPairingService(context)
-                launchDevSettings = !launchDevSettings
                 return@launch
             }
 
-            val latch = CountDownLatch(1)
-            val adbMdns = AdbMdns(
+            AdbMdns(
                 context,
-                AdbMdns.TLS_CONNECT,
-                observer = { data ->
-                    Log.d("AxManager", "startAdbTryConnect: ${data.host} ${data.port}")
-
-                    runCatching {
-                        val keystore = PreferenceAdbKeyStore(AxeronSettings.getPreferences())
-                        val key = AdbKey(keystore, "axeron")
-                        val client = AdbClient(data.host, data.port, key)
-                        client.connect()
-                        client.shellCommand(Starter.internalCommand, null)
-                        client.close()
-                    }.onFailure {
-                        if (!tryConnect) {
-                            startPairingService(context)
-                            launchDevSettings = !launchDevSettings
-                        }
+                AdbMdns.TLS_CONNECT
+            ) { data ->
+                Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+                AdbClient(
+                    data.host,
+                    data.port,
+                    AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
+                ).runCatching {
+                    Log.d(TAG, "AdbClient running")
+                    connect()
+                    shellCommand(Starter.internalCommand, null)
+                    close()
+                }.onSuccess {
+                    Log.d(TAG, "AdbClient success")
+                    AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+                }.onFailure {
+                    Log.e(TAG, "AdbClient failed", it)
+                    it.printStackTrace()
+                    if (!tryConnect) {
+                        launchDevSettings = true
+                        startPairingService(context)
                     }
+                }
 
-                    tryActivate = false
-                    latch.countDown()
-                })
-            adbMdns.start()
-            latch.await(1, TimeUnit.SECONDS)
-            adbMdns.stop()
+                tryActivate = false
+            }.runCatching {
+                Log.d(TAG, "AdbMdns running")
+                start()
+            }.onFailure {
+                Log.e(TAG, "AdbMdns failed", it)
+                it.printStackTrace()
+                if (!tryConnect) {
+                    launchDevSettings = true
+                    startPairingService(context)
+                }
+            }
+            tryActivate = false
         }
     }
 
