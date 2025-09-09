@@ -5,4 +5,9 @@
         <item name="colorPrimary">@color/orange</item>
     </style>
 
+    <style name="Theme.AxManager.WebUI" parent="Theme.AxManager">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
 </resources>

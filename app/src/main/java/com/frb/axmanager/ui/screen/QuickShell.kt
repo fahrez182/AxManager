@@ -1,11 +1,6 @@
 package com.frb.axmanager.ui.screen
 
-import android.app.Activity
-import android.content.Context
 import android.os.Environment
-import android.util.Log
-import android.view.WindowManager
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -39,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -51,12 +47,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -65,20 +63,25 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.frb.axmanager.R
+import com.frb.axmanager.ui.component.AxSnackBarHost
+import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.viewmodel.QuickShellViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
-import com.frb.engine.client.AxeronFile
+import com.frb.engine.client.Axeron
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.launch
 import java.io.File
-import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    val context = LocalContext.current
+    LocalContext.current
     val viewModel: QuickShellViewModel = viewModel()
     val running = viewModel.isRunning
 
@@ -91,16 +94,11 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     // FAB visibility
     var fabVisible by remember { mutableStateOf(true) }
 
+    val view = LocalView.current
     DisposableEffect(running) {
-        val window = (context as Activity).window
-        if (running) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-
+        view.keepScreenOn = running
         onDispose {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            view.keepScreenOn = false
         }
     }
 
@@ -119,6 +117,8 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             }
     }
 
+    val scope = rememberCoroutineScope()
+    val snackBarHost = LocalSnackbarHost.current
 
     Scaffold(
         topBar = {
@@ -166,15 +166,15 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     .padding(horizontal = 12.dp)
             ) {
                 FloatingActionButton(onClick = {
-                    saveLogsToDownload(
-                        logs,
-                        context
-                    )
+                    scope.launch {
+                        saveLogsToDownload(logs, snackBarHost)
+                    }
                 }) {
                     Icon(Icons.Default.Save, contentDescription = "Save")
                 }
             }
         },
+        snackbarHost = { AxSnackBarHost(hostState = snackBarHost) },
         contentWindowInsets = WindowInsets(top = 0, bottom = 0)
     ) { paddingValues ->
         Column(
@@ -276,36 +276,27 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 }
 
 
-fun saveLogsToDownload(logs: List<QuickShellViewModel.Output>, context: Context) {
-    val now = Calendar.getInstance()
-    val year = now.get(Calendar.YEAR)
-    val dayOfYear = now.get(Calendar.DAY_OF_YEAR)
-    val hour = now.get(Calendar.HOUR_OF_DAY)
-    val minute = now.get(Calendar.MINUTE)
-    val second = now.get(Calendar.SECOND)
+suspend fun saveLogsToDownload(logs: List<QuickShellViewModel.Output>, snackbar: SnackbarHostState) {
+    val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
+    val date = format.format(Date())
 
-    // Jangan pakai ":" → ganti pakai "-" atau "_"
-    val fileName = "QuickShell_${year}-${dayOfYear}-${hour}-${minute}-${second}.log"
-
-    // Path manual
     val baseDir = File(Environment.getExternalStorageDirectory(), "AxManager/logs")
     if (!baseDir.exists()) {
-        baseDir.mkdirs() // bikin folder kalau belum ada
+        baseDir.mkdirs()
     }
 
-    val file = File(baseDir, fileName)
+    val file = File(baseDir, "QuickShell_log_${date}.log")
 
     try {
-        val fos = AxeronFile().getStreamSession(file.absolutePath, true, false).outputStream
+        val fos = Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
         logs.forEach { line ->
             fos.write("${line.output}\n".toByteArray())
         }
         fos.flush()
 
-        Toast.makeText(context, "Saved to AxManager/logs/$fileName", Toast.LENGTH_SHORT).show()
+        snackbar.showSnackbar("Log saved to ${file.absolutePath}")
     } catch (e: Exception) {
-        Log.e("QuickShellViewModel", "Failed to save logs: ${e.message}", e)
-        Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        snackbar.showSnackbar("Failed to save logs: ${e.message}")
     }
 }
 

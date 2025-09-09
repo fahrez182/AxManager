@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.AxeronNewProcess
-import com.frb.engine.implementation.AxeronService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,13 +116,13 @@ class QuickShellViewModel : ViewModel() {
                 "setsid",
                 "sh",
                 "-c",
-                "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec sh -c \"$0\"",
+                "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec -a \"QuickShell\" sh -c \"$0\"",
                 cmd
             )
 
             process = Axeron.newProcess(
                 execCmd,
-                AxeronService.getEnvironment(), null
+                Axeron.getEnvironment(), null
             )
 
             writer = BufferedWriter(OutputStreamWriter(process!!.outputStream))
@@ -155,14 +154,7 @@ class QuickShellViewModel : ViewModel() {
                 generateSequence { stderr.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
                         val chunk = String(buf, 0, len)
-                        val regex = """.*axcmd\[(\d+)]:(.*)""".toRegex()
-                        val result = regex.replace(chunk) { match ->
-                            val num = match.groupValues[1].toInt()
-                            val rest = match.groupValues[2].trim()
-                            "sh[${num - 1}]: $rest"
-                        }
-
-                        appendRaw(OutputType.TYPE_STDERR, result.trimEnd())
+                        appendRaw(OutputType.TYPE_STDERR, chunk.trimEnd())
                     }
             }
 

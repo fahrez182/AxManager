@@ -4,4 +4,6 @@
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/orange</item>
     </style>
+
+    <style name="Theme.AxManager.WebUI" parent="Theme.AxManager" />
 </resources>
