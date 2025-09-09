@@ -11,6 +11,18 @@
 -dontwarn com.android.**
 -dontwarn android.ddm.**
 
+-keepclassmembers class * implements android.os.Parcelable {
+    public static final ** CREATOR;
+}
+
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
+}
+
+-assumenosideeffects class java.util.Objects{
+    ** requireNonNull(...);
+}
+
 -keepnames class com.frb.engine.utils.BinderContainer
 
 # Missing class android.app.IProcessObserver$Stub
@@ -25,6 +37,7 @@
 
 -keep class com.frb.engine.implementation.AxeronService {
     public static void main(java.lang.String[]);
+    public <init>(...);
 }
 
 -assumenosideeffects class com.frb.engine.utils.Logger {
