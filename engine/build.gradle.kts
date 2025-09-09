@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.tools.refine)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -36,15 +37,17 @@ kotlin {
 
 dependencies {
 
-    implementation("com.github.topjohnwu.libsu:nio:6.0.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.0")
     implementation("dev.rikka.rikkax.core:core-ktx:1.4.1")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
     implementation("androidx.annotation:annotation:1.9.1")
+    implementation("com.moandjiezana.toml:toml4j:0.7.2")
     implementation(libs.hidden.compat)
     implementation(libs.androidx.appcompat)
     compileOnly(libs.hidden.stub)
     implementation(libs.refine.runtime)
+
+    implementation(libs.dev.rikka.rikkax.parcelablelist)
 
     implementation(libs.androidx.core.ktx)
     testImplementation(libs.junit)
