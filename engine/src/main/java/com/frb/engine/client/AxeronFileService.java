@@ -1,8 +1,10 @@
 package com.frb.engine.client;
 
-import android.os.Build;
+import android.os.Parcel;
 import android.os.ParcelFileDescriptor;
+import android.os.Parcelable;
 import android.os.RemoteException;
+import android.util.ArraySet;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -10,7 +12,6 @@ import androidx.annotation.Nullable;
 import com.frb.engine.FileStat;
 import com.frb.engine.IFileService;
 import com.frb.engine.IWriteCallback;
-import com.frb.engine.core.Engine;
 import com.frb.engine.utils.Excluder;
 
 import java.io.File;
@@ -20,33 +21,52 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-public class AxeronFile extends Axeron {
+public class AxeronFileService implements Parcelable {
 
-    private static final String TAG = "AxeronFile";
-    private IFileService fileService;
-
-    private IFileService getFS() {
-        if (fileService == null) {
-            try {
-                fileService = requireService().getFileService();
-            } catch (RemoteException e) {
-                Log.e(TAG, "getFileService", e);
-            }
+    public static final Creator<AxeronFileService> CREATOR = new Creator<>() {
+        @Override
+        public AxeronFileService createFromParcel(Parcel in) {
+            return new AxeronFileService(in);
         }
-        return fileService;
+
+        @Override
+        public AxeronFileService[] newArray(int size) {
+            return new AxeronFileService[size];
+        }
+    };
+    private static final Set<AxeronFileService> CACHE = Collections.synchronizedSet(new ArraySet<>());
+    private IFileService fileService;
+    private static final String TAG = "AxeronFileService";
+
+    public AxeronFileService(IFileService fileService) {
+        this.fileService = fileService;
+        try {
+            this.fileService.asBinder().linkToDeath(() -> {
+                this.fileService = null;
+                Log.v(TAG, "AxeronFileService is dead");
+
+                CACHE.remove(AxeronFileService.this);
+            }, 0);
+        } catch (RemoteException e) {
+            Log.e(TAG, "linkToDeath", e);
+        }
+
+        // The reference to the binder object must be hold
+        CACHE.add(this);
     }
 
     public static String getRelativePath(String rootPath, String fullPath) {
         return new File(rootPath).toURI().relativize(new File(fullPath).toURI()).getPath();
     }
 
-    public FileInputStream setFileInputStream(String source) throws RemoteException {
-        return new ParcelFileDescriptor.AutoCloseInputStream(getFS().read(source));
+    protected AxeronFileService(Parcel in) {
+        fileService = IFileService.Stub.asInterface(in.readStrongBinder());
     }
 
     protected int getDynamicBufferSize(long fileSize) {
@@ -69,46 +89,34 @@ public class AxeronFile extends Axeron {
         }
     }
 
+    private IFileService getFS() {
+        if (fileService != null) return fileService;
+        try {
+            fileService = Axeron.requireService().getFileService();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
+        return fileService;
+    }
 
-//    private final Map<Integer, ParcelFileDescriptor> keepAlive = new HashMap<>();
-//    private final AtomicInteger counter = new AtomicInteger();
-//
-//    public FileOutputStream getFileOutputStream(String destination, boolean ensureParents, boolean append) {
-//        try {
-//            FileStat file = getFS().stat(destination);
-//
-//            ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createPipe();
-//            ParcelFileDescriptor readFd = pipe[0];
-//            ParcelFileDescriptor writeFd = pipe[1];
-//            if (ensureParents) {
-//                FileStat p = getFS().stat(file.parent);
-//                if (p != null && !p.exists) {
-//                    getFS().mkdirs(p.path);
-//                }
-//            }
-//
-//            int id = counter.incrementAndGet();
-//            keepAlive.put(id, readFd);
-//
-//            getFS().write(destination, readFd, append);
-//            return new FileOutputStream(writeFd.getFileDescriptor()) {
-//                @Override
-//                public void close() throws IOException {
-//                    super.close();
-//                    // bersihin readFd setelah selesai
-//                    ParcelFileDescriptor pfd = keepAlive.remove(id);
-//                    if (pfd != null) {
-//                        pfd.close();
-//                    }
-//                }
-//            };
-//        } catch (IOException | RemoteException e) {
-//            return null;
-//        }
-//    }
+    public FileInputStream setFileInputStream(String source) throws RemoteException {
+        return new ParcelFileDescriptor.AutoCloseInputStream(fileService.read(source));
+    }
 
-    public boolean delete(String pathFrom) {
-        return smartDelete(pathFrom, null) != null;
+    public boolean exists(String path) {
+        try {
+            return getFS().exists(path);
+        } catch (RemoteException e) {
+            return false;
+        }
+    }
+
+    public boolean mkdirs(String path) {
+        try {
+            return getFS().mkdirs(path);
+        } catch (RemoteException e) {
+            return false;
+        }
     }
 
     @Nullable
@@ -318,49 +326,26 @@ public class AxeronFile extends Axeron {
         return copied;
     }
 
-    public void extractBusyBoxFromSo() {
-        try {
-            String abi = Build.SUPPORTED_ABIS[0];
-            File outFile = new File("/data/local/tmp/AxManager/bin", "busybox");
-            String libPath = Engine.getApplication().getApplicationInfo().nativeLibraryDir + "/libbusybox.so";
-            String outPath = outFile.getAbsolutePath();
-
-            if (getFS().exists(outFile.getAbsolutePath())) {
-                return; // sudah diekstrak
-            }
-
-            if (!getFS().exists(libPath)) {
-                Log.e(TAG, "BusyBox lib not found: " + libPath);
-                return;
-            }
-
-            // copy ke internal storage
-            try (InputStream is = setFileInputStream(libPath);
-                 FileOutputStream fos = getStreamSession(outPath, true, false).getOutputStream()) {
-
-                byte[] buf = new byte[4096];
-                int len;
-                while ((len = is.read(buf)) > 0) {
-                    fos.write(buf, 0, len);
-                }
-            }
-
-            // ubah permission biar bisa dieksekusi
-            if (!getFS().chown(outPath, 2000, 2000)) {
-                Log.e(TAG, "Failed to chown " + outPath);
-            }
-            if (!getFS().chmod(outPath, 0755)) {
-                Log.e(TAG, "Failed to chmod " + outPath);
-            }
-
-            Log.i(TAG, "BusyBox extracted to: " + outPath);
-        } catch (RemoteException | IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public boolean createNewFile(String absolutePath) throws RemoteException {
         return getFS().createNewFile(absolutePath);
+    }
+
+    public boolean delete(String pathFrom) {
+        return delete(pathFrom, true);
+    }
+
+    public boolean delete(String pathFrom, boolean removeParent) {
+        return smartDelete(pathFrom, null, removeParent) != null;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeStrongBinder(getFS().asBinder());
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
     }
 
     public static class StreamSession implements AutoCloseable {
@@ -402,8 +387,14 @@ public class AxeronFile extends Axeron {
         @Override
         public void close() {
             try {
-                if (writeFd != null) writeFd.close();
-                if (readFd != null) readFd.close();
+                if (writeFd != null) {
+                    writeFd.close();
+                    writeFd.getFileDescriptor().sync();
+                }
+                if (readFd != null) {
+                    readFd.close();
+                    readFd.getFileDescriptor().sync();
+                }
             } catch (IOException ignored) {
             }
         }
