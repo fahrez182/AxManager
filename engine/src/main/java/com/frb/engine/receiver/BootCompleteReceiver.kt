@@ -14,115 +14,101 @@ import com.frb.engine.adb.AdbKey
 import com.frb.engine.adb.AdbMdns
 import com.frb.engine.adb.PreferenceAdbKeyStore
 import com.frb.engine.client.Axeron
-import com.frb.engine.core.AxeronProvider
 import com.frb.engine.core.AxeronSettings
 import com.frb.engine.utils.Starter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
+const val TAG = "BootCompleteReceiver"
 
 class BootCompleteReceiver : BroadcastReceiver() {
 
-    private var isRunning: Boolean = false
-
-    private var binderReceived: AtomicBoolean = AtomicBoolean(false)
-
     override fun onReceive(context: Context, intent: Intent) {
-        // Hanya handle BOOT_COMPLETED atau LOCKED_BOOT_COMPLETED
-        if (intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
-            intent.action != AxeronProvider.ACTION_BINDER_RECEIVED &&
-            intent.action != Intent.ACTION_BOOT_COMPLETED) {
+        // Hanya handle BOOT_COMPLETED
+        if (Intent.ACTION_LOCKED_BOOT_COMPLETED != intent.action
+            && Intent.ACTION_BOOT_COMPLETED != intent.action) {
             return
         }
 
-        if (intent.action == AxeronProvider.ACTION_BINDER_RECEIVED) {
-            binderReceived.set(true)
-        }
-
-        // Kalau sudah pernah jalan, skip (hindari double trigger)
-        if (isRunning) {
-            Log.d("BootCompleteReceiver", "Skip duplicate event: ${intent.action}")
-            return
-        }
-
-
-        if (Axeron.pingBinder() || binderReceived.get()) {
-            Log.d("BootCompleteReceiver", "status: ${Axeron.pingBinder()}")
-            Log.d("BootCompleteReceiver", "binderReceived: ${binderReceived.get()}")
-
+        if (Axeron.pingBinder()) {
+            Log.d(TAG, "status: ${Axeron.pingBinder()}")
             return
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED &&
-            AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB) {
+            AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
+        ) {
 
-            isRunning = true
             val pending = goAsync()
-            CoroutineScope(Dispatchers.IO).launch {
-                adbStart(context, pending, 0, 5) // attempt=0, maxAttempts=5
-            }
+            startAdb(context, pending, 0, 5) // attempt=0, maxAttempts=5
         } else {
-            Log.w("BootCompleteReceiver", "No support start on boot")
+            Log.w(TAG, "No support start on boot")
         }
 
-        Log.d("BootCompleteReceiver", "onReceive: ${intent.action}")
+        Log.d(TAG, "onReceive: ${intent.action}")
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    private suspend fun adbStart(
+    private fun startAdb(
         context: Context,
         pending: PendingResult,
         attempt: Int,
         maxAttempts: Int
     ) {
-        val cr = context.contentResolver
+        CoroutineScope(Dispatchers.IO).launch {
+            val cr = context.contentResolver
 
-        // Force ON adb wifi setiap attempt
-        Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
-        Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-        Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+            // Force ON adb wifi setiap attempt
+            Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+            Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+            Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
 
-        val adbEnabled = Settings.Global.getInt(cr, "adb_wifi_enabled", 0)
-        if (adbEnabled != 1) {
-            Log.w("BootCompleteReceiver", "ADB Wi-Fi not Activated, attempt=$attempt")
-            if (attempt < maxAttempts) {
-                delay(2000L * (attempt + 1)) // exponential backoff
-                return adbStart(context, pending, attempt + 1, maxAttempts)
-            }
-            Log.e("BootCompleteReceiver", "Failed to activate ADB Wi-Fi $maxAttempts attempt")
-            return
-        }
-
-        Log.d("BootCompleteReceiver", "adbStart, attempt=$attempt")
-
-        val latch = CountDownLatch(1)
-        val adbMdns = AdbMdns(context, AdbMdns.TLS_CONNECT) { data ->
-            if (data.port <= 0) return@AdbMdns
-            try {
-                runCatching {
-                    val keystore = PreferenceAdbKeyStore(AxeronSettings.getPreferences())
-                    val key = AdbKey(keystore, "axeron")
-                    val client = AdbClient(data.host, data.port, key)
-                    client.connect()
-                    client.shellCommand(Starter.internalCommand, null)
-                    client.close()
+            val adbWifiEnabled = Settings.Global.getInt(cr, "adb_wifi_enabled", 0)
+            if (adbWifiEnabled != 1) {
+                Log.w(TAG, "ADB Wi-Fi not Activated, attempt=$attempt")
+                if (attempt < maxAttempts) {
+                    delay(2000L * (attempt + 1)) // exponential backoff
+                    return@launch startAdb(context, pending, attempt + 1, maxAttempts)
                 }
-            } catch (_: Exception) {
             }
-            latch.countDown()
+
+            AdbMdns(context, AdbMdns.TLS_CONNECT) { data ->
+                Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+
+                AdbClient(
+                    data.host,
+                    data.port,
+                    AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
+                ).runCatching {
+                    Log.d(TAG, "AdbClient running")
+                    connect()
+                    shellCommand(Starter.internalCommand, null)
+                    close()
+                }.onSuccess {
+                    Log.d(TAG, "AdbClient success")
+                    AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+                    pending.finish()
+                }.onFailure {
+                    if (attempt < maxAttempts) {
+                        Log.w(TAG, "AdbClient failed, attempt=$attempt")
+                        CoroutineScope(Dispatchers.IO).launch {
+                            delay(2000L * (attempt + 1))
+                            startAdb(context, pending, attempt + 1, maxAttempts)
+                        }
+                    } else {
+                        Log.e(TAG, "AdbClient failed", it)
+                    }
+                }
+
+            }.runCatching {
+                Log.d(TAG, "AdbMdns running")
+                start()
+            }.onFailure {
+                Log.e(TAG, "AdbMdns failed", it)
+            }
         }
-
-        adbMdns.start()
-        latch.await(3, TimeUnit.SECONDS)
-        Log.d("BootCompleteReceiver", "adbFinish")
-        adbMdns.stop()
-
-        pending.finish()
     }
 }
