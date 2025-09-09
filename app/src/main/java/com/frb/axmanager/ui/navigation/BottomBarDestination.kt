@@ -19,8 +19,8 @@ import com.ramcosta.composedestinations.spec.DirectionDestinationSpec
 enum class BottomBarDestination(
     val direction: DirectionDestinationSpec,
     val label: String,
-    val iconSelected: ImageVector? = null,
-    val iconNotSelected: ImageVector? = null,
+    val iconSelected: ImageVector,
+    val iconNotSelected: ImageVector,
     val needAxeron: Boolean
 ) {
     Home(HomeScreenDestination, "Home", Icons.Filled.Home, Icons.Outlined.Home, false),
