@@ -4,7 +4,6 @@ import android.graphics.drawable.Icon
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.widget.Toast
-import com.frb.axmanager.R
 
 class AxeronTileService : TileService() {
 
@@ -12,7 +11,7 @@ class AxeronTileService : TileService() {
         super.onStartListening()
         qsTile.apply {
             label = "AxTest"
-            icon = Icon.createWithResource(this@AxeronTileService, R.drawable.ic_axeron)
+            icon = Icon.createWithResource(this@AxeronTileService, com.frb.engine.R.drawable.ic_axeron)
             state = Tile.STATE_INACTIVE
             updateTile()
         }

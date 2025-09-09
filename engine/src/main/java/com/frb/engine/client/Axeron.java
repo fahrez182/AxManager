@@ -1,5 +1,7 @@
 package com.frb.engine.client;
 
+import android.content.pm.PackageInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -14,25 +16,25 @@ import androidx.annotation.Nullable;
 import com.frb.engine.Environment;
 import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
+import com.frb.engine.adb.AdbPairingService;
+import com.frb.engine.core.Engine;
+import com.frb.engine.implementation.AxeronInfo;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class Axeron {
+import rikka.parcelablelist.ParcelableListSlice;
 
+public class Axeron {
     private static final List<ListenerHolder<OnBinderReceivedListener>> RECEIVED_LISTENERS = new ArrayList<>();
     private static final List<ListenerHolder<OnBinderDeadListener>> DEAD_LISTENERS = new ArrayList<>();
-    
+
     protected static String TAG = "AxeronApplication";
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static IBinder binder;
     private static IAxeronService service;
-    private static int serverUid = -1;
-    private static int serverPid = -1;
-    private static String serverVersionName = null;
-    private static long serverVersionCode = -1;
-    private static String serverContext = null;
+    private static AxeronInfo serverInfo = null;
     private static boolean binderReady = false;
 
     private static void scheduleBinderDeadListeners() {
@@ -128,11 +130,7 @@ public class Axeron {
         if (newBinder == null) {
             binder = null;
             service = null;
-            serverUid = -1;
-            serverPid = -1;
-            serverVersionName = null;
-            serverVersionCode = -1;
-            serverContext = null;
+            serverInfo = null;
 
             scheduleBinderDeadListeners();
         } else {
@@ -148,18 +146,31 @@ public class Axeron {
                 Log.i(TAG, "attachApplication");
             }
 
+            scheduleBinderReceivedListeners();
+
             try {
                 service.bindAxeronApplication(new IAxeronApplication.Stub() {
                     @Override
                     public void bindApplication(Bundle data) {
                         Log.d(TAG, "bindApplication");
-                        scheduleBinderReceivedListeners();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            Engine.getApplication().startService(AdbPairingService.stopIntent(Engine.getApplication()));
+                        }
+                        PluginService.startInitService();
                     }
                 });
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
 
+        }
+    }
+
+    protected static boolean isFirstInit() {
+        try {
+            return requireService().isFirstInit();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -178,6 +189,14 @@ public class Axeron {
     @Nullable
     public static IBinder getBinder() {
         return binder;
+    }
+
+    public static AxeronFileService newFileService() {
+        try {
+            return new AxeronFileService(requireService().getFileService());
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
     }    private static final IBinder.DeathRecipient DEATH_RECIPIENT = () -> {
         binderReady = false;
         onBinderReceived(null, null);
@@ -200,57 +219,39 @@ public class Axeron {
         }
     }
 
-    public static int getUid() {
-        if (serverUid == -1) {
-            try {
-                serverUid = requireService().getUid();
-            } catch (RemoteException e) {
-                Log.e(TAG, "getServerUid", e);
-            }
-        }
-        return serverUid;
-    }
-
-    public static int getPid() {
-        if (serverPid == -1) {
-            try {
-                serverPid = requireService().getPid();
-            } catch (RemoteException e) {
-                Log.e(TAG, "getServerPid", e);
-            }
-        }
-        return serverPid;
-    }
-
-    public static String getSELinuxContext() {
-        if (serverContext != null) return serverContext;
+    public static AxeronInfo getInfo() {
+        if (serverInfo != null) return serverInfo;
         try {
-            serverContext = requireService().getSELinuxContext();
+            serverInfo = requireService().getInfo();
         } catch (RemoteException e) {
-            Log.e(TAG, "getSELinuxContext", e);
+            Log.e(TAG, "getInfo", e);
         }
-        return serverContext;
+        return serverInfo;
+
     }
 
-    public static String getVersionName() {
-        if (serverVersionName != null) return serverVersionName;
+    public static ParcelableListSlice<PackageInfo> getPackages(int flags) {
         try {
-            serverVersionName = requireService().getVersionName();
-        } catch (RemoteException e) {
-            Log.e(TAG, "getServerVersionName", e);
+            return requireService().getPackages(flags);
+        } catch (RemoteException ignored) {
         }
-        return serverVersionName;
+        return null;
     }
 
-    public static long getVersionCode() {
-        if (serverVersionCode == -1) {
-            try {
-                serverVersionCode = requireService().getVersionCode();
-            } catch (RemoteException e) {
-                Log.e(TAG, "getServerVersionCode", e);
-            }
+    public static List<String> getPlugins() {
+        try {
+            return requireService().getPlugins();
+        } catch (RemoteException e) {
+            return null;
         }
-        return serverVersionCode;
+    }
+
+    public static String getPluginById(String id) {
+        try {
+            return requireService().getPluginById(id);
+        } catch (RemoteException e) {
+            return null;
+        }
     }
 
     public static void destroy() {
@@ -262,13 +263,22 @@ public class Axeron {
             }
             binder = null;
             service = null;
-            serverUid = -1;
-            serverPid = -1;
-            serverVersionName = null;
-            serverVersionCode = -1;
-            serverContext = null;
+            serverInfo = null;
         }
     }
+
+    public static Environment getEnvironment() {
+        return new Environment.Builder(false)
+                .put("AXERON", "true")
+                .put("AXERONBIN", "/data/local/tmp/AxManager/bin")
+                .put("AXERONLIB", Engine.getApplication().getApplicationInfo().nativeLibraryDir)
+                .put("AXERONVER", String.valueOf(getInfo().getVersionCode()))
+                .put("TMPDIR", "/data/local/tmp/AxManager/cache")
+                .put("PATH", "$PATH:$AXERONBIN:/data/local/tmp/AxManager/bin/busybox")
+                .build();
+    }
+
+
 
     private static RuntimeException rethrowAsRuntimeException(RemoteException e) {
         return new RuntimeException(e);

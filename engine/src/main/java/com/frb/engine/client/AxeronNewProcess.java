@@ -18,7 +18,7 @@ import java.util.Set;
 
 public class AxeronNewProcess extends Process implements Parcelable {
 
-    public static final Creator<AxeronNewProcess> CREATOR = new Creator<AxeronNewProcess>() {
+    public static final Creator<AxeronNewProcess> CREATOR = new Creator<>() {
         @Override
         public AxeronNewProcess createFromParcel(Parcel in) {
             return new AxeronNewProcess(in);
@@ -31,17 +31,17 @@ public class AxeronNewProcess extends Process implements Parcelable {
     };
     private static final Set<AxeronNewProcess> CACHE = Collections.synchronizedSet(new ArraySet<>());
     private static final String TAG = "AxeronNewProcess";
-    private IRuntimeService remote;
+    private IRuntimeService runtimeService;
     private OutputStream os;
     private InputStream is;
 
 
     public AxeronNewProcess(IRuntimeService remote) {
-        this.remote = remote;
+        this.runtimeService = remote;
         try {
-            this.remote.asBinder().linkToDeath(() -> {
-                this.remote = null;
-                Log.v(TAG, "remote process is dead");
+            this.runtimeService.asBinder().linkToDeath(() -> {
+                this.runtimeService = null;
+                Log.v(TAG, "AxeronNewProcess is dead");
 
                 CACHE.remove(AxeronNewProcess.this);
             }, 0);
@@ -54,14 +54,14 @@ public class AxeronNewProcess extends Process implements Parcelable {
     }
 
     protected AxeronNewProcess(Parcel in) {
-        remote = IRuntimeService.Stub.asInterface(in.readStrongBinder());
+        runtimeService = IRuntimeService.Stub.asInterface(in.readStrongBinder());
     }
 
     @Override
     public OutputStream getOutputStream() {
         if (os == null) {
             try {
-                os = new ParcelFileDescriptor.AutoCloseOutputStream(remote.getOutputStream());
+                os = new ParcelFileDescriptor.AutoCloseOutputStream(runtimeService.getOutputStream());
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
@@ -73,7 +73,7 @@ public class AxeronNewProcess extends Process implements Parcelable {
     public InputStream getInputStream() {
         if (is == null) {
             try {
-                is = new ParcelFileDescriptor.AutoCloseInputStream(remote.getInputStream());
+                is = new ParcelFileDescriptor.AutoCloseInputStream(runtimeService.getInputStream());
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
@@ -84,7 +84,7 @@ public class AxeronNewProcess extends Process implements Parcelable {
     @Override
     public InputStream getErrorStream() {
         try {
-            return new ParcelFileDescriptor.AutoCloseInputStream(remote.getErrorStream());
+            return new ParcelFileDescriptor.AutoCloseInputStream(runtimeService.getErrorStream());
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -93,7 +93,7 @@ public class AxeronNewProcess extends Process implements Parcelable {
     @Override
     public int waitFor() {
         try {
-            return remote.waitFor();
+            return runtimeService.waitFor();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -102,7 +102,7 @@ public class AxeronNewProcess extends Process implements Parcelable {
     @Override
     public int exitValue() {
         try {
-            return remote.exitValue();
+            return runtimeService.exitValue();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -111,7 +111,7 @@ public class AxeronNewProcess extends Process implements Parcelable {
     @Override
     public void destroy() {
         try {
-            remote.destroy();
+            runtimeService.destroy();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -124,6 +124,6 @@ public class AxeronNewProcess extends Process implements Parcelable {
 
     @Override
     public void writeToParcel(@NonNull Parcel dest, int flags) {
-        dest.writeStrongBinder(remote.asBinder());
+        dest.writeStrongBinder(runtimeService.asBinder());
     }
 }

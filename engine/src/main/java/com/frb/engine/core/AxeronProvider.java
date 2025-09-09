@@ -24,7 +24,7 @@ public class AxeronProvider extends ContentProvider {
     public static final String METHOD_GET_BINDER = "getBinder";
     public static final String ACTION_BINDER_RECEIVED = "AxServer.BINDER_RECEIVED";
     private static final String TAG = "AxProvider";
-    private static final String EXTRA_BINDER = "AxServer.BINDER";
+    public static final String EXTRA_BINDER = "AxServer.BINDER";
 
     @Override
     public void attachInfo(Context context, ProviderInfo info) {
@@ -45,7 +45,6 @@ public class AxeronProvider extends ContentProvider {
     @Nullable
     @Override
     public Bundle call(@NonNull String method, @Nullable String arg, @Nullable Bundle extras) {
-
         Log.i(TAG, "Called");
 
         if (extras == null) {
