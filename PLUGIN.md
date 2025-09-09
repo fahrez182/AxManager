@@ -91,7 +91,7 @@ A AxManager plugins is a folder placed in `/data/local/tmp/AxManager/plugins` wi
 
 > DIFFERENCE WITH ROOT METHOD
 
-> AxManager uses the BOOT_COMPLETED receiver approach to start service.sh, and all other files are treated the same in unrooted mode. except `post-fs-data.sh` and the root init method.
+> AxManager uses the BOOT_COMPLETED receiver approach to start `post-fs-data.sh **(sync)**` -> `system.prop **(debug only)**` -> `late_start service.sh **(async)**`, and all other files are treated the same in root mode. except the root init method.
 
 ### module.prop
 
