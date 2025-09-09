@@ -2,19 +2,15 @@ package com.frb.engine.core;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
-import android.app.ActivityThread;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
-import android.util.Log;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatDelegate;
 
 import com.frb.engine.utils.EmptySharedPreferencesImpl;
-import com.frb.engine.utils.EnvironmentUtil;
 
 import java.lang.annotation.Retention;
 import java.util.Locale;
@@ -66,18 +62,17 @@ public class AxeronSettings {
     }
 
     public static void setLastLaunchMode(@LaunchMethod int method) {
-        Log.d("AxeronSettings", "setLastLaunchMode: $method");
         getPreferences().edit().putInt("mode", method).apply();
     }
 
-    @AppCompatDelegate.NightMode
-    public static int getNightMode() {
-        int defValue = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
-        if (EnvironmentUtil.isWatch(ActivityThread.currentActivityThread().getApplication())) {
-            defValue = AppCompatDelegate.MODE_NIGHT_YES;
-        }
-        return getPreferences().getInt(NIGHT_MODE, defValue);
-    }
+//    @AppCompatDelegate.NightMode
+//    public static int getNightMode() {
+//        int defValue = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+//        if (EnvironmentUtil.isWatch(ActivityThread.currentActivityThread().getApplication())) {
+//            defValue = AppCompatDelegate.MODE_NIGHT_YES;
+//        }
+//        return getPreferences().getInt(NIGHT_MODE, defValue);
+//    }
 
     public static Locale getLocale() {
         String tag = getPreferences().getString(LANGUAGE, null);
