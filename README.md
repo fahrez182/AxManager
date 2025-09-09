@@ -8,15 +8,15 @@ Thanks for checking it out!
 Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager** is dedicated to **ADB/Non-Root mode** — while still allowing execution with **Root access** if available.
 
 ## ✨ Features
-- ⚡ **App Optimization**  
-  Manage apps to improve performance, efficiency, and stability.
-
 - 🖥️ **Shell Executor**  
   Run shell commands directly from the app.  
   - Supports **ADB / Non-Root execution**.  
   - Optional **Root execution** if the device has root access.  
 
-- 🌐 **WebShell (UI Shell)**  
+- ⚡ **Plugin (Unrooted Module)**  
+  Manage third-party modules with unrooted access. [Learn more](https://github.com/fahrez182/AxManager/blob/main/PLUGIN.md)  
+
+- 🌐 **WebUI (Unrooted Version)**  
   Execute shell commands with a web-based interactive interface.
 
 ## 📱 Key Difference from Root Managers
@@ -29,10 +29,11 @@ Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager*
 - [x] Wireless Debugging Activator.
 - [x] Command-line / Root Activator.
 - [x] Shell Executor basic support (ADB/Non-Root).
-- [ ] App optimization based on profiles.  
-- [ ] WebShell with multi-session support.  
-- [ ] Plugin system for third-party extensions.  
-- [ ] Developer Mode & Advanced Debugging tools.  
+- [x] Auto active when use Wireless Debugging (Test)
+- [x] ~~WebUI with multi-session support.~~
+- [x] [Plugin](https://github.com/fahrez182/AxManager/blob/main/PLUGIN.md) system for third-party extensions.  
+- [x] Developer Mode & Advanced Debugging tools.  
+- [ ] App optimization based on profiles.
 
 ## 🔧 Build & Install
 Clone the repository and build using Android Studio or Gradle:
@@ -55,13 +56,9 @@ Feel free to open **issues**, submit **pull requests**, or start a discussion fo
 
 
 ## 🙏 Credits
+- **[Magisk]()** "**BusyBox** and Plugin (Unrooted module) ideas"
 - **[Shizuku](https://github.com/RikkaApps/Shizuku) / [API](https://github.com/RikkaApps/Shizuku-API)** "The starting point and transition to learning IPC, also the reference for ADB handling."
 - **[KernelSU](https://github.com/tiann/KernelSU) / [Next](https://github.com/KernelSU-Next/KernelSU-Next)** "Inspiration for the UI and WebUI features."
-- **[Busybox](https://github.com/Magisk-Modules-Repo/busybox-ndk)** "Busybox that used in this project"
 
 ## 📜 License
 Licensed under the [Apache License 2.0](LICENSE).
-
-
-> I am still learning and building this project as a personal exploration. I don’t intend to violate or misuse any third-party license/code.
-If you notice that I accidentally used or included something under another license in a way that is not correct, please kindly let me know by opening an issue or contacting me. I will fix it as soon as possible.
