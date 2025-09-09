@@ -19,6 +19,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -117,8 +119,13 @@ public class FileService extends IFileService.Stub {
 
     @Override
     public boolean createNewFile(String path) {
-        File file = new File(path);
-        if (file.exists()) return false;
+        File newFile = new File(path);
+        if (newFile.exists() && newFile.isFile()) return true;
+        File parent = new File(newFile.getParent());
+        if (!parent.exists()) {
+            if (!parent.mkdirs()) return false;
+        }
+
         try {
             FileOutputStream fos = new FileOutputStream(path, false);
             fos.close();
@@ -262,9 +269,10 @@ public class FileService extends IFileService.Stub {
                     fos.write(buffer, 0, len);
                 }
                 fos.flush();
+                fos.close();
+                fos.getFD().sync();
 
                 if (callback != null) callback.onComplete();
-
             } catch (IOException | RemoteException e) {
                 if (callback != null) {
                     try {
@@ -274,7 +282,10 @@ public class FileService extends IFileService.Stub {
                 }
             } finally {
                 try {
-                    if (stream != null) stream.close();
+                    if (stream != null) {
+                        stream.close();
+                        stream.getFileDescriptor().sync();
+                    }
                 } catch (IOException ignored) {}
             }
         }).start();
@@ -309,20 +320,31 @@ public class FileService extends IFileService.Stub {
     public boolean move(String from, String to, boolean overwrite) {
         File src = f(from);
         File dst = f(to);
-        if (!src.exists()) return false;
-
-        // coba rename langsung
-        if (!dst.exists() || (overwrite && dst.delete())) {
-            if (src.renameTo(dst)) return true;
-        }
-
-        // beda mount / gagal rename → copy + delete
         try {
-            if (!copyFile(src, dst, overwrite)) return false;
-        } catch (IOException e) {
+            Files.move(
+                    src.toPath(),
+                    dst.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+            return true;
+        } catch (Exception e) {
             return false;
         }
-        // hapus sumber setelah copy sukses
-        return deleteRecursiveInternal(src);
+//        if (!src.exists()) return false;
+//
+//        // coba rename langsung
+//        if (!dst.exists() || (overwrite && dst.delete())) {
+//            if (src.renameTo(dst)) return true;
+//        }
+//
+//        // beda mount / gagal rename → copy + delete
+//        try {
+//            if (!copyFile(src, dst, overwrite)) return false;
+//        } catch (IOException e) {
+//            return false;
+//        }
+//        // hapus sumber setelah copy sukses
+//        return deleteRecursiveInternal(src);
     }
 }
