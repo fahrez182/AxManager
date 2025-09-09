@@ -3,6 +3,7 @@ package com.frb.axmanager.ui.screen
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material3.Button
@@ -32,13 +34,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,15 +55,16 @@ import com.frb.engine.utils.Starter
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import rikka.compatibility.DeviceCompatibility
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     val adbViewModel = viewModelGlobal.adbViewModel
-    val axeronServiceInfo by adbViewModel.axeronServiceInfo.collectAsState()
+    val axeronInfo = adbViewModel.axeronInfo
 
-    if (axeronServiceInfo.isRunning() && !axeronServiceInfo.isNeedUpdate()) {
+    if (axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()) {
         navigator.popBackStack()
     }
 
@@ -92,6 +95,30 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (DeviceCompatibility.isMiui()) {
+                ElevatedCard(
+                    colors = CardDefaults.cardColors().copy(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.notification_warn_miui),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(Modifier.padding(4.dp))
+                        Text(
+                            text = stringResource(R.string.notification_warn_miui_2),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 WirelessDebuggingCard(adbViewModel)
             }
@@ -101,6 +128,7 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.R)
 @Composable
 fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
@@ -137,13 +165,14 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
             Text(
                 text = "Start via Wireless debugging",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.size(20.dp))
 
             Text(
                 text = stringResource(R.string.activate_by_wireless_description),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.size(20.dp))
 
@@ -163,15 +192,15 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
             }
             Spacer(modifier = Modifier.size(8.dp))
 
-//            LaunchedEffect(adbViewModel.launchDevSettings) {
-//
-//            }
-
-            if (adbViewModel.launchDevSettings) {
-                val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                    putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+            LaunchedEffect(adbViewModel.launchDevSettings) {
+                if (adbViewModel.launchDevSettings) {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                        putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+                    }
+                    launcherDeveloper.launch(intent)
+                    Log.d("AxManager", "launchDevSettings")
+                    adbViewModel.launchDevSettings = false
                 }
-                launcherDeveloper.launch(intent)
             }
 
             Button(
@@ -183,22 +212,45 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                         launcher.launch(intent)
                         return@Button
                     } else {
+                        if (adbViewModel.tryActivate) {
+                            Toast.makeText(context, "Please Wait...", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         adbViewModel.startAdb(context)
-//                        showDialogDeveloper = true
                     }
                 }
             ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    modifier = Modifier
-                        .padding(end = 10.dp)
-                        .size(16.dp),
-                    contentDescription = "Start"
-                )
-                Text("Start")
+                when {
+                    !adbViewModel.isNotificationEnabled -> {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(16.dp),
+                            contentDescription = null
+                        )
+                        Text("Enable Notification")
+                    }
+
+                    else -> {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(16.dp),
+                            contentDescription = "Start"
+                        )
+                        Text("Start")
+                    }
+                }
+
             }
 
             if (showDialogDeveloper) {
+                val uriHandler = LocalUriHandler.current
+                val stepByStepUrl =
+                    "https://shizuku.rikka.app/guide/setup/#start-via-wireless-debugging"
+
                 MaterialDialog(
                     onDismissRequest = { showDialogDeveloper = false },
                     title = { Text("Enable Wireless Debugging") },
@@ -210,9 +262,10 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                     },
                     confirmButton = {
                         TextButton(onClick = {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                                putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-                            }
+                            val intent =
+                                Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                                    putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+                                }
                             launcherDeveloper.launch(intent)
                             showDialogDeveloper = false
                         }
@@ -223,6 +276,14 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                     dismissButton = {
                         TextButton(onClick = { showDialogDeveloper = false }) {
                             Text("Cancel")
+                        }
+                    },
+                    neutralButton = {
+                        TextButton(onClick = {
+                            uriHandler.openUri(stepByStepUrl)
+                            showDialogDeveloper = false
+                        }) {
+                            Text("Step-by-Step")
                         }
                     }
                 )
@@ -253,12 +314,13 @@ fun ComputerCard() {
         ) {
             Text(
                 text = "Start by connecting to a computer",
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
                 text = stringResource(R.string.activate_by_computer_description),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             var showDialog by remember { mutableStateOf(false) }
@@ -281,7 +343,7 @@ fun ComputerCard() {
             if (showDialog) {
                 MaterialDialog(
                     onDismissRequest = { showDialog = false },
-                    title = { Text("View Command") },
+                    title = { Text("View Command", fontWeight = FontWeight.Bold) },
                     text = {
                         HtmlText(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
