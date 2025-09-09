@@ -8,6 +8,7 @@ import static android.app.ActivityManagerHidden.UID_OBSERVER_IDLE;
 import android.app.ActivityManagerHidden;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.text.TextUtils;
 
@@ -31,7 +32,7 @@ public class BinderSender {
     private static final String PERMISSION_MANAGER = "com.frb.axmanager.permission.MANAGER";
 //    private static final String PERMISSION = "moe.shizuku.manager.permission.API_V23";
 
-    private static AxeronService aAxeronService;
+    private static IBinder axeronBinder;
 
     private static void sendBinder(int uid, int pid) throws RemoteException {
         List<String> packages = PackageManagerApis.getPackagesForUidNoThrow(uid);
@@ -54,7 +55,7 @@ public class BinderSender {
                     granted = ActivityManagerApis.checkPermission(PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
 
                 if (granted) {
-                    AxeronService.sendBinderToManager(aAxeronService, userId);
+                    AxeronService.sendBinderToManager(axeronBinder, userId, true);
                     return;
                 }
             } else /*if (ArraysKt.contains(pi.requestedPermissions, PERMISSION))*/ {
@@ -64,8 +65,8 @@ public class BinderSender {
         }
     }
 
-    public static void register(AxeronService axeronService) {
-        aAxeronService = axeronService;
+    public static void register(IBinder axeronService) {
+        axeronBinder = axeronService;
 
         try {
             ActivityManagerApis.registerProcessObserver(new ProcessObserver());
@@ -80,7 +81,7 @@ public class BinderSender {
                     ActivityManagerHidden.PROCESS_STATE_UNKNOWN,
                     null);
         } catch (Throwable tr) {
-                LOGGER.e(tr, "registerUidObserver");
+            LOGGER.e(tr, "registerUidObserver");
         }
     }
 
