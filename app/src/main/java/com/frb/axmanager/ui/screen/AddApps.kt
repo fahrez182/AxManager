@@ -1,48 +1,39 @@
 package com.frb.axmanager.ui.screen
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.frb.axmanager.ui.util.toBitmapSafely
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.frb.axmanager.ui.component.SearchAppBar
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -52,29 +43,29 @@ fun AddAppsScreen(
     viewModelGlobal: ViewModelGlobal
 ) {
     val appsViewModel = viewModelGlobal.appsViewModel
-    val installedApps by appsViewModel.installedApps.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
     val context = LocalContext.current
-    val pm = context.packageManager
+    context.packageManager
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Select App",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
-                    )
+            SearchAppBar(
+                title = { Text(
+                    text = "Select App",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                ) },
+                searchLabel = "Search Apps",
+                searchText = appsViewModel.search,
+                onSearchTextChange = { appsViewModel.search = it },
+                onClearClick = { appsViewModel.search = "" },
+                scrollBehavior = scrollBehavior,
+                onBackClick = {
+                    navigator.popBackStack()
                 },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                windowInsets = WindowInsets(top = 0, bottom = 0)
+                windowInsets = WindowInsets(top = 0)
             )
         },
         contentWindowInsets = WindowInsets(top = 0, bottom = 0)
@@ -87,18 +78,9 @@ fun AddAppsScreen(
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
             items(
-                installedApps,
+                appsViewModel.installedList,
                 key = { it.packageName + it.uid }
             ) { app ->
-
-                var appIcon by remember { mutableStateOf<ImageBitmap?>(null) }
-
-                LaunchedEffect(app.packageName) {
-                    withContext(Dispatchers.IO) {
-                        val drawable = pm.getApplicationIcon(app.packageName)
-                        appIcon = drawable.toBitmapSafely(96).asImageBitmap()
-                    }
-                }
 
                 var isAdded by remember(app.packageName) {
                     mutableStateOf(app.isAdded)
@@ -129,30 +111,17 @@ fun AddAppsScreen(
                         )
                     },
                     leadingContent = {
-//                        AsyncImage(
-//                            model = appIcon,
-//                            contentDescription = app.label,
-//                            modifier = Modifier
-//                                .padding(4.dp)
-//                                .width(48.dp)
-//                                .height(48.dp)
-//                        )
-                        if (appIcon != null) {
-                            Image(
-                                bitmap = appIcon!!,
-                                contentDescription = app.label,
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(48.dp)
-                            )
-                        } else {
-                            // Placeholder biar nggak blank pas loading
-                            Box(
-                                Modifier
-                                    .padding(4.dp)
-                                    .size(48.dp)
-                            )
-                        }
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(app.packageInfo)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = app.label,
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .width(48.dp)
+                                .height(48.dp)
+                        )
                     },
                     trailingContent = {
                         Switch(
