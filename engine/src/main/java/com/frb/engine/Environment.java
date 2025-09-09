@@ -76,7 +76,7 @@ public class Environment implements Parcelable {
         private final Map<String, String> systemEnvMap = new HashMap<>(System.getenv());
         private final Map<String, String> envMap;
 
-        private boolean newEnv = false;
+        private final boolean newEnv;
 
         public Builder(boolean newEnv) {
             this.newEnv = newEnv;
