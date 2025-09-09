@@ -4,7 +4,8 @@
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
     <permission
@@ -18,7 +19,7 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="shortService"
-            tools:targetApi="30" />
+            tools:ignore="NewApi" />
 
         <provider
             android:name=".core.AxeronProvider"
@@ -35,9 +36,6 @@
             android:enabled="true"
             android:exported="true"
             android:permission="com.frb.axmanager.permission.MANAGER">
-            <intent-filter>
-                <action android:name="AxServer.BINDER_RECEIVED" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
