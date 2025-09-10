@@ -10,7 +10,7 @@ hero:
       text: Get Started
       link: /markdown-examples
     - theme: alt
-      text: API Examples
+      text: Test
       link: /api-examples
 
 features:
