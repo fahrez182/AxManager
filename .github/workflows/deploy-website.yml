@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/deploy-website.yml'
-      - 'website/**'
+      - ".github/workflows/deploy-website.yml"
+      - "website/**"
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -46,7 +46,7 @@ jobs:
 
       - name: Build with VitePress
         run: |
-          bun run docs:build
+          bun run build
           touch docs/.vitepress/dist/.nojekyll
 
       - name: Upload artifact

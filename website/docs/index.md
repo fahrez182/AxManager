@@ -8,16 +8,24 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /markdown-examples
+      link: /guide/what-is-axeron-manager
     - theme: alt
-      text: Api Examples
-      link: /api-examples
+      text: View on GitHub
+      link: https://github.com/fahrez182/AxManager
+    - theme: alt
+      text: Download
+      link: https://github.com/fahrez182/AxManager/releases
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - icon: 🖥️
+    title: Shell Executor
+    details: Run shell commands directly from the app with support for <b>ADB/Non-Root</b> and optional Root execution.
+  - icon: ⚡
+    title: Plugin (Unrooted Module)
+    details: Extend AxManager with third-party modules that don’t require root access.
+    link: ./plugin/what-is-plugin
+  - icon: 🌐
+    title: WebUI (Unrooted Version)
+    details: Execute shell commands via a web-based interactive interface.
+    link: ./plugin/what-is-plugin/#webui
 ---

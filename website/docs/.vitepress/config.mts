@@ -9,23 +9,30 @@ export default defineConfig({
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
-      { text: "Home", link: "/" },
-      { text: "Api", link: "/api-examples" },
-      { text: "Examples", link: "/markdown-examples" },
+      { text: "Guide", link: "/guide/what-is-axeron-manager" },
+      { text: "Plugin", link: "/plugin/what-is-plugin" },
     ],
 
     sidebar: [
       {
-        text: "Examples",
+        text: "Guide",
         items: [
-          { text: "Markdown Examples", link: "/markdown-examples" },
-          { text: "Runtime API Examples", link: "/api-examples" },
+          {
+            text: "What is Axeron Manager?",
+            link: "/guide/what-is-axeron-manager",
+          },
+          { text: "User Manual", link: "/guide/user-manual" },
+          { text: "FAQ", link: "/guide/faq" },
         ],
+      },
+      {
+        text: "Plugin",
+        items: [{ text: "What is Plugin?", link: "/plugin/what-is-plugin" }],
       },
     ],
 
     socialLinks: [
-      { icon: "github", link: "https://github.com/vuejs/vitepress" },
+      { icon: "github", link: "https://github.com/fahrez182/AxManager" },
     ],
   },
 });
