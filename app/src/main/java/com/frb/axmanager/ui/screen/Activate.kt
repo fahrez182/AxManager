@@ -249,7 +249,7 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
             if (showDialogDeveloper) {
                 val uriHandler = LocalUriHandler.current
                 val stepByStepUrl =
-                    "https://shizuku.rikka.app/guide/setup/#start-via-wireless-debugging"
+                    "https://fahrez182.github.io/AxManager/guide/user-manual.html#start-with-wireless-debugging"
 
                 MaterialDialog(
                     onDismissRequest = { showDialogDeveloper = false },
