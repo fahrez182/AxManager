@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture
 
 
 object PluginService {
-    const val TAG = "AxeronFile"
+    const val TAG = "PluginService"
 
     val BUSYBOX = "${application.applicationInfo.nativeLibraryDir}/libbusybox.so"
     val BASEAPK = application.applicationInfo.sourceDir!!
@@ -56,7 +56,7 @@ object PluginService {
             val cmd = "ZIPFILE=${file.absolutePath}; . functions.sh; install_plugin; exit 0"
             val result = execWithIO(cmd, onStdout, onStderr, standAlone = true)
 
-            Log.i("KernelSU", "install module $uri result: $result")
+            Log.i(TAG, "install module $uri result: $result")
 
             file.delete()
 
@@ -86,6 +86,7 @@ object PluginService {
         standAlone: Boolean = false,
         hideStderr: Boolean = true
     ): Result {
+        Log.d(TAG, "execWithIO: $cmd")
         return try {
             val process = Axeron.newProcess(
                 if (useSetsid) arrayOf("setsid","sh") else arrayOf("sh"),
@@ -292,17 +293,13 @@ object PluginService {
 
             val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
             val cmd = "$AXERONBIN/init_services.sh ${prefs.getBoolean("enable_developer_options", false)}"
+            Log.d(TAG, "Start Init Service: $cmd")
             try {
                 val process = Axeron.newProcess(
                     arrayOf("sh", "-c", cmd),
                     Axeron.getEnvironment(),
                     null
                 )
-
-//                process.outputStream.use { os ->
-//                    os.write("busybox sh $cmd\n".toByteArray())
-//                    os.flush()
-//                }
 
                 val stdout = StringBuilder()
                 val stderr = StringBuilder()
@@ -322,11 +319,10 @@ object PluginService {
                 }
 
                 val exitCode = process.waitFor()
-//                process.inputStream.close()
                 process.destroy()
 
-                if (stdout.isNotEmpty()) Log.i("StartService", "STDOUT:\n$stdout")
-                if (stderr.isNotEmpty()) Log.e("StartService", "STDERR:\n$stderr")
+                if (stdout.isNotEmpty()) Log.i(TAG, "STDOUT:\n$stdout")
+                if (stderr.isNotEmpty()) Log.e(TAG, "STDERR:\n$stderr")
 
                 check(exitCode == 0) { "sh exited with $exitCode" }
                 onComplete()
@@ -377,13 +373,13 @@ object PluginService {
             if (axFS.exists(dstFile.absolutePath)) continue
 
             val cmd =
-                "unzip -p $BASEAPK $inPath > ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}"
+                "unzip -p $BASEAPK $inPath > ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}; dos2unix ${dstFile.absolutePath}"
             val result = execWithIO(cmd, {}, {}, hideStderr = false)
 
             if (result.isSuccess()) {
-                Log.i(Axeron.TAG, "$inPath extracted to: ${dstFile.absolutePath}")
+                Log.i(TAG, "$inPath extracted to: ${dstFile.absolutePath}")
             } else {
-                Log.e(Axeron.TAG, "$inPath failed: ${result.err}")
+                Log.e(TAG, "$inPath failed: ${result.err}")
             }
         }
         return true
@@ -404,14 +400,14 @@ object PluginService {
             val result = execWithIO(cmd, useBusybox = false, hideStderr = false)
 
             if (result.isSuccess()) {
-                Log.i(Axeron.TAG, "BusyBox extracted to: ${dstFile.absolutePath}")
+                Log.i(TAG, "BusyBox extracted to: ${dstFile.absolutePath}")
                 return true
             } else {
-                Log.e(Axeron.TAG, "ensureBusybox failed: ${result.err}")
+                Log.e(TAG, "ensureBusybox failed: ${result.err}")
                 return false
             }
         } catch (e: Exception) {
-            Log.e(Axeron.TAG, "ensureBusybox failed: ${e.message}", e)
+            Log.e(TAG, "ensureBusybox failed: ${e.message}", e)
             false
         }
     }
