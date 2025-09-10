@@ -2,6 +2,7 @@ import { defineConfig } from "vitepress";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
+  base: "/AxManager/",
   title: "AxManager",
   description:
     "AxManager is an Android application designed to provide deeper control over apps and the system.",
