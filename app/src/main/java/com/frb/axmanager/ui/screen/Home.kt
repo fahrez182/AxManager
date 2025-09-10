@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -140,26 +139,11 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 title = {
                     Column {
                         Text(
+                            modifier = Modifier.padding(start = 10.dp),
                             text = "AxManager",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Black,
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Powered by Shizuku",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                painter = painterResource(R.drawable.ic_system_shizuku),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                            )
-
-                        }
                     }
 
                 },
@@ -272,7 +256,7 @@ fun StatusCard(
     Log.d("AxManager", "NeedUpdate: ${axeronInfo.isNeedUpdate()}")
 
     val uriHandler = LocalUriHandler.current
-    val extraStepUrl = "https://shizuku.rikka.app/guide/setup/#start-via-wireless-debugging-start-by-connecting-to-a-computer-the-permission-of-adb-is-limited"
+    val extraStepUrl = "https://fahrez182.github.io/AxManager/guide/faq.html#start-via-wireless-debugging-start-by-connecting-to-a-computer-the-permission-of-adb-is-limited"
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
