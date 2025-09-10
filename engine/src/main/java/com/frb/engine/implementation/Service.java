@@ -124,8 +124,6 @@ public class Service extends IAxeronService.Stub {
         return firstFlag;
     }
 
-
-
     private List<String> readAllPluginAsString(String pluginsDirPath) {
         List<String> result = new ArrayList<>();
         File pluginsDir = new File(pluginsDirPath);

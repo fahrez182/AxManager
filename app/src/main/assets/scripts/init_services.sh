@@ -6,9 +6,9 @@ executor() {
     local tag="$1"
     shift
     if [ "$DEBUG" = "true" ]; then
-        exec "$@" 2>&1 | log -t "$tag"
+        exec setsid "$@" 2>&1 | log -t "$tag"
     else
-        exec "$@" >/dev/null 2>&1
+        exec setsid "$@" >/dev/null 2>&1
     fi
 }
 
@@ -39,6 +39,8 @@ service() {
     else
         executor "$1" busybox sh "$2" &
     fi
+    local pid=$!
+    setprop "log.tag.service.$1" "$pid"
 }
 
 #sync_with_service
@@ -63,11 +65,11 @@ post_fs_data() {
 start_plugin() {
     (
         local name="$1" fsdata="$2" sprop="$3" servicef="$4" bin="$5"
-        if [ "$(getprop log.fs."$name" 2>/dev/null)" != "1" ]; then
-            [ -f "$fsdata" ] && post_fs_data "$name" "$fsdata" "$bin" && setprop log.fs."$name" 1
+        if [ "$(getprop "log.tag.fs.$name" 2>/dev/null)" != "1" ]; then
+            [ -f "$fsdata" ] && post_fs_data "$name" "$fsdata" "$bin" && setprop "log.tag.fs.$name" 1
         fi
-        if [ "$(getprop log.props."$name" 2>/dev/null)" != "1" ]; then
-            [ -f "$sprop" ] && system_prop "$name" "$sprop" && setprop log.props."$name" 1
+        if [ "$(getprop "log.tag.props.$name" 2>/dev/null)" != "1" ]; then
+            [ -f "$sprop" ] && system_prop "$name" "$sprop" && setprop "log.tag.props.$name" 1
         fi
         service "$name" "$servicef" "$bin"
     ) &
@@ -75,9 +77,12 @@ start_plugin() {
 
 stop_plugin() {
     local name="$1" servicef="$2"
-    setprop log.fs."$name" 0
-    setprop log.props."$name" 0
-    pkill -x -f "busybox sh $servicef"
+    setprop "log.tag.fs.$name" 0
+    setprop "log.tag.props.$name" 0
+    pid=$(getprop "log.tag.service.$name")
+    if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+        kill -TERM -"$pid"
+    fi
 }
 
 for plugin_update in "$PLUGINS_UPDATE_DIR"/*; do
@@ -115,8 +120,9 @@ for plugin in "$PLUGINS_DIR"/*; do
         continue
     }
 
-    if pgrep -f "$NAME" >/dev/null 2>&1; then
-        echo "- $NAME is already running, skip."
+    pid=$(getprop "log.tag.service.$NAME")
+    if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+        echo "- $NAME:$pid is already running, skip."
         continue
     fi
 

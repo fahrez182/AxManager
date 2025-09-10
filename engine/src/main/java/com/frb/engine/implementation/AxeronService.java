@@ -30,8 +30,8 @@ import rikka.hidden.compat.PermissionManagerApis;
 import rikka.hidden.compat.UserManagerApis;
 
 public class AxeronService extends Service {
-    public static final String VERSION_NAME = "V1.0.5";
-    public static final int VERSION_CODE = 10500;
+    public static final String VERSION_NAME = "V1.1.0";
+    public static final int VERSION_CODE = 11000;
 
     private final Long starting = SystemClock.elapsedRealtime();
 
@@ -70,51 +70,6 @@ public class AxeronService extends Service {
 
         Looper.prepareMainLooper();
         new AxeronService();
-
-//        waitSystemService("package");
-//        waitSystemService(Context.ACTIVITY_SERVICE);
-//        waitSystemService(Context.USER_SERVICE);
-//        waitSystemService(Context.APP_OPS_SERVICE);
-//
-//        int userIdManager = UserHandleCompat.getUserId(getManagerApplicationInfo().uid);
-//
-//        UserHandle userHandle = Refine.unsafeCast(
-//                UserHandleHidden.of(userIdManager));
-//        try {
-//
-//            ActivityThread activityThread = ActivityThread.systemMain();
-//            Context systemContext = activityThread.getSystemContext();
-//
-//            Context context = Refine.<ContextHidden>unsafeCast(systemContext).createPackageContextAsUser(MANAGER_APPLICATION_ID, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY, userHandle);
-//
-//            Field mPackageInfo = context.getClass().getDeclaredField("mPackageInfo");
-//            mPackageInfo.setAccessible(true);
-//            Object loadedApk = mPackageInfo.get(context);
-//            Method makeApplication = loadedApk.getClass().getDeclaredMethod("makeApplication", boolean.class, Instrumentation.class);
-//            Application application = (Application) makeApplication.invoke(loadedApk, true, null);
-//
-////            new AxeronService(application);
-//            ClassLoader classLoader = application.getClassLoader();
-//            Class<?> serviceClass = classLoader.loadClass(AxeronService.class.getName());
-//            Constructor<?> constructorWithContext = null;
-//
-//            try {
-//                constructorWithContext = serviceClass.getConstructor(Context.class);
-//            } catch (NoSuchMethodException | SecurityException ignored) {
-//            }
-//            if (constructorWithContext != null) {
-//                constructorWithContext.newInstance(application);
-//            } else {
-//                serviceClass.newInstance();
-//            }
-//
-//            LOGGER.i("createPackageContextAsUser: %d: %s", userIdManager, context);
-//        } catch (PackageManager.NameNotFoundException | NoSuchFieldException |
-//                 IllegalAccessException | NoSuchMethodException | InvocationTargetException |
-//                 ClassNotFoundException | InstantiationException e) {
-//            LOGGER.e(e, "Failed to create package context: " + userIdManager);
-//        }
-
         Looper.loop();
     }
 
@@ -194,7 +149,9 @@ public class AxeronService extends Service {
 
     public int checkPermission(String permission) {
         try {
-            return PermissionManagerApis.checkPermission(permission, Os.getuid());
+            int uid = Os.getuid();
+            if (uid == 0) return PackageManager.PERMISSION_GRANTED;
+            return PermissionManagerApis.checkPermission(permission, uid);
         } catch (RemoteException e) {
             return PackageManager.PERMISSION_DENIED;
         }
