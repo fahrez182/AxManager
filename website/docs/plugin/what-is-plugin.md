@@ -36,7 +36,7 @@ AxManager's BusyBox is now using the binary file compiled directly from the Magi
 A AxManager plugins is a folder placed in `/data/local/tmp/AxManager/plugins` with the structure below:
 
 ```
-/data/local/tmp/plugins
+/data/local/tmp/AxManager/plugins
 ├── .
 ├── .
 │
