@@ -11,6 +11,10 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/guide/what-is-axeron-manager" },
       { text: "Plugin", link: "/plugin/what-is-plugin" },
+      {
+        text: "Download",
+        link: "https://github.com/fahrez182/AxManager/releases",
+      },
     ],
 
     sidebar: [
