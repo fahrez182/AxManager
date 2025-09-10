@@ -46,7 +46,7 @@ jobs:
 
       - name: Build with VitePress
         run: |
-          bun run build
+          bun run docs:build
           touch docs/.vitepress/dist/.nojekyll
 
       - name: Upload artifact
