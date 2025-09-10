@@ -14,7 +14,6 @@ android {
     defaultConfig {
         minSdk = 27
 
-//        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
 
@@ -50,7 +49,4 @@ dependencies {
     implementation(libs.dev.rikka.rikkax.parcelablelist)
 
     implementation(libs.androidx.core.ktx)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }

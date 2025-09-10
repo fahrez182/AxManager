@@ -17,10 +17,9 @@ android {
         applicationId = "com.frb.axmanager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 10400
-        versionName = "1.0.4"
+        versionCode = 10500
+        versionName = "1.0.5"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
                 arguments.add("-DANDROID_STL=none")
@@ -59,7 +58,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputImpl.outputFileName = "AxManager_${versionName}_${versionCode}-${buildType.name}.apk"
+            outputImpl.outputFileName = "AxManager_v${versionName}_${versionCode}-${buildType.name}.apk"
         }
     }
 
@@ -98,16 +97,21 @@ dependencies {
     implementation(libs.appiconloader.coil)
 
     implementation(libs.mmrl.ui)
+    implementation(libs.androidx.foundation)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
+    implementation(libs.dev.rikka.rikkax.parcelablelist)
+
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)
 
     implementation(libs.gson)
+    implementation(libs.markdown)
+    implementation(libs.androidx.webkit)
 
     implementation(project(":engine"))
     implementation(libs.sdp.android)
@@ -115,10 +119,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-
+    implementation("dev.rikka.rikkax.compatibility:compatibility:2.0.0")
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
     implementation("com.github.Fox2Code.AndroidANSI:library:1.2.0")
     implementation("com.github.Fox2Code.AndroidANSI:library-ktx:1.2.1")

@@ -30,8 +30,8 @@ import rikka.hidden.compat.PermissionManagerApis;
 import rikka.hidden.compat.UserManagerApis;
 
 public class AxeronService extends Service {
-    public static final String VERSION_NAME = "V1.0.4";
-    public static final int VERSION_CODE = 10432;
+    public static final String VERSION_NAME = "V1.0.5";
+    public static final int VERSION_CODE = 10500;
 
     private final Long starting = SystemClock.elapsedRealtime();
 
