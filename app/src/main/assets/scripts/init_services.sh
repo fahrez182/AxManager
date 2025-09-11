@@ -83,6 +83,9 @@ stop_plugin() {
     if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
         kill -TERM -"$pid"
     fi
+    if pgrep -f "$name" >/dev/null 2>&1; then
+        pkill -f "$name"
+    fi
 }
 
 for plugin_update in "$PLUGINS_UPDATE_DIR"/*; do
@@ -121,7 +124,8 @@ for plugin in "$PLUGINS_DIR"/*; do
     }
 
     pid=$(getprop "log.tag.service.$NAME")
-    if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+    # shellcheck disable=SC2235
+    if ( [ -n "$pid" ] && [ -d "/proc/$pid" ] ) || pgrep -f "$NAME" >/dev/null 2>&1; then
         echo "- $NAME:$pid is already running, skip."
         continue
     fi
