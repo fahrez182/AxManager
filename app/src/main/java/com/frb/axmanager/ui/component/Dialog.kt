@@ -1,6 +1,5 @@
 package com.frb.axmanager.ui.component
 
-import android.R
 import android.graphics.text.LineBreaker
 import android.os.Build
 import android.os.Parcelable
@@ -10,16 +9,20 @@ import android.util.Log
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -32,7 +35,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -56,23 +58,34 @@ import kotlin.coroutines.resume
 private const val TAG = "DialogComponent"
 
 interface ConfirmDialogVisuals : Parcelable {
+    val dragHandle: Boolean
     val title: String
     val content: String
     val isMarkdown: Boolean
     val confirm: String?
     val dismiss: String?
+    val neutral: String?
 }
 
 @Parcelize
 private data class ConfirmDialogVisualsImpl(
     override val title: String,
     override val content: String,
+    override val dragHandle: Boolean,
     override val isMarkdown: Boolean,
     override val confirm: String?,
     override val dismiss: String?,
+    override val neutral: String?
 ) : ConfirmDialogVisuals {
     companion object {
-        val Empty: ConfirmDialogVisuals = ConfirmDialogVisualsImpl("", "", false, null, null)
+        val Empty: ConfirmDialogVisuals = ConfirmDialogVisualsImpl(
+            "", "",
+            dragHandle = false,
+            isMarkdown = false,
+            confirm = null,
+            dismiss = null,
+            neutral = null
+        )
     }
 }
 
@@ -90,7 +103,8 @@ interface LoadingDialogHandle : DialogHandle {
 
 sealed interface ConfirmResult {
     object Confirmed : ConfirmResult
-    object Canceled : ConfirmResult
+    object Dismissed : ConfirmResult
+    object Neutral : ConfirmResult
 }
 
 interface ConfirmDialogHandle : DialogHandle {
@@ -99,17 +113,21 @@ interface ConfirmDialogHandle : DialogHandle {
     fun showConfirm(
         title: String,
         content: String,
+        dragHandle: Boolean = false,
         markdown: Boolean = false,
         confirm: String? = null,
-        dismiss: String? = null
+        dismiss: String? = null,
+        neutral: String? = null
     )
 
     suspend fun awaitConfirm(
         title: String,
         content: String,
+        dragHandle: Boolean = false,
         markdown: Boolean = false,
         confirm: String? = null,
-        dismiss: String? = null
+        dismiss: String? = null,
+        neutral: String? = null
     ): ConfirmResult
 }
 
@@ -167,15 +185,23 @@ interface ConfirmCallback {
 
     val onDismiss: NullableCallback
 
+    val onNeutral: NullableCallback
+
     val isEmpty: Boolean get() = onConfirm == null && onDismiss == null
 
     companion object {
-        operator fun invoke(onConfirmProvider: () -> NullableCallback, onDismissProvider: () -> NullableCallback): ConfirmCallback {
+        operator fun invoke(
+            onConfirmProvider: () -> NullableCallback,
+            onDismissProvider: () -> NullableCallback,
+            onNeutralProvider: () -> NullableCallback
+        ): ConfirmCallback {
             return object : ConfirmCallback {
                 override val onConfirm: NullableCallback
                     get() = onConfirmProvider()
                 override val onDismiss: NullableCallback
                     get() = onDismissProvider()
+                override val onNeutral: NullableCallback
+                    get() = null
             }
         }
     }
@@ -195,7 +221,8 @@ private class ConfirmDialogHandleImpl(
             Log.d(TAG, "handleResult: ${result.javaClass.simpleName}")
             when (result) {
                 ConfirmResult.Confirmed -> onConfirm()
-                ConfirmResult.Canceled -> onDismiss()
+                ConfirmResult.Dismissed -> onDismiss()
+                ConfirmResult.Neutral -> onNeutral()
             }
         }
 
@@ -205,6 +232,10 @@ private class ConfirmDialogHandleImpl(
 
         fun onDismiss() {
             callback.onDismiss?.invoke()
+        }
+
+        fun onNeutral() {
+            callback.onNeutral?.invoke()
         }
 
         override suspend fun emit(value: ConfirmResult) {
@@ -262,12 +293,24 @@ private class ConfirmDialogHandleImpl(
     override fun showConfirm(
         title: String,
         content: String,
+        dragHandle: Boolean,
         markdown: Boolean,
         confirm: String?,
-        dismiss: String?
+        dismiss: String?,
+        neutral: String?
     ) {
         coroutineScope.launch {
-            updateVisuals(ConfirmDialogVisualsImpl(title, content, markdown, confirm, dismiss))
+            updateVisuals(
+                ConfirmDialogVisualsImpl(
+                    title,
+                    content,
+                    dragHandle,
+                    markdown,
+                    confirm,
+                    dismiss,
+                    neutral
+                )
+            )
             show()
         }
     }
@@ -275,12 +318,24 @@ private class ConfirmDialogHandleImpl(
     override suspend fun awaitConfirm(
         title: String,
         content: String,
+        dragHandle: Boolean,
         markdown: Boolean,
         confirm: String?,
-        dismiss: String?
+        dismiss: String?,
+        neutral: String?
     ): ConfirmResult {
         coroutineScope.launch {
-            updateVisuals(ConfirmDialogVisualsImpl(title, content, markdown, confirm, dismiss))
+            updateVisuals(
+                ConfirmDialogVisualsImpl(
+                    title,
+                    content,
+                    dragHandle,
+                    markdown,
+                    confirm,
+                    dismiss,
+                    neutral
+                )
+            )
             show()
         }
         return awaitResult()
@@ -334,7 +389,10 @@ fun rememberLoadingDialog(): LoadingDialogHandle {
 }
 
 @Composable
-private fun rememberConfirmDialog(visuals: ConfirmDialogVisuals, callback: ConfirmCallback): ConfirmDialogHandle {
+private fun rememberConfirmDialog(
+    visuals: ConfirmDialogVisuals,
+    callback: ConfirmCallback
+): ConfirmDialogHandle {
     val visible = rememberSaveable {
         mutableStateOf(false)
     }
@@ -354,7 +412,8 @@ private fun rememberConfirmDialog(visuals: ConfirmDialogVisuals, callback: Confi
         ConfirmDialog(
             handle.visuals,
             confirm = { coroutineScope.launch { resultChannel.send(ConfirmResult.Confirmed) } },
-            dismiss = { coroutineScope.launch { resultChannel.send(ConfirmResult.Canceled) } }
+            dismiss = { coroutineScope.launch { resultChannel.send(ConfirmResult.Dismissed) } },
+            neutral = { coroutineScope.launch { resultChannel.send(ConfirmResult.Neutral) } }
         )
     }
 
@@ -362,17 +421,26 @@ private fun rememberConfirmDialog(visuals: ConfirmDialogVisuals, callback: Confi
 }
 
 @Composable
-fun rememberConfirmCallback(onConfirm: NullableCallback, onDismiss: NullableCallback): ConfirmCallback {
+fun rememberConfirmCallback(
+    onConfirm: NullableCallback,
+    onDismiss: NullableCallback,
+    onNeutral: NullableCallback
+): ConfirmCallback {
     val currentOnConfirm by rememberUpdatedState(newValue = onConfirm)
     val currentOnDismiss by rememberUpdatedState(newValue = onDismiss)
+    val currentOnNeutral by rememberUpdatedState(newValue = onNeutral)
     return remember {
-        ConfirmCallback({ currentOnConfirm }, { currentOnDismiss })
+        ConfirmCallback({ currentOnConfirm }, { currentOnDismiss }, { currentOnNeutral })
     }
 }
 
 @Composable
-fun rememberConfirmDialog(onConfirm: NullableCallback = null, onDismiss: NullableCallback = null): ConfirmDialogHandle {
-    return rememberConfirmDialog(rememberConfirmCallback(onConfirm, onDismiss))
+fun rememberConfirmDialog(
+    onConfirm: NullableCallback = null,
+    onDismiss: NullableCallback = null,
+    onNeutral: NullableCallback = null
+): ConfirmDialogHandle {
+    return rememberConfirmDialog(rememberConfirmCallback(onConfirm, onDismiss, onNeutral))
 }
 
 @Composable
@@ -412,10 +480,33 @@ private fun LoadingDialog() {
     }
 }
 
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConfirmDialog(visuals: ConfirmDialogVisuals, confirm: () -> Unit, dismiss: () -> Unit) {
+private fun ConfirmDialog(
+    visuals: ConfirmDialogVisuals,
+    confirm: () -> Unit,
+    dismiss: () -> Unit,
+    neutral: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
     MaterialBottomSheet(
-        onDismissRequest = { dismiss() },
+        onDismissRequest = {
+            scope.launch { sheetState.hide() }
+            dismiss() // baru hapus composable setelah animasi
+        },
+        dragHandle = when {
+            visuals.dragHandle -> {
+                { BottomSheetDefaults.DragHandle() }
+            }
+            else -> {
+                { Spacer(Modifier.size(8.dp)) }
+            }
+        },
+        sheetState = sheetState,
         title = { Text(visuals.title, fontWeight = FontWeight.SemiBold) },
         text = {
             if (visuals.isMarkdown) {
@@ -428,13 +519,33 @@ private fun ConfirmDialog(visuals: ConfirmDialogVisuals, confirm: () -> Unit, di
             }
         },
         confirmButton = {
-            TextButton(onClick = confirm) {
-                Text(text = visuals.confirm ?: stringResource(id = R.string.ok))
+            visuals.confirm?.let {
+                TextButton(onClick = {
+                    scope.launch { sheetState.hide() }
+                    confirm()
+                }) {
+                    Text(text = it)
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = dismiss) {
-                Text(text = visuals.dismiss ?: stringResource(id = R.string.cancel))
+            visuals.dismiss?.let {
+                TextButton(onClick = {
+                    scope.launch { sheetState.hide() }
+                    dismiss()
+                }) {
+                    Text(text = it)
+                }
+            }
+        },
+        neutralButton = {
+            visuals.neutral?.let {
+                TextButton(onClick = {
+                    scope.launch { sheetState.hide() }
+                    neutral()
+                }) {
+                    Text(text = it)
+                }
             }
         }
     )
