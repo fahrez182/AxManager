@@ -115,7 +115,7 @@ fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                     Text(
                         text = "Application",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 },
                 searchLabel = "Search Apps",

@@ -55,7 +55,7 @@ fun AddAppsScreen(
                 title = { Text(
                     text = "Select App",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.SemiBold,
                 ) },
                 searchLabel = "Search Apps",
                 searchText = appsViewModel.search,
