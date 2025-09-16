@@ -6,30 +6,36 @@ import android.util.Log
 import com.frb.engine.core.Engine.Companion.application
 import com.frb.engine.implementation.AxeronService
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
 import java.util.concurrent.CompletableFuture
 
 
 object PluginService {
     const val TAG = "PluginService"
 
-    val BUSYBOX = "${application.applicationInfo.nativeLibraryDir}/libbusybox.so"
-    val BASEAPK = application.applicationInfo.sourceDir!!
+    val BUSYBOX: String
+        get() = "${application.applicationInfo.nativeLibraryDir}/libbusybox.so"
+    val BASEAPK: String
+        get() = application.applicationInfo.sourceDir
+
     const val AXERONBIN = "/data/local/tmp/AxManager/bin"
     const val PLUGINDIR = "/data/local/tmp/AxManager/plugins"
     const val PLUGINUPDATEDIR = "/data/local/tmp/AxManager/plugins_update"
     val axFS = Axeron.newFileService()!!
 
     data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
-        constructor(result: Result, showReboot: Boolean) : this(result.code, result.err, showReboot)
-        constructor(result: Result) : this(result, result.isSuccess())
+        constructor(result: ResultExec, showReboot: Boolean) : this(
+            result.code,
+            result.err,
+            showReboot
+        )
+
+        constructor(result: ResultExec) : this(result, result.isSuccess())
     }
 
     fun flashPlugin(
@@ -64,7 +70,7 @@ object PluginService {
         }
     }
 
-    data class Result(
+    data class ResultExec(
         @SerializedName("errno")
         val code: Int,
         @SerializedName("stdout")
@@ -85,31 +91,34 @@ object PluginService {
         useBusybox: Boolean = true,
         standAlone: Boolean = false,
         hideStderr: Boolean = true
-    ): Result {
+    ): ResultExec {
         Log.d(TAG, "execWithIO: $cmd")
-        return try {
+        val scope = CoroutineScope(Dispatchers.IO)
+
+        return runCatching {
             val process = Axeron.newProcess(
-                if (useSetsid) arrayOf("setsid","sh") else arrayOf("sh"),
+                if (useSetsid) arrayOf(BUSYBOX, "setsid", "sh")
+                else arrayOf("sh"),
                 Axeron.getEnvironment(),
                 null
             )
 
             process.outputStream.use { os ->
-                when {
-                    useBusybox && !standAlone -> os.write("$BUSYBOX sh -c \"$cmd\"\n".toByteArray())
-                    useBusybox && standAlone -> os.write("$BUSYBOX sh -o standalone -c \"$cmd\"\n".toByteArray())
-                    else -> os.write("sh -c \"$cmd\"\n".toByteArray())
+                val cmdLine = when {
+                    useBusybox && !standAlone -> "$BUSYBOX sh -c \"$cmd\"\n"
+                    useBusybox && standAlone -> "$BUSYBOX sh -o standalone -c \"$cmd\"\n"
+                    else -> "sh -c \"$cmd\"\n"
                 }
+                os.write(cmdLine.toByteArray())
                 os.flush()
             }
 
             val builderOut = StringBuilder()
-            val builderError = StringBuilder()
+            val builderErr = StringBuilder()
             val stdout = process.inputStream
             val stderr = process.errorStream
 
-            // Thread untuk stdout
-            Thread {
+            scope.launch {
                 val buf = ByteArray(1024 * 4)
                 generateSequence { stdout.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
@@ -117,28 +126,31 @@ object PluginService {
                         onStdout(chunk)
                         builderOut.append(chunk)
                     }
-            }.start()
+            }
 
-            // Thread untuk stderr
-            Thread {
+            scope.launch {
                 val buf = ByteArray(1024 * 4)
                 generateSequence { stderr.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
                         val chunk = String(buf, 0, len)
                         onStderr(chunk)
-                        builderError.append(chunk)
+                        builderErr.append(chunk)
                     }
-            }.start()
+            }
 
-            Result(
-                process.waitFor(),
-                builderOut.toString(),
-                if (!hideStderr) builderError.toString() else ""
+            val exitCode = process.waitFor()
+            process.destroy()
+
+            ResultExec(
+                code = exitCode,
+                out = builderOut.toString(),
+                err = if (!hideStderr) builderErr.toString() else ""
             )
-        } catch (e: Exception) {
-            Result(-1, err = e.toString())
+        }.getOrElse { e ->
+            ResultExec(-1, err = e.toString())
         }
     }
+
 
     fun execWithIOFuture(
         cmd: String,
@@ -147,17 +159,12 @@ object PluginService {
         useBusybox: Boolean = true,
         standAlone: Boolean = false,
         hideStderr: Boolean = true
-    ): CompletableFuture<Result> {
-        val future = CompletableFuture<Result>()
+    ): CompletableFuture<ResultExec> {
+        val future = CompletableFuture<ResultExec>()
+        val scope = CoroutineScope(Dispatchers.IO)
 
-        Thread {
-            try {
-//                val process = Axeron.newProcess(
-//                    if (useBusybox) arrayOf(
-//                        "sh", "-c", "$BUSYBOX sh -c \"$0\"", cmd
-//                    ) else arrayOf("sh", "-c", cmd)
-//                )
-
+        scope.launch {
+            runCatching {
                 val process = Axeron.newProcess(
                     arrayOf("sh"),
                     Axeron.getEnvironment(),
@@ -165,21 +172,21 @@ object PluginService {
                 )
 
                 process.outputStream.use { os ->
-                    when {
-                        useBusybox && !standAlone -> os.write("$BUSYBOX sh -c \"$cmd\"\n".toByteArray())
-                        useBusybox && standAlone -> os.write("$BUSYBOX sh -o standalone -c \"$cmd\"\n".toByteArray())
-                        else -> os.write("sh -c \"$cmd\"\n".toByteArray())
+                    val cmdLine = when {
+                        useBusybox && !standAlone -> "$BUSYBOX sh -c \"$cmd\"\n"
+                        useBusybox && standAlone -> "$BUSYBOX sh -o standalone -c \"$cmd\"\n"
+                        else -> "sh -c \"$cmd\"\n"
                     }
+                    os.write(cmdLine.toByteArray())
                     os.flush()
                 }
 
                 val builderOut = StringBuilder()
-                val builderError = StringBuilder()
+                val builderErr = StringBuilder()
                 val stdout = process.inputStream
                 val stderr = process.errorStream
 
-                // Thread stdout
-                Thread {
+                launch {
                     val buf = ByteArray(4096)
                     generateSequence { stdout.read(buf).takeIf { it > 0 } }
                         .forEach { len ->
@@ -187,35 +194,35 @@ object PluginService {
                             onStdout(chunk)
                             builderOut.append(chunk)
                         }
-                }.start()
+                }
 
-                // Thread stderr
-                Thread {
+                launch {
                     val buf = ByteArray(4096)
                     generateSequence { stderr.read(buf).takeIf { it > 0 } }
                         .forEach { len ->
                             val chunk = String(buf, 0, len)
                             onStderr(chunk)
-                            builderError.append(chunk)
+                            builderErr.append(chunk)
                         }
-                }.start()
+                }
 
                 val exitCode = process.waitFor()
-                val result = Result(
-                    exitCode,
-                    builderOut.toString(),
-                    if (!hideStderr) builderError.toString() else ""
+                process.destroy()
+
+                val result = ResultExec(
+                    code = exitCode,
+                    out = builderOut.toString(),
+                    err = if (!hideStderr) builderErr.toString() else ""
                 )
 
                 future.complete(result)
-            } catch (e: Exception) {
-                future.complete(Result(-1, err = e.toString()))
+            }.getOrElse {
+                future.completeExceptionally(it)
             }
-        }.start()
+        }
 
         return future
     }
-
 
     fun togglePlugin(dirId: String, enable: Boolean): Boolean {
         val path = "$PLUGINDIR/$dirId"
@@ -265,72 +272,56 @@ object PluginService {
     }
 
     @JvmStatic
-    fun startInitService() {
-        startInitService {}
+    fun igniteService() {
+        CoroutineScope(Dispatchers.IO).launch { igniteSuspendService() }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    @JvmStatic
-    fun startInitService(onComplete: () -> Unit) {
-        GlobalScope.launch(Dispatchers.IO) {
-            if (AxeronService.VERSION_CODE > Axeron.getInfo().versionCode) {
-                Log.i(
-                    Axeron.TAG,
-                    "Updating.. ${Axeron.getInfo().versionCode} > ${AxeronService.VERSION_CODE}"
-                )
-                return@launch
-            }
+    suspend fun igniteSuspendService(): Boolean = withContext(Dispatchers.IO) {
+        if (AxeronService.VERSION_CODE > Axeron.getInfo().versionCode) {
+            Log.i(
+                TAG,
+                "Updating.. ${Axeron.getInfo().versionCode} < ${AxeronService.VERSION_CODE}"
+            )
+            return@withContext false
+        }
 
-            if (Axeron.isFirstInit()) {
-                Log.i(Axeron.TAG, "First Init: Removing old bin")
-                removeScripts()
-                removeBusybox()
-            }
+        if (Axeron.isFirstInit()) {
+            Log.i(TAG, "First Init: Removing old bin")
+            removeScripts()
+            removeBusybox()
+        }
 
+        if (!ensureBusybox()) return@withContext false
+        if (!ensureScripts()) return@withContext false
 
-            if (!ensureBusybox()) return@launch
-            if (!ensureScripts()) return@launch
+        val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val cmd =
+            "$AXERONBIN/init_services.sh ${prefs.getBoolean("enable_developer_options", false)}"
+        Log.d(TAG, "Start Init Service: $cmd")
 
-            val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
-            val cmd = "$AXERONBIN/init_services.sh ${prefs.getBoolean("enable_developer_options", false)}"
-            Log.d(TAG, "Start Init Service: $cmd")
-            try {
-                val process = Axeron.newProcess(
-                    arrayOf("sh", "-c", cmd),
-                    Axeron.getEnvironment(),
-                    null
-                )
+        return@withContext runCatching {
+            val process = Axeron.newProcess(
+                arrayOf(BUSYBOX, "sh", "-c", cmd),
+                Axeron.getEnvironment(),
+                null
+            )
 
-                val stdout = StringBuilder()
-                val stderr = StringBuilder()
+            val stdout = process.inputStream.bufferedReader().readText()
+            val stderr = process.errorStream.bufferedReader().readText()
 
-                BufferedReader(InputStreamReader(process.inputStream)).use { brOut ->
-                    var line: String?
-                    while (brOut.readLine().also { line = it } != null) {
-                        stdout.appendLine(line)
-                    }
-                }
+            val exitCode = process.waitFor()
+            process.destroy()
 
-                BufferedReader(InputStreamReader(process.errorStream)).use { brErr ->
-                    var line: String?
-                    while (brErr.readLine().also { line = it } != null) {
-                        stderr.appendLine(line)
-                    }
-                }
+            if (stdout.isNotEmpty()) Log.i(TAG, "STDOUT:\n$stdout")
+            if (stderr.isNotEmpty()) Log.e(TAG, "STDERR:\n$stderr")
 
-                val exitCode = process.waitFor()
-                process.destroy()
-
-                if (stdout.isNotEmpty()) Log.i(TAG, "STDOUT:\n$stdout")
-                if (stderr.isNotEmpty()) Log.e(TAG, "STDERR:\n$stderr")
-
-                check(exitCode == 0) { "sh exited with $exitCode" }
-                onComplete()
-            } catch (e: Throwable) {
-                Log.e("StartService", "Error: ${e.message}", e)
-            }
+            exitCode == 0
+        }.getOrElse {
+            Log.e("StartService", "Error: ${it.message}", it)
+            false
         }
     }
+
 
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun removeScripts() {
@@ -385,7 +376,7 @@ object PluginService {
         return true
     }
 
-    private fun ensureBusybox(): Boolean {
+    fun ensureBusybox(): Boolean {
         return try {
             val dstFile = File(AXERONBIN, "busybox")
             if (axFS.exists(dstFile.absolutePath)) return true
@@ -394,9 +385,8 @@ object PluginService {
                 axFS.mkdirs(dstFile.parent)
             }
 
-            val libPath = application.applicationInfo.nativeLibraryDir + "/libbusybox.so"
             val cmd =
-                "cp $libPath ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}"
+                "cp $BUSYBOX ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}"
             val result = execWithIO(cmd, useBusybox = false, hideStderr = false)
 
             if (result.isSuccess()) {
