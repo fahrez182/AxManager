@@ -30,14 +30,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -45,9 +41,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.dergoogler.mmrl.ui.component.HtmlText
 import com.frb.axmanager.R
-import com.frb.axmanager.ui.component.MaterialDialog
+import com.frb.axmanager.ui.component.ConfirmResult
+import com.frb.axmanager.ui.component.rememberConfirmDialog
 import com.frb.axmanager.ui.util.ClipboardUtil
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
@@ -55,6 +51,7 @@ import com.frb.engine.utils.Starter
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.launch
 import rikka.compatibility.DeviceCompatibility
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -151,7 +148,12 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
         adbViewModel.startAdb(context, true)
     }
 
-    var showDialogDeveloper by remember { mutableStateOf(false) }
+    val dialogDeveloper = rememberConfirmDialog()
+    val scope = rememberCoroutineScope()
+
+    val uriHandler = LocalUriHandler.current
+    val stepByStepUrl =
+        "https://fahrez182.github.io/AxManager/guide/user-manual.html#start-with-wireless-debugging"
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(
@@ -178,7 +180,21 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
 
             Button(
                 onClick = {
-                    showDialogDeveloper = true
+                    scope.launch {
+                        val confirmResult = dialogDeveloper.awaitConfirm(
+                            title = "Enable Wireless Debugging",
+                            content = context.getString(R.string.enable_wireless_debugging_message),
+                            confirm = "Developer",
+                            dismiss = "Cancel",
+                            neutral = "Step-by-Step"
+                        )
+                        if (confirmResult == ConfirmResult.Confirmed) {
+                            adbViewModel.launchDevSettings = true
+                        }
+                        if (confirmResult == ConfirmResult.Neutral) {
+                            uriHandler.openUri(stepByStepUrl)
+                        }
+                    }
                 }
             ) {
                 Icon(
@@ -245,49 +261,6 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                 }
 
             }
-
-            if (showDialogDeveloper) {
-                val uriHandler = LocalUriHandler.current
-                val stepByStepUrl =
-                    "https://fahrez182.github.io/AxManager/guide/user-manual.html#start-with-wireless-debugging"
-
-                MaterialDialog(
-                    onDismissRequest = { showDialogDeveloper = false },
-                    title = { Text("Enable Wireless Debugging") },
-                    text = {
-                        Text(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            text = stringResource(R.string.enable_wireless_debugging_message)
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            val intent =
-                                Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                                    putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-                                }
-                            launcherDeveloper.launch(intent)
-                            showDialogDeveloper = false
-                        }
-                        ) {
-                            Text("Developer")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDialogDeveloper = false }) {
-                            Text("Cancel")
-                        }
-                    },
-                    neutralButton = {
-                        TextButton(onClick = {
-                            uriHandler.openUri(stepByStepUrl)
-                            showDialogDeveloper = false
-                        }) {
-                            Text("Step-by-Step")
-                        }
-                    }
-                )
-            }
         }
     }
 }
@@ -323,11 +296,40 @@ fun ComputerCard() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            var showDialog by remember { mutableStateOf(false) }
+            val dialogDeveloper = rememberConfirmDialog()
+            val scope = rememberCoroutineScope()
 
             Button(
                 onClick = {
-                    showDialog = true
+
+                    scope.launch {
+                        val confirmResult = dialogDeveloper.awaitConfirm(
+                            title = "View Command",
+                            content = context.getString(R.string.view_command_message, Starter.adbCommand),
+                            markdown = true,
+                            confirm = "Copy",
+                            dismiss = "Cancel",
+                            neutral = "Send"
+                        )
+                        if (confirmResult == ConfirmResult.Confirmed) {
+                            if (ClipboardUtil.put(context, Starter.adbCommand)) {
+                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        if (confirmResult == ConfirmResult.Neutral) {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, Starter.adbCommand)
+                            }
+
+                            shareLauncher.launch(
+                                Intent.createChooser(
+                                    intent,
+                                    "Share Command"
+                                )
+                            )
+                        }
+                    }
                 }
             ) {
                 Icon(
@@ -338,55 +340,6 @@ fun ComputerCard() {
                     contentDescription = "Command"
                 )
                 Text("View Command")
-            }
-
-            if (showDialog) {
-                MaterialDialog(
-                    onDismissRequest = { showDialog = false },
-                    title = { Text("View Command", fontWeight = FontWeight.Bold) },
-                    text = {
-                        HtmlText(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            text = stringResource(R.string.view_command_message, Starter.adbCommand)
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            if (ClipboardUtil.put(context, Starter.adbCommand)) {
-                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-                            }
-                            showDialog = false
-                        }
-                        ) {
-                            Text("Copy")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDialog = false }) {
-                            Text("Cancel")
-                        }
-                    },
-                    neutralButton = {
-                        TextButton(
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, Starter.adbCommand)
-                                }
-
-                                shareLauncher.launch(
-                                    Intent.createChooser(
-                                        intent,
-                                        "Share Command"
-                                    )
-                                )
-                                showDialog = false
-                            }
-                        ) {
-                            Text("Send")
-                        }
-                    }
-                )
             }
         }
     }
