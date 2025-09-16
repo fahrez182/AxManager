@@ -151,7 +151,7 @@ public class Axeron {
                     @Override
                     public void bindApplication(Bundle data) {
                         Log.d(TAG, "bindApplication");
-                        PluginService.startInitService();
+                        PluginService.igniteService();
                     }
                 });
             } catch (RemoteException e) {
