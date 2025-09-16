@@ -61,6 +61,16 @@ public class AxeronFileService implements Parcelable {
         CACHE.add(this);
     }
 
+    private IFileService getFS() {
+        if (fileService != null) return fileService;
+        try {
+            fileService = Axeron.requireService().getFileService();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
+        return fileService;
+    }
+
     public static String getRelativePath(String rootPath, String fullPath) {
         return new File(rootPath).toURI().relativize(new File(fullPath).toURI()).getPath();
     }
@@ -87,16 +97,6 @@ public class AxeronFileService implements Parcelable {
         } catch (IOException | RemoteException e) {
             return null;
         }
-    }
-
-    private IFileService getFS() {
-        if (fileService != null) return fileService;
-        try {
-            fileService = Axeron.requireService().getFileService();
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        }
-        return fileService;
     }
 
     public FileInputStream setFileInputStream(String source) throws RemoteException {
@@ -169,12 +169,8 @@ public class AxeronFileService implements Parcelable {
 
                 if (!removeParent && Objects.equals(rootPath, folderPath)) return deleted;
 
-//                Log.i(TAG, "FolderChecked: " + checkedFolders);
                 if (checkedFolders.contains(folderPath)) {
                     getFS().delete(folderPath);
-//                    if (!) {
-//                        Log.e(TAG, "Gagal menghapus checked folder: " + folderPath);
-//                    }
                     return deleted;
                 }
 
