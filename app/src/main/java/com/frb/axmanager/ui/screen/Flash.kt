@@ -52,6 +52,7 @@ import com.frb.axmanager.ui.component.AxSnackBarHost
 import com.frb.axmanager.ui.component.ConfirmResult
 import com.frb.axmanager.ui.component.KeyEventBlocker
 import com.frb.axmanager.ui.component.rememberConfirmDialog
+import com.frb.axmanager.ui.component.rememberLoadingDialog
 import com.frb.axmanager.ui.theme.GREEN
 import com.frb.axmanager.ui.theme.ORANGE
 import com.frb.axmanager.ui.theme.RED
@@ -114,7 +115,7 @@ fun FlashScreen(
     flashIt: FlashIt,
     finishIntent: Boolean = false
 ) {
-    val pluginsViewModel = viewModelGlobal.pluginsViewModel
+    val pluginViewModel = viewModelGlobal.pluginViewModel
     val context = LocalContext.current
     val activity = context.findActivity()
 
@@ -158,7 +159,9 @@ fun FlashScreen(
             val result = confirmDialog.awaitConfirm(
                 title = confirmTitle,
                 content = confirmContent,
-                markdown = true
+                markdown = true,
+                confirm = "Install",
+                dismiss = "Cancel"
             )
             if (result == ConfirmResult.Confirmed) {
                 confirmed = true
@@ -219,7 +222,7 @@ fun FlashScreen(
             TopBar(
                 flashing,
                 onBack = dropUnlessResumed {
-                    pluginsViewModel.markNeedRefresh()
+                    pluginViewModel.markNeedRefresh()
                     navigator.popBackStack()
                     if (finishIntent) activity?.finish()
                 },
@@ -250,16 +253,17 @@ fun FlashScreen(
             )
         },
         floatingActionButton = {
+            val reigniteLoading = rememberLoadingDialog()
             if (flashIt is FlashIt.FlashPlugins && (flashing == FlashingStatus.SUCCESS)) {
                 // Reboot button for modules flashing
                 ExtendedFloatingActionButton(
                     onClick = {
                         scope.launch {
-                            withContext(Dispatchers.IO) {
-                                PluginService.startInitService()
+                            reigniteLoading.withLoading {
+                                PluginService.igniteSuspendService()
+                                navigator.popBackStack()
+                                if (finishIntent) activity?.finish()
                             }
-                            navigator.popBackStack()
-                            if (finishIntent) activity?.finish()
                         }
                     },
                     icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
@@ -361,7 +365,7 @@ private fun TopBar(
                     FlashingStatus.FAILED -> "Failed"
                 },
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 color = when (status) {
                     FlashingStatus.FLASHING -> ORANGE
                     FlashingStatus.SUCCESS -> GREEN
