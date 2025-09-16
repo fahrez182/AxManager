@@ -1,7 +1,5 @@
 package com.frb.engine.adb
 
-//import moe.shizuku.manager.R
-//import moe.shizuku.manager.ShizukuSettings
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
@@ -19,8 +17,8 @@ import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
 import com.frb.engine.R
 import com.frb.engine.core.AxeronSettings
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import rikka.core.ktx.unsafeLazy
 import java.net.ConnectException
@@ -157,7 +155,7 @@ class AdbPairingService : Service() {
     }
 
     private fun onInput(code: String, host: String, port: Int): Notification {
-        GlobalScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
 
             val key = try {
                 AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
