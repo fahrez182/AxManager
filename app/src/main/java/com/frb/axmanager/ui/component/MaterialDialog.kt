@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -97,6 +100,8 @@ fun MaterialDialog(
 @Composable
 fun MaterialBottomSheet(
     onDismissRequest: () -> Unit,
+    sheetState: SheetState = rememberModalBottomSheetState(),
+    dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
     title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
     confirmButton: @Composable () -> Unit,
@@ -105,8 +110,10 @@ fun MaterialBottomSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = { onDismissRequest() },
+        sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        dragHandle = dragHandle
     ) {
         Column(
             modifier = Modifier
