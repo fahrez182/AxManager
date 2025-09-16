@@ -6,9 +6,9 @@ executor() {
     local tag="$1"
     shift
     if [ "$DEBUG" = "true" ]; then
-        exec setsid "$@" 2>&1 | log -t "$tag"
+        exec busybox setsid "$@" 2>&1 | log -t "$tag"
     else
-        exec setsid "$@" >/dev/null 2>&1
+        exec busybox setsid "$@" >/dev/null 2>&1
     fi
 }
 
@@ -86,6 +86,7 @@ stop_plugin() {
     if pgrep -f "$name" >/dev/null 2>&1; then
         pkill -f "$name"
     fi
+    setprop "log.tag.service.$name" "-1"
 }
 
 for plugin_update in "$PLUGINS_UPDATE_DIR"/*; do
@@ -124,8 +125,8 @@ for plugin in "$PLUGINS_DIR"/*; do
     }
 
     pid=$(getprop "log.tag.service.$NAME")
-    # shellcheck disable=SC2235
-    if ( [ -n "$pid" ] && [ -d "/proc/$pid" ] ) || pgrep -f "$NAME" >/dev/null 2>&1; then
+    pid=${pid:-"-1"}
+    if [ "$pid" != "-1" ] || [ -d "/proc/$pid" ] || pgrep -f "$NAME" >/dev/null 2>&1; then
         echo "- $NAME:$pid is already running, skip."
         continue
     fi
