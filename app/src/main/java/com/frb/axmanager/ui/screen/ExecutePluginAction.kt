@@ -42,7 +42,7 @@ import androidx.lifecycle.compose.dropUnlessResumed
 import com.frb.axmanager.ui.component.AxSnackBarHost
 import com.frb.axmanager.ui.component.KeyEventBlocker
 import com.frb.axmanager.ui.util.LocalSnackbarHost
-import com.frb.axmanager.ui.viewmodel.PluginsViewModel
+import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
 import com.ramcosta.composedestinations.annotation.Destination
@@ -60,7 +60,7 @@ import java.util.Locale
 @Composable
 fun ExecutePluginActionScreen(
     navigator: DestinationsNavigator,
-    plugin: PluginsViewModel.PluginInfo
+    plugin: PluginViewModel.PluginInfo
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -92,7 +92,7 @@ fun ExecutePluginActionScreen(
             val pluginPath = "/data/local/tmp/AxManager/plugins/${plugin.dirId}"
             val pluginBin = "$pluginPath/system/bin"
             val checkBin = "[ -d \"$pluginBin\" ] && [ -n \"$(ls -A \"$pluginBin\" 2>/dev/null)\" ]"
-            val cmd = "$checkBin && PATH=\$PATH:$pluginBin; $pluginPath/action.sh"
+            val cmd = "$checkBin && PATH=\$PATH:$pluginBin; cd $pluginPath; sh ./action.sh; local RES=$?; cd /; exit \$RES"
             PluginService.execWithIO(
                 cmd = cmd,
                 onStdout = {
@@ -195,7 +195,7 @@ private fun TopBar(isActionRunning: Boolean, onBack: () -> Unit = {}, onSave: ()
             Text(
                 text = "Action",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
             )
         },
         navigationIcon = {
