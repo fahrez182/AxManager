@@ -47,7 +47,7 @@ import com.frb.axmanager.ui.theme.AxManagerTheme
 import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
-import com.frb.axmanager.ui.viewmodel.PluginsViewModel
+import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.client.Axeron
 import com.frb.engine.implementation.AxeronInfo
@@ -58,7 +58,6 @@ import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.dependency
 import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
@@ -88,7 +87,7 @@ fun MainScreen() {
 
     val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
     val adbViewModel: AdbViewModel = viewModel<AdbViewModel>()
-    val pluginsViewModel: PluginsViewModel = viewModel<PluginsViewModel>()
+    val pluginsViewModel: PluginViewModel = viewModel<PluginViewModel>()
 
     DisposableEffect(Unit) {
 
@@ -131,7 +130,6 @@ fun MainScreen() {
 
     val showBottomBar = when (currentDestination?.route) {
         ActivateScreenDestination.route -> false // Hide for Activate
-        QuickShellScreenDestination.route -> false // Hide for QuickShell
         FlashScreenDestination.route -> false // Hide for Flash
         ExecutePluginActionScreenDestination.route -> false // Hide for ExecutePluginAction
         else -> true
@@ -208,7 +206,7 @@ fun BottomBar(
                             }
                         },
                         icon = {
-                            if (destination == BottomBarDestination.Plugins && moduleUpdateCount > 0) {
+                            if (destination == BottomBarDestination.Plugin && moduleUpdateCount > 0) {
                                 BadgedBox(badge = { Badge { Text(moduleUpdateCount.toString()) } }) {
                                     if (isCurrentDestOnBackStack) {
                                         Icon(
