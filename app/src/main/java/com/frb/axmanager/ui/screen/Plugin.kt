@@ -16,7 +16,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedCard
@@ -52,6 +53,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -80,21 +82,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.dergoogler.mmrl.ui.component.LabelItem
-import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.frb.axmanager.axApp
 import com.frb.axmanager.ui.component.AxSnackBarHost
 import com.frb.axmanager.ui.component.ConfirmResult
+import com.frb.axmanager.ui.component.ExtraLabel
+import com.frb.axmanager.ui.component.ExtraLabelDefaults
 import com.frb.axmanager.ui.component.SearchAppBar
 import com.frb.axmanager.ui.component.rememberConfirmDialog
 import com.frb.axmanager.ui.component.rememberLoadingDialog
 import com.frb.axmanager.ui.util.DownloadListener
 import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.util.download
-import com.frb.axmanager.ui.viewmodel.PluginsViewModel
+import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.axmanager.ui.webui.WebUIActivity
 import com.frb.engine.client.Axeron
@@ -107,19 +110,20 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun PluginsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
+fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     val context = LocalContext.current
     val snackBarHost = LocalSnackbarHost.current
-    val pluginsViewModel = viewModelGlobal.pluginsViewModel
+    val pluginViewModel = viewModelGlobal.pluginViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    LaunchedEffect(Unit) {
-        if (pluginsViewModel.plugins.isEmpty() || pluginsViewModel.isNeedRefresh) {
-            pluginsViewModel.fetchModuleList()
+    LaunchedEffect(Unit, pluginViewModel.plugins, pluginViewModel.isNeedRefresh) {
+        if (pluginViewModel.plugins.isEmpty() || pluginViewModel.isNeedRefresh) {
+            pluginViewModel.fetchModuleList()
         }
     }
 
@@ -149,22 +153,22 @@ fun PluginsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGl
 
     val webUILauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
-    ) { pluginsViewModel.fetchModuleList() }
+    ) { pluginViewModel.fetchModuleList() }
 
     Scaffold(
         topBar = {
             SearchAppBar(
                 title = {
                     Text(
-                        text = "Plugins",
+                        text = "Plugin",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 },
                 searchLabel = "Search Plugins",
-                searchText = pluginsViewModel.search,
-                onSearchTextChange = { pluginsViewModel.search = it },
-                onClearClick = { pluginsViewModel.search = "" },
+                searchText = pluginViewModel.search,
+                onSearchTextChange = { pluginViewModel.search = it },
+                onClearClick = { pluginViewModel.search = "" },
                 scrollBehavior = scrollBehavior,
                 windowInsets = WindowInsets(top = 0)
             )
@@ -201,11 +205,11 @@ fun PluginsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGl
 
                     if (uris.isEmpty()) return@rememberLauncherForActivityResult
 
-                    pluginsViewModel.updateZipUris(uris)
+                    pluginViewModel.updateZipUris(uris)
 
                     navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(uris)))
-                    pluginsViewModel.clearZipUris()
-                    pluginsViewModel.markNeedRefresh()
+                    pluginViewModel.clearZipUris()
+                    pluginViewModel.markNeedRefresh()
                 }
 
                 ExtendedFloatingActionButton(
@@ -227,10 +231,8 @@ fun PluginsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGl
     ) { paddingValues ->
         PluginList(
             navigator = navigator,
-            viewModel = pluginsViewModel,
-            modifier = Modifier
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            boxModifier = Modifier.padding(paddingValues),
+            viewModel = pluginViewModel,
+            modifier = Modifier.padding(paddingValues),
             onInstallModule = {
                 navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(listOf(it))))
             },
@@ -253,11 +255,10 @@ fun PluginsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGl
 @Composable
 fun PluginList(
     navigator: DestinationsNavigator,
-    viewModel: PluginsViewModel,
+    viewModel: PluginViewModel,
     modifier: Modifier,
-    boxModifier: Modifier,
     onInstallModule: (Uri) -> Unit,
-    onClickModule: (plugin: PluginsViewModel.PluginInfo) -> Unit,
+    onClickModule: (plugin: PluginViewModel.PluginInfo) -> Unit,
     context: Context,
     snackBarHost: SnackbarHostState,
     listState: LazyListState
@@ -271,7 +272,7 @@ fun PluginList(
     var expandedPluginId by rememberSaveable { mutableStateOf<String?>(null) }
 
     suspend fun onModuleUpdate(
-        plugin: PluginsViewModel.PluginInfo,
+        plugin: PluginViewModel.PluginInfo,
         changelogUrl: String,
         downloadUrl: String,
         fileName: String,
@@ -312,10 +313,11 @@ fun PluginList(
 
         // changelog is not empty, show it and wait for confirm
         val confirmResult = confirmDialog.awaitConfirm(
-            changelogText,
+            title = changelogText,
             content = changelog,
             markdown = true,
             confirm = updateText,
+            dragHandle = true,
         )
 
         if (confirmResult != ConfirmResult.Confirmed) {
@@ -341,7 +343,7 @@ fun PluginList(
         }
     }
 
-    suspend fun onModuleUninstall(plugin: PluginsViewModel.PluginInfo) {
+    suspend fun onModuleUninstall(plugin: PluginViewModel.PluginInfo) {
         val moduleStr = "Uninstall Plugin?"
         val uninstall = "Uninstall"
         val cancel = "Cancel"
@@ -379,19 +381,9 @@ fun PluginList(
         } else {
             null
         }
-//        val result = snackBarHost.showSnackbar(
-//            message = message,
-//            actionLabel = actionLabel,
-//            duration = SnackbarDuration.Long
-//        )
-//        if (result == SnackbarResult.ActionPerformed) {
-//            PluginService.startInitService {
-//                viewModel.fetchModuleList()
-//            }
-//        }
     }
 
-    suspend fun onModuleRestore(plugin: PluginsViewModel.PluginInfo) {
+    suspend fun onModuleRestore(plugin: PluginViewModel.PluginInfo) {
         val moduleStr = "Restore Plugin?"
         val restore = "Restore"
         val cancel = "Cancel"
@@ -418,18 +410,10 @@ fun PluginList(
         if (success) {
             viewModel.fetchModuleList()
         }
-//        val message = if (success) {
-//            successRestore.format(plugin.name)
-//        } else {
-//            failedRestore.format(plugin.name)
-//        }
-//        snackBarHost.showSnackbar(
-//            message = message,
-//            duration = SnackbarDuration.Long
-//        )
     }
+
     PullToRefreshBox(
-        modifier = boxModifier,
+        modifier = modifier,
         isRefreshing = viewModel.isRefreshing,
         onRefresh = {
             viewModel.fetchModuleList()
@@ -540,26 +524,33 @@ fun PluginList(
     }
 }
 
+
 @Composable
 fun PluginItem(
-    navigator: DestinationsNavigator,
-    viewModel: PluginsViewModel,
-    plugin: PluginsViewModel.PluginInfo,
+    navigator: DestinationsNavigator?,
+    viewModel: PluginViewModel?,
+    plugin: PluginViewModel.PluginInfo,
     updateUrl: String,
-    onUninstall: (PluginsViewModel.PluginInfo) -> Unit,
-    onRestore: (PluginsViewModel.PluginInfo) -> Unit,
+    onUninstall: (PluginViewModel.PluginInfo) -> Unit,
+    onRestore: (PluginViewModel.PluginInfo) -> Unit,
     onCheckChanged: (Boolean) -> Unit,
-    onUpdate: (PluginsViewModel.PluginInfo) -> Unit,
-    onClick: (PluginsViewModel.PluginInfo) -> Unit,
+    onUpdate: (PluginViewModel.PluginInfo) -> Unit,
+    onClick: (PluginViewModel.PluginInfo) -> Unit,
     expanded: Boolean,
     onExpandToggle: () -> Unit,
 ) {
+    var showExtraSetDialog by remember { mutableStateOf(false) }
+
+    PluginMoreSettings(showExtraSetDialog) {
+        showExtraSetDialog = false
+    }
+
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            .clickable(
-                onClick = onExpandToggle
+            .combinedClickable(
+                onClick = onExpandToggle,
             )
     ) {
         Box(
@@ -672,13 +663,16 @@ fun PluginItem(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
+                        val confirmDialog = rememberConfirmDialog()
+                        val reigniteLoading = rememberLoadingDialog()
+                        val scope = rememberCoroutineScope()
+
                         val moduleVersion = "Version"
                         val moduleAuthor = "Author"
                         val moduleId = "ID"
                         val moduleVersionCode = "VersionCode"
                         val moduleUpdateJson = "UpdateJson"
                         val moduleUpdateJsonEmpty = "Empty"
-//                        val updateJson = "{}"
 
                         Column(
                             modifier = Modifier.fillMaxWidth(0.8f)
@@ -687,54 +681,106 @@ fun PluginItem(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                LabelItem(
+                                ExtraLabel(
+                                    iconVector = Icons.Outlined.Tune,
                                     text = formatSize(plugin.size),
-                                    style = LabelItemDefaults.style.copy(
+                                    style = ExtraLabelDefaults.style.copy(
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                                    ),
+                                    onClick = {
+                                        showExtraSetDialog = true
+                                    }
                                 )
                                 if (plugin.update) {
-                                    LabelItem(
-                                        text = "Restart",
-                                        style = LabelItemDefaults.style.copy(
+                                    ExtraLabel(
+                                        text = "Ignite" + when {
+                                            plugin.updateInstall -> " → Install"
+                                            plugin.updateRemove -> " → Uninstall"
+                                            plugin.updateDisable -> " → Disable"
+                                            plugin.updateEnable -> " → Enable"
+                                            else -> ""
+                                        },
+                                        style = ExtraLabelDefaults.style.copy(
                                             containerColor = MaterialTheme.colorScheme.errorContainer,
                                             contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                        )
+                                        ),
+                                        onClick = {
+                                            scope.launch {
+                                                val result = confirmDialog.awaitConfirm(
+                                                    "What is Ignite?",
+                                                    content = "Ignite was a replace method of reboot in AxManager, you can ignite on Home > Reignite",
+                                                    confirm = "I understand",
+                                                    neutral = "Re-ignite now"
+                                                )
+                                                if (result == ConfirmResult.Neutral) {
+                                                    val success = reigniteLoading.withLoading {
+                                                        PluginService.igniteSuspendService()
+                                                    }
+
+                                                    if (success) {
+                                                        viewModel?.fetchModuleList()
+                                                    }
+
+                                                }
+                                            }
+
+                                        }
                                     )
+//                                    when {
+//                                        plugin.remove -> {
+//                                            ExtraLabel(
+//                                                text = "Uninstall",
+//                                                style = ExtraLabelDefaults.style.copy(
+//                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+//                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+//                                                )
+//                                            )
+//                                        }
+//                                        plugin.enabled -> {
+//                                            ExtraLabel(
+//                                                text = "Enable",
+//                                                style = ExtraLabelDefaults.style.copy(
+//                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+//                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+//                                                )
+//                                            )
+//                                        }
+//                                        !plugin.enabled -> {
+//                                            ExtraLabel(
+//                                                text = "Disable",
+//                                                style = ExtraLabelDefaults.style.copy(
+//                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+//                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+//                                                )
+//                                            )
+//                                        }
+//                                    }
                                 }
-                                if (plugin.remove) {
-                                    LabelItem(
-                                        text = "Uninstalled",
-                                        style = LabelItemDefaults.style.copy(
-                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                        )
-                                    )
-                                }
+
                                 if (updateUrl.isNotEmpty() && !plugin.remove && !plugin.update) {
-                                    LabelItem(
+                                    ExtraLabel(
                                         text = "Update",
-                                        style = LabelItemDefaults.style.copy(
+                                        style = ExtraLabelDefaults.style.copy(
                                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                                         )
                                     )
                                 }
-                                if (plugin.enabled && !plugin.remove) {
+                                if (plugin.enabled && !plugin.remove && !plugin.update) {
                                     if (plugin.hasWebUi) {
-                                        LabelItem(
+                                        ExtraLabel(
                                             text = "WebUI",
-                                            style = LabelItemDefaults.style.copy(
+                                            style = ExtraLabelDefaults.style.copy(
                                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                             )
                                         )
                                     }
                                     if (plugin.hasActionScript) {
-                                        LabelItem(
+                                        ExtraLabel(
                                             text = "Action",
-                                            style = LabelItemDefaults.style.copy(
+                                            style = ExtraLabelDefaults.style.copy(
                                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                             )
@@ -799,7 +845,7 @@ fun PluginItem(
                             horizontalArrangement = Arrangement.End,
                         ) {
                             Switch(
-                                enabled = (if (plugin.enabled) !plugin.update_disable else !plugin.update_enable) && !plugin.remove && !plugin.update_install,
+                                enabled = (if (plugin.enabled) !plugin.updateDisable else !plugin.updateEnable) && !plugin.remove && !plugin.updateInstall,
                                 checked = plugin.enabled && !plugin.remove,
                                 onCheckedChange = onCheckChanged,
                                 interactionSource = if (!plugin.hasWebUi) interactionSource else null
@@ -834,17 +880,17 @@ fun PluginItem(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (plugin.hasActionScript && !plugin.update_install) {
+                            if (plugin.hasActionScript && !plugin.updateInstall) {
                                 FilledTonalButton(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !plugin.remove && plugin.enabled && !plugin.update,
                                     onClick = {
-                                        navigator.navigate(
+                                        navigator!!.navigate(
                                             ExecutePluginActionScreenDestination(
                                                 plugin
                                             )
                                         )
-                                        viewModel.markNeedRefresh()
+                                        viewModel!!.markNeedRefresh()
                                     },
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
                                 ) {
@@ -866,7 +912,7 @@ fun PluginItem(
                                 Spacer(modifier = Modifier.weight(0.1f, true))
                             }
 
-                            if (plugin.hasWebUi && !plugin.update_install) {
+                            if (plugin.hasWebUi && !plugin.updateInstall) {
                                 FilledTonalButton(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !plugin.remove && plugin.enabled && !plugin.update,
@@ -894,7 +940,7 @@ fun PluginItem(
 
                             Spacer(modifier = Modifier.weight(1f, true))
 
-                            if (updateUrl.isNotEmpty() && !plugin.remove && !plugin.update_install) {
+                            if (updateUrl.isNotEmpty() && !plugin.remove && !plugin.updateInstall) {
                                 Button(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !plugin.update,
@@ -976,15 +1022,77 @@ fun PluginItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PluginMoreSettings(
+    showDialog: Boolean,
+    onDismissRequest: () -> Unit
+) {
+    if (showDialog) {
+        ModalBottomSheet(
+            onDismissRequest = onDismissRequest
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("On Development")
+            }
+        }
+    }
+}
+
+val dummyPlugin = PluginViewModel.PluginInfo(
+    id = "dummy",
+    name = "Dummy",
+    author = "Dummy",
+    version = "Dummy",
+    versionCode = 0,
+    description = "Dummy",
+    enabled = true,
+    update = false,
+    updateInstall = false,
+    updateRemove = false,
+    updateEnable = false,
+    updateDisable = false,
+    remove = false,
+    updateJson = "false",
+    hasWebUi = false,
+    hasActionScript = false,
+    dirId = "dummy",
+    size = 0,
+    banner = ""
+)
+
+@Preview
+@Composable
+fun ItemPreview() {
+    PluginItem(
+        navigator = null,
+        viewModel = null,
+        plugin = dummyPlugin,
+        updateUrl = "https://example.com/update",
+        onUninstall = {},
+        onRestore = {},
+        onCheckChanged = {},
+        onUpdate = {},
+        onClick = {},
+        expanded = false,
+        onExpandToggle = {}
+    )
+}
+
 fun formatSize(size: Long): String {
     if (size == 0L) return "null"
     val kb = 1024
     val mb = kb * 1024
     val gb = mb * 1024
     return when {
-        size >= gb -> String.format("%.2f GB", size.toDouble() / gb)
-        size >= mb -> String.format("%.2f MB", size.toDouble() / mb)
-        size >= kb -> String.format("%.2f KB", size.toDouble() / kb)
+        size >= gb -> String.format(Locale.getDefault(), "%.2f GB", size.toDouble() / gb)
+        size >= mb -> String.format(Locale.getDefault(), "%.2f MB", size.toDouble() / mb)
+        size >= kb -> String.format(Locale.getDefault(), "%.2f KB", size.toDouble() / kb)
         else -> "$size B"
     }
 }
