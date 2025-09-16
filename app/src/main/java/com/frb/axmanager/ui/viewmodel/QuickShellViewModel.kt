@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.AxeronNewProcess
+import com.frb.engine.client.PluginService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,18 @@ import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 
 class QuickShellViewModel : ViewModel() {
+
+    companion object {
+        fun getQuickCmd(cmd: String): Array<String> {
+            return arrayOf(
+                PluginService.BUSYBOX, "setsid", //Use setsid from busybox
+                "sh",
+                "-c",
+                "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec -a \"QuickShell\" sh -c \"$0\"",
+                cmd
+            )
+        }
+    }
 
     enum class OutputType() {
         TYPE_COMMAND,
@@ -94,7 +107,7 @@ class QuickShellViewModel : ViewModel() {
     fun runShell() {
         val cmd = commandText.text.ifBlank {
             return
-        }
+        }.replace(Regex("[^\\p{Print}\\n]"), "") //Sanitize
 
         // kalau sudah jalan → tulis command ke stdin
         if (isRunning && writer != null) {
@@ -112,16 +125,9 @@ class QuickShellViewModel : ViewModel() {
         // kalau belum jalan → buat shell baru
         launchSafely(cmd) {
             appendRaw(OutputType.TYPE_COMMAND, "[command] $cmd")
-            val execCmd = arrayOf(
-                "setsid",
-                "sh",
-                "-c",
-                "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec -a \"QuickShell\" sh -c \"$0\"",
-                cmd
-            )
 
             process = Axeron.newProcess(
-                execCmd,
+                getQuickCmd(cmd),
                 Axeron.getEnvironment(), null
             )
 
