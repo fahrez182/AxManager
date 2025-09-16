@@ -113,7 +113,7 @@ fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
             SearchAppBar(
                 title = {
                     Text(
-                        text = "Applications",
+                        text = "Application",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                     )
