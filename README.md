@@ -14,10 +14,10 @@ Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager*
   - Optional **Root execution** if the device has root access.  
 
 - ⚡ **Plugin (Unrooted Module)**  
-  Manage third-party modules with unrooted access. [Learn more](https://github.com/fahrez182/AxManager/blob/main/PLUGIN.md)  
+  Manage third-party modules with unrooted access. [Learn more](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)  
 
 - 🌐 **WebUI (Unrooted Version)**  
-  Execute shell commands with a web-based interactive interface.
+  Execute shell commands with a web-based interactive interface. [Learn More](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html#webui)
 
 ## 📱 Key Difference from Root Managers
 - 🚫 Does **not** depend on Root access.  
@@ -31,7 +31,7 @@ Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager*
 - [x] Shell Executor basic support (ADB/Non-Root).
 - [x] Auto active when use Wireless Debugging (Test)
 - [x] ~~WebUI with multi-session support.~~
-- [x] [Plugin](https://github.com/fahrez182/AxManager/blob/main/PLUGIN.md) system for third-party extensions.  
+- [x] [Plugin](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html) system for third-party extensions.  
 - [x] Developer Mode & Advanced Debugging tools.  
 - [ ] App optimization based on profiles.
 
