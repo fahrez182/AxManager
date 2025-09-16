@@ -60,7 +60,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                         Text(
                             text = "Settings",
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 },
