@@ -1,7 +1,6 @@
 package com.frb.engine.client;
 
 import android.content.pm.PackageInfo;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -16,7 +15,6 @@ import androidx.annotation.Nullable;
 import com.frb.engine.Environment;
 import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
-import com.frb.engine.adb.AdbPairingService;
 import com.frb.engine.core.Engine;
 import com.frb.engine.implementation.AxeronInfo;
 
@@ -153,9 +151,6 @@ public class Axeron {
                     @Override
                     public void bindApplication(Bundle data) {
                         Log.d(TAG, "bindApplication");
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            Engine.getApplication().startService(AdbPairingService.stopIntent(Engine.getApplication()));
-                        }
                         PluginService.startInitService();
                     }
                 });
@@ -207,7 +202,7 @@ public class Axeron {
     }
 
     public static AxeronNewProcess newProcess(@NonNull String[] cmd) {
-        return newProcess(cmd, null, null);
+        return newProcess(cmd, Axeron.getEnvironment(), null);
     }
 
     public static AxeronNewProcess newProcess(@NonNull String[] cmd, @Nullable Environment env, @Nullable String dir) {
@@ -258,9 +253,7 @@ public class Axeron {
         if (binder != null) {
             try {
                 requireService().destroy();
-            } catch (RemoteException e) {
-                Log.e(TAG, "destroy", e);
-            }
+            } catch (RemoteException ignored) {}
             binder = null;
             service = null;
             serverInfo = null;
