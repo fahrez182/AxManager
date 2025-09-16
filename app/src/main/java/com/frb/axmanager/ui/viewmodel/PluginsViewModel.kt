@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import org.json.JSONObject
 
-class PluginsViewModel : ViewModel() {
+class PluginViewModel : ViewModel() {
 
     companion object {
         const val TAG = "PluginsViewModel"
@@ -75,10 +75,10 @@ class PluginsViewModel : ViewModel() {
         val description: String,
         val enabled: Boolean,
         val update: Boolean,
-        val update_install: Boolean,
-        val update_remove: Boolean,
-        val update_enable: Boolean,
-        val update_disable: Boolean,
+        val updateInstall: Boolean,
+        val updateRemove: Boolean,
+        val updateEnable: Boolean,
+        val updateDisable: Boolean,
         val remove: Boolean,
         val updateJson: String,
         val hasWebUi: Boolean,
