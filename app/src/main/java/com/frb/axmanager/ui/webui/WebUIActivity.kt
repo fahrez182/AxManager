@@ -17,8 +17,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
-import com.frb.axmanager.ui.viewmodel.PluginsViewModel
-import com.frb.axmanager.ui.viewmodel.PluginsViewModel.Companion.convertPluginInfo
+import com.frb.axmanager.ui.viewmodel.PluginViewModel
+import com.frb.axmanager.ui.viewmodel.PluginViewModel.Companion.convertPluginInfo
 import com.frb.axmanager.ui.webui.interfaces.AxWebInterface
 import com.frb.axmanager.ui.webui.interfaces.KsuWebInterface
 import com.frb.engine.client.Axeron
@@ -30,7 +30,7 @@ class WebUIActivity : ComponentActivity() {
 
     private lateinit var ksuWebInterface: KsuWebInterface
     private lateinit var axWebInterface: AxWebInterface
-    private lateinit var plugin: PluginsViewModel.PluginInfo
+    private lateinit var plugin: PluginViewModel.PluginInfo
 
     fun erudaConsole(context: android.content.Context): String {
         return context.assets.open("js/eruda.min.js").bufferedReader().use { it.readText() }
@@ -50,11 +50,11 @@ class WebUIActivity : ComponentActivity() {
                 convertPluginInfo(Axeron.getPluginById(intent.getStringExtra("id")!!))
             } else {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableExtra("plugin", PluginsViewModel.PluginInfo::class.java)
+                    intent.getParcelableExtra("plugin", PluginViewModel.PluginInfo::class.java)
                 } else {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra("plugin")
-                } as PluginsViewModel.PluginInfo
+                } as PluginViewModel.PluginInfo
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Plugin not found", Toast.LENGTH_SHORT).show()
