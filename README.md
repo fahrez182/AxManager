@@ -5,7 +5,7 @@
 Thanks for checking it out!
 
 **AxManager** is an Android application designed to provide deeper control over apps and the system.  
-Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager** is dedicated to **ADB/Non-Root mode** — while still allowing execution with **Root access** if available.
+Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager** is dedicated to **ADB/Non-Root mode** — while still allowing execution with **Root access** if available. [Learn More](https://fahrez182.github.io/AxManager/)
 
 ## ✨ Features
 - 🖥️ **Shell Executor**  
