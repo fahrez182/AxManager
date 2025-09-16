@@ -72,7 +72,7 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     Text(
                         text = "Activate",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 },
                 navigationIcon = {
