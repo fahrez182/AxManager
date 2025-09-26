@@ -158,6 +158,7 @@ class WebUIActivity : ComponentActivity() {
                     }
                 }
             })
+            clearCache(true)
             loadUrl("ax://plugin.local/index.html")
         }
         setContentView(webView)
