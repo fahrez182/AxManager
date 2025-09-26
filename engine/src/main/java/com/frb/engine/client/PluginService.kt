@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.CompletableFuture
@@ -163,7 +164,7 @@ object PluginService {
         val future = CompletableFuture<ResultExec>()
         val scope = CoroutineScope(Dispatchers.IO)
 
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             runCatching {
                 val process = Axeron.newProcess(
                     arrayOf("sh"),
@@ -216,8 +217,8 @@ object PluginService {
                 )
 
                 future.complete(result)
-            }.getOrElse {
-                future.completeExceptionally(it)
+            }.onFailure {
+                future.complete(ResultExec(-1, err = it.toString()))
             }
         }
 
@@ -272,8 +273,8 @@ object PluginService {
     }
 
     @JvmStatic
-    fun igniteService() {
-        CoroutineScope(Dispatchers.IO).launch { igniteSuspendService() }
+    fun igniteService() = runBlocking {
+        igniteSuspendService()
     }
 
     suspend fun igniteSuspendService(): Boolean = withContext(Dispatchers.IO) {
@@ -296,7 +297,7 @@ object PluginService {
 
         val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
         val cmd =
-            "$AXERONBIN/init_services.sh ${prefs.getBoolean("enable_developer_options", false)}"
+            "$AXERONBIN/ignite_plugins.sh ${prefs.getBoolean("enable_developer_options", false)}"
         Log.d(TAG, "Start Init Service: $cmd")
 
         return@withContext runCatching {
@@ -364,7 +365,7 @@ object PluginService {
             if (axFS.exists(dstFile.absolutePath)) continue
 
             val cmd =
-                "unzip -p $BASEAPK $inPath > ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}; dos2unix ${dstFile.absolutePath}"
+                "$BUSYBOX unzip -p $BASEAPK $inPath > ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}; dos2unix ${dstFile.absolutePath}"
             val result = execWithIO(cmd, {}, {}, hideStderr = false)
 
             if (result.isSuccess()) {
