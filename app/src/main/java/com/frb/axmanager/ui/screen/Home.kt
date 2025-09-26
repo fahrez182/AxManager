@@ -104,7 +104,6 @@ import kotlinx.coroutines.withContext
 fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    viewModelGlobal.appsViewModel
     val pluginViewModel = viewModelGlobal.pluginViewModel
     val adbViewModel = viewModelGlobal.adbViewModel
 
@@ -212,7 +211,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
         ) {
             StatusCard(
                 adbViewModel = adbViewModel,
-                pluginsViewModel = pluginViewModel,
+                pluginViewModel = pluginViewModel,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (!it) {
@@ -312,7 +311,7 @@ fun LearnCard() {
 fun StatusCard(
     modifier: Modifier,
     adbViewModel: AdbViewModel,
-    pluginsViewModel: PluginViewModel,
+    pluginViewModel: PluginViewModel,
     onClick: (Boolean) -> Unit = {}
 ) {
     val axeronInfo = adbViewModel.axeronInfo
@@ -320,8 +319,7 @@ fun StatusCard(
     Log.d("AxManager", "NeedUpdate: ${axeronInfo.isNeedUpdate()}")
 
     val uriHandler = LocalUriHandler.current
-    val extraStepUrl =
-        "https://fahrez182.github.io/AxManager/guide/faq.html#start-via-wireless-debugging-start-by-connecting-to-a-computer-the-permission-of-adb-is-limited"
+    val extraStepUrl = "https://fahrez182.github.io/AxManager/guide/faq.html#start-via-wireless-debugging-start-by-connecting-to-a-computer-the-permission-of-adb-is-limited"
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
@@ -459,7 +457,7 @@ fun StatusCard(
                         Spacer(Modifier.height(16.dp))
 
                         PluginCard(
-                            pluginsViewModel, modifier = Modifier
+                            pluginViewModel, modifier = Modifier
                         )
                     }
                 }
@@ -561,8 +559,8 @@ fun WarningCard(
 }
 
 @Composable
-fun PluginCard(pluginsViewModel: PluginViewModel, modifier: Modifier) {
-    val count = pluginsViewModel.plugins.size
+fun PluginCard(pluginViewModel: PluginViewModel, modifier: Modifier) {
+    val count = pluginViewModel.plugins.size
     ElevatedCard(
         modifier = Modifier.width(200.dp),
     ) {
