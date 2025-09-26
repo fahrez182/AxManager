@@ -165,6 +165,7 @@ install_plugin() {
 
   rm -rf "$MODPATH_UPDATE"
   mkdir -p "$MODPATH_UPDATE"
+  touch "$MODPATH"/update
   touch "$MODPATH_UPDATE"/update_install
   
   ui_print "- Done"
