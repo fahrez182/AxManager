@@ -71,7 +71,7 @@ start_plugin() {
         if [ "$(getprop "log.tag.props.$name" 2>/dev/null)" != "1" ]; then
             [ -f "$sprop" ] && system_prop "$name" "$sprop" && setprop "log.tag.props.$name" 1
         fi
-        service "$name" "$servicef" "$bin"
+        [ -f "$servicef" ] && service "$name" "$servicef" "$bin"
     ) &
 }
 
@@ -103,6 +103,7 @@ for plugin in "$PLUGINS_DIR"/*; do
     SPROP="$plugin/system.prop"
     SERVICE="$plugin/service.sh"
     UNINSTALL="$plugin/uninstall.sh"
+    UPDATE="$plugin/update"
     DISABLE="$plugin/disable"
     REMOVE="$plugin/remove"
 
@@ -119,16 +120,17 @@ for plugin in "$PLUGINS_DIR"/*; do
         continue
     fi
 
-    [ ! -f "$SERVICE" ] && {
-        echo "- Service not available for $NAME, skip."
-        continue
-    }
-
-    pid=$(getprop "log.tag.service.$NAME")
-    pid=${pid:-"-1"}
-    if [ "$pid" != "-1" ] || [ -d "/proc/$pid" ] || pgrep -f "$NAME" >/dev/null 2>&1; then
-        echo "- $NAME:$pid is already running, skip."
-        continue
+    if [ -f "$UPDATE" ]; then
+        echo "- Updating $NAME"
+        stop_plugin "$NAME" "$SERVICE"
+        rm -rf "$UPDATE"
+    else
+        pid=$(getprop "log.tag.service.$NAME")
+        pid=${pid:-"-1"}
+        if [ "$pid" != "-1" ] || [ -d "/proc/$pid" ] || pgrep -f "$NAME" >/dev/null 2>&1; then
+            echo "- $NAME:$pid is already running, skip."
+            continue
+        fi
     fi
 
     echo "- Starting $NAME"
