@@ -17,8 +17,8 @@ android {
         applicationId = "com.frb.axmanager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 12000
-        versionName = "1.2.0"
+        versionCode = 12100
+        versionName = "1.2.1"
 
         externalNativeBuild {
             cmake {
