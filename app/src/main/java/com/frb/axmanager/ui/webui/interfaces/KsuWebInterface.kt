@@ -21,6 +21,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -36,21 +40,25 @@ class KsuWebInterface(
     private val modDir: String
 ) {
 
-    val PLUGINBIN="${modDir}/system/bin"
+    val PLUGINBIN
+        get() = "${modDir}/system/bin"
 
     @JavascriptInterface
     fun exec(cmd: String): String {
-        return try {
-            val result = PluginService.execWithIO(
-                cmd = cmd,
-                useBusybox = false,
-                hideStderr = false
-            )
-            if (result.err.isNotBlank()) "${result.out}\n${result.err}" else result.out
-        } catch (e: Exception) {
-            e.toString()
+        return runCatching {
+            runBlocking(Dispatchers.IO) {
+                val result = PluginService.execWithIO(
+                    cmd = cmd,
+                    useBusybox = false,
+                    hideStderr = false
+                )
+                if (result.err.isNotBlank()) "${result.out}\n${result.err}" else result.out
+            }
+        }.getOrElse {
+            it.toString()
         }
     }
+
 
     @JavascriptInterface
     fun exec(cmd: String, callbackFunc: String) {
@@ -81,84 +89,88 @@ class KsuWebInterface(
         options: String?,
         callbackFunc: String
     ) {
-        val finalCommand = StringBuilder()
-        processOptions(finalCommand, options)
-        finalCommand.append(cmd)
+        CoroutineScope(Dispatchers.IO).launch {
+            val finalCommand = StringBuilder()
+            processOptions(finalCommand, options)
+            finalCommand.append(cmd)
 
-        val result = PluginService.execWithIO(
-            cmd = finalCommand.toString(),
-            useBusybox = false,
-            hideStderr = false
-        )
+            val result = PluginService.execWithIO(
+                cmd = finalCommand.toString(),
+                useBusybox = false,
+                hideStderr = false
+            )
 
-        val jsCode =
-            "javascript: (function() { try { ${callbackFunc}(${result.code}, ${
-                JSONObject.quote(
-                    result.out
-                )
-            }, ${JSONObject.quote(result.err)}); } catch(e) { console.error(e); } })();"
-        webView.post {
-            webView.loadUrl(jsCode)
+            val jsCode =
+                "javascript: (function() { try { ${callbackFunc}(${result.code}, ${
+                    JSONObject.quote(
+                        result.out
+                    )
+                }, ${JSONObject.quote(result.err)}); } catch(e) { console.error(e); } })();"
+            webView.post {
+                webView.loadUrl(jsCode)
+            }
         }
     }
 
     @JavascriptInterface
     fun spawn(command: String, args: String, options: String?, callbackFunc: String) {
-        val finalCommand = StringBuilder()
+        CoroutineScope(Dispatchers.IO).launch {
+            val finalCommand = StringBuilder()
 
-        processOptions(finalCommand, options)
+            processOptions(finalCommand, options)
 
-        if (!TextUtils.isEmpty(args)) {
-            finalCommand.append(command).append(" ")
-            JSONArray(args).let { argsArray ->
-                for (i in 0 until argsArray.length()) {
-                    finalCommand.append(argsArray.getString(i))
-                    finalCommand.append(" ")
+            if (!TextUtils.isEmpty(args)) {
+                finalCommand.append(command).append(" ")
+                JSONArray(args).let { argsArray ->
+                    for (i in 0 until argsArray.length()) {
+                        finalCommand.append(argsArray.getString(i))
+                        finalCommand.append(" ")
+                    }
+                }
+            } else {
+                finalCommand.append(command)
+            }
+
+            val emitData = fun(name: String, data: String) {
+                val jsCode =
+                    "javascript: (function() { try { ${callbackFunc}.${name}.emit('data', ${
+                        JSONObject.quote(
+                            data
+                        )
+                    }); } catch(e) { console.error('emitData', e); } })();"
+                webView.post {
+                    webView.loadUrl(jsCode)
                 }
             }
-        } else {
-            finalCommand.append(command)
-        }
 
-        val emitData = fun(name: String, data: String) {
-            val jsCode =
-                "javascript: (function() { try { ${callbackFunc}.${name}.emit('data', ${
-                    JSONObject.quote(
-                        data
-                    )
-                }); } catch(e) { console.error('emitData', e); } })();"
-            webView.post {
-                webView.loadUrl(jsCode)
-            }
-        }
-
-        val future = PluginService.execWithIOFuture(
-            cmd = finalCommand.toString(),
-            onStdout = { emitData("stdout", it) },
-            onStderr = { emitData("stderr", it) },
-            useBusybox = false,
-            hideStderr = false
-        )
-        val completableFuture = CompletableFuture.supplyAsync {
-            future.get()
-        }
-
-        completableFuture.thenAccept { result ->
-            val emitExitCode =
-                "javascript: (function() { try { ${callbackFunc}.emit('exit', ${result.code}); } catch(e) { console.error(`emitExit error: \${e}`); } })();"
-            webView.post {
-                webView.loadUrl(emitExitCode)
+            val future = PluginService.execWithIOFuture(
+                cmd = finalCommand.toString(),
+                onStdout = { emitData("stdout", it) },
+                onStderr = { emitData("stderr", it) },
+                useBusybox = false,
+                hideStderr = false
+            )
+            val completableFuture = CompletableFuture.supplyAsync {
+                future.get()
             }
 
-            if (result.code != 0) {
-                val emitErrCode =
-                    "javascript: (function() { try { var err = new Error(); err.exitCode = ${result.code}; err.message = ${
-                        JSONObject.quote(
-                            result.err + "\n"
-                        )
-                    };${callbackFunc}.emit('error', err); } catch(e) { console.error('emitErr', e); } })();"
+            completableFuture.thenAccept { result ->
+                val emitExitCode =
+                    "javascript: (function() { try { ${callbackFunc}.emit('exit', ${result.code}); } catch(e) { console.error(`emitExit error: \${e}`); } })();"
                 webView.post {
-                    webView.loadUrl(emitErrCode)
+                    webView.loadUrl(emitExitCode)
+                }
+
+                if (result.code != 0) {
+                    val emitErrCode =
+                        "javascript: (function() { try { var err = new Error(); err.exitCode = ${result.code}; err.message = ${
+                            JSONObject.quote(
+                                result.err + "\n"
+                            )
+                        };${callbackFunc}.emit('error', err); } catch(e) { console.error('emitErr', e); } })();"
+                    webView.post {
+                        webView.loadUrl(emitErrCode)
+                    }
                 }
             }
         }
