@@ -48,7 +48,7 @@ fun ExtraLabel() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                modifier = Modifier.size(11.dp),
+                modifier = Modifier.size(10.dp),
                 imageVector = Icons.Outlined.Tune,
                 contentDescription = null
             )
@@ -151,7 +151,7 @@ fun ExtraLabel(
             when {
                 iconVector != null -> {
                     Icon(
-                        modifier = Modifier.size(11.dp),
+                        modifier = Modifier.size(10.dp),
                         imageVector = iconVector,
                         contentDescription = null
                     )
@@ -159,7 +159,7 @@ fun ExtraLabel(
                 }
                 iconPainter != null -> {
                     Icon(
-                        modifier = Modifier.size(11.dp),
+                        modifier = Modifier.size(10.dp),
                         painter = iconPainter,
                         contentDescription = null
                     )
