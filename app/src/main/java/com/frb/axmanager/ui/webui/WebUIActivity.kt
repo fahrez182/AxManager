@@ -45,18 +45,11 @@ class WebUIActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        try {
-            plugin = if (intent.action == "AxManager.WEB_UI") {
-                convertPluginInfo(Axeron.getPluginById(intent.getStringExtra("id")!!))
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableExtra("plugin", PluginViewModel.PluginInfo::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableExtra("plugin")
-                } as PluginViewModel.PluginInfo
-            }
-        } catch (e: Exception) {
+        plugin = runCatching {
+            convertPluginInfo(
+                Axeron.getPluginById(intent.getStringExtra("id")!!)
+            )
+        }.getOrElse {
             Toast.makeText(this, "Plugin not found", Toast.LENGTH_SHORT).show()
             finish()
             return
