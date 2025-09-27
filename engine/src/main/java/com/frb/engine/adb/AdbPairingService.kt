@@ -221,11 +221,11 @@ class AdbPairingService : Service() {
                 .setSmallIcon(R.drawable.ic_axeron)
                 .setContentTitle(title)
                 .setContentText(text)
-                /*.apply {
+                .apply {
                     if (!success) {
                         addAction(retryNotificationAction)
                     }
-                }*/
+                }
                 .build()
         )
         stopSelf()
