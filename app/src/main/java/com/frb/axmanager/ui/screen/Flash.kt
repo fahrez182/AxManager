@@ -261,9 +261,9 @@ fun FlashScreen(
                         scope.launch {
                             reigniteLoading.withLoading {
                                 PluginService.igniteSuspendService()
-                                navigator.popBackStack()
-                                if (finishIntent) activity?.finish()
                             }
+                            navigator.popBackStack()
+                            if (finishIntent) activity?.finish()
                         }
                     },
                     icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
