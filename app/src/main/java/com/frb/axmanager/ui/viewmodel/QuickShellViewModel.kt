@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 
@@ -148,7 +149,7 @@ class QuickShellViewModel : ViewModel() {
                             pid = match.groupValues[1].toInt()
                             appendRaw(OutputType.TYPE_START, "[start] pid=$pid")
                         } else {
-                            appendRaw(OutputType.TYPE_STDOUT, chunk.trim())
+                            appendRaw(OutputType.TYPE_STDOUT, chunk.trimEnd())
                         }
                     }
             }
@@ -199,7 +200,7 @@ class QuickShellViewModel : ViewModel() {
     }
 
     private fun append(type: OutputType, output: String) {
-        viewModelScope.launch { appendRaw(type, output) }
+        runBlocking { appendRaw(type, output) }
     }
 
     private suspend fun appendRaw(type: OutputType, output: String) {
