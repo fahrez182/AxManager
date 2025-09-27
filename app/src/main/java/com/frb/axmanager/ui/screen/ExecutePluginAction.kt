@@ -92,13 +92,13 @@ fun ExecutePluginActionScreen(
             val pluginPath = "/data/local/tmp/AxManager/plugins/${plugin.dirId}"
             val pluginBin = "$pluginPath/system/bin"
             val checkBin = "[ -d \"$pluginBin\" ] && [ -n \"$(ls -A \"$pluginBin\" 2>/dev/null)\" ]"
-            val cmd = "$checkBin && PATH=\$PATH:$pluginBin; cd $pluginPath; sh ./action.sh; local RES=$?; cd /; exit \$RES"
+            val cmd = "$checkBin && export PATH=\$PATH:$pluginBin; cd \"$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit \$RES"
             PluginService.execWithIO(
                 cmd = cmd,
                 onStdout = {
                     tempText = "$it\n"
                     if (tempText.startsWith("[H[J")) { // clear command
-                        text = tempText.substring(6)
+                        text = tempText.drop(6)
                     } else {
                         text += tempText
                     }
