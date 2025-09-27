@@ -97,22 +97,7 @@ public class Service extends IAxeronService.Stub {
     @Override
     public String getPluginById(String id) throws RemoteException {
         File dir = new File("/data/local/tmp/AxManager/plugins", id);
-        Map<String, String> pluginInfo = null;
-        File propFile = new File(dir, "module.prop");
-        if (propFile.exists() && propFile.isFile()) {
-            pluginInfo = new HashMap<>(readFileProp(propFile));
-        }
-
-        if (pluginInfo == null) return "";
-
-        pluginInfo.put("dir_id", pluginInfo.get("id"));
-        pluginInfo.put("enabled", new File(dir, "disable").exists() ? "false" : "true");
-        pluginInfo.put("update", new File(dir, "update").exists() ? "true" : "false");
-        pluginInfo.put("remove", new File(dir, "remove").exists() ? "true" : "false");
-        pluginInfo.put("action", new File(dir, "action.sh").exists() ? "true" : "false");
-        pluginInfo.put("web", new File(dir, "webroot/index.html").exists() ? "true" : "false");
-        pluginInfo.put("size", String.valueOf(getFolderSize(dir)));
-        return new JSONObject(pluginInfo).toString();
+        return getPluginByDir(dir);
     }
 
     @Override
@@ -137,36 +122,42 @@ public class Service extends IAxeronService.Stub {
         if (subDirs == null) return result;
 
         for (File dir : subDirs) {
-            Map<String, String> pluginInfo = null;
-            File propFile = new File(dir, "module.prop");
-            if (propFile.exists() && propFile.isFile()) {
-                pluginInfo = new HashMap<>(readFileProp(propFile));
-            }
-
+            String pluginInfo = getPluginByDir(dir);
             if (pluginInfo == null) continue;
-            String pluginId = pluginInfo.get("id");
-            if (pluginId == null) continue;
-
-            File updateDir = new File("/data/local/tmp/AxManager/plugins_update", pluginId);
-            File[] folderUpdateChild = (updateDir.exists() && updateDir.isDirectory()) ? updateDir.listFiles() : null;
-            boolean isUpdate = folderUpdateChild != null && folderUpdateChild.length > 0;
-
-            pluginInfo.put("dir_id", pluginId);
-            pluginInfo.put("enabled", new File(dir, "disable").exists() ? "false" : "true");
-            pluginInfo.put("update", String.valueOf(isUpdate));
-            pluginInfo.put("update_install", new File(updateDir, "update_install").exists() ? "true" : "false");
-            pluginInfo.put("update_remove", new File(updateDir, "update_remove").exists() ? "true" : "false");
-            pluginInfo.put("update_enable", new File(updateDir, "update_enable").exists() ? "true" : "false");
-            pluginInfo.put("update_disable", new File(updateDir, "update_disable").exists() ? "true" : "false");
-            pluginInfo.put("remove", new File(dir, "remove").exists() ? "true" : "false");
-            pluginInfo.put("action", new File(dir, "action.sh").exists() ? "true" : "false");
-            pluginInfo.put("web", new File(dir, "webroot/index.html").exists() ? "true" : "false");
-            pluginInfo.put("size", String.valueOf(getFolderSize(dir)));
-
-            result.add(new JSONObject(pluginInfo).toString());
+            result.add(pluginInfo);
         }
 
         return result;
+    }
+
+    private String getPluginByDir(File dir) {
+        if (dir.isFile()) return null;
+        Map<String, String> pluginInfo = null;
+        File propFile = new File(dir, "module.prop");
+        if (propFile.exists() && propFile.isFile()) {
+            pluginInfo = new HashMap<>(readFileProp(propFile));
+        }
+
+        if (pluginInfo == null) return null;
+        String pluginId = pluginInfo.get("id");
+        if (pluginId == null) return null;
+
+        File updateDir = new File("/data/local/tmp/AxManager/plugins_update", pluginId);
+        File[] folderUpdateChild = (updateDir.exists() && updateDir.isDirectory()) ? updateDir.listFiles() : null;
+        boolean isUpdate = folderUpdateChild != null && folderUpdateChild.length > 0;
+
+        pluginInfo.put("dir_id", pluginId);
+        pluginInfo.put("enabled", new File(dir, "disable").exists() ? "false" : "true");
+        pluginInfo.put("update", String.valueOf(isUpdate));
+        pluginInfo.put("update_install", new File(updateDir, "update_install").exists() ? "true" : "false");
+        pluginInfo.put("update_remove", new File(updateDir, "update_remove").exists() ? "true" : "false");
+        pluginInfo.put("update_enable", new File(updateDir, "update_enable").exists() ? "true" : "false");
+        pluginInfo.put("update_disable", new File(updateDir, "update_disable").exists() ? "true" : "false");
+        pluginInfo.put("remove", new File(dir, "remove").exists() ? "true" : "false");
+        pluginInfo.put("action", new File(dir, "action.sh").exists() ? "true" : "false");
+        pluginInfo.put("web", new File(dir, "webroot/index.html").exists() ? "true" : "false");
+        pluginInfo.put("size", String.valueOf(getFolderSize(dir)));
+        return new JSONObject(pluginInfo).toString();
     }
 
     private long getFolderSize(File folder) {
