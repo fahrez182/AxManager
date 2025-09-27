@@ -239,8 +239,9 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
             onClickModule = { plugin ->
                 if (plugin.hasWebUi) {
                     webUILauncher.launch(
-                        Intent(context, WebUIActivity::class.java)
-                            .putExtra("plugin", plugin)
+                        Intent(context, WebUIActivity::class.java).apply {
+                            putExtra("id", plugin.id)
+                        }
                     )
                 }
             },
@@ -505,7 +506,7 @@ fun PluginList(
                                 }
                             },
                             onClick = {
-                                onClickModule(it)
+                                onClickModule(plugin)
                             },
                             expanded = expandedPluginId == plugin.id,
                             onExpandToggle = {
@@ -727,35 +728,6 @@ fun PluginItem(
 
                                         }
                                     )
-//                                    when {
-//                                        plugin.remove -> {
-//                                            ExtraLabel(
-//                                                text = "Uninstall",
-//                                                style = ExtraLabelDefaults.style.copy(
-//                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-//                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-//                                                )
-//                                            )
-//                                        }
-//                                        plugin.enabled -> {
-//                                            ExtraLabel(
-//                                                text = "Enable",
-//                                                style = ExtraLabelDefaults.style.copy(
-//                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-//                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-//                                                )
-//                                            )
-//                                        }
-//                                        !plugin.enabled -> {
-//                                            ExtraLabel(
-//                                                text = "Disable",
-//                                                style = ExtraLabelDefaults.style.copy(
-//                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-//                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-//                                                )
-//                                            )
-//                                        }
-//                                    }
                                 }
 
                                 if (updateUrl.isNotEmpty() && !plugin.remove && !plugin.update) {
