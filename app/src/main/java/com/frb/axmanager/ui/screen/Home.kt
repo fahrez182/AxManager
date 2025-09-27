@@ -148,7 +148,6 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 },
                 actions = {
                     val loadingDialog = rememberLoadingDialog()
-                    rememberConfirmDialog()
                     val scope = rememberCoroutineScope()
 
                     AnimatedVisibility(visible = adbViewModel.axeronInfo.isRunning()) {
