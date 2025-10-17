@@ -1,6 +1,6 @@
 package com.frb.axmanager.ui.screen
 
-import android.content.Context
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -25,28 +25,22 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.content.edit
-import com.frb.axmanager.ui.component.SwitchItem
+import androidx.compose.ui.unit.dp
+import com.frb.axmanager.ui.component.SettingsItem
 import com.frb.axmanager.ui.util.LocalSnackbarHost
+import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun DeveloperScreen(navigator: DestinationsNavigator) {
+fun DeveloperScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
+    val settingsViewModel = viewModelGlobal.settingsViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
 
@@ -65,43 +59,30 @@ fun DeveloperScreen(navigator: DestinationsNavigator) {
             modifier = Modifier
                 .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val context = LocalContext.current
-            rememberCoroutineScope()
-            val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-            // --- Developer Options Switch ---
-            var developerOptionsEnabled by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("enable_developer_options", false)
-                )
-            }
-            SwitchItem(
-                icon = Icons.Filled.DeveloperMode,
-                title = "Enable developer options",
-                summary = "Show hidden settings and debug info relevant only for developers.",
-                checked = developerOptionsEnabled
-            ) {
-                prefs.edit { putBoolean("enable_developer_options", it) }
-                developerOptionsEnabled = it
-            }
+            SettingsItem(
+                iconVector = Icons.Filled.DeveloperMode,
+                label = "Enable developer options",
+                description = "Show hidden settings and debug info relevant only for developers.",
+                checked = settingsViewModel.isDeveloperModeEnabled,
+                onSwitchChange = {
+                    settingsViewModel.setDeveloperOptions(it)
+                }
+            )
 
-            var enableWebDebugging by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("enable_web_debugging", false)
-                )
-            }
-            SwitchItem(
-                enabled = developerOptionsEnabled,
-                icon = Icons.Filled.Web,
-                title = "Enable web debugging",
-                summary = "Can be used to debug WebUI. Please enable only when needed.",
-                checked = enableWebDebugging
-            ) {
-                prefs.edit { putBoolean("enable_web_debugging", it) }
-                enableWebDebugging = it
-            }
+            SettingsItem(
+                enabled = settingsViewModel.isDeveloperModeEnabled,
+                iconVector = Icons.Filled.Web,
+                label = "Enable developer options",
+                description = "Show hidden settings and debug info relevant only for developers.",
+                checked = settingsViewModel.isWebDebuggingEnabled,
+                onSwitchChange = {
+                    settingsViewModel.setWebDebugging(it)
+                }
+            )
         }
     }
 }
@@ -125,10 +106,4 @@ private fun TopBar(
         windowInsets = WindowInsets(top = 0),
         scrollBehavior = scrollBehavior
     )
-}
-
-@Preview
-@Composable
-private fun DeveloperPreview() {
-    DeveloperScreen(EmptyDestinationsNavigator)
 }
