@@ -72,6 +72,8 @@ class AdbViewModel : ViewModel() {
         }
     }
 
+    var adbMdns: AdbMdns? = null
+
     @RequiresApi(Build.VERSION_CODES.R)
     fun startAdb(context: Context, tryConnect: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -119,19 +121,28 @@ class AdbViewModel : ViewModel() {
                     if (!tryConnect) {
                         launchDevSettings = true
                         startPairingService(context)
+                        adbMdns?.run {
+                            this.stop()
+                        }
                     }
                 }
 
                 tryActivate = false
             }.runCatching {
                 Log.d(TAG, "AdbMdns running")
-                start()
+                adbMdns = this
+                adbMdns?.run {
+                    this.start()
+                }
             }.onFailure {
                 Log.e(TAG, "AdbMdns failed", it)
                 it.printStackTrace()
                 if (!tryConnect) {
                     launchDevSettings = true
                     startPairingService(context)
+                    adbMdns?.run {
+                        this.stop()
+                    }
                 }
             }
             tryActivate = false
