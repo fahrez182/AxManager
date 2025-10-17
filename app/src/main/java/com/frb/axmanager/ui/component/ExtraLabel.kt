@@ -151,7 +151,7 @@ fun ExtraLabel(
             when {
                 iconVector != null -> {
                     Icon(
-                        modifier = Modifier.size(10.dp),
+                        modifier = Modifier.size(10.scaleDp),
                         imageVector = iconVector,
                         contentDescription = null
                     )
@@ -159,7 +159,7 @@ fun ExtraLabel(
                 }
                 iconPainter != null -> {
                     Icon(
-                        modifier = Modifier.size(10.dp),
+                        modifier = Modifier.size(10.scaleDp),
                         painter = iconPainter,
                         contentDescription = null
                     )
