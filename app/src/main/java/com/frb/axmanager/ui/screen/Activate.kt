@@ -93,25 +93,32 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (DeviceCompatibility.isMiui()) {
-                ElevatedCard(
-                    colors = CardDefaults.cardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                val notifStyle = Settings.System.getInt(
+                    LocalContext.current.contentResolver,
+                    "status_bar_notification_style",
+                    1
+                )
+                if (notifStyle != 1) {
+                    ElevatedCard(
+                        colors = CardDefaults.cardColors().copy(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = stringResource(R.string.notification_warn_miui),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(Modifier.padding(4.dp))
-                        Text(
-                            text = stringResource(R.string.notification_warn_miui_2),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.notification_warn_miui),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.padding(4.dp))
+                            Text(
+                                text = stringResource(R.string.notification_warn_miui_2),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }
