@@ -1,22 +1,28 @@
 package com.frb.axmanager.ui.screen
 
+import android.content.Context
 import android.os.Environment
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -26,24 +32,34 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Output
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,6 +69,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -63,6 +82,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.frb.axmanager.R
 import com.frb.axmanager.ui.component.AxSnackBarHost
+import com.frb.axmanager.ui.component.CheckBoxText
+import com.frb.axmanager.ui.component.SettingsItem
+import com.frb.axmanager.ui.component.SettingsItemExpanded
 import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.viewmodel.QuickShellViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
@@ -80,7 +102,6 @@ import java.util.Locale
 @Destination<RootGraph>
 @Composable
 fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    LocalContext.current
     val viewModel: QuickShellViewModel = viewModel()
     val running = viewModel.isRunning
 
@@ -119,6 +140,15 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     val scope = rememberCoroutineScope()
     val snackBarHost = LocalSnackbarHost.current
 
+    var showExtraDialog by remember { mutableStateOf(false) }
+
+    ExtraSettings(
+        showExtraDialog,
+        viewModel,
+    ) {
+        showExtraDialog = false
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -140,12 +170,22 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         },
                         enabled = running,
                     ) {
-                        Icon(Icons.Filled.Stop, contentDescription = "Stop")
+                        Icon(Icons.Filled.Stop, contentDescription = null)
                     }
-                    IconButton(onClick = {
-                        viewModel.clear()
-                    }) {
-                        Icon(Icons.Filled.ClearAll, contentDescription = "Clear")
+                    IconButton(
+                        onClick = {
+                            viewModel.clear()
+                        },
+                        enabled = logs.isNotEmpty()
+                    ) {
+                        Icon(Icons.Filled.ClearAll, contentDescription = null)
+                    }
+                    IconButton(
+                        onClick = {
+                            showExtraDialog = true
+                        }
+                    ) {
+                        Icon(Icons.Outlined.MoreVert, null)
                     }
                 },
                 windowInsets = WindowInsets(top = 0)
@@ -153,15 +193,14 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = fabVisible,
+                visible = fabVisible && logs.isNotEmpty(),
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
             ) {
+                val context = LocalContext.current
                 FloatingActionButton(onClick = {
                     scope.launch {
-                        saveLogsToDownload(logs, snackBarHost)
+                        saveLogsToDownload(context, logs, snackBarHost)
                     }
                 }) {
                     Icon(Icons.Default.Save, contentDescription = "Save")
@@ -171,50 +210,25 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         snackbarHost = { AxSnackBarHost(hostState = snackBarHost) },
         contentWindowInsets = WindowInsets(top = 0, bottom = 0)
     ) { paddingValues ->
-        Column(
+        val focusManager = LocalFocusManager.current
+        var keyboardVisible by remember { mutableStateOf(false) }
+        val keyboardController = LocalSoftwareKeyboardController.current
+
+        KeyboardVisibilityListener(
+            onKeyboardState = { visible ->
+                keyboardVisible = visible
+                if (!visible) {
+                    focusManager.clearFocus()
+                }
+            }
+        )
+
+        Box(
             Modifier
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
-            TextField(
-                value = viewModel.commandText,
-                onValueChange = {
-                    viewModel.setCommand(it)
-                },
-                label = {
-                    Text(viewModel.execMode)
-                },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace
-                ),
-                trailingIcon = {
-                    IconButton(
-                        onClick = {
-                            viewModel.runShell()
-                        },
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_exec),
-                            contentDescription = "Send",
-                            modifier = Modifier.width(50.dp)
-                        )
-                    }
-                },
-                maxLines = 3,
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,   // garis saat fokus
-                    unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
-                    disabledIndicatorColor = Color.Transparent   // garis saat disabled
-                ),
-                shape = RoundedCornerShape(12.dp), // ubah bentuk.
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(16.dp))
-
             LaunchedEffect(viewModel.clear) {
                 logs.clear()
             }
@@ -228,15 +242,19 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             // collect flow
             LaunchedEffect(Unit) {
                 viewModel.output.collect { line ->
-//                    Log.d("QuickShellViewModel", line.output)
+                    if (line.output.isBlank() && line.type != QuickShellViewModel.OutputType.TYPE_SPACE) return@collect
                     logs.add(line)
                 }
             }
 
             val hScroll = rememberScrollState()
 
+            val context = LocalContext.current
+
             SelectionContainer(
-                modifier = Modifier.padding(horizontal = 8.dp)
+                modifier = Modifier
+                    .padding(top = 70.dp)
+                    .padding(horizontal = 8.dp)
             ) {
                 Box(
                     modifier = Modifier
@@ -247,7 +265,9 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(logs) { line ->
-                            if (line.type == QuickShellViewModel.OutputType.TYPE_COMMAND) return@items
+                            if (!QuickShellViewModel.PrefsHelper("output_")
+                                    .loadState(context, line.type, true)
+                            ) return@items
                             Text(
                                 text = line.output.parseAsAnsiAnnotatedString(),
                                 style = MaterialTheme.typography.labelSmall.copy(
@@ -265,12 +285,234 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     }
                 }
             }
+
+            ElevatedCard(
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.elevatedCardColors().copy(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .run {
+                        if (keyboardVisible) {
+                            padding(bottom = 270.dp)
+                        } else {
+                            padding(bottom = 0.dp)
+                        }
+                    }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    TextField(
+                        value = viewModel.commandText,
+                        onValueChange = {
+                            viewModel.setCommand(it)
+                        },
+                        label = {
+                            Text(viewModel.execMode)
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,   // garis saat fokus
+                            unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
+                            disabledIndicatorColor = Color.Transparent,   // garis saat disabled
+                            focusedContainerColor = Color.Transparent,   // ⬅ ini penting
+                            unfocusedContainerColor = Color.Transparent, // ⬅ ini juga
+                            disabledContainerColor = Color.Transparent
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateContentSize(
+                                animationSpec = tween(
+                                    durationMillis = 250,
+                                    easing = LinearOutSlowInEasing
+                                )
+                            )
+                    )
+
+                    IconButton(
+                        onClick = {
+                            viewModel.runShell()
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 12.dp)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_exec),
+                            contentDescription = "Send",
+                            modifier = Modifier.size(38.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+@Composable
+fun KeyboardVisibilityListener(
+    onKeyboardState: (visible: Boolean) -> Unit
+) {
+    val insets = WindowInsets.ime
+    val imeHeight = insets.getBottom(LocalDensity.current)
+
+    val imeVisible = imeHeight > 0
+    val prevImeVisible = remember { mutableStateOf(imeVisible) }
+
+    LaunchedEffect(imeVisible) {
+        if (imeVisible != prevImeVisible.value) {
+            onKeyboardState(imeVisible)
+            prevImeVisible.value = imeVisible
         }
     }
 }
 
 
-suspend fun saveLogsToDownload(logs: List<QuickShellViewModel.Output>, snackbar: SnackbarHostState) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExtraSettings(
+    showDialog: Boolean,
+    quickShellViewModel: QuickShellViewModel,
+    onDismissRequest: () -> Unit
+) {
+    if (showDialog) {
+        ModalBottomSheet(
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            onDismissRequest = onDismissRequest
+        ) {
+            val context: Context = LocalContext.current
+            val outputOption = QuickShellViewModel.OutputType.entries
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    val checkedOutputStates = remember {
+                        mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
+                            outputOption.forEach {
+                                put(
+                                    it,
+                                    QuickShellViewModel.PrefsHelper("output_")
+                                        .loadState(context, it, true)
+                                )
+                            }
+                        }
+                    }
+
+                    SettingsItemExpanded(
+                        label = "Output Filter",
+                        description = "Filter output to show",
+                        iconVector = Icons.Outlined.Output
+                    ) { _, expanded ->
+                        AnimatedVisibility(
+                            visible = expanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(Modifier.padding(bottom = 12.dp)) {
+                                outputOption.forEach { type ->
+                                    val isChecked = checkedOutputStates[type] ?: false
+                                    CheckBoxText(
+                                        label = "Output ${type.name}",
+                                        checked = isChecked
+                                    ) {
+                                        checkedOutputStates[type] = it
+                                        QuickShellViewModel.PrefsHelper("output_")
+                                            .saveState(context, type, it)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    val checkedSaveStates = remember {
+                        mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
+                            outputOption.forEach {
+                                put(
+                                    it,
+                                    QuickShellViewModel.PrefsHelper("save_")
+                                        .loadState(context, it, true)
+                                )
+                            }
+                        }
+                    }
+
+                    SettingsItemExpanded(
+                        label = "Save Log Filter",
+                        description = "Filter log to save",
+                        iconVector = Icons.Outlined.Save,
+                    ) { _, expanded ->
+                        AnimatedVisibility(
+                            visible = expanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(Modifier.padding(bottom = 12.dp)) {
+                                outputOption.forEach { type ->
+                                    val isChecked = checkedSaveStates[type] ?: false
+                                    CheckBoxText(
+                                        label = "Save ${type.name}",
+                                        checked = isChecked
+                                    ) {
+                                        checkedSaveStates[type] = it
+                                        QuickShellViewModel.PrefsHelper("save_")
+                                            .saveState(context, type, it)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    SettingsItem(
+                        iconVector = Icons.Filled.Security,
+                        label = "Shell Restriction",
+                        description = "This feature will restrict background processing",
+                        checked = quickShellViewModel.isShellRestrictionEnabled,
+                        onSwitchChange = { quickShellViewModel.setShellRestriction(it) }
+                    )
+                }
+
+                item {
+                    SettingsItem(
+                        iconVector = Icons.Outlined.Bolt,
+                        label = "Compatibility Mode",
+                        description = "You will use busybox to prevent unsupported command",
+                        checked = quickShellViewModel.isCompatModeEnabled,
+                        onSwitchChange = { quickShellViewModel.setCompatMode(it) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+suspend fun saveLogsToDownload(
+    context: Context,
+    logs: List<QuickShellViewModel.Output>,
+    snackbar: SnackbarHostState
+) {
+    if (logs.isEmpty()) return
     val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
     val date = format.format(Date())
 
@@ -282,8 +524,12 @@ suspend fun saveLogsToDownload(logs: List<QuickShellViewModel.Output>, snackbar:
     val file = File(baseDir, "QuickShell_log_${date}.log")
 
     try {
-        val fos = Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
+        val fos =
+            Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
         logs.forEach { line ->
+            if (!QuickShellViewModel.PrefsHelper("save_")
+                    .loadState(context, line.type, true)
+            ) return@forEach
             fos.write("${line.output}\n".toByteArray())
         }
         fos.flush()
