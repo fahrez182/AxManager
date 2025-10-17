@@ -9,12 +9,18 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -34,8 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -48,6 +52,7 @@ import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
 import com.frb.axmanager.ui.viewmodel.PluginViewModel
+import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.client.Axeron
 import com.frb.engine.implementation.AxeronInfo
@@ -70,7 +75,7 @@ class AxActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AxManagerTheme {
-                MainScreen()
+                MainScreen(it)
             }
         }
     }
@@ -78,8 +83,7 @@ class AxActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen() {
-    LocalContext.current
+fun MainScreen(settingsViewModel: SettingsViewModel) {
     val snackBarHostState = remember { SnackbarHostState() }
     val navController = rememberNavController()
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
@@ -87,14 +91,14 @@ fun MainScreen() {
 
     val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
     val adbViewModel: AdbViewModel = viewModel<AdbViewModel>()
-    val pluginsViewModel: PluginViewModel = viewModel<PluginViewModel>()
+    val pluginViewModel: PluginViewModel = viewModel<PluginViewModel>()
 
     DisposableEffect(Unit) {
 
         adbViewModel.checkAxeronService()
 
         if (Axeron.pingBinder() && AxeronService.VERSION_CODE <= Axeron.getInfo().versionCode) {
-            pluginsViewModel.fetchModuleList()
+            pluginViewModel.fetchModuleList()
             appsViewModel.loadInstalledApps()
         }
 
@@ -102,7 +106,7 @@ fun MainScreen() {
             Log.i("AxManagerBinder", "onBinderReceived")
             adbViewModel.checkAxeronService()
             if (Axeron.pingBinder() && AxeronService.VERSION_CODE <= Axeron.getInfo().versionCode) {
-                pluginsViewModel.fetchModuleList()
+                pluginViewModel.fetchModuleList()
                 appsViewModel.loadInstalledApps()
             }
         }
@@ -122,9 +126,10 @@ fun MainScreen() {
 
     val viewModelGlobal = remember {
         ViewModelGlobal(
+            settingsViewModel,
             appsViewModel,
             adbViewModel,
-            pluginsViewModel
+            pluginViewModel
         )
     }
 
@@ -142,7 +147,11 @@ fun MainScreen() {
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
             ) {
-                BottomBar(navController, adbViewModel.axeronInfo, pluginsViewModel.pluginUpdateCount)
+                BottomBar(
+                    navController,
+                    adbViewModel.axeronInfo,
+                    pluginViewModel.pluginUpdateCount
+                )
             }
 
         }
@@ -180,66 +189,88 @@ fun BottomBar(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        elevation = CardDefaults.cardElevation(4.dp),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         NavigationBar(
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 6.dp),
             containerColor = Color.Transparent,
         ) {
-            BottomBarDestination.entries
-                .forEach { destination ->
-                    if (!axeronServiceInfo.isRunning() && destination.needAxeron) return@forEach
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                BottomBarDestination.entries
+                    .forEach { destination ->
+                        if (!axeronServiceInfo.isRunning() && destination.needAxeron) return@forEach
 
-                    val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
-                    NavigationBarItem(
-                        selected = isCurrentDestOnBackStack,
-                        onClick = {
-                            if (isCurrentDestOnBackStack) {
-                                navigator.popBackStack(destination.direction, false)
-                            }
-                            navigator.navigate(destination.direction) {
-                                popUpTo(NavGraphs.root) {
-                                    saveState = true
+                        val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(
+                            destination.direction
+                        )
+                        NavigationBarItem(
+                            selected = isCurrentDestOnBackStack,
+                            onClick = {
+                                if (isCurrentDestOnBackStack) {
+                                    navigator.popBackStack(destination.direction, false)
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = {
-                            if (destination == BottomBarDestination.Plugin && moduleUpdateCount > 0) {
-                                BadgedBox(badge = { Badge { Text(moduleUpdateCount.toString()) } }) {
-                                    if (isCurrentDestOnBackStack) {
-                                        Icon(
-                                            destination.iconSelected,
-                                            destination.label
+                                navigator.navigate(destination.direction) {
+                                    popUpTo(NavGraphs.root) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = {
+                                if (destination == BottomBarDestination.Plugin && moduleUpdateCount > 0) {
+                                    BadgedBox(badge = { Badge { Text(moduleUpdateCount.toString()) } }) {
+                                        if (isCurrentDestOnBackStack) {
+                                            Icon(
+                                                destination.iconSelected,
+                                                destination.label
+                                            )
+                                        } else {
+                                            Icon(
+                                                destination.iconNotSelected,
+                                                destination.label
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    if (isCurrentDestOnBackStack) Icon(
+                                        imageVector = destination.iconSelected,
+                                        contentDescription = destination.label
+                                    ) else Icon(
+                                        imageVector = destination.iconNotSelected,
+                                        contentDescription = destination.label
+                                    )
+                                }
+                            },
+                            label = {
+                                Column(
+                                    modifier = Modifier
+                                        .animateContentSize(
+                                            animationSpec = tween(durationMillis = 300)
                                         )
-                                    } else {
-                                        Icon(
-                                            destination.iconNotSelected,
-                                            destination.label
+                                        .wrapContentHeight()
+                                ) {
+                                    AnimatedVisibility(
+                                        visible = isCurrentDestOnBackStack,
+                                        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                                            initialOffsetY = { it / 2 }, animationSpec = tween(300)
+                                        ),
+                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
+                                            targetOffsetY = { it / 2 }, animationSpec = tween(300)
                                         )
+                                    ) {
+                                        Text(destination.label)
                                     }
                                 }
-                            } else {
-                                if (isCurrentDestOnBackStack) Icon(
-                                    imageVector = destination.iconSelected,
-                                    contentDescription = destination.label
-                                ) else Icon(
-                                    imageVector = destination.iconNotSelected,
-                                    contentDescription = destination.label
-                                )
-                            }
-                        },
-                        label = { Text(destination.label) },
-                    )
-                }
+                            },
+                        )
+                    }
+            }
         }
     }
 
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AxComposablePreview(modifier: Modifier = Modifier) {
-    MainScreen()
 }
