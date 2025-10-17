@@ -1,11 +1,15 @@
 package com.frb.axmanager.ui.viewmodel
 
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.lifecycle.ViewModel
+import androidx.core.content.edit
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.AxeronNewProcess
@@ -22,21 +26,75 @@ import kotlinx.coroutines.runBlocking
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 
-class QuickShellViewModel : ViewModel() {
+class QuickShellViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     companion object {
-        fun getQuickCmd(cmd: String): Array<String> {
-            return arrayOf(
-                PluginService.BUSYBOX, "setsid", //Use setsid from busybox
-                "sh",
-                "-c",
-                "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec -a \"QuickShell\" sh -c \"$0\"",
-                cmd
-            )
+        fun getQuickCmd(cmd: String, useBusybox: Boolean = true): Array<String> {
+            val execCmd =
+                "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec -a \"QuickShell\" sh -c \"$0\""
+            return when {
+                useBusybox -> arrayOf(
+                    PluginService.BUSYBOX, "setsid", "sh", "-c",
+                    execCmd,
+                    cmd
+                )
+
+                else -> arrayOf(
+                    "setsid", "sh", "-c",
+                    execCmd,
+                    cmd
+                )
+            }
         }
     }
 
-    enum class OutputType() {
+    class PrefsHelper(
+        private val keyPrefix: String
+    ) {
+        private val cache = mutableMapOf<String, Boolean>() // cache sementara
+
+        private fun getPrefs(context: Context): SharedPreferences =
+            context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+        fun saveState(context: Context, type: OutputType, value: Boolean) {
+            val key = "$keyPrefix${type.name}"
+            cache[key] = value
+            getPrefs(context).edit {
+                putBoolean(key, value)
+            }
+        }
+
+        fun loadState(context: Context, type: OutputType, default: Boolean = false): Boolean {
+            val key = "$keyPrefix${type.name}"
+
+            // kalau sudah pernah dimuat, ambil dari cache
+            if (cache.containsKey(key)) return cache[key] ?: default
+
+            // kalau belum, ambil dari SharedPreferences lalu simpan ke cache
+            val value = getPrefs(context).getBoolean(key, default)
+            cache[key] = value
+            return value
+        }
+
+        fun clearAll(context: Context) {
+            cache.clear()
+            getPrefs(context).edit { clear() }
+        }
+
+        fun getAll(context: Context): Map<String, *> {
+            // sync cache dan prefs
+            val all = getPrefs(context).all
+            all.forEach { (k, v) ->
+                if (v is Boolean) cache[k] = v
+            }
+            return all
+        }
+    }
+
+
+    enum class OutputType {
         TYPE_COMMAND,
         TYPE_START,
         TYPE_STDIN,
@@ -44,10 +102,35 @@ class QuickShellViewModel : ViewModel() {
         TYPE_STDERR,
         TYPE_THROW,
         TYPE_SPACE,
-        TYPE_EXIT,
+        TYPE_EXIT
     }
 
     data class Output(val type: OutputType, val output: String)
+
+    var isShellRestrictionEnabled: Boolean by mutableStateOf(
+        prefs.getBoolean("shell_restriction", true)
+    )
+        private set
+
+    fun setShellRestriction(enable: Boolean) {
+        isShellRestrictionEnabled = enable
+        prefs.edit {
+            putBoolean("shell_restriction", enable)
+        }
+    }
+
+    var isCompatModeEnabled: Boolean by mutableStateOf(
+        prefs.getBoolean("shell_compat_mode", true)
+    )
+        private set
+
+    fun setCompatMode(enable: Boolean) {
+        isCompatModeEnabled = enable
+        prefs.edit {
+            putBoolean("shell_compat_mode", enable)
+        }
+    }
+
 
     private val _output = MutableSharedFlow<Output>(extraBufferCapacity = 64)
     val output: SharedFlow<Output> = _output
@@ -83,7 +166,7 @@ class QuickShellViewModel : ViewModel() {
     }
 
     fun stop(fromUser: Boolean = true) {
-        Axeron.newProcess("kill -TERM -$pid")
+        if (isShellRestrictionEnabled) Axeron.newProcess("kill -TERM -$pid")
         debounceJob?.cancel()
         debounceJob = null
         job?.cancel()
@@ -116,7 +199,12 @@ class QuickShellViewModel : ViewModel() {
                 writer!!.write(cmd)
                 writer!!.newLine()
                 writer!!.flush()
-                append(OutputType.TYPE_STDIN, "[input] $cmd")
+                if (cmd.lines().size > 1) {
+                    append(OutputType.TYPE_STDIN, "[input]")
+                    append(OutputType.TYPE_STDIN, cmd.trim())
+                } else {
+                    append(OutputType.TYPE_STDIN, "[input] ${cmd.trim()}")
+                }
             } catch (t: Throwable) {
                 append(OutputType.TYPE_THROW, "[error write] ${t.message}")
             }
@@ -125,10 +213,18 @@ class QuickShellViewModel : ViewModel() {
 
         // kalau belum jalan → buat shell baru
         launchSafely(cmd) {
-            appendRaw(OutputType.TYPE_COMMAND, "[command] $cmd")
+            if (cmd.lines().size > 1) {
+                appendRaw(OutputType.TYPE_COMMAND, "[command]")
+                appendRaw(OutputType.TYPE_COMMAND, cmd.trim())
+            } else {
+                appendRaw(OutputType.TYPE_COMMAND, "[command] ${cmd.trim()}")
+            }
 
             process = Axeron.newProcess(
-                getQuickCmd(cmd),
+                getQuickCmd(
+                    cmd,
+                    isCompatModeEnabled
+                ),
                 Axeron.getEnvironment(), null
             )
 
