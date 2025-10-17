@@ -1,5 +1,7 @@
 package com.frb.engine.client;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.os.Bundle;
 import android.os.Handler;
@@ -17,6 +19,7 @@ import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
 import com.frb.engine.core.Engine;
 import com.frb.engine.implementation.AxeronInfo;
+import com.frb.engine.implementation.AxeronService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -122,7 +125,7 @@ public class Axeron {
         }
     }
 
-    public static void onBinderReceived(IBinder newBinder, String packageName) {
+    public static void onBinderReceived(IBinder newBinder, Context context) {
         if (binder == newBinder) return;
 
         if (newBinder == null) {
@@ -132,6 +135,8 @@ public class Axeron {
 
             scheduleBinderDeadListeners();
         } else {
+            SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+
             if (binder != null) {
                 binder.unlinkToDeath(DEATH_RECIPIENT, 0);
             }
@@ -150,8 +155,12 @@ public class Axeron {
                 service.bindAxeronApplication(new IAxeronApplication.Stub() {
                     @Override
                     public void bindApplication(Bundle data) {
-                        Log.d(TAG, "bindApplication");
-                        PluginService.igniteService();
+                        if (AxeronService.VERSION_CODE > getInfo().getVersionCode()
+                                || isFirstInit(false)
+                                || prefs.getBoolean("ignite_when_relog", false)) {
+                            Log.d(TAG, "igniteService");
+                            PluginService.igniteService();
+                        }
                     }
                 });
             } catch (RemoteException e) {
@@ -161,9 +170,9 @@ public class Axeron {
         }
     }
 
-    protected static boolean isFirstInit() {
+    protected static boolean isFirstInit(boolean markAsFirstInit) {
         try {
-            return requireService().isFirstInit();
+            return requireService().isFirstInit(markAsFirstInit);
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -192,7 +201,9 @@ public class Axeron {
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
-    }    private static final IBinder.DeathRecipient DEATH_RECIPIENT = () -> {
+    }
+
+    private static final IBinder.DeathRecipient DEATH_RECIPIENT = () -> {
         binderReady = false;
         onBinderReceived(null, null);
     };
