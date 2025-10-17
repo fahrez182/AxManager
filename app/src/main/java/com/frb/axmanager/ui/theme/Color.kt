@@ -1,18 +1,23 @@
 package com.frb.axmanager.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.frb.axmanager.ui.component.blend
 
-val PRIMARY = Color(0xFF8AADF4)           // Catppuccin Blue
-val PRIMARY_LIGHT = Color(0xFFB7BDF8)     // Catppuccin Lavender
-val SECONDARY_LIGHT = Color(0xFFA6DA95)   // Catppuccin Green
+val PRIMARY = Color(0xFF95CDF8)
+val PRIMARY_DARK = Color(0xFF004B6F)
 
-val PRIMARY_DARK = Color(0xFF7DC4E4)      // Catppuccin Sky
-val SECONDARY_DARK = Color(0xFFF5BDE6)    // Catppuccin Pink
 
-val AMOLED_BLACK = Color(0xFF000000)      // Pure black for AMOLED
+val SECONDARY = Color(0xFF9ECDFF)
+val SECONDARY_DARK = Color(0xFF5484A6)
 
-val DARK_PURPLE = Color(0xFF6E6CB6)       // Catppuccin Mauve (dark purple)
-val DARK_GREY = Color(0xFF363A4F)         // Catppuccin Surface (dark grey)
+val TERTIARY = Color(0xFF91FFFC)
+
+val TERTIARY_DARK = Color(0xFF00726F)
+
+val AMOLED_BLACK = Color(0xFF000000)
+
+val DARK_BLEND = Color(0xFF363636).blend(PRIMARY_DARK, 0.1f)
+
 
 val GREEN = Color(0xFF4CAF50)             // Green
 val RED = Color(0xFFF44336)               // Red
