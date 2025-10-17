@@ -481,7 +481,6 @@ private fun LoadingDialog() {
 }
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ConfirmDialog(
@@ -495,13 +494,16 @@ private fun ConfirmDialog(
 
     MaterialBottomSheet(
         onDismissRequest = {
-            scope.launch { sheetState.hide() }
-            dismiss() // baru hapus composable setelah animasi
+            scope.launch {
+                sheetState.hide()
+                dismiss()
+            }
         },
         dragHandle = when {
             visuals.dragHandle -> {
                 { BottomSheetDefaults.DragHandle() }
             }
+
             else -> {
                 { Spacer(Modifier.size(8.dp)) }
             }
@@ -521,8 +523,10 @@ private fun ConfirmDialog(
         confirmButton = {
             visuals.confirm?.let {
                 TextButton(onClick = {
-                    scope.launch { sheetState.hide() }
-                    confirm()
+                    scope.launch {
+                        sheetState.hide()
+                        confirm()
+                    }
                 }) {
                     Text(text = it)
                 }
@@ -531,8 +535,11 @@ private fun ConfirmDialog(
         dismissButton = {
             visuals.dismiss?.let {
                 TextButton(onClick = {
-                    scope.launch { sheetState.hide() }
-                    dismiss()
+                    scope.launch {
+                        sheetState.hide()
+                        dismiss()
+                    }
+
                 }) {
                     Text(text = it)
                 }
@@ -541,8 +548,10 @@ private fun ConfirmDialog(
         neutralButton = {
             visuals.neutral?.let {
                 TextButton(onClick = {
-                    scope.launch { sheetState.hide() }
-                    neutral()
+                    scope.launch {
+                        sheetState.hide()
+                        neutral()
+                    }
                 }) {
                     Text(text = it)
                 }
