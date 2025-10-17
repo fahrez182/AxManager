@@ -1,106 +1,288 @@
 package com.frb.axmanager.ui.component
 
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import com.dergoogler.mmrl.ui.component.LabelItem
-import com.dergoogler.mmrl.ui.component.text.TextRow
+import androidx.compose.ui.unit.dp
+
+enum class SettingsItemType {
+    PARENT,
+    CHILD
+}
+
 
 @Composable
-fun SwitchItem(
-    icon: ImageVector? = null,
-    title: String,
-    summary: String? = null,
-    checked: Boolean,
+fun SettingsItem(
+    type: SettingsItemType = SettingsItemType.PARENT,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
-    beta: Boolean = false,
-    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    description: String? = null,
+    iconVector: ImageVector? = null,
+    iconPainter: Painter? = null,
+    onClick: () -> Unit = {},
+    checked: Boolean = false,
+    onSwitchChange: ((Boolean) -> Unit)? = null,
+    content: @Composable (enabled: Boolean, checked: Boolean) -> Unit = { enabled, checked -> }
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val stateAlpha = remember(checked, enabled) { Modifier.alpha(if (enabled) 1f else 0.5f) }
+    ElevatedCard(
+        modifier = when (type) {
+            SettingsItemType.PARENT -> Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            SettingsItemType.CHILD -> Modifier.padding(0.dp)
+        },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        shape = when (type) {
+            SettingsItemType.PARENT -> CardDefaults.elevatedShape
+            SettingsItemType.CHILD -> RoundedCornerShape(0.dp)
+        },
+        elevation = when (type) {
+            SettingsItemType.PARENT -> CardDefaults.elevatedCardElevation()
+            SettingsItemType.CHILD -> CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+        },
+        enabled = enabled,
+        onClick = onClick
+    ) {
+        Column {
+            Row(
+                modifier = when (type) {
+                    SettingsItemType.PARENT -> Modifier.padding(all = 16.dp)
+                    SettingsItemType.CHILD -> Modifier.padding(horizontal = 16.dp)
+                },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when {
+                    iconVector != null -> {
+                        Icon(
+                            modifier = Modifier.size(24.scaleDp),
+                            imageVector = iconVector,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.size(16.dp))
+                    }
 
-    ListItem(
-        modifier = Modifier
-            .toggleable(
-                value = checked,
-                interactionSource = interactionSource,
-                role = Role.Switch,
-                enabled = enabled,
-                indication = LocalIndication.current,
-                onValueChange = onCheckedChange
-            ),
-        headlineContent = {
-            TextRow(
-                leadingContent = if (beta) {
-                    {
-                        LabelItem(
-                            modifier = Modifier.then(stateAlpha),
-                            text = "Beta"
+                    iconPainter != null -> {
+                        Icon(
+                            modifier = Modifier.size(24.scaleDp),
+                            painter = iconPainter,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.size(16.dp))
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (description != null) {
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
-                } else null
-            ) {
-                Text(
-                    modifier = Modifier.then(stateAlpha),
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                }
+
+                if (onSwitchChange != null) {
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        enabled = enabled,
+                        checked = checked,
+                        onCheckedChange = onSwitchChange
+                    )
+                }
             }
-        },
-        leadingContent = icon?.let {
-            {
-                Icon(
-                    modifier = Modifier.then(stateAlpha),
-                    imageVector = icon,
-                    contentDescription = title
-                )
-            }
-        },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                enabled = enabled,
-                onCheckedChange = onCheckedChange,
-                interactionSource = interactionSource
-            )
-        },
-        supportingContent = {
-            if (summary != null) {
-                Text(
-                    modifier = Modifier.then(stateAlpha),
-                    text = summary
-                )
-            }
+
+            content(enabled, checked)
         }
-    )
+    }
 }
 
 @Composable
-fun RadioItem(
-    title: String,
-    selected: Boolean,
-    onClick: () -> Unit,
+fun SettingsItemExpanded(
+    type: SettingsItemType = SettingsItemType.PARENT,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    enabled: Boolean = true,
+    label: String,
+    description: String? = null,
+    iconVector: ImageVector? = null,
+    iconPainter: Painter? = null,
+    expanded: Boolean = false,
+    content: @Composable (enabled: Boolean, expanded: Boolean) -> Unit = { enabled, expanded -> }
 ) {
-    ListItem(
-        headlineContent = {
-            Text(title)
-        },
-        leadingContent = {
-            RadioButton(selected = selected, onClick = onClick)
-        }
+    var expand by remember { mutableStateOf(expanded) }
+
+    val rotation by animateFloatAsState(
+        targetValue = if (expand) -180f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "rotate"
     )
+
+    ElevatedCard(
+        modifier = when (type) {
+            SettingsItemType.PARENT -> Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            SettingsItemType.CHILD -> Modifier.padding(0.dp)
+        },
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        shape = when (type) {
+            SettingsItemType.PARENT -> CardDefaults.elevatedShape
+            SettingsItemType.CHILD -> RoundedCornerShape(0.dp)
+        },
+        elevation = when (type) {
+            SettingsItemType.PARENT -> CardDefaults.elevatedCardElevation()
+            SettingsItemType.CHILD -> CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+        },
+        enabled = enabled,
+        onClick =  {
+            expand = !expand
+        }
+    ) {
+        Column {
+            Row(
+                modifier = when (type) {
+                    SettingsItemType.PARENT -> Modifier.padding(all = 16.dp)
+                    SettingsItemType.CHILD -> Modifier.padding(horizontal = 16.dp)
+                },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when {
+                    iconVector != null -> {
+                        Icon(
+                            modifier = Modifier.size(24.scaleDp),
+                            imageVector = iconVector,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.size(16.dp))
+                    }
+
+                    iconPainter != null -> {
+                        Icon(
+                            modifier = Modifier.size(24.scaleDp),
+                            painter = iconPainter,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.size(16.dp))
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (description != null) {
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(rotation)
+                )
+            }
+
+            content(enabled, expand)
+        }
+    }
+}
+
+@Composable
+fun CheckBoxText(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = when (checked) {
+                true -> MaterialTheme.colorScheme.surfaceContainerHighest
+                false -> MaterialTheme.colorScheme.surfaceContainerLow
+            },
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        modifier = Modifier
+            .height(36.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        shape = RoundedCornerShape(5.dp),
+        onClick = {
+            onCheckedChange(!checked)
+        }
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                modifier = Modifier.size(32.dp),
+                checked = checked,
+                onCheckedChange = { newValue ->
+                    onCheckedChange(newValue)
+                }
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = MaterialTheme.typography.bodyMedium.fontSize
+            )
+        }
+    }
 }
