@@ -1,5 +1,7 @@
 package com.frb.axmanager.ui.viewmodel
 
+import android.app.Application
+import android.content.Context
 import android.net.Uri
 import android.os.Parcelable
 import android.os.SystemClock
@@ -9,7 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.core.content.edit
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.frb.axmanager.axApp
 import com.frb.axmanager.ui.util.HanziToPinyin
@@ -20,8 +23,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import org.json.JSONObject
+import java.text.Collator
+import java.util.Locale
 
-class PluginViewModel : ViewModel() {
+class PluginViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("plugin_settings", Context.MODE_PRIVATE)
 
     companion object {
         const val TAG = "PluginsViewModel"
@@ -54,13 +61,49 @@ class PluginViewModel : ViewModel() {
 
     var search by mutableStateOf("")
 
+    var getSelectedAsc by mutableIntStateOf(
+        prefs.getInt("selected_asc", 0)
+    )
+        private set
+    var getSelectedSort by mutableIntStateOf(
+        prefs.getInt("selected_sort", 0)
+    )
+        private set
+
+    fun setSelectedAsc(value: Int) {
+        getSelectedAsc = value
+        prefs.edit { putInt("selected_asc", value) }
+    }
+    fun setSelectedSort(value: Int) {
+        getSelectedSort = value
+        prefs.edit { putInt("selected_sort", value) }
+    }
+
     val pluginList by derivedStateOf {
+        val comparator = if (getSelectedAsc == 0) {
+            when (getSelectedSort) {
+                1 -> compareBy { it.size }
+                2 -> compareBy { it.enabled }
+                3 -> compareBy { it.hasActionScript }
+                4 -> compareBy { it.hasWebUi }
+                else -> compareBy(Collator.getInstance(Locale.getDefault()), PluginInfo::name)
+            }
+        } else {
+            when (getSelectedSort) {
+                1 -> compareByDescending { it.size }
+                2 -> compareByDescending { it.enabled }
+                3 -> compareByDescending { it.hasActionScript }
+                4 -> compareByDescending { it.hasWebUi }
+                else -> compareByDescending(Collator.getInstance(Locale.getDefault()), PluginInfo::name)
+            }
+        }.thenBy(Collator.getInstance(Locale.getDefault()), PluginInfo::id)
+
         plugins.filter {
             it.id.contains(search, ignoreCase = true) ||
                     it.name.contains(search, ignoreCase = true) ||
                     HanziToPinyin.getInstance().toPinyinString(it.name)
                         .contains(search, ignoreCase = true)
-        }.also {
+        }.sortedWith(comparator).also {
             isRefreshing = false
         }
     }
@@ -89,6 +132,9 @@ class PluginViewModel : ViewModel() {
     ) : Parcelable
 
     var plugins by mutableStateOf<List<PluginInfo>>(emptyList())
+        private set
+
+    var isNeedReignite by mutableStateOf(false)
         private set
 
     var isRefreshing by mutableStateOf(false)
@@ -125,9 +171,14 @@ class PluginViewModel : ViewModel() {
                 kotlin.runCatching {
                     val result = Axeron.getPlugins()
                     Log.i(TAG, "$result")
+                    isNeedReignite = false
 
                     plugins = result.map {
-                        convertPluginInfo(it)
+                        val pluginInfo = convertPluginInfo(it)
+                        if (pluginInfo.update) {
+                            isNeedReignite = true
+                        }
+                        pluginInfo
                     }
                     isNeedRefresh = false
                 }.onFailure { e ->
