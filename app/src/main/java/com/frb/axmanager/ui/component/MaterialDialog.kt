@@ -109,6 +109,7 @@ fun MaterialBottomSheet(
     neutralButton: @Composable (() -> Unit)? = null
 ) {
     ModalBottomSheet(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         onDismissRequest = { onDismissRequest() },
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
