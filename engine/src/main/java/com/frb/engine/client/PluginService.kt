@@ -286,7 +286,7 @@ object PluginService {
             return@withContext false
         }
 
-        if (Axeron.isFirstInit()) {
+        if (Axeron.isFirstInit(true)) {
             Log.i(TAG, "First Init: Removing old bin")
             removeScripts()
             removeBusybox()
