@@ -17,6 +17,6 @@ interface IAxeronService {
     ParcelableListSlice<PackageInfo> getPackages(int flags) = 6;
     List<String> getPlugins() = 7;
     String getPluginById(in String id) = 8;
-    boolean isFirstInit() = 9;
+    boolean isFirstInit(boolean markAsFirstInit) = 9;
     void destroy() = 16777114;
 }
