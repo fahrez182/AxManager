@@ -101,12 +101,11 @@ public class Service extends IAxeronService.Stub {
     }
 
     @Override
-    public boolean isFirstInit() {
-        boolean firstFlag = firstInitFlag;
-        if (firstInitFlag) {
+    public boolean isFirstInit(boolean markAsFirstInit) {
+        if (markAsFirstInit) {
             firstInitFlag = false;
         }
-        return firstFlag;
+        return firstInitFlag;
     }
 
     private List<String> readAllPluginAsString(String pluginsDirPath) {
