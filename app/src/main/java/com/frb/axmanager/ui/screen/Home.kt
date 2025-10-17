@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MiscellaneousServices
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.LocalFireDepartment
@@ -43,6 +44,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,11 +73,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.dergoogler.mmrl.ui.component.LabelItem
-import com.dergoogler.mmrl.ui.component.LabelItemDefaults
-import com.dergoogler.mmrl.ui.component.text.TextRow
 import com.frb.axmanager.BuildConfig
 import com.frb.axmanager.R
+import com.frb.axmanager.ui.component.ExtraLabel
+import com.frb.axmanager.ui.component.ExtraLabelDefaults
 import com.frb.axmanager.ui.component.rememberConfirmDialog
 import com.frb.axmanager.ui.component.rememberLoadingDialog
 import com.frb.axmanager.ui.util.checkNewVersion
@@ -92,6 +93,7 @@ import com.frb.engine.utils.Starter
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -102,7 +104,6 @@ import kotlinx.coroutines.withContext
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val pluginViewModel = viewModelGlobal.pluginViewModel
     val adbViewModel = viewModelGlobal.adbViewModel
@@ -179,11 +180,13 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                                     text = "Re-ignite",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(end = 6.dp)
                                 )
                                 Icon(
                                     imageVector = Icons.Outlined.LocalFireDepartment,
                                     contentDescription = "Reignite",
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier
                                         .size(24.dp)
                                 )
@@ -196,6 +199,17 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 windowInsets = WindowInsets(top = 0)
             )
         },
+        floatingActionButton = {
+            AnimatedVisibility(visible = adbViewModel.axeronInfo.isRunning()) {
+                FloatingActionButton(
+                    onClick = {
+                        navigator.navigate(QuickShellScreenDestination)
+                    }
+                ) {
+                    Icon(Icons.Filled.Terminal, null)
+                }
+            }
+        },
         contentWindowInsets = WindowInsets(top = 0)
     ) { innerPadding ->
         Column(
@@ -205,7 +219,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp)
-                .padding(bottom = 16.dp),
+                .padding(bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             StatusCard(
@@ -410,41 +424,33 @@ fun StatusCard(
                 axeronInfo.isRunning() -> {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .offset(38.dp, 45.dp),
+                            .fillMaxSize(),
                         contentAlignment = Alignment.BottomEnd
                     ) {
                         Icon(
-                            modifier = Modifier.size(145.dp),
+                            modifier = Modifier.size(145.dp).offset(38.dp, 45.dp),
                             painter = painterResource(com.frb.engine.R.drawable.ic_axeron),
                             contentDescription = null
                         )
+
                     }
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.matchParentSize()
                     ) {
-                        val labelStyle = LabelItemDefaults.style
-                        TextRow(
-                            trailingContent = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    LabelItem(
-                                        text = {
-                                            Text(
-                                                text = axeronInfo.getMode(),
-                                                style = labelStyle.textStyle.copy(color = labelStyle.contentColor),
-                                            )
-                                        }
-                                    )
-                                }
-                            }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
                                 text = stringResource(id = R.string.home_running),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
+                            )
+                            ExtraLabel(
+                                text = axeronInfo.getMode(),
+                                style = ExtraLabelDefaults.style.copy(
+                                    allCaps = false
+                                )
                             )
                         }
 
@@ -453,10 +459,10 @@ fun StatusCard(
                             style = MaterialTheme.typography.bodySmall
                         )
 
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.weight(1f))
 
                         PluginCard(
-                            pluginViewModel, modifier = Modifier
+                            pluginViewModel
                         )
                     }
                 }
@@ -558,14 +564,13 @@ fun WarningCard(
 }
 
 @Composable
-fun PluginCard(pluginViewModel: PluginViewModel, modifier: Modifier) {
+fun PluginCard(pluginViewModel: PluginViewModel) {
     val count = pluginViewModel.plugins.size
     ElevatedCard(
         modifier = Modifier.width(200.dp),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(vertical = 12.dp)
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.Start,
@@ -669,24 +674,24 @@ fun InfoCard(adbViewModel: AdbViewModel) {
                                 imageVector = icon,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .padding(end = 20.dp)
-                                    .size(26.dp)
+                                    .padding(end = 24.dp)
+                                    .size(24.dp)
                             )
 
                             is Painter -> Icon(
                                 painter = icon,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .padding(end = 20.dp)
-                                    .size(26.dp)
+                                    .padding(end = 24.dp)
+                                    .size(24.dp)
                             )
                         }
                     }
                     Column {
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = content,
