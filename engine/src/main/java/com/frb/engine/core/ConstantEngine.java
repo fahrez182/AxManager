@@ -1,135 +1,27 @@
 package com.frb.engine.core;
 
 public interface ConstantEngine {
-    interface extra {
-        String REQUEST_ID = "Apollo.REQUEST_ID";
-        String SELECTED_APP = "Apollo.SELECTED_APP";
-    }
-
-    interface monitor {
-        String CPU = "cpu";
-        String GPU = "gpu";
-        String RAM = "ram";
-        String BATTERY = "battery";
-        String TEMP = "temperature";
-        String FPS = "fps";
-        String TIME = "time";
-    }
-
-    interface data {
-        String SYNC_DATA = "syncData";
-        String BOT_DETECTION = "botDetection";
-        String ERROR = "dataError";
-    }
-
-    interface cross {
-        String SIZE = "size";
-        String ROTATION = "rotation";
-        String OPACITY = "opacity";
-        String POSITION_X = "positionX";
-        String POSITION_Y = "positionY";
-        String CROSS_ID = "crossId";
-        String COLOR_ID = "colorId";
-    }
-
-    interface toggle {
-        String MODES = "toggleModes";
-        String CROSS = "toggleCross";
-        String TACTIX = "toggleTactix";
-        String OPT_PING = "toggleOptPing";
-        String MONITOR = "toggleMonitor";
-    }
-
-    interface parcel {
-        String EXPORT_PLUGIN = "exportPlugin";
-        String PLUGIN_ITEM = "pluginItem";
-        String APP_ITEM = "appItem";
-    }
-
-    interface prefs {
-        String ID = "idUser";
-        String DEBUG_MODE = "debugMode";
-        String SAVED_PLUGIN = "savedPlugin";
-        String FIRST_INSTALL = "firstInstall";
-        String META_DATA = "metaData";
-        String META_USER = "metaVal";
-        String MODES = "tweakModes";
-        String ADDED_PLUGIN = "addedPlugin";
-        String ENERGY = "energy";
-        String USER_AGENT = "userAgent";
-        String PLUGIN_DATA = "pluginData";
-    }
-
-    interface packages {
-        String SHIZUKU = "moe.shizuku.privileged.api";
-        String WHATSAPP = "com.whatsapp";
-        String TIKTOK = "com.ss.android.ugc.trill";
-    }
 
     interface folder {
         String ROOT = "/";
-        String AX_EXTENSION = ".axplugin";
-        String LOCAL_TEMP = "data/local/tmp/";
+        String SHELL = "data/data/com.android.shell/";
         String PARENT = "AxManager/";
         String PLUGIN = "plugins/";
+        String PLUGIN_UPDATE = "plugins_update/";
         String CACHE = "cache/";
-        String LAX2 = "LAX2/";
-        String RELEASE = "release/";
-        String DEBUG = "debug/";
-        String INSTALLED = ".installed/";
+        String LOG = "logs/";
         String BINARY = "bin/";
+        String ZIP = "zip/";
+
+        String SHELL_ROOT = ROOT + SHELL;
         String PARENT_PLUGIN = PARENT + PLUGIN;
-        String PARENT_PLUGIN_RELEASE = PARENT_PLUGIN + RELEASE;
-        String PARENT_PLUGIN_DEBUG = PARENT_PLUGIN + DEBUG;
-        String PARENT_PLUGIN_INSTALLED = PARENT_PLUGIN + INSTALLED;
-        String PARENT_CACHE = PARENT + CACHE;
-        String PARENT_LAX2 = PARENT + LAX2;
+        String PARENT_LOG = PARENT + LOG;
         String PARENT_BINARY = PARENT + BINARY;
-        String CONFIG = ".config";
-        String PARENT_CONFIG = PARENT + CONFIG;
-        String AX_PLUGIN_TOML = "axplugin.toml";
-        String BANNER = "banner.png";
-    }
-
-    interface plugin {
-        String ID = "id";
-        String NAME = "name";
-        String AUTHOR = "author";
-        String VERSION_NAME = "version";
-        String VERSION_CODE = "versionCode";
-        String DESCRIPTION = "description";
-        String WEB_SHELL = "config.webShell";
-        String MIN_HEIGHT = "config.minHeight";
-        String MIN_WIDTH = "config.minWidth";
-        String BINARY = "config.binaryPath";
-    }
-
-    interface action {
-        String UPDATE_PANEL_SIDE = "UPDATE_PANEL_SIDE";
-        String START_MAGIC_TAP = "START_MAGIC_TAP";
-        String INIT_MAGIC_TAP = "INIT_MAGIC_TAP";
-        String FROM_PANEL_SIDE = "FROM_PANEL_SIDE";
-        String PICK_FILE = "PICK_FILE";
-        String STOP_FLOATING_FOREGROUND = "STOP_FLOATING_FOREGROUND";
-    }
-
-    interface panel {
-        String POS_Y = "posY";
-        String POS_X = "posX";
-        String LOCATION = "location";
-        int LOC_LEFT = -2;
-        int LOC_TOP = -1;
-        int LOC_RIGHT = 1;
-        int LOC_BOTTOM = 2;
-        int LOC_UNSPECIFIC = 0;
-    }
-
-    interface request {
-        int CODE_PICK_ZIP = 1001;
+        String PARENT_ZIP = PARENT + ZIP;
+        String PARENT_PLUGIN_UPDATE = PARENT + PLUGIN_UPDATE;
     }
 
     interface permission {
-        String SHIZUKU_SERVICES = "APOLLO_SHIZUKU_SERVICES";
 
         interface ops {
             int OP_COARSE_LOCATION = 0;
