@@ -1,5 +1,6 @@
 package com.frb.axmanager.ui.screen
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -88,8 +91,12 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     }
                 }
             ) { enabled, checked ->
-                if (!checked) {
-
+                AnimatedVisibility(!checked) {
+                    HorizontalDivider(
+                        Modifier,
+                        DividerDefaults.Thickness,
+                        MaterialTheme.colorScheme.secondaryContainer
+                    )
                     Column(
                         modifier = Modifier.padding(6.dp)
                     ) {

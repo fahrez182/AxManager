@@ -47,18 +47,20 @@ fun SettingsItem(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
-    label: String,
+    label: String? = null,
     description: String? = null,
     iconVector: ImageVector? = null,
     iconPainter: Painter? = null,
     onClick: () -> Unit = {},
     checked: Boolean = false,
     onSwitchChange: ((Boolean) -> Unit)? = null,
-    content: @Composable (enabled: Boolean, checked: Boolean) -> Unit = { enabled, checked -> }
+    content: (@Composable (enabled: Boolean, checked: Boolean) -> Unit)? = null
 ) {
     ElevatedCard(
         modifier = when (type) {
-            SettingsItemType.PARENT -> Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            SettingsItemType.PARENT -> Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
             SettingsItemType.CHILD -> Modifier.padding(0.dp)
         },
         colors = CardDefaults.elevatedCardColors(
@@ -78,9 +80,9 @@ fun SettingsItem(
     ) {
         Column {
             Row(
-                modifier = when (type) {
-                    SettingsItemType.PARENT -> Modifier.padding(all = 16.dp)
-                    SettingsItemType.CHILD -> Modifier.padding(horizontal = 16.dp)
+                modifier = when {
+                    label == null && description == null -> Modifier
+                    else -> Modifier.padding(all = 16.dp)
                 },
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -90,7 +92,7 @@ fun SettingsItem(
                             modifier = Modifier.size(24.scaleDp),
                             imageVector = iconVector,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.size(16.dp))
                     }
@@ -100,7 +102,7 @@ fun SettingsItem(
                             modifier = Modifier.size(24.scaleDp),
                             painter = iconPainter,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.size(16.dp))
                     }
@@ -109,12 +111,14 @@ fun SettingsItem(
                     modifier = Modifier
                         .weight(1f)
                 ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (label != null) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     if (description != null) {
                         Text(
                             text = description,
@@ -135,7 +139,9 @@ fun SettingsItem(
                 }
             }
 
-            content(enabled, checked)
+            if (content != null) {
+                content(enabled, checked)
+            }
         }
     }
 }
@@ -163,7 +169,9 @@ fun SettingsItemExpanded(
 
     ElevatedCard(
         modifier = when (type) {
-            SettingsItemType.PARENT -> Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            SettingsItemType.PARENT -> Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
             SettingsItemType.CHILD -> Modifier.padding(0.dp)
         },
         colors = CardDefaults.elevatedCardColors(
@@ -179,7 +187,7 @@ fun SettingsItemExpanded(
             SettingsItemType.CHILD -> CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
         },
         enabled = enabled,
-        onClick =  {
+        onClick = {
             expand = !expand
         }
     ) {
@@ -197,7 +205,7 @@ fun SettingsItemExpanded(
                             modifier = Modifier.size(24.scaleDp),
                             imageVector = iconVector,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.size(16.dp))
                     }
@@ -207,7 +215,7 @@ fun SettingsItemExpanded(
                             modifier = Modifier.size(24.scaleDp),
                             painter = iconPainter,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.size(16.dp))
                     }

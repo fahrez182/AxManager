@@ -9,7 +9,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,9 +44,11 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +67,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -72,6 +77,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.frb.axmanager.BuildConfig
 import com.frb.axmanager.R
@@ -79,6 +85,7 @@ import com.frb.axmanager.ui.component.ExtraLabel
 import com.frb.axmanager.ui.component.ExtraLabelDefaults
 import com.frb.axmanager.ui.component.rememberConfirmDialog
 import com.frb.axmanager.ui.component.rememberLoadingDialog
+import com.frb.axmanager.ui.component.scaleDp
 import com.frb.axmanager.ui.util.checkNewVersion
 import com.frb.axmanager.ui.util.module.LatestVersionInfo
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
@@ -362,8 +369,14 @@ fun StatusCard(
                     }
                     onClick(axeronInfo.isRunning())
                 }
-                .padding(16.dp)
         ) {
+            val isDark = isSystemInDarkTheme()
+            val colorScheme = MaterialTheme.colorScheme
+            val fadeColor = when {
+                isDark -> colorScheme.surfaceVariant
+                else -> colorScheme.surfaceVariant
+            }
+
             when {
                 adbViewModel.isUpdating -> {
                     Box(
@@ -397,7 +410,8 @@ fun StatusCard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .offset(42.dp, 60.dp),
+                            .offset(42.dp, 60.dp)
+                            .padding(16.dp),
                         contentAlignment = Alignment.BottomEnd
                     ) {
                         Icon(
@@ -406,7 +420,22 @@ fun StatusCard(
                             contentDescription = null
                         )
                     }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = 0.55f)
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                    )
                     Column(
+                        modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
@@ -424,7 +453,7 @@ fun StatusCard(
                 axeronInfo.isRunning() -> {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize(),
+                            .fillMaxSize().padding(16.dp),
                         contentAlignment = Alignment.BottomEnd
                     ) {
                         Icon(
@@ -434,8 +463,22 @@ fun StatusCard(
                         )
 
                     }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = 0.55f)
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                    )
                     Column(
-                        modifier = Modifier.matchParentSize()
+                        modifier = Modifier.matchParentSize().padding(16.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -455,7 +498,7 @@ fun StatusCard(
                         }
 
                         Text(
-                            text = "Version: ${axeronInfo.versionCode}",
+                            text = "Version: ${axeronInfo.versionCode} | Pid: ${axeronInfo.pid}",
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -471,7 +514,8 @@ fun StatusCard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .offset(38.dp, 45.dp),
+                            .offset(38.dp, 45.dp)
+                            .padding(16.dp),
                         contentAlignment = Alignment.BottomEnd
                     ) {
                         Icon(
@@ -480,7 +524,22 @@ fun StatusCard(
                             contentDescription = null
                         )
                     }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = 0.55f)
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                    )
                     Column(
+                        modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
@@ -567,7 +626,7 @@ fun WarningCard(
 fun PluginCard(pluginViewModel: PluginViewModel) {
     val count = pluginViewModel.plugins.size
     ElevatedCard(
-        modifier = Modifier.width(200.dp),
+        modifier = Modifier.width(180.dp),
     ) {
         Column(
             modifier = Modifier
@@ -582,7 +641,8 @@ fun PluginCard(pluginViewModel: PluginViewModel) {
                 } else {
                     "Plugins"
                 },
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(4.dp))
             Row(
@@ -590,8 +650,9 @@ fun PluginCard(pluginViewModel: PluginViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(22.scaleDp),
                     imageVector = Icons.Filled.Extension,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     contentDescription = null
                 )
                 Text(
@@ -667,39 +728,44 @@ fun InfoCard(adbViewModel: AdbViewModel) {
         ) {
             @Composable
             fun InfoCardItem(label: String, content: String, icon: Any? = null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (icon != null) {
-                        when (icon) {
-                            is ImageVector -> Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(end = 24.dp)
-                                    .size(24.dp)
-                            )
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (icon != null) {
+                            when (icon) {
+                                is ImageVector -> Icon(
+                                    imageVector = icon,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = 22.dp)
+                                        .size(22.dp)
+                                )
 
-                            is Painter -> Icon(
-                                painter = icon,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(end = 24.dp)
-                                    .size(24.dp)
-                            )
+                                is Painter -> Icon(
+                                    painter = icon,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = 22.dp)
+                                        .size(22.dp)
+                                )
+                            }
                         }
-                    }
-                    Column {
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(Modifier.weight(1f))
                         Text(
+                            modifier = Modifier.fillMaxWidth(),
                             text = content,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp)
+                            textAlign = TextAlign.End,
+                            fontWeight = FontWeight.Bold
                         )
                     }
+                    HorizontalDivider(Modifier.padding(top = 12.dp), DividerDefaults.Thickness, MaterialTheme.colorScheme.surfaceContainerHighest)
                 }
             }
 
@@ -739,7 +805,7 @@ fun InfoCard(adbViewModel: AdbViewModel) {
 
             InfoCardItem(
                 label = "Android Version",
-                content = "${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})",
+                content = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
                 icon = Icons.Filled.Android,
             )
 
