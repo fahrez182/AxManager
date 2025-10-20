@@ -1,7 +1,6 @@
 package com.frb.axmanager.ui.screen
 
 import android.content.Context
-import android.os.Environment
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -45,6 +44,8 @@ import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
+import com.frb.engine.core.ConstantEngine
+import com.frb.engine.utils.PathHelper
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -89,7 +90,7 @@ fun ExecutePluginActionScreen(
             return@LaunchedEffect
         }
         withContext(Dispatchers.IO) {
-            val pluginPath = "/data/local/tmp/AxManager/plugins/${plugin.dirId}"
+            val pluginPath = "${PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN)}/${plugin.dirId}"
             val pluginBin = "$pluginPath/system/bin"
             val checkBin = "[ -d \"$pluginBin\" ] && [ -n \"$(ls -A \"$pluginBin\" 2>/dev/null)\" ]"
             val cmd = "$checkBin && export PATH=\$PATH:$pluginBin; cd \"$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit \$RES"
@@ -129,7 +130,7 @@ fun ExecutePluginActionScreen(
                             val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
                             val date = format.format(Date())
 
-                            val baseDir = File(Environment.getExternalStorageDirectory(), "AxManager/logs")
+                            val baseDir = PathHelper.getPath(ConstantEngine.folder.PARENT_LOG)
                             if (!baseDir.exists()) {
                                 baseDir.mkdirs()
                             }

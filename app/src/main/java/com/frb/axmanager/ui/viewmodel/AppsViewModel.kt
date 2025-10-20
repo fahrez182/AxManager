@@ -19,7 +19,9 @@ import com.frb.axmanager.axApp
 import com.frb.axmanager.ui.util.HanziToPinyin
 import com.frb.axmanager.ui.webui.AppIconUtil
 import com.frb.engine.client.Axeron
+import com.frb.engine.core.ConstantEngine
 import com.frb.engine.utils.AxWebLoader
+import com.frb.engine.utils.PathHelper
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,7 +62,7 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
             get() = packageInfo.applicationInfo!!.uid
     }
 
-    val file = File("/data/local/tmp/AxManager/bin", "added_apps.txt")
+    val file = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY), "added_apps.txt")
     var search by mutableStateOf("")
 
     val addedList by derivedStateOf {

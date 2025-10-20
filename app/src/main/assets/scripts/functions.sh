@@ -89,21 +89,20 @@ set_perm_recursive() {
 uninstall_axmanager() {
   local debug=$1
   local package=$2
-  AXMANAGER="/data/local/tmp/AxManager"
 
   print_title "Uninstalling AxManager"
   ui_print
 
-  for plugin in "$AXMANAGER"/plugins/*; do
+  for plugin in "$AXERONDIR"/plugins/*; do
       [ -d "$plugin" ] || continue
 
       echo "- Mark to remove $plugin"
       touch "$plugin/remove"
   done
 
-  init_services.sh "$debug"
+  ignite_plugins.sh "$debug"
 
-  rm -rf "$AXMANAGER"
+  rm -rf "$AXERONDIR"
 
   echo "GoodBye :)"
 
@@ -124,8 +123,8 @@ install_plugin() {
   unzip -o "$ZIPFILE" module.prop -d "$TMPDIR" >&2
   [ ! -f "$TMPPROP" ] && abort "! Error: module.prop not detected!"
 
-  local MODROOT=/data/local/tmp/AxManager/plugins
-  local MODROOT_UPDATE=/data/local/tmp/AxManager/plugins_update
+  local MODROOT="$AXERONDIR/plugins"
+  local MODROOT_UPDATE="$AXERONDIR/plugins_update"
   MODID=$(grep_prop id "$TMPPROP")
   MODNAME=$(grep_prop name "$TMPPROP")
   MODAUTH=$(grep_prop author "$TMPPROP")

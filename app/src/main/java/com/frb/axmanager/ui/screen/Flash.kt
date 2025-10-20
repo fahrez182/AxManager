@@ -3,7 +3,6 @@ package com.frb.axmanager.ui.screen
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
-import android.os.Environment
 import android.os.Parcelable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -61,7 +60,9 @@ import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
 import com.frb.engine.client.PluginService.flashPlugin
+import com.frb.engine.core.ConstantEngine
 import com.frb.engine.core.Engine.Companion.application
+import com.frb.engine.utils.PathHelper
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -231,7 +232,7 @@ fun FlashScreen(
                         val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
                         val date = format.format(Date())
 
-                        val baseDir = File(Environment.getExternalStorageDirectory(), "AxManager/logs")
+                        val baseDir = PathHelper.getPath(ConstantEngine.folder.PARENT_LOG)
                         if (!baseDir.exists()) {
                             baseDir.mkdirs()
                         }

@@ -18,7 +18,9 @@ import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
 import com.frb.engine.IFileService;
 import com.frb.engine.IRuntimeService;
+import com.frb.engine.core.ConstantEngine;
 import com.frb.engine.utils.Logger;
+import com.frb.engine.utils.PathHelper;
 import com.frb.engine.utils.UserHandleCompat;
 
 import org.json.JSONObject;
@@ -90,20 +92,21 @@ public class Service extends IAxeronService.Stub {
 
     @Override
     public List<String> getPlugins() throws RemoteException {
-        String pluginsPath = "/data/local/tmp/AxManager/plugins";
+        String pluginsPath = PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).getAbsolutePath();
         return readAllPluginAsString(pluginsPath);
     }
 
     @Override
     public String getPluginById(String id) throws RemoteException {
-        File dir = new File("/data/local/tmp/AxManager/plugins", id);
+        File dir = new File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).getAbsolutePath(), id);
         return getPluginByDir(dir);
     }
 
     @Override
     public boolean isFirstInit(boolean markAsFirstInit) {
+        boolean firstInitFlag = this.firstInitFlag;
         if (markAsFirstInit) {
-            firstInitFlag = false;
+            this.firstInitFlag = false;
         }
         return firstInitFlag;
     }
@@ -141,7 +144,7 @@ public class Service extends IAxeronService.Stub {
         String pluginId = pluginInfo.get("id");
         if (pluginId == null) return null;
 
-        File updateDir = new File("/data/local/tmp/AxManager/plugins_update", pluginId);
+        File updateDir = new File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN_UPDATE), pluginId);
         File[] folderUpdateChild = (updateDir.exists() && updateDir.isDirectory()) ? updateDir.listFiles() : null;
         boolean isUpdate = folderUpdateChild != null && folderUpdateChild.length > 0;
 

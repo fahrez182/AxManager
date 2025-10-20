@@ -1,5 +1,5 @@
-PLUGINS_DIR="/data/local/tmp/AxManager/plugins"
-PLUGINS_UPDATE_DIR="/data/local/tmp/AxManager/plugins_update"
+PLUGINS_DIR="$AXERONDIR/plugins"
+PLUGINS_UPDATE_DIR="$AXERONDIR/plugins_update"
 DEBUG="${1:-false}"
 
 executor() {

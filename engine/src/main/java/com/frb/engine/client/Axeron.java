@@ -17,9 +17,10 @@ import androidx.annotation.Nullable;
 import com.frb.engine.Environment;
 import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
+import com.frb.engine.core.ConstantEngine;
 import com.frb.engine.core.Engine;
 import com.frb.engine.implementation.AxeronInfo;
-import com.frb.engine.implementation.AxeronService;
+import com.frb.engine.utils.PathHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -155,8 +156,7 @@ public class Axeron {
                 service.bindAxeronApplication(new IAxeronApplication.Stub() {
                     @Override
                     public void bindApplication(Bundle data) {
-                        if (AxeronService.VERSION_CODE > getInfo().getVersionCode()
-                                || isFirstInit(false)
+                        if (isFirstInit(false)
                                 || prefs.getBoolean("ignite_when_relog", false)) {
                             Log.d(TAG, "igniteService");
                             PluginService.igniteService();
@@ -274,11 +274,12 @@ public class Axeron {
     public static Environment getEnvironment() {
         return new Environment.Builder(false)
                 .put("AXERON", "true")
-                .put("AXERONBIN", "/data/local/tmp/AxManager/bin")
+                .put("AXERONDIR", PathHelper.getShellPath(ConstantEngine.folder.PARENT).getAbsolutePath())
+                .put("AXERONBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).getAbsolutePath())
                 .put("AXERONLIB", Engine.getApplication().getApplicationInfo().nativeLibraryDir)
                 .put("AXERONVER", String.valueOf(getInfo().getVersionCode()))
-                .put("TMPDIR", "/data/local/tmp/AxManager/cache")
-                .put("PATH", "$PATH:$AXERONBIN:/data/local/tmp/AxManager/bin/busybox")
+                .put("TMPDIR", PathHelper.getShellPath(ConstantEngine.folder.CACHE).getAbsolutePath())
+                .put("PATH", "$PATH:$AXERONBIN")
                 .build();
     }
 

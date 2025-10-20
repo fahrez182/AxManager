@@ -22,7 +22,9 @@ import com.frb.axmanager.ui.viewmodel.PluginViewModel.Companion.convertPluginInf
 import com.frb.axmanager.ui.webui.interfaces.AxWebInterface
 import com.frb.axmanager.ui.webui.interfaces.KsuWebInterface
 import com.frb.engine.client.Axeron
+import com.frb.engine.core.ConstantEngine
 import com.frb.engine.utils.AxWebLoader
+import com.frb.engine.utils.PathHelper
 import java.io.File
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -70,11 +72,11 @@ class WebUIActivity : ComponentActivity() {
         }
 
         val taskDescription = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityManager.TaskDescription.Builder().setLabel("WebUI-Next | ${plugin.name}")
+            ActivityManager.TaskDescription.Builder().setLabel("AxWebUI | ${plugin.prop.name}")
                 .build()
         } else {
             @Suppress("DEPRECATION")
-            ActivityManager.TaskDescription("WebUI-Next | ${plugin.name}")
+            ActivityManager.TaskDescription("AxWebUI | ${plugin.prop.name}")
         }
         setTaskDescription(taskDescription)
 
@@ -84,7 +86,7 @@ class WebUIActivity : ComponentActivity() {
 
         WebView.setWebContentsDebuggingEnabled(developerOptionsEnabled && enableWebDebugging)
 
-        val pluginDir = "/data/local/tmp/AxManager/plugins/${plugin.dirId}"
+        val pluginDir = "${PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN)}/${plugin.dirId}"
         val webRoot = File("$pluginDir/webroot")
 
         val axWebLoader = AxWebLoader.Builder()

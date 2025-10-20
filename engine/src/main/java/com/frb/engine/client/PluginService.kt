@@ -3,8 +3,10 @@ package com.frb.engine.client
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.frb.engine.core.ConstantEngine
 import com.frb.engine.core.Engine.Companion.application
 import com.frb.engine.implementation.AxeronService
+import com.frb.engine.utils.PathHelper
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -24,9 +26,13 @@ object PluginService {
     val BASEAPK: String
         get() = application.applicationInfo.sourceDir
 
-    const val AXERONBIN = "/data/local/tmp/AxManager/bin"
-    const val PLUGINDIR = "/data/local/tmp/AxManager/plugins"
-    const val PLUGINUPDATEDIR = "/data/local/tmp/AxManager/plugins_update"
+    val AXERONBIN: String
+        get() = PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).absolutePath
+    val PLUGINDIR : String
+        get() = PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).absolutePath
+    val PLUGINUPDATEDIR: String
+        get() = PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN_UPDATE).absolutePath
+
     val axFS = Axeron.newFileService()!!
 
     data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
@@ -46,7 +52,7 @@ object PluginService {
     ): FlashResult {
         val resolver = application.contentResolver
         with(resolver.openInputStream(uri)) {
-            val file = File("/data/local/tmp/AxManager/zip", "module.zip")
+            val file = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_ZIP), "module.zip")
 
             val fos = axFS.getStreamSession(file.absolutePath, true, false).outputStream
 
@@ -344,7 +350,16 @@ object PluginService {
         withContext(Dispatchers.IO) {
             val dstFile = File(AXERONBIN, "busybox")
             if (axFS.exists(dstFile.absolutePath)) {
-                axFS.delete(dstFile.absolutePath)
+                if (axFS.delete(dstFile.absolutePath)) {
+                    val removeBBSymlink = "find $AXERONBIN -type l -delete"
+                    val result = execWithIO(removeBBSymlink, useBusybox = false, hideStderr = false)
+
+                    if (result.isSuccess()) {
+                        Log.i(TAG, "symlink from busybox removed")
+                    } else {
+                        Log.e(TAG, "remove symlink failed: ${result.err}")
+                    }
+                }
             }
         }
     }
@@ -387,11 +402,11 @@ object PluginService {
             }
 
             val cmd =
-                "cp $BUSYBOX ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath}"
+                "cp $BUSYBOX ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath} && ${dstFile.absolutePath} --install -s $AXERONBIN"
             val result = execWithIO(cmd, useBusybox = false, hideStderr = false)
 
             if (result.isSuccess()) {
-                Log.i(TAG, "BusyBox extracted to: ${dstFile.absolutePath}")
+                Log.i(TAG, "busybox extracted & installed to: ${dstFile.absolutePath}")
                 return true
             } else {
                 Log.e(TAG, "ensureBusybox failed: ${result.err}")
