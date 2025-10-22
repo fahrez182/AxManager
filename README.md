@@ -57,8 +57,18 @@ Feel free to open **issues**, submit **pull requests**, or start a discussion fo
 
 ## 🙏 Credits
 - **[Magisk]()** "**BusyBox** and Plugin (Unrooted module) ideas"
-- **[Shizuku](https://github.com/RikkaApps/Shizuku) / [API](https://github.com/RikkaApps/Shizuku-API)** "The starting point and transition to learning IPC, also the reference for ADB handling."
+- **[Shizuku](https://github.com/RikkaApps/Shizuku) / [API](https://github.com/RikkaApps/Shizuku-API)** "Starting point and reference for learning Android IPC and ADB-based permission handling"
 - **[KernelSU](https://github.com/tiann/KernelSU) / [Next](https://github.com/KernelSU-Next/KernelSU-Next)** "Inspiration for the UI and WebUI features."
+
+## ⚠️ Notices & Legal Disclaimer
+This project includes adapted portions of code from:
+- Shizuku Manager (© Rikka Apps)
+  Licensed under the Apache License, Version 2.0
+  Repository: https://github.com/RikkaApps/Shizuku
+- Other open-source projects as credited above.
+
+AxManager does not include or distribute any original Shizuku Manager visual assets or claim to be an official replacement.
+All adapted code is used strictly for educational and experimental purposes, with clear attribution and compliance with the Apache License 2.0.
 
 ## 📜 License
 Licensed under the [Apache License 2.0](LICENSE).
