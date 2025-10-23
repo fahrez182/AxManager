@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'dev.rikka.tools.refine'
+}
+
+android {
+    namespace 'rikka.shizuku.server'
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 27
+
+        consumerProguardFiles "consumer-rules.pro"
+        aidlPackagedList 'moe/shizuku/server/IShizukuService.aidl', 'moe/shizuku/server/IRemoteProcess.aidl', 'moe/shizuku/server/IShizukuApplication.aidl', 'moe/shizuku/server/IShizukuServiceConnection.aidl'
+    }
+
+    buildFeatures {
+        aidl = true
+        buildConfig false
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.13.2'
+    implementation 'androidx.annotation:annotation:1.9.1'
+    implementation 'dev.rikka.rikkax.parcelablelist:parcelablelist:2.0.1'
+
+    implementation libs.refine.runtime
+    implementation libs.hidden.compat
+    implementation libs.androidx.core.ktx
+    compileOnly libs.hidden.stub
+}
