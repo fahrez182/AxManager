@@ -15,7 +15,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.frb.engine.client.Axeron;
-import com.frb.engine.utils.BinderContainer;
+
+import moe.shizuku.api.BinderContainer;
 
 public class AxeronProvider extends ContentProvider {
     // For receive Binder from Shizuku

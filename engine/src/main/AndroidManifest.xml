@@ -22,7 +22,7 @@
             tools:ignore="NewApi" />
 
         <provider
-            android:name=".core.AxeronProvider"
+            android:name=".AxManagerProvider"
             android:authorities="${applicationId}.server"
             android:directBootAware="true"
             android:enabled="true"

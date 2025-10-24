@@ -38,14 +38,11 @@ public abstract class Service<
     private final ConfigMgr configManager;
     private final ClientMgr clientManager;
 
-    public Service() {
-
-        userServiceManager = onCreateUserServiceManager();
+    public Service(UserServiceMgr shizukuUserServiceManager) {
+        userServiceManager = shizukuUserServiceManager;
         configManager = onCreateConfigManager();
         clientManager = onCreateClientManager();
     }
-
-    public abstract UserServiceMgr onCreateUserServiceManager();
 
     public abstract ClientMgr onCreateClientManager();
 

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import rikka.parcelablelist.ParcelableListSlice
 import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuApiConstants
 import rikka.shizuku.ktx.workerHandler
 import rikka.shizuku.manager.ServerConstants
 
@@ -40,9 +41,14 @@ class PermissionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     var isPermissionManagerEnabled by mutableStateOf(
-        Axeron.getShizukuService() != null
+        Axeron.pingBinder() && Axeron.getShizukuService() != null
     )
         private set
+
+    fun attachListener() {
+        Shizuku.addBinderReceivedListener(listenerReceived, workerHandler)
+        Shizuku.addBinderDeadListener(listenerDead, workerHandler)
+    }
 
     val listenerReceived = object : Shizuku.OnBinderReceivedListener {
         override fun onBinderReceived() {
@@ -50,6 +56,7 @@ class PermissionViewModel(application: Application) : AndroidViewModel(applicati
             Shizuku.removeBinderReceivedListener(this)
         }
     }
+
     val listenerDead = object : Shizuku.OnBinderDeadListener {
         override fun onBinderDead() {
             isPermissionManagerEnabled = false
@@ -58,8 +65,7 @@ class PermissionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun enablePermissionManager(enabled: Boolean) {
-        Shizuku.addBinderReceivedListener(listenerReceived, workerHandler)
-        Shizuku.addBinderDeadListener(listenerDead, workerHandler)
+        attachListener()
 
         Axeron.enableShizukuService(enabled)
     }
@@ -83,7 +89,7 @@ class PermissionViewModel(application: Application) : AndroidViewModel(applicati
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
-            data.writeInterfaceToken("moe.shizuku.server.IShizukuService")
+            data.writeInterfaceToken(ShizukuApiConstants.BINDER_DESCRIPTOR)
             data.writeInt(-1)
             try {
                 Shizuku.getBinder()!!.transact(ServerConstants.BINDER_TRANSACTION_getApplications, data, reply, 0)

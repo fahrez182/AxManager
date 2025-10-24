@@ -22,5 +22,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "AxManager"
 include(":app")
-include(":hidden-api")
 include(":engine")
+include(":shizuku-server")
+

@@ -49,4 +49,6 @@ dependencies {
     implementation(libs.dev.rikka.rikkax.parcelablelist)
 
     implementation(libs.androidx.core.ktx)
+
+    implementation(project(":shizuku-server"))
 }

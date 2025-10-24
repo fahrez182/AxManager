@@ -51,6 +51,7 @@ import com.frb.axmanager.ui.theme.AxManagerTheme
 import com.frb.axmanager.ui.util.LocalSnackbarHost
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
+import com.frb.axmanager.ui.viewmodel.PermissionViewModel
 import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
@@ -66,6 +67,7 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.navigation.dependency
 import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
+import rikka.shizuku.Shizuku
 
 
 class AxActivity : ComponentActivity() {
@@ -90,6 +92,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
 
 
     val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
+    val permissionViewModel: PermissionViewModel = viewModel<PermissionViewModel>()
     val adbViewModel: AdbViewModel = viewModel<AdbViewModel>()
     val pluginViewModel: PluginViewModel = viewModel<PluginViewModel>()
 
@@ -100,6 +103,18 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         if (Axeron.pingBinder() && AxeronService.VERSION_CODE <= Axeron.getInfo().versionCode) {
             pluginViewModel.fetchModuleList()
             appsViewModel.loadInstalledApps()
+            if (Shizuku.pingBinder()) {
+                permissionViewModel.loadInstalledApps()
+                permissionViewModel.attachListener()
+            }
+        }
+
+        val shizukuReceived = Shizuku.OnBinderReceivedListener {
+            Log.i("AxManagerBinder", "onShizukuBinderReceived")
+            if (Shizuku.pingBinder()) {
+                permissionViewModel.loadInstalledApps()
+                permissionViewModel.attachListener()
+            }
         }
 
         val receivedListener = Axeron.OnBinderReceivedListener {
@@ -117,19 +132,22 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
 
         Axeron.addBinderReceivedListener(receivedListener)
         Axeron.addBinderDeadListener(deadListener)
+        Shizuku.addBinderReceivedListener(shizukuReceived)
 
         onDispose {
             Axeron.removeBinderReceivedListener(receivedListener)
             Axeron.removeBinderDeadListener(deadListener)
+            Shizuku.removeBinderReceivedListener(shizukuReceived)
         }
     }
 
     val viewModelGlobal = remember {
         ViewModelGlobal(
-            settingsViewModel,
-            appsViewModel,
-            adbViewModel,
-            pluginViewModel
+            settingsViewModel = settingsViewModel,
+            appsViewModel = appsViewModel,
+            adbViewModel = adbViewModel,
+            pluginViewModel = pluginViewModel,
+            permissionViewModel = permissionViewModel
         )
     }
 

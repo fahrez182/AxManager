@@ -26,7 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import moe.shizuku.server.IShizukuService;
 import rikka.parcelablelist.ParcelableListSlice;
+import rikka.shizuku.Shizuku;
 
 public class Axeron {
     private static final List<ListenerHolder<OnBinderReceivedListener>> RECEIVED_LISTENERS = new ArrayList<>();
@@ -143,6 +145,7 @@ public class Axeron {
             }
             binder = newBinder;
             service = IAxeronService.Stub.asInterface(newBinder);
+            notifyShizuku();
 
             try {
                 binder.linkToDeath(DEATH_RECIPIENT, 0);
@@ -167,6 +170,34 @@ public class Axeron {
                 throw new RuntimeException(e);
             }
 
+        }
+    }
+
+    public static IShizukuService getShizukuService() {
+        try {
+            if (service == null) return null;
+            return service.getShizukuService();
+        } catch (RemoteException e) {
+            Log.e(TAG, "getShizukuService", e);
+            return null;
+        }
+    }
+
+    public static void notifyShizuku() {
+        IShizukuService shizukuService = getShizukuService();
+        if (shizukuService != null) {
+            Shizuku.onBinderReceived(shizukuService.asBinder(), Engine.getApplication().getPackageName());
+        } else {
+            Shizuku.onBinderReceived(null, Engine.getApplication().getPackageName());
+        }
+    }
+
+    public static void enableShizukuService(boolean enable) {
+        try {
+            requireService().enableShizukuService(enable);
+            notifyShizuku();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -268,6 +299,7 @@ public class Axeron {
             binder = null;
             service = null;
             serverInfo = null;
+            notifyShizuku();
         }
     }
 
@@ -282,8 +314,6 @@ public class Axeron {
                 .put("PATH", "$PATH:$AXERONBIN")
                 .build();
     }
-
-
 
     private static RuntimeException rethrowAsRuntimeException(RemoteException e) {
         return new RuntimeException(e);

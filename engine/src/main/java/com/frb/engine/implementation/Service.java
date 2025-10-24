@@ -4,11 +4,15 @@ import static android.Manifest.permission.WRITE_SECURE_SETTINGS;
 import static com.frb.engine.utils.ServerConstants.MANAGER_APPLICATION_ID;
 
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Parcel;
 import android.os.RemoteException;
+import android.system.Os;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -34,19 +38,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import moe.shizuku.server.IShizukuService;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.PermissionManagerApis;
 import rikka.parcelablelist.ParcelableListSlice;
+import rikka.shizuku.manager.ShizukuUserServiceManager;
+import rikka.shizuku.server.ShizukuService;
 
 public class Service extends IAxeronService.Stub {
+    protected final Handler mainHandler = new Handler(Looper.myLooper());
+
     protected static final String TAG = "AxeronService";
     protected static final Logger LOGGER = new Logger(TAG);
-//    private final Context context;
     private boolean firstInitFlag = true;
 
-//    public Service(Context context) {
-//        this.context = context;
-//    }
+    private final ShizukuUserServiceManager shizukuUserServiceManager = new ShizukuUserServiceManager();
+    private ShizukuService shizukuService = null;
 
     @Override
     public IFileService getFileService() {
@@ -111,6 +118,29 @@ public class Service extends IAxeronService.Stub {
         return firstInitFlag;
     }
 
+    @Override
+    public IShizukuService getShizukuService() throws RemoteException {
+        return shizukuService;
+    }
+
+    @Override
+    public void enableShizukuService(boolean enable) throws RemoteException {
+        if (enable) {
+            shizukuService = new ShizukuService(
+                    mainHandler,
+                    shizukuUserServiceManager
+            );
+        } else {
+            shizukuService = null;
+        }
+    }
+
+    public int checkPermission(String permission) throws RemoteException {
+        int uid = Os.getuid();
+        if (uid == 0) return PackageManager.PERMISSION_GRANTED;
+        return PermissionManagerApis.checkPermission(permission, uid);
+    }
+
     private List<String> readAllPluginAsString(String pluginsDirPath) {
         List<String> result = new ArrayList<>();
         File pluginsDir = new File(pluginsDirPath);
@@ -134,30 +164,29 @@ public class Service extends IAxeronService.Stub {
 
     private String getPluginByDir(File dir) {
         if (dir.isFile()) return null;
-        Map<String, String> pluginInfo = null;
+        Map<String, Object> pluginInfo = null;
         File propFile = new File(dir, "module.prop");
         if (propFile.exists() && propFile.isFile()) {
             pluginInfo = new HashMap<>(readFileProp(propFile));
         }
 
         if (pluginInfo == null) return null;
-        String pluginId = pluginInfo.get("id");
-        if (pluginId == null) return null;
+        String pluginId = String.valueOf(pluginInfo.get("id"));
 
         File updateDir = new File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN_UPDATE), pluginId);
         File[] folderUpdateChild = (updateDir.exists() && updateDir.isDirectory()) ? updateDir.listFiles() : null;
         boolean isUpdate = folderUpdateChild != null && folderUpdateChild.length > 0;
 
         pluginInfo.put("dir_id", pluginId);
-        pluginInfo.put("enabled", new File(dir, "disable").exists() ? "false" : "true");
+        pluginInfo.put("enabled", !(new File(dir, "disable").exists()));
         pluginInfo.put("update", String.valueOf(isUpdate));
-        pluginInfo.put("update_install", new File(updateDir, "update_install").exists() ? "true" : "false");
-        pluginInfo.put("update_remove", new File(updateDir, "update_remove").exists() ? "true" : "false");
-        pluginInfo.put("update_enable", new File(updateDir, "update_enable").exists() ? "true" : "false");
-        pluginInfo.put("update_disable", new File(updateDir, "update_disable").exists() ? "true" : "false");
-        pluginInfo.put("remove", new File(dir, "remove").exists() ? "true" : "false");
-        pluginInfo.put("action", new File(dir, "action.sh").exists() ? "true" : "false");
-        pluginInfo.put("web", new File(dir, "webroot/index.html").exists() ? "true" : "false");
+        pluginInfo.put("update_install", new File(updateDir, "update_install").exists());
+        pluginInfo.put("update_remove", new File(updateDir, "update_remove").exists());
+        pluginInfo.put("update_enable", new File(updateDir, "update_enable").exists());
+        pluginInfo.put("update_disable", new File(updateDir, "update_disable").exists());
+        pluginInfo.put("remove", new File(dir, "remove").exists());
+        pluginInfo.put("action", new File(dir, "action.sh").exists());
+        pluginInfo.put("web", new File(dir, "webroot/index.html").exists());
         pluginInfo.put("size", String.valueOf(getFolderSize(dir)));
         return new JSONObject(pluginInfo).toString();
     }

@@ -3,8 +3,10 @@ package com.frb.axmanager.ui.component
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,11 +18,13 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,9 +55,10 @@ fun SettingsItem(
     description: String? = null,
     iconVector: ImageVector? = null,
     iconPainter: Painter? = null,
-    onClick: () -> Unit = {},
+    onClick: (() -> Unit)? = null,
+    onCheckedClick: ((checked: Boolean) -> Unit)? = null,
     checked: Boolean = false,
-    onSwitchChange: ((Boolean) -> Unit)? = null,
+    onSwitchChange: ((checked: Boolean) -> Unit)? = null,
     content: (@Composable (enabled: Boolean, checked: Boolean) -> Unit)? = null
 ) {
     ElevatedCard(
@@ -76,16 +81,26 @@ fun SettingsItem(
             SettingsItemType.CHILD -> CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
         },
         enabled = enabled,
-        onClick = onClick
+        onClick = {
+            if (onClick != null) {
+                onClick()
+            }
+            if (onCheckedClick != null) {
+                onCheckedClick(checked)
+            }
+        }
     ) {
         Column {
             Row(
                 modifier = when {
-                    label == null && description == null -> Modifier
-                    else -> Modifier.padding(all = 16.dp)
+                    label == null && description == null -> Modifier.height(IntrinsicSize.Min)
+                    else -> Modifier
+                        .padding(all = 16.dp)
+                        .height(IntrinsicSize.Min)
                 },
                 verticalAlignment = Alignment.CenterVertically
-            ) {
+            )
+            {
                 when {
                     iconVector != null -> {
                         Icon(
@@ -108,8 +123,7 @@ fun SettingsItem(
                     }
                 }
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
+                    modifier = Modifier.weight(1f)
                 ) {
                     if (label != null) {
                         Text(
@@ -130,6 +144,16 @@ fun SettingsItem(
                 }
 
                 if (onSwitchChange != null) {
+                    if (onCheckedClick != null) {
+                        Spacer(Modifier.width(12.dp))
+                        VerticalDivider(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(DividerDefaults.Thickness)
+                                .padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
                     Spacer(Modifier.width(12.dp))
                     Switch(
                         enabled = enabled,
@@ -137,6 +161,7 @@ fun SettingsItem(
                         onCheckedChange = onSwitchChange
                     )
                 }
+
             }
 
             if (content != null) {

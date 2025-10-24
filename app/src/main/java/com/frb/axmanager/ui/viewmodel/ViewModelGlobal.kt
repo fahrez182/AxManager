@@ -4,6 +4,7 @@ package com.frb.axmanager.ui.viewmodel
 class ViewModelGlobal(
     val settingsViewModel: SettingsViewModel,
     val appsViewModel: AppsViewModel,
+    val permissionViewModel: PermissionViewModel,
     val adbViewModel: AdbViewModel,
     val pluginViewModel: PluginViewModel
 )

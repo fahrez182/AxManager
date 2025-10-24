@@ -17,7 +17,7 @@ android {
         applicationId = "com.frb.axmanager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 12900
+        versionCode = 12927
         versionName = "1.2.9"
 
         externalNativeBuild {
@@ -114,6 +114,7 @@ dependencies {
     implementation(libs.androidx.webkit)
 
     implementation(project(":engine"))
+    implementation(project(":shizuku-server"))
     implementation(libs.sdp.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

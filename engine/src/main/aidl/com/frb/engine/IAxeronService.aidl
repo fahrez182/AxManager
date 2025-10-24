@@ -4,6 +4,7 @@ package com.frb.engine;
 import com.frb.engine.IFileService;
 import com.frb.engine.IRuntimeService;
 import com.frb.engine.IAxeronApplication;
+import moe.shizuku.server.IShizukuService;
 import rikka.parcelablelist.ParcelableListSlice;
 import com.frb.engine.implementation.AxeronInfo;
 
@@ -18,5 +19,7 @@ interface IAxeronService {
     List<String> getPlugins() = 7;
     String getPluginById(in String id) = 8;
     boolean isFirstInit(boolean markAsFirstInit) = 9;
+    IShizukuService getShizukuService() = 10;
+    void enableShizukuService(boolean enable) = 11;
     void destroy() = 16777114;
 }

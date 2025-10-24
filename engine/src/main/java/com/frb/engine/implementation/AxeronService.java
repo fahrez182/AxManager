@@ -1,14 +1,16 @@
 package com.frb.engine.implementation;
 
 import static com.frb.engine.utils.ServerConstants.MANAGER_APPLICATION_ID;
+import static rikka.shizuku.manager.ServerConstants.PERMISSION;
 
 import android.content.Context;
 import android.content.IContentProvider;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.ddm.DdmHandleAppName;
+import android.os.Binder;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
@@ -18,27 +20,26 @@ import android.os.SystemClock;
 import android.system.Os;
 
 import com.frb.engine.utils.ApkChangedObservers;
-import com.frb.engine.utils.BinderContainer;
 import com.frb.engine.utils.BinderSender;
 import com.frb.engine.utils.IContentProviderCompat;
 import com.frb.engine.utils.ServerConstants;
 
+import kotlin.collections.ArraysKt;
+import moe.shizuku.api.BinderContainer;
+import moe.shizuku.server.IShizukuService;
 import rikka.hidden.compat.ActivityManagerApis;
 import rikka.hidden.compat.DeviceIdleControllerApis;
 import rikka.hidden.compat.PackageManagerApis;
-import rikka.hidden.compat.PermissionManagerApis;
 import rikka.hidden.compat.UserManagerApis;
 
 public class AxeronService extends Service {
     public static final String VERSION_NAME = "V1.2.9";
-    public static final int VERSION_CODE = 12900;
+    public static final int VERSION_CODE = 12927;
 
     private final Long starting = SystemClock.elapsedRealtime();
 
-    private final Handler mainHandler = new Handler(Looper.myLooper());
-
     public AxeronService() {
-//        super(context);
+        super();
         waitSystemService("package");
         waitSystemService(Context.ACTIVITY_SERVICE);
         waitSystemService(Context.USER_SERVICE);
@@ -56,13 +57,45 @@ public class AxeronService extends Service {
             }
         });
 
-        BinderSender.register(this.asBinder());
+        BinderSender.register(this);
 
         mainHandler.post(() -> {
-            for (int userId : UserManagerApis.getUserIdsNoThrow()) {
-                sendBinderToManager(this, userId, true);
+            try {
+                sendBinderToClient();
+            } catch (RemoteException e) {
+                LOGGER.e("exception when call sendBinderToClient", e);
             }
+            sendBinderToManager();
         });
+    }
+
+    private static void sendBinderToClient(IBinder binder, int userId) {
+        try {
+            for (PackageInfo pi : PackageManagerApis.getInstalledPackagesNoThrow(PackageManager.GET_PERMISSIONS, userId)) {
+                if (pi == null || pi.requestedPermissions == null)
+                    continue;
+
+                if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
+                    sendBinderToUserApp(binder, pi.packageName, userId);
+                }
+            }
+        } catch (Throwable tr) {
+            LOGGER.e("exception when call getInstalledPackages", tr);
+        }
+    }
+
+    private static void sendBinderToManger(Binder binder) {
+        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
+            sendBinderToManager(binder, userId);
+        }
+    }
+
+    public static void sendBinderToManager(IBinder binder, int userId) {
+        sendBinderToUserApp(binder, MANAGER_APPLICATION_ID, userId);
+    }
+
+    public static void sendBinderToUserApp(IBinder binder, String packageName, int userId) {
+        sendBinderToUserApp(binder, packageName, userId, true);
     }
 
     public static void main(String[] args) {
@@ -88,9 +121,7 @@ public class AxeronService extends Service {
         return PackageManagerApis.getApplicationInfoNoThrow(MANAGER_APPLICATION_ID, 0, 0);
     }
 
-
-    public static void sendBinderToManager(IBinder binder, int userId, boolean retry) {
-        String packageName = MANAGER_APPLICATION_ID;
+    public static void sendBinderToUserApp(IBinder binder, String packageName, int userId, boolean retry) {
         try {
             DeviceIdleControllerApis.addPowerSaveTempWhitelistApp(packageName, 30 * 1000, userId,
                     316/* PowerExemptionManager#REASON_SHELL */, "shell");
@@ -99,7 +130,15 @@ public class AxeronService extends Service {
             LOGGER.e(tr, "Failed to add %d:%s to power save temp whitelist", userId, packageName);
         }
 
-        String name = packageName + ".server";
+        String name;
+        String extraBinder;
+        if (packageName.equals(MANAGER_APPLICATION_ID)) {
+            name = packageName + ".server";
+            extraBinder = "AxServer.BINDER";
+        } else {
+            name = packageName + ".shizuku";
+            extraBinder = "moe.shizuku.privileged.api.intent.extra.BINDER";
+        }
         IContentProvider provider = null;
         IBinder token = null;
 
@@ -116,7 +155,7 @@ public class AxeronService extends Service {
                     ActivityManagerApis.forceStopPackageNoThrow(packageName, userId);
                     LOGGER.e("kill %s in user %d and try again", packageName, userId);
                     Thread.sleep(1000);
-                    sendBinderToManager(binder, userId, false);
+                    sendBinderToUserApp(binder, packageName, userId, false);
                 }
                 return;
             }
@@ -126,9 +165,8 @@ public class AxeronService extends Service {
             }
 
             Bundle extra = new Bundle();
-            extra.putParcelable("AxServer.BINDER", new BinderContainer(binder));
-
-            Bundle reply = IContentProviderCompat.call(provider, null, null, name, "sendBinder", null, extra);
+            extra.putParcelable(extraBinder, new BinderContainer(binder));
+            Bundle reply = IContentProviderCompat.callCompat(provider, null, name, "sendBinder", null, extra);
             if (reply != null) {
                 LOGGER.i("send binder to user app %s in user %d", packageName, userId);
             } else {
@@ -147,14 +185,28 @@ public class AxeronService extends Service {
         }
     }
 
-    public int checkPermission(String permission) {
-        try {
-            int uid = Os.getuid();
-            if (uid == 0) return PackageManager.PERMISSION_GRANTED;
-            return PermissionManagerApis.checkPermission(permission, uid);
-        } catch (RemoteException e) {
-            return PackageManager.PERMISSION_DENIED;
+    void sendBinderToClient() throws RemoteException {
+        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
+            IShizukuService shizukuService = getShizukuService();
+            if (shizukuService != null) {
+                sendBinderToClient(shizukuService.asBinder(), userId);
+            }
         }
+    }
+
+    void sendBinderToManager() {
+        sendBinderToManger(this);
+    }
+
+    public boolean checkRuntime() {
+        try {
+            if (checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED) {
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
     }
 
     @Override
@@ -166,7 +218,7 @@ public class AxeronService extends Service {
                 Os.getpid(),
                 SELinux.getContext(),
                 starting,
-                checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
+                checkRuntime()
         );
     }
 }

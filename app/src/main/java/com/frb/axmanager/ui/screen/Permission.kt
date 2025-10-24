@@ -84,7 +84,7 @@ fun PermissionScreen(
                         .padding(horizontal = 16.dp)
                         .padding(vertical = 6.dp),
                     colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ) {
                     Row(

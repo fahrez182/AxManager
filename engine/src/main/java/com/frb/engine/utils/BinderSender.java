@@ -8,7 +8,6 @@ import static android.app.ActivityManagerHidden.UID_OBSERVER_IDLE;
 import android.app.ActivityManagerHidden;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.os.IBinder;
 import android.os.RemoteException;
 import android.text.TextUtils;
 
@@ -18,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import kotlin.collections.ArraysKt;
+import moe.shizuku.server.IShizukuService;
 import rikka.hidden.compat.ActivityManagerApis;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.PermissionManagerApis;
@@ -30,9 +30,9 @@ public class BinderSender {
     private static final Logger LOGGER = new Logger("BinderSender");
 
     private static final String PERMISSION_MANAGER = "com.frb.axmanager.permission.MANAGER";
-//    private static final String PERMISSION = "moe.shizuku.manager.permission.API_V23";
+    private static final String PERMISSION = "moe.shizuku.manager.permission.API_V23";
 
-    private static IBinder axeronBinder;
+    private static AxeronService axeronService;
 
     private static void sendBinder(int uid, int pid) throws RemoteException {
         List<String> packages = PackageManagerApis.getPackagesForUidNoThrow(uid);
@@ -55,18 +55,21 @@ public class BinderSender {
                     granted = ActivityManagerApis.checkPermission(PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
 
                 if (granted) {
-                    AxeronService.sendBinderToManager(axeronBinder, userId, true);
+                    AxeronService.sendBinderToManager(axeronService, userId);
                     return;
                 }
-            } else /*if (ArraysKt.contains(pi.requestedPermissions, PERMISSION))*/ {
-//                ShizukuService.sendBinderToUserApp(aAxeronService, packageName, userId);
+            } else if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
+                IShizukuService shizukuService = axeronService.getShizukuService();
+                if (shizukuService != null) {
+                    AxeronService.sendBinderToUserApp(shizukuService.asBinder(), packageName, userId);
+                }
                 return;
             }
         }
     }
 
-    public static void register(IBinder axeronService) {
-        axeronBinder = axeronService;
+    public static void register(AxeronService service) {
+        axeronService = service;
 
         try {
             ActivityManagerApis.registerProcessObserver(new ProcessObserver());
