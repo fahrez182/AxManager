@@ -88,7 +88,7 @@ public class Shizuku {
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
         try {
-            data.writeInterfaceToken("moe.shizuku.server.IShizukuService");
+            data.writeInterfaceToken(ShizukuApiConstants.BINDER_DESCRIPTOR);
             data.writeStrongBinder(SHIZUKU_APPLICATION.asBinder());
             data.writeInt(1);
             args.writeToParcel(data, 0);
@@ -108,7 +108,7 @@ public class Shizuku {
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
         try {
-            data.writeInterfaceToken("moe.shizuku.server.IShizukuService");
+            data.writeInterfaceToken(ShizukuApiConstants.BINDER_DESCRIPTOR);
             data.writeStrongBinder(SHIZUKU_APPLICATION.asBinder());
             data.writeString(packageName);
             result = binder.transact(14 /*IShizukuService.Stub.TRANSACTION_attachApplication*/, data, reply, 0);

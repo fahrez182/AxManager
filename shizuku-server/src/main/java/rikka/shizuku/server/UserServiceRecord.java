@@ -10,6 +10,7 @@ import android.os.RemoteCallbackList;
 import java.util.UUID;
 
 import moe.shizuku.server.IShizukuServiceConnection;
+import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.server.util.HandlerUtil;
 import rikka.shizuku.server.util.Logger;
 
@@ -103,6 +104,7 @@ public abstract class UserServiceRecord {
     public abstract void removeSelf();
 
     public void destroy() {
+        LOGGER.i("Destroy service record %s", token);
         if (service != null) {
             service.unlinkToDeath(deathRecipient, 0);
         }
@@ -111,7 +113,7 @@ public abstract class UserServiceRecord {
             Parcel data = Parcel.obtain();
             Parcel reply = Parcel.obtain();
             try {
-                data.writeInterfaceToken(service.getInterfaceDescriptor());
+                data.writeInterfaceToken(ShizukuApiConstants.BINDER_DESCRIPTOR);
                 service.transact(USER_SERVICE_TRANSACTION_destroy, data, reply, Binder.FLAG_ONEWAY);
             } catch (Throwable e) {
                 LOGGER.w("Failed to call destroy %s", token);

@@ -111,7 +111,7 @@ public abstract class UserServiceManager {
         PackageInfo packageInfo = ensureCallingPackageForUserService(packageName, appId, userId);
 
         String className = Objects.requireNonNull(componentName.getClassName(), "class is null");
-        String sourceDir = Objects.requireNonNull(packageInfo.applicationInfo.sourceDir, "apk path is null");
+//        String sourceDir = Objects.requireNonNull(packageInfo.applicationInfo.sourceDir, "apk path is null");
 
         int versionCode = options.getInt(USER_SERVICE_ARG_VERSION_CODE, 1);
         String tag = options.getString(USER_SERVICE_ARG_TAG);
@@ -282,10 +282,6 @@ public abstract class UserServiceManager {
     public void removeUserServicesForPackage(String packageName) {
         List<UserServiceRecord> list = packageUserServiceRecords.get(packageName);
         if (list != null) {
-            for (UserServiceRecord record : list) {
-                record.removeSelf();
-                LOGGER.i("Remove user service %s for package %s", record.token, packageName);
-            }
             packageUserServiceRecords.remove(packageName);
         }
     }

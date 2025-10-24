@@ -110,18 +110,18 @@ public class ShizukuConfigManager extends ConfigManager {
                 }
 
                 int uid = pi.applicationInfo.uid;
-//                boolean allowed;
-//                try {
-//                    allowed = PermissionManagerApis.checkPermission(PERMISSION, uid) == PackageManager.PERMISSION_GRANTED;
-//                } catch (Throwable e) {
-//                    LOGGER.w("checkPermission");
-//                    continue;
-//                }
+                String pkg = pi.packageName;
+                ShizukuConfig.PackageEntry entry = findLocked(uid);
+                boolean allowed = false;
+
+                if (entry != null) {
+                    allowed = entry.packages.contains(pkg) && entry.isAllowed();
+                }
 
                 List<String> packages = new ArrayList<>();
-                packages.add(pi.packageName);
+                packages.add(pkg);
 
-                updateLocked(uid, packages, ConfigManager.MASK_PERMISSION, /* allowed ? ConfigManager.FLAG_ALLOWED :*/ 0);
+                updateLocked(uid, packages, ConfigManager.MASK_PERMISSION, allowed ? ConfigManager.FLAG_ALLOWED : 0);
                 changed = true;
             }
         }

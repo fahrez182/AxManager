@@ -59,7 +59,8 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     private final ShizukuConfigManager configManager;
     private final int managerAppId;
 
-    public ShizukuService(Handler mainHandler) {
+    public ShizukuService(Handler mainHandler, ShizukuUserServiceManager shizukuUserServiceManager) {
+        super(shizukuUserServiceManager);
         HandlerUtil.setMainHandler(mainHandler);
 
         waitSystemService("package");
@@ -132,11 +133,6 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     }
 
     @Override
-    public ShizukuUserServiceManager onCreateUserServiceManager() {
-        return new ShizukuUserServiceManager();
-    }
-
-    @Override
     public ShizukuClientManager onCreateClientManager() {
         return new ShizukuClientManager(getConfigManager());
     }
@@ -151,23 +147,12 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         return UserHandleCompat.getAppId(callingUid) == managerAppId;
     }
 
-    private int checkCallingPermission() {
-        try {
-            return ActivityManagerApis.checkPermission(ServerConstants.PERMISSION,
-                    Binder.getCallingPid(),
-                    Binder.getCallingUid());
-        } catch (Throwable tr) {
-            LOGGER.w(tr, "checkCallingPermission");
-            return PackageManager.PERMISSION_DENIED;
-        }
-    }
-
     @Override
     public boolean checkCallerPermission(String func, int callingUid, int callingPid, @Nullable ClientRecord clientRecord) {
         if (UserHandleCompat.getAppId(callingUid) == managerAppId) {
             return true;
         }
-        return clientRecord == null && checkCallingPermission() == PackageManager.PERMISSION_GRANTED;
+        return clientRecord == null;
     }
 
     @Override
@@ -316,24 +301,6 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         if (!onetime) {
             configManager.update(requestUid, packages, ConfigManager.MASK_PERMISSION, allowed ? ConfigManager.FLAG_ALLOWED : ConfigManager.FLAG_DENIED);
         }
-
-//        if (!onetime && allowed) {
-//            int userId = UserHandleCompat.getUserId(requestUid);
-//
-//            for (String packageName : PackageManagerApis.getPackagesForUidNoThrow(requestUid)) {
-//                PackageInfo pi = PackageManagerApis.getPackageInfoNoThrow(packageName, PackageManager.GET_PERMISSIONS, userId);
-//                if (pi == null || pi.requestedPermissions == null || !ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
-//                    continue;
-//                }
-//
-//                int deviceId = 0;//Context.DEVICE_ID_DEFAULT
-//                if (allowed) {
-//                    PermissionManagerApis.grantRuntimePermission(packageName, PERMISSION, userId);
-//                } else {
-//                    PermissionManagerApis.revokeRuntimePermission(packageName, PERMISSION, userId);
-//                }
-//            }
-//        }
     }
 
     private int  getFlagsForUidInternal(int uid, int mask) {
@@ -341,24 +308,6 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         if (entry != null) {
             return entry.flags & mask;
         }
-
-//        if (allowRuntimePermission && (mask & ConfigManager.MASK_PERMISSION) != 0) {
-//            int userId = UserHandleCompat.getUserId(uid);
-//            for (String packageName : PackageManagerApis.getPackagesForUidNoThrow(uid)) {
-//                PackageInfo pi = PackageManagerApis.getPackageInfoNoThrow(packageName, PackageManager.GET_PERMISSIONS, userId);
-//                if (pi == null || pi.requestedPermissions == null || !ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
-//                    continue;
-//                }
-//
-//                try {
-//                    if (PermissionManagerApis.checkPermission(PERMISSION, uid) == PackageManager.PERMISSION_GRANTED) {
-//                        return ConfigManager.FLAG_ALLOWED;
-//                    }
-//                } catch (Throwable e) {
-//                    LOGGER.w("getFlagsForUid");
-//                }
-//            }
-//        }
         return 0;
     }
 
@@ -394,22 +343,6 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
                     onPermissionRevoked(record.packageName);
                 }
             }
-
-//            for (String packageName : PackageManagerApis.getPackagesForUidNoThrow(uid)) {
-//                PackageInfo pi = PackageManagerApis.getPackageInfoNoThrow(packageName, PackageManager.GET_PERMISSIONS, userId);
-//                if (pi == null || pi.requestedPermissions == null || !ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
-//                    continue;
-//                }
-//
-//                int deviceId = 0;//Context.DEVICE_ID_DEFAULT
-//                if (allowed) {
-//                    PermissionManagerApis.grantRuntimePermission(packageName, PERMISSION, userId);
-//                } else {
-//                    PermissionManagerApis.revokeRuntimePermission(packageName, PERMISSION, userId);
-//                }
-//
-//                // TODO kill user service using
-//            }
         }
 
         configManager.update(uid, null, mask, value);
@@ -430,7 +363,6 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     }
 
     private void onPermissionRevoked(String packageName) {
-        // TODO add runtime permission listener
         getUserServiceManager().removeUserServicesForPackage(packageName);
     }
 
