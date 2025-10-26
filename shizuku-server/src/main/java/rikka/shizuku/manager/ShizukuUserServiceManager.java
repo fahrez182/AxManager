@@ -20,8 +20,9 @@ public class ShizukuUserServiceManager extends UserServiceManager {
     private final Map<UserServiceRecord, ApkChangedListener> apkChangedListeners = new ArrayMap<>();
     private final Map<String, List<UserServiceRecord>> userServiceRecords = Collections.synchronizedMap(new ArrayMap<>());
 
-    public ShizukuUserServiceManager() {
-        super();
+
+    public ShizukuUserServiceManager(String[] env) {
+        super(env);
     }
 
     @Override

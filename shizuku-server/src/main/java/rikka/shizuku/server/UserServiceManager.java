@@ -43,7 +43,18 @@ public abstract class UserServiceManager {
     private final Map<String, UserServiceRecord> userServiceRecords = Collections.synchronizedMap(new ArrayMap<>());
     private final Map<String, List<UserServiceRecord>> packageUserServiceRecords = Collections.synchronizedMap(new ArrayMap<>());
 
-    public UserServiceManager() {
+    private String[] environment;
+
+    public UserServiceManager(String[] env) {
+        environment = env;
+    }
+
+    public String[] getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(String[] environment) {
+        this.environment = environment;
     }
 
     public PackageInfo ensureCallingPackageForUserService(String packageName, int appId, int userId) {
@@ -224,7 +235,7 @@ public abstract class UserServiceManager {
         String cmd = getUserServiceStartCmd(record, key, token, packageName, classname, processNameSuffix, callingUid, use32Bits && AbiUtil.has32Bit(), debug);
         int exitCode;
         try {
-            Process process = Runtime.getRuntime().exec("sh");
+            Process process = Runtime.getRuntime().exec(new String[]{"sh"}, getEnvironment(), null);
             OutputStream os = process.getOutputStream();
             os.write(cmd.getBytes());
             os.flush();

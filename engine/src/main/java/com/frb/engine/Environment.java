@@ -25,7 +25,7 @@ public class Environment implements Parcelable {
     private final Map<String, String> envMap;
     private boolean newEnv = false;
 
-    private Environment(Map<String, String> envMap, boolean newEnv) {
+    public Environment(Map<String, String> envMap, boolean newEnv) {
         this.newEnv = newEnv;
         this.envMap = Map.copyOf(envMap);
     }

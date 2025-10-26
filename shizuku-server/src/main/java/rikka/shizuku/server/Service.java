@@ -300,7 +300,7 @@ public abstract class Service<
 
         Process process;
         try {
-            process = Runtime.getRuntime().exec(cmd, env, dir != null ? new File(dir) : null);
+            process = Runtime.getRuntime().exec(cmd, env != null ? env : getUserServiceManager().getEnvironment(), dir != null ? new File(dir) : null);
         } catch (IOException e) {
             throw new IllegalStateException(e.getMessage());
         }
