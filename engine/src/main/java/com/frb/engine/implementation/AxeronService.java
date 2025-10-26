@@ -3,7 +3,9 @@ package com.frb.engine.implementation;
 import static com.frb.engine.utils.ServerConstants.MANAGER_APPLICATION_ID;
 import static rikka.shizuku.manager.ServerConstants.PERMISSION;
 
+import android.app.ActivityThread;
 import android.content.Context;
+import android.content.ContextHidden;
 import android.content.IContentProvider;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -17,13 +19,22 @@ import android.os.RemoteException;
 import android.os.SELinux;
 import android.os.ServiceManager;
 import android.os.SystemClock;
+import android.os.UserHandle;
+import android.os.UserHandleHidden;
 import android.system.Os;
 
+import com.frb.engine.Environment;
+import com.frb.engine.core.ConstantEngine;
 import com.frb.engine.utils.ApkChangedObservers;
 import com.frb.engine.utils.BinderSender;
 import com.frb.engine.utils.IContentProviderCompat;
+import com.frb.engine.utils.PathHelper;
 import com.frb.engine.utils.ServerConstants;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import dev.rikka.tools.refine.Refine;
 import kotlin.collections.ArraysKt;
 import moe.shizuku.api.BinderContainer;
 import moe.shizuku.server.IShizukuService;
@@ -31,24 +42,36 @@ import rikka.hidden.compat.ActivityManagerApis;
 import rikka.hidden.compat.DeviceIdleControllerApis;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.UserManagerApis;
+import rikka.shizuku.manager.ShizukuUserServiceManager;
+import rikka.shizuku.server.ShizukuService;
 
 public class AxeronService extends Service {
     public static final String VERSION_NAME = "V1.2.9";
-    public static final int VERSION_CODE = 12927;
+    public static final int VERSION_CODE = 12931;
 
+    public static final int TYPE_DEFAULT_ENV = -1;
+    public static final int TYPE_ENV = 0;
+    public static final int TYPE_NEW_ENV = 1;
     private final Long starting = SystemClock.elapsedRealtime();
+    private final ShizukuUserServiceManager shizukuUserServiceManager;
+    private Map<String, String> newEnvMap = new HashMap<>();
 
-    public AxeronService() {
-        super();
+    public AxeronService(Context context) {
+        super(context);
         waitSystemService("package");
         waitSystemService(Context.ACTIVITY_SERVICE);
         waitSystemService(Context.USER_SERVICE);
         waitSystemService(Context.APP_OPS_SERVICE);
 
+        LOGGER.i("AxeronService start: " + getContext().getPackageName());
+
         ApplicationInfo ai = getManagerApplicationInfo();
+
         if (ai == null) {
             System.exit(ServerConstants.MANAGER_APP_NOT_FOUND);
         }
+
+        shizukuUserServiceManager = new ShizukuUserServiceManager(getEnvironment(TYPE_ENV).getEnv());
 
         assert ai != null;
         ApkChangedObservers.start(ai.sourceDir, () -> {
@@ -67,6 +90,26 @@ public class AxeronService extends Service {
             }
             sendBinderToManager();
         });
+    }
+
+    public static void main(String[] args) {
+        DdmHandleAppName.setAppName("axeron_server", 0);
+
+        Looper.prepareMainLooper();
+        ActivityThread activityThread = ActivityThread.systemMain();
+        Context systemContext = activityThread.getSystemContext();
+
+        UserHandle userHandle = Refine.unsafeCast(
+                UserHandleHidden.of(0));
+        Context context;
+        try {
+            context = Refine.<ContextHidden>unsafeCast(systemContext).createPackageContextAsUser(MANAGER_APPLICATION_ID, Context.CONTEXT_INCLUDE_CODE | Context.CONTEXT_IGNORE_SECURITY, userHandle);
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
+        new AxeronService(context);
+        Looper.loop();
     }
 
     private static void sendBinderToClient(IBinder binder, int userId) {
@@ -96,14 +139,6 @@ public class AxeronService extends Service {
 
     public static void sendBinderToUserApp(IBinder binder, String packageName, int userId) {
         sendBinderToUserApp(binder, packageName, userId, true);
-    }
-
-    public static void main(String[] args) {
-        DdmHandleAppName.setAppName("axeron_server", 0);
-
-        Looper.prepareMainLooper();
-        new AxeronService();
-        Looper.loop();
     }
 
     private static void waitSystemService(String name) {
@@ -207,6 +242,54 @@ public class AxeronService extends Service {
             return false;
         }
         return false;
+    }
+
+    public static Environment getDefaultEnvironment() {
+        return new Environment.Builder(false)
+                .put("AXERON", "true")
+                .put("AXERONDIR", PathHelper.getShellPath(ConstantEngine.folder.PARENT).getAbsolutePath())
+                .put("AXERONBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).getAbsolutePath())
+                .put("AXERONXBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_EXTERNAL_BINARY).getAbsolutePath())
+                .put("AXERONLIB", getManagerApplicationInfo().nativeLibraryDir)
+                .put("AXERONVER", String.valueOf(VERSION_CODE))
+                .put("TMPDIR", PathHelper.getShellPath(ConstantEngine.folder.CACHE).getAbsolutePath())
+                .put("PATH", "$AXERONXBIN:$PATH:$AXERONBIN")
+                .build();
+    }
+
+    @Override
+    public void enableShizukuService(boolean enable) throws RemoteException {
+        if (enable) {
+            shizukuService = new ShizukuService(
+                    mainHandler,
+                    shizukuUserServiceManager
+            );
+        } else {
+            shizukuService = null;
+        }
+    }
+
+    @Override
+    public Environment getEnvironment(int envType) {
+        switch (envType) {
+            case TYPE_DEFAULT_ENV:
+                return getDefaultEnvironment();
+            case TYPE_ENV:
+                return new Environment.Builder(true)
+                        .putAll(getDefaultEnvironment().getEnvMap())
+                        .putAll(newEnvMap)
+                        .build();
+            case TYPE_NEW_ENV:
+                return new Environment(newEnvMap, true);
+            default:
+                return null;
+        }
+    }
+
+    @Override
+    public void setNewEnvironment(Environment env) throws RemoteException {
+        newEnvMap = env.getEnvMap();
+        shizukuUserServiceManager.setEnvironment(getEnvironment(TYPE_ENV).getEnv());
     }
 
     @Override

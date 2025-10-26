@@ -3,6 +3,7 @@ package com.frb.engine.implementation;
 import static android.Manifest.permission.WRITE_SECURE_SETTINGS;
 import static com.frb.engine.utils.ServerConstants.MANAGER_APPLICATION_ID;
 
+import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
@@ -42,18 +43,20 @@ import moe.shizuku.server.IShizukuService;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.PermissionManagerApis;
 import rikka.parcelablelist.ParcelableListSlice;
-import rikka.shizuku.manager.ShizukuUserServiceManager;
 import rikka.shizuku.server.ShizukuService;
 
-public class Service extends IAxeronService.Stub {
+public abstract class Service extends IAxeronService.Stub {
+    private final Context context;
+    protected ShizukuService shizukuService = null;
     protected final Handler mainHandler = new Handler(Looper.myLooper());
 
     protected static final String TAG = "AxeronService";
     protected static final Logger LOGGER = new Logger(TAG);
     private boolean firstInitFlag = true;
 
-    private final ShizukuUserServiceManager shizukuUserServiceManager = new ShizukuUserServiceManager();
-    private ShizukuService shizukuService = null;
+    public Service(Context context) {
+        this.context = context;
+    }
 
     @Override
     public IFileService getFileService() {
@@ -121,18 +124,6 @@ public class Service extends IAxeronService.Stub {
     @Override
     public IShizukuService getShizukuService() throws RemoteException {
         return shizukuService;
-    }
-
-    @Override
-    public void enableShizukuService(boolean enable) throws RemoteException {
-        if (enable) {
-            shizukuService = new ShizukuService(
-                    mainHandler,
-                    shizukuUserServiceManager
-            );
-        } else {
-            shizukuService = null;
-        }
     }
 
     public int checkPermission(String permission) throws RemoteException {
@@ -267,5 +258,9 @@ public class Service extends IAxeronService.Stub {
             return true;
         }
         return super.onTransact(code, data, reply, flags);
+    }
+
+    public Context getContext() {
+        return context;
     }
 }

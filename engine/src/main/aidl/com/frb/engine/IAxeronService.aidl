@@ -21,5 +21,7 @@ interface IAxeronService {
     boolean isFirstInit(boolean markAsFirstInit) = 9;
     IShizukuService getShizukuService() = 10;
     void enableShizukuService(boolean enable) = 11;
+    Environment getEnvironment(int envType) = 12;
+    void setNewEnvironment(in Environment env) = 13;
     void destroy() = 16777114;
 }

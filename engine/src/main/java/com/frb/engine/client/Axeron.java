@@ -1,5 +1,7 @@
 package com.frb.engine.client;
 
+import static com.frb.engine.implementation.AxeronService.TYPE_ENV;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -17,10 +19,8 @@ import androidx.annotation.Nullable;
 import com.frb.engine.Environment;
 import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
-import com.frb.engine.core.ConstantEngine;
 import com.frb.engine.core.Engine;
 import com.frb.engine.implementation.AxeronInfo;
-import com.frb.engine.utils.PathHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -244,7 +244,7 @@ public class Axeron {
     }
 
     public static AxeronNewProcess newProcess(@NonNull String[] cmd) {
-        return newProcess(cmd, Axeron.getEnvironment(), null);
+        return newProcess(cmd, Axeron.getEnvironment(TYPE_ENV), null);
     }
 
     public static AxeronNewProcess newProcess(@NonNull String[] cmd, @Nullable Environment env, @Nullable String dir) {
@@ -304,15 +304,23 @@ public class Axeron {
     }
 
     public static Environment getEnvironment() {
-        return new Environment.Builder(false)
-                .put("AXERON", "true")
-                .put("AXERONDIR", PathHelper.getShellPath(ConstantEngine.folder.PARENT).getAbsolutePath())
-                .put("AXERONBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).getAbsolutePath())
-                .put("AXERONLIB", Engine.getApplication().getApplicationInfo().nativeLibraryDir)
-                .put("AXERONVER", String.valueOf(getInfo().getVersionCode()))
-                .put("TMPDIR", PathHelper.getShellPath(ConstantEngine.folder.CACHE).getAbsolutePath())
-                .put("PATH", "$PATH:$AXERONBIN")
-                .build();
+        return getEnvironment(TYPE_ENV);
+    }
+
+    public static Environment getEnvironment(int envType) {
+        try {
+            return requireService().getEnvironment(envType);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static void setNewEnvironment(Environment env) {
+        try {
+            requireService().setNewEnvironment(env);
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static RuntimeException rethrowAsRuntimeException(RemoteException e) {
