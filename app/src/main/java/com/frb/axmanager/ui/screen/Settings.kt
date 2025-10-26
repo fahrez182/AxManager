@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PowerSettingsNew
@@ -74,6 +75,7 @@ import com.ramcosta.composedestinations.generated.destinations.AppsScreenDestina
 import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.PermissionScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 
@@ -181,7 +183,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                             if (confirmResult == ConfirmResult.Confirmed) {
                                 Axeron.destroy()
                             } else if (confirmResult == ConfirmResult.Neutral) {
-                                Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand))
+                                Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand), null, null)
                             }
                         }
                     }
@@ -217,6 +219,17 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                         label = "AppList Manager",
                         onClick = {
                             navigator.navigate(AppsScreenDestination)
+                        }
+                    )
+                }
+
+                AnimatedVisibility(visible = axeronRunning) {
+                    SettingsItem(
+                        type = SettingsItemType.CHILD,
+                        iconVector = Icons.Filled.Edit,
+                        label = "Settings Editor",
+                        onClick = {
+                            navigator.navigate(SettingsEditorScreenDestination)
                         }
                     )
                 }
@@ -357,7 +370,7 @@ fun DeveloperInfo(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Support")
+                    Text("Support / Donate")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
