@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.frb.axmanager.R
 import com.frb.axmanager.ui.component.ConfirmResult
 import com.frb.axmanager.ui.component.rememberConfirmDialog
+import com.frb.axmanager.ui.component.rememberLoadingDialog
 import com.frb.axmanager.ui.util.ClipboardUtil
 import com.frb.axmanager.ui.viewmodel.AdbViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
@@ -124,7 +125,7 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WirelessDebuggingCard(adbViewModel)
+                WirelessDebuggingCard(navigator, adbViewModel)
             }
             ComputerCard()
         }
@@ -135,7 +136,10 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.R)
 @Composable
-fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
+fun WirelessDebuggingCard(
+    navigator: DestinationsNavigator,
+    adbViewModel: AdbViewModel
+) {
     val context = LocalContext.current
 
     // Panggil sekali untuk update state dari ViewModel
@@ -226,6 +230,8 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                 }
             }
 
+            val loadingDialog = rememberLoadingDialog()
+
             Button(
                 onClick = {
                     if (!adbViewModel.isNotificationEnabled) {
@@ -239,7 +245,16 @@ fun WirelessDebuggingCard(adbViewModel: AdbViewModel) {
                             Toast.makeText(context, "Please Wait...", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-                        adbViewModel.startAdb(context)
+                        scope.launch {
+                            val success = loadingDialog.withLoading {
+                                adbViewModel.startAdb(context)
+                            }
+
+                            if (success) {
+                                navigator.popBackStack()
+                            }
+                        }
+
                     }
                 }
             ) {
@@ -312,7 +327,10 @@ fun ComputerCard() {
                     scope.launch {
                         val confirmResult = dialogDeveloper.awaitConfirm(
                             title = "View Command",
-                            content = context.getString(R.string.view_command_message, Starter.adbCommand),
+                            content = context.getString(
+                                R.string.view_command_message,
+                                Starter.adbCommand
+                            ),
                             markdown = true,
                             confirm = "Copy",
                             dismiss = "Cancel",

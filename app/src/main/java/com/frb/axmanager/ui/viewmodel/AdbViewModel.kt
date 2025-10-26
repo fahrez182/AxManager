@@ -28,6 +28,7 @@ import com.frb.engine.implementation.AxeronInfo
 import com.frb.engine.utils.Starter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 const val TAG = "AdbViewModel"
 
@@ -75,9 +76,9 @@ class AdbViewModel : ViewModel() {
     var adbMdns: AdbMdns? = null
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun startAdb(context: Context, tryConnect: Boolean = false) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (tryActivate) return@launch
+    fun startAdb(context: Context, tryConnect: Boolean = false): Boolean =
+        runBlocking(Dispatchers.IO) {
+            if (tryActivate) return@runBlocking true
             tryActivate = true
 
             val cr = Engine.application.contentResolver
@@ -95,7 +96,7 @@ class AdbViewModel : ViewModel() {
                 tryActivate = false
                 launchDevSettings = true
                 startPairingService(context)
-                return@launch
+                return@runBlocking false
             }
 
             AdbMdns(
@@ -146,8 +147,8 @@ class AdbViewModel : ViewModel() {
                 }
             }
             tryActivate = false
+            return@runBlocking false
         }
-    }
 
     @RequiresApi(Build.VERSION_CODES.R)
     fun startPairingService(context: Context) {
