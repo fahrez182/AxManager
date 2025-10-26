@@ -86,8 +86,8 @@ class WebUIActivity : ComponentActivity() {
 
         WebView.setWebContentsDebuggingEnabled(developerOptionsEnabled && enableWebDebugging)
 
-        val pluginDir = "${PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN)}/${plugin.dirId}"
-        val webRoot = File("$pluginDir/webroot")
+        val pluginDir = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN), plugin.dirId)
+        val webRoot = File(pluginDir, "webroot")
 
         val axWebLoader = AxWebLoader.Builder()
             .addScheme("ax")
