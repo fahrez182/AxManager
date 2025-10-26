@@ -46,9 +46,6 @@ fun AddAppsScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
 
-    val context = LocalContext.current
-    context.packageManager
-
     Scaffold(
         topBar = {
             SearchAppBar(
@@ -96,7 +93,7 @@ fun AddAppsScreen(
                 }
 
                 ListItem(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(6.dp),
                     headlineContent = {
                         Text(
                             text = app.label,
