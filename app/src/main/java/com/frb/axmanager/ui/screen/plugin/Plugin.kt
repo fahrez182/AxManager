@@ -116,7 +116,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
 
     var showExtraDialog by remember { mutableStateOf(false) }
 
-    ExtraSettings(
+    ExtraFilterSettings(
         showExtraDialog,
         settingsViewModel,
         pluginViewModel
@@ -248,7 +248,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                 if (plugin.hasWebUi) {
                     webUILauncher.launch(
                         Intent(context, WebUIActivity::class.java).apply {
-                            putExtra("id", plugin.id)
+                            putExtra("id", plugin.prop.id)
                         }
                     )
                 }
@@ -262,7 +262,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExtraSettings(
+fun ExtraFilterSettings(
     showDialog: Boolean,
     settingsViewModel: SettingsViewModel,
     pluginViewModel: PluginViewModel,
@@ -375,12 +375,17 @@ fun ExtraSettings(
 
 
 val dummyPlugin = PluginViewModel.PluginInfo(
-    id = "dummy",
-    name = "Dummy",
-    author = "Dummy",
-    version = "Dummy",
-    versionCode = 0,
-    description = "Dummy",
+    PluginViewModel.ModuleProp(
+        id = "dummy",
+        name = "Dummy",
+        author = "Dummy",
+        version = "Dummy",
+        versionCode = 0,
+        description = "Dummy",
+        updateJson = "false",
+        banner = "",
+        axeronPlugin = 0
+    ),
     enabled = true,
     update = false,
     updateInstall = false,
@@ -388,12 +393,10 @@ val dummyPlugin = PluginViewModel.PluginInfo(
     updateEnable = false,
     updateDisable = false,
     remove = false,
-    updateJson = "false",
     hasWebUi = false,
     hasActionScript = false,
     dirId = "dummy",
-    size = 0,
-    banner = ""
+    size = 0
 )
 
 @Preview

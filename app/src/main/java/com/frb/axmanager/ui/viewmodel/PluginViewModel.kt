@@ -23,8 +23,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import org.json.JSONObject
-import java.text.Collator
-import java.util.Locale
 
 class PluginViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -33,28 +31,31 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
     companion object {
         const val TAG = "PluginsViewModel"
 
-        fun convertPluginInfo(str : String): PluginInfo {
+        fun convertPluginInfo(str: String): PluginInfo {
             val obj = JSONObject(str)
             return PluginInfo(
-                obj.getString("id"),
-                obj.optString("name"),
-                obj.optString("author", "Unknown"),
-                obj.optString("version", "Unknown"),
-                obj.optInt("versionCode", 0),
-                obj.optString("description"),
-                obj.getBoolean("enabled"),
-                obj.getBoolean("update"),
-                obj.getBoolean("update_install"),
-                obj.getBoolean("update_remove"),
-                obj.getBoolean("update_enable"),
-                obj.getBoolean("update_disable"),
-                obj.getBoolean("remove"),
-                obj.optString("updateJson"),
-                obj.optBoolean("web"),
-                obj.optBoolean("action"),
-                obj.getString("dir_id"),
-                obj.getLong("size"),
-                obj.optString("banner")
+                prop = ModuleProp(
+                    id = obj.getString("id"),
+                    name = obj.optString("name"),
+                    author = obj.optString("author", "Unknown"),
+                    version = obj.optString("version", "Unknown"),
+                    versionCode = obj.optInt("versionCode", 0),
+                    description = obj.optString("description"),
+                    banner = obj.optString("banner"),
+                    updateJson = obj.optString("updateJson"),
+                    axeronPlugin = obj.optInt("axeronPlugin")
+                ),
+                update = obj.getBoolean("update"),
+                updateInstall = obj.getBoolean("update_install"),
+                updateRemove = obj.getBoolean("update_remove"),
+                updateEnable = obj.getBoolean("update_enable"),
+                updateDisable = obj.getBoolean("update_disable"),
+                enabled = obj.getBoolean("enabled"),
+                remove = obj.getBoolean("remove"),
+                hasWebUi = obj.optBoolean("web"),
+                hasActionScript = obj.optBoolean("action"),
+                dirId = obj.getString("dir_id"),
+                size = obj.getLong("size")
             )
         }
     }
@@ -74,19 +75,20 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         getSelectedAsc = value
         prefs.edit { putInt("selected_asc", value) }
     }
+
     fun setSelectedSort(value: Int) {
         getSelectedSort = value
         prefs.edit { putInt("selected_sort", value) }
     }
 
     val pluginList by derivedStateOf {
-        val comparator = if (getSelectedAsc == 0) {
+        val comparator: Comparator<PluginInfo> = if (getSelectedAsc == 0) {
             when (getSelectedSort) {
                 1 -> compareBy { it.size }
                 2 -> compareBy { it.enabled }
                 3 -> compareBy { it.hasActionScript }
                 4 -> compareBy { it.hasWebUi }
-                else -> compareBy(Collator.getInstance(Locale.getDefault()), PluginInfo::name)
+                else -> compareBy<PluginInfo> { it.prop.name }
             }
         } else {
             when (getSelectedSort) {
@@ -94,41 +96,48 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
                 2 -> compareByDescending { it.enabled }
                 3 -> compareByDescending { it.hasActionScript }
                 4 -> compareByDescending { it.hasWebUi }
-                else -> compareByDescending(Collator.getInstance(Locale.getDefault()), PluginInfo::name)
+                else -> compareByDescending<PluginInfo> { it.prop.name }
             }
-        }.thenBy(Collator.getInstance(Locale.getDefault()), PluginInfo::id)
+        }.thenBy { it.prop.id }
 
         plugins.filter {
-            it.id.contains(search, ignoreCase = true) ||
-                    it.name.contains(search, ignoreCase = true) ||
-                    HanziToPinyin.getInstance().toPinyinString(it.name)
+            it.prop.id.contains(search, ignoreCase = true) ||
+                    it.prop.name.contains(search, ignoreCase = true) ||
+                    HanziToPinyin.getInstance().toPinyinString(it.prop.name)
                         .contains(search, ignoreCase = true)
         }.sortedWith(comparator).also {
             isRefreshing = false
         }
     }
 
+
     @Parcelize
-    data class PluginInfo(
+    data class ModuleProp(
         val id: String,
         val name: String,
         val author: String,
         val version: String,
         val versionCode: Int,
         val description: String,
-        val enabled: Boolean,
+        val banner: String,
+        val updateJson: String,
+        val axeronPlugin: Int
+    ) : Parcelable
+
+    @Parcelize
+    data class PluginInfo(
+        val prop: ModuleProp,
         val update: Boolean,
         val updateInstall: Boolean,
         val updateRemove: Boolean,
         val updateEnable: Boolean,
         val updateDisable: Boolean,
+        val enabled: Boolean,
         val remove: Boolean,
-        val updateJson: String,
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
         val dirId: String,
         val size: Long,
-        val banner: String
     ) : Parcelable
 
     var plugins by mutableStateOf<List<PluginInfo>>(emptyList())
@@ -210,14 +219,14 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         return version.replace(Regex("[^a-zA-Z0-9.\\-_]"), "_")
     }
 
-    fun checkUpdate(m: PluginInfo): Triple<String, String, String> {
+    fun checkUpdate(pluginInfo: PluginInfo): Triple<String, String, String> {
         val empty = Triple("", "", "")
-        if (m.updateJson.isEmpty() || m.remove || m.update || !m.enabled) {
+        if (pluginInfo.prop.updateJson.isEmpty() || pluginInfo.remove || pluginInfo.update || !pluginInfo.enabled) {
             return empty
         }
         // download updateJson
         val result = kotlin.runCatching {
-            val url = m.updateJson
+            val url = pluginInfo.prop.updateJson
             Log.i(TAG, "checkUpdate url: $url")
             val response = axApp.okhttpClient.newCall(
                 okhttp3.Request.Builder().url(url).build()
@@ -244,7 +253,7 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         val versionCode = updateJson.optInt("versionCode", 0)
         val zipUrl = updateJson.optString("zipUrl", "")
         val changelog = updateJson.optString("changelog", "")
-        if (versionCode <= m.versionCode || zipUrl.isEmpty()) {
+        if (versionCode <= pluginInfo.prop.versionCode || zipUrl.isEmpty()) {
             return empty
         }
 

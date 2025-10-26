@@ -22,18 +22,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Wysiwyg
+import androidx.compose.material.icons.filled.Web
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -49,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -60,17 +64,23 @@ import com.frb.axmanager.ui.component.ConfirmResult
 import com.frb.axmanager.ui.component.ExtraLabel
 import com.frb.axmanager.ui.component.ExtraLabelDefaults
 import com.frb.axmanager.ui.component.SettingsItem
+import com.frb.axmanager.ui.component.SettingsItemType
+import com.frb.axmanager.ui.component.blend
 import com.frb.axmanager.ui.component.createWebUIShortcut
 import com.frb.axmanager.ui.component.formatSize
 import com.frb.axmanager.ui.component.rememberConfirmDialog
 import com.frb.axmanager.ui.component.rememberLoadingDialog
+import com.frb.axmanager.ui.theme.DARK_BLEND
 import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
+import com.frb.engine.core.ConstantEngine
+import com.frb.engine.utils.PathHelper
 import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActionScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,16 +103,30 @@ fun PluginConfig(
                 val context = LocalContext.current
 
                 SettingsItem(
-                    iconVector = Icons.Outlined.Home,
-                    label = "Add Shortcut",
-                    description = "Add WebUI shortcut of this plugin to your homescreen",
-                    onClick = {
-                        createWebUIShortcut(
-                            context = context,
-                            plugin = plugin
-                        )
-                    }
-                )
+                    label = "WebUI Configuration",
+                    iconVector = Icons.Outlined.Web,
+                ) { enabled, checked ->
+                    HorizontalDivider(
+                        Modifier,
+                        DividerDefaults.Thickness,
+                        MaterialTheme.colorScheme.secondaryContainer
+                    )
+                    SettingsItem(
+                        type = SettingsItemType.CHILD,
+                        enabled = plugin.hasWebUi,
+                        iconVector = Icons.Outlined.Home,
+                        label = "Add Shortcut",
+                        description = "Add WebUI shortcut of this plugin to your homescreen",
+                        onClick = {
+                            createWebUIShortcut(
+                                context = context,
+                                plugin = plugin
+                            )
+                        }
+                    )
+                }
+
+
             }
         }
     }
@@ -148,27 +172,32 @@ fun PluginItem(
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
             val useBanner = prefs.getBoolean("use_banner", true)
 
-            if (useBanner && plugin.banner.isNotEmpty()) {
-                val isDark = isSystemInDarkTheme()
+            if (useBanner && plugin.prop.banner.isNotEmpty()) {
+                val darkTheme = when (settings.getAppThemeId) {
+                    1 -> true
+                    2 -> false
+                    else -> isSystemInDarkTheme()
+                }
                 val colorScheme = MaterialTheme.colorScheme
                 val context = LocalContext.current
                 val fadeColor = when {
-                    isDark -> colorScheme.surfaceVariant
-                    else -> colorScheme.surfaceVariant
+                    darkTheme -> colorScheme.surfaceVariant
+                    else -> DARK_BLEND.blend(Color.White, 0.3f)
                 }
+                val alpha = 0.5f
 
                 Box(
                     modifier = Modifier
                         .matchParentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (plugin.banner.startsWith("https", true) || plugin.banner.startsWith(
+                    if (plugin.prop.banner.startsWith("https", true) || plugin.prop.banner.startsWith(
                             "http",
                             true
                         )
                     ) {
                         AsyncImage(
-                            model = plugin.banner,
+                            model = plugin.prop.banner,
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -177,15 +206,17 @@ fun PluginItem(
                             alpha = 0.18f
                         )
                     } else {
-                        val bannerData = remember(plugin.banner) {
+                        val bannerData = remember(plugin.prop.id) {
                             try {
+                                val path = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN), plugin.prop.id)
+                                val bannerFile = File(path, plugin.prop.banner)
                                 val file =
                                     Axeron.newFileService()
-                                        .setFileInputStream("/data/local/tmp/AxManager/plugins/${plugin.id}/${plugin.banner}")
+                                        .setFileInputStream(bannerFile.absolutePath)
                                 file.use {
                                     it.readBytes()
                                 }
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 null
                             }
                         }
@@ -211,7 +242,7 @@ fun PluginItem(
                                 Brush.verticalGradient(
                                     colors = listOf(
                                         fadeColor.copy(alpha = 0.0f),
-                                        fadeColor.copy(alpha = 0.65f)
+                                        fadeColor.copy(alpha = alpha)
                                     ),
                                     startY = 0f,
                                     endY = Float.POSITIVE_INFINITY
@@ -241,6 +272,7 @@ fun PluginItem(
                         val moduleAuthor = "Author"
                         val moduleId = "ID"
                         val moduleVersionCode = "VersionCode"
+                        val moduleAxeronPlugin = "AxeronPlugin"
                         val moduleUpdateJson = "UpdateJson"
                         val moduleUpdateJsonEmpty = "Empty"
 
@@ -333,7 +365,7 @@ fun PluginItem(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = plugin.name,
+                                text = plugin.prop.name,
                                 fontSize = MaterialTheme.typography.titleMedium.fontSize,
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
@@ -341,7 +373,7 @@ fun PluginItem(
                             )
 
                             Text(
-                                text = "$moduleVersion: ${plugin.version}",
+                                text = "$moduleVersion: ${plugin.prop.version}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -349,7 +381,7 @@ fun PluginItem(
                             )
 
                             Text(
-                                text = "$moduleAuthor: ${plugin.author}",
+                                text = "$moduleAuthor: ${plugin.prop.author}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -363,7 +395,7 @@ fun PluginItem(
                             ) {
                                 Column {
                                     Text(
-                                        text = "$moduleId: ${plugin.id}",
+                                        text = "$moduleId: ${plugin.prop.id}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -371,7 +403,7 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = "$moduleVersionCode: ${plugin.versionCode}",
+                                        text = "$moduleVersionCode: ${plugin.prop.versionCode}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -379,7 +411,15 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = if (plugin.updateJson.isNotEmpty()) "$moduleUpdateJson: ${plugin.updateJson}" else "$moduleUpdateJson: $moduleUpdateJsonEmpty",
+                                        text = "$moduleAxeronPlugin: ${plugin.prop.axeronPlugin}",
+                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(
+                                        text = if (plugin.prop.updateJson.isNotEmpty()) "$moduleUpdateJson: ${plugin.prop.updateJson}" else "$moduleUpdateJson: $moduleUpdateJsonEmpty",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -409,7 +449,7 @@ fun PluginItem(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = plugin.description,
+                        text = plugin.prop.description,
                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
@@ -440,9 +480,7 @@ fun PluginItem(
                                     enabled = !plugin.remove && plugin.enabled && !plugin.update,
                                     onClick = {
                                         navigator!!.navigate(
-                                            ExecutePluginActionScreenDestination(
-                                                plugin
-                                            )
+                                            ExecutePluginActionScreenDestination(plugin)
                                         )
                                         viewModel.markNeedRefresh()
                                     },
@@ -478,7 +516,7 @@ fun PluginItem(
                                 ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
-                                        imageVector = Icons.AutoMirrored.Outlined.Wysiwyg,
+                                        imageVector = Icons.Filled.Web,
                                         contentDescription = null
                                     )
                                     if (!plugin.hasActionScript && updateUrl.isEmpty()) {

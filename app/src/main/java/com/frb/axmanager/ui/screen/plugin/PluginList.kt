@@ -103,7 +103,7 @@ fun PluginList(
             showToast(fetchChangeLogFailed.format(it.message))
             return
         }.ifBlank {
-            showToast(fetchChangeLogFailed.format(plugin.name))
+            showToast(fetchChangeLogFailed.format(plugin.prop.name))
             return
         }
 
@@ -120,9 +120,9 @@ fun PluginList(
             return
         }
 
-        showToast(startDownloadingText.format(plugin.name))
+        showToast(startDownloadingText.format(plugin.prop.name))
 
-        val downloading = downloadingText.format(plugin.name)
+        val downloading = downloadingText.format(plugin.prop.name)
         withContext(Dispatchers.IO) {
             download(
                 context,
@@ -150,7 +150,7 @@ fun PluginList(
 
         val confirmResult = confirmDialog.awaitConfirm(
             moduleStr,
-            content = moduleUninstallConfirm.format(plugin.name),
+            content = moduleUninstallConfirm.format(plugin.prop.name),
             confirm = uninstall,
             dismiss = cancel
         )
@@ -168,9 +168,9 @@ fun PluginList(
             viewModel.fetchModuleList()
         }
         if (success) {
-            successUninstall.format(plugin.name)
+            successUninstall.format(plugin.prop.name)
         } else {
-            failedUninstall.format(plugin.name)
+            failedUninstall.format(plugin.prop.name)
         }
         if (success) {
             restartService
@@ -189,7 +189,7 @@ fun PluginList(
 
         val confirmResult = confirmDialog.awaitConfirm(
             moduleStr,
-            content = moduleRestoreConfirm.format(plugin.name),
+            content = moduleRestoreConfirm.format(plugin.prop.name),
             confirm = restore,
             dismiss = cancel
         )
@@ -250,7 +250,7 @@ fun PluginList(
                     items(viewModel.pluginList) { plugin ->
                         val scope = rememberCoroutineScope()
                         val updatedModule by produceState(
-                            key1 = plugin.id,
+                            key1 = plugin.prop.id,
                             initialValue = Triple("", "", "")
                         ) {
                             value = withContext(Dispatchers.IO) {
@@ -286,7 +286,7 @@ fun PluginList(
                                     } else {
                                         val message =
                                             if (plugin.enabled) failedDisable else failedEnable
-                                        snackBarHost.showSnackbar(message.format(plugin.name))
+                                        snackBarHost.showSnackbar(message.format(plugin.prop.name))
                                     }
                                 }
                             },
@@ -296,7 +296,7 @@ fun PluginList(
                                         plugin,
                                         updatedModule.third,
                                         updatedModule.first,
-                                        "${plugin.name}-${updatedModule.second}.zip"
+                                        "${plugin.prop.name}-${updatedModule.second}.zip"
                                     )
                                     viewModel.fetchModuleList()
                                 }
@@ -304,10 +304,10 @@ fun PluginList(
                             onClick = {
                                 onClickModule(plugin)
                             },
-                            expanded = expandedPluginId == plugin.id,
+                            expanded = expandedPluginId == plugin.prop.id,
                             onExpandToggle = {
                                 expandedPluginId =
-                                    if (expandedPluginId == plugin.id) null else plugin.id
+                                    if (expandedPluginId == plugin.prop.id) null else plugin.prop.id
                             }
                         )
 

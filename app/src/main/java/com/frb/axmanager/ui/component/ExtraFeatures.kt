@@ -52,7 +52,7 @@ fun formatSize(size: Long): String {
 fun createWebUIShortcut(context: Context, plugin: PluginViewModel.PluginInfo) {
     val shortcutManager = context.getSystemService(ShortcutManager::class.java)
 
-    if (shortcutManager.pinnedShortcuts.any { it.id == plugin.id }) {
+    if (shortcutManager.pinnedShortcuts.any { it.id == plugin.prop.id }) {
         Toast.makeText(
             context, "Shortcut already pinned", Toast.LENGTH_SHORT
         ).show()
@@ -60,14 +60,14 @@ fun createWebUIShortcut(context: Context, plugin: PluginViewModel.PluginInfo) {
     }
 
     if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported) {
-        val shortcut = ShortcutInfo.Builder(context, plugin.id)
-            .setShortLabel(plugin.name)
-            .setLongLabel(plugin.name)
+        val shortcut = ShortcutInfo.Builder(context, plugin.prop.id)
+            .setShortLabel(plugin.prop.name)
+            .setLongLabel(plugin.prop.name)
             .setIcon(Icon.createWithResource(context, R.mipmap.ic_launcher))
             .setIntent(
                 Intent(context, WebUIActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
-                    putExtra("id", plugin.id)
+                    putExtra("id", plugin.prop.id)
                 }
             )
             .build()
