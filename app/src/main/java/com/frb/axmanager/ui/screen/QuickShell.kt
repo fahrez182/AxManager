@@ -1,7 +1,6 @@
 package com.frb.axmanager.ui.screen
 
 import android.content.Context
-import android.os.Environment
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.DoNotTouch
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Output
 import androidx.compose.material.icons.outlined.Save
@@ -68,6 +70,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -83,12 +87,16 @@ import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.frb.axmanager.R
 import com.frb.axmanager.ui.component.AxSnackBarHost
 import com.frb.axmanager.ui.component.CheckBoxText
+import com.frb.axmanager.ui.component.KeyEventBlocker
 import com.frb.axmanager.ui.component.SettingsItem
 import com.frb.axmanager.ui.component.SettingsItemExpanded
 import com.frb.axmanager.ui.util.LocalSnackbarHost
+import com.frb.axmanager.ui.util.PrefsEnumHelper
 import com.frb.axmanager.ui.viewmodel.QuickShellViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.client.Axeron
+import com.frb.engine.core.ConstantEngine
+import com.frb.engine.utils.PathHelper
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -210,9 +218,29 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         snackbarHost = { AxSnackBarHost(hostState = snackBarHost) },
         contentWindowInsets = WindowInsets(top = 0, bottom = 0)
     ) { paddingValues ->
+        val context = LocalContext.current
         val focusManager = LocalFocusManager.current
         var keyboardVisible by remember { mutableStateOf(false) }
         val keyboardController = LocalSoftwareKeyboardController.current
+
+        KeyEventBlocker {
+            val prefs = PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
+            when (it.key) {
+                Key.VolumeUp -> prefs.loadState(
+                    context,
+                    QuickShellViewModel.KeyEventType.VOLUME_UP,
+                    true
+                )
+
+                Key.VolumeDown -> prefs.loadState(
+                    context,
+                    QuickShellViewModel.KeyEventType.VOLUME_DOWN,
+                    true
+                )
+
+                else -> false
+            }
+        }
 
         KeyboardVisibilityListener(
             onKeyboardState = { visible ->
@@ -242,9 +270,9 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             // collect flow
             LaunchedEffect(Unit) {
                 viewModel.output.collect { line ->
-                    if (line.output.isBlank() && line.type != QuickShellViewModel.OutputType.TYPE_SPACE) return@collect
-                    logs.add(line)
-                }
+                        if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && line.output.isBlank()) return@collect
+                        logs.add(QuickShellViewModel.Output(line.type, line.output.trimEnd()))
+                    }
             }
 
             val hScroll = rememberScrollState()
@@ -262,25 +290,41 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 ) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxWidth()
                     ) {
                         items(logs) { line ->
-                            if (!QuickShellViewModel.PrefsHelper("output_")
+                            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
                                     .loadState(context, line.type, true)
                             ) return@items
-                            Text(
+                            BasicText(
                                 text = line.output.parseAsAnsiAnnotatedString(),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
                                     lineHeightStyle = LineHeightStyle(
                                         alignment = LineHeightStyle.Alignment.Center,
                                         trim = LineHeightStyle.Trim.Both
-                                    )
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = FontFamily.Monospace
                                 ),
                                 softWrap = false,   // MATIIN WRAP
-                                fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+//                            Text(
+//                                text = line.output.parseAsAnsiAnnotatedString(),
+//                                style = MaterialTheme.typography.labelSmall.copy(
+//                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
+//                                    lineHeightStyle = LineHeightStyle(
+//                                        alignment = LineHeightStyle.Alignment.Center,
+//                                        trim = LineHeightStyle.Trim.Both
+//                                    )
+//                                ),
+//                                softWrap = false,   // MATIIN WRAP
+//                                fontFamily = FontFamily.Monospace,
+//                                color = MaterialTheme.colorScheme.onSurfaceVariant
+//                            )
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.size(22.dp))
                         }
                     }
                 }
@@ -394,6 +438,7 @@ fun ExtraSettings(
         ) {
             val context: Context = LocalContext.current
             val outputOption = QuickShellViewModel.OutputType.entries
+            val keyEventOption = QuickShellViewModel.KeyEventType.entries
 
             LazyColumn(
                 modifier = Modifier
@@ -408,7 +453,7 @@ fun ExtraSettings(
                             outputOption.forEach {
                                 put(
                                     it,
-                                    QuickShellViewModel.PrefsHelper("output_")
+                                    PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
                                         .loadState(context, it, true)
                                 )
                             }
@@ -433,7 +478,7 @@ fun ExtraSettings(
                                         checked = isChecked
                                     ) {
                                         checkedOutputStates[type] = it
-                                        QuickShellViewModel.PrefsHelper("output_")
+                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
                                             .saveState(context, type, it)
                                     }
                                 }
@@ -448,7 +493,7 @@ fun ExtraSettings(
                             outputOption.forEach {
                                 put(
                                     it,
-                                    QuickShellViewModel.PrefsHelper("save_")
+                                    PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
                                         .loadState(context, it, true)
                                 )
                             }
@@ -473,7 +518,47 @@ fun ExtraSettings(
                                         checked = isChecked
                                     ) {
                                         checkedSaveStates[type] = it
-                                        QuickShellViewModel.PrefsHelper("save_")
+                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
+                                            .saveState(context, type, it)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    val blockedKeyEventStates = remember {
+                        mutableStateMapOf<QuickShellViewModel.KeyEventType, Boolean>().apply {
+                            keyEventOption.forEach {
+                                put(
+                                    it,
+                                    PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
+                                        .loadState(context, it, true)
+                                )
+                            }
+                        }
+                    }
+
+                    SettingsItemExpanded(
+                        label = "Key Event Blocker",
+                        description = "Block selected key event",
+                        iconVector = Icons.Outlined.DoNotTouch,
+                    ) { _, expanded ->
+                        AnimatedVisibility(
+                            visible = expanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(Modifier.padding(bottom = 12.dp)) {
+                                keyEventOption.forEach { type ->
+                                    val isChecked = blockedKeyEventStates[type] ?: false
+                                    CheckBoxText(
+                                        label = "Block ${type.name}",
+                                        checked = isChecked
+                                    ) {
+                                        blockedKeyEventStates[type] = it
+                                        PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
                                             .saveState(context, type, it)
                                     }
                                 }
@@ -516,7 +601,7 @@ suspend fun saveLogsToDownload(
     val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
     val date = format.format(Date())
 
-    val baseDir = File(Environment.getExternalStorageDirectory(), "AxManager/logs")
+    val baseDir = PathHelper.getPath(ConstantEngine.folder.PARENT_LOG)
     if (!baseDir.exists()) {
         baseDir.mkdirs()
     }
@@ -527,7 +612,7 @@ suspend fun saveLogsToDownload(
         val fos =
             Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
         logs.forEach { line ->
-            if (!QuickShellViewModel.PrefsHelper("save_")
+            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
                     .loadState(context, line.type, true)
             ) return@forEach
             fos.write("${line.output}\n".toByteArray())

@@ -2,7 +2,6 @@ package com.frb.axmanager.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,9 +30,12 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     companion object {
-        fun getQuickCmd(cmd: String, useBusybox: Boolean = true): Array<String> {
-            val execCmd =
+        fun getQuickCmd(cmd: String, useBusybox: Boolean = true, withPid: Boolean = false): Array<String> {
+            val execCmd = if (withPid) {
                 "export PARENT_PID=$$; echo \"\\r\$PARENT_PID\\r\"; exec -a \"QuickShell\" sh -c \"$0\""
+            } else {
+                "exec -a \"QuickShell\" sh -c \"$0\""
+            }
             return when {
                 useBusybox -> arrayOf(
                     PluginService.BUSYBOX, "setsid", "sh", "-c",
@@ -50,50 +52,6 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    class PrefsHelper(
-        private val keyPrefix: String
-    ) {
-        private val cache = mutableMapOf<String, Boolean>() // cache sementara
-
-        private fun getPrefs(context: Context): SharedPreferences =
-            context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-        fun saveState(context: Context, type: OutputType, value: Boolean) {
-            val key = "$keyPrefix${type.name}"
-            cache[key] = value
-            getPrefs(context).edit {
-                putBoolean(key, value)
-            }
-        }
-
-        fun loadState(context: Context, type: OutputType, default: Boolean = false): Boolean {
-            val key = "$keyPrefix${type.name}"
-
-            // kalau sudah pernah dimuat, ambil dari cache
-            if (cache.containsKey(key)) return cache[key] ?: default
-
-            // kalau belum, ambil dari SharedPreferences lalu simpan ke cache
-            val value = getPrefs(context).getBoolean(key, default)
-            cache[key] = value
-            return value
-        }
-
-        fun clearAll(context: Context) {
-            cache.clear()
-            getPrefs(context).edit { clear() }
-        }
-
-        fun getAll(context: Context): Map<String, *> {
-            // sync cache dan prefs
-            val all = getPrefs(context).all
-            all.forEach { (k, v) ->
-                if (v is Boolean) cache[k] = v
-            }
-            return all
-        }
-    }
-
-
     enum class OutputType {
         TYPE_COMMAND,
         TYPE_START,
@@ -103,6 +61,11 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         TYPE_THROW,
         TYPE_SPACE,
         TYPE_EXIT
+    }
+
+    enum class KeyEventType {
+        VOLUME_UP,
+        VOLUME_DOWN
     }
 
     data class Output(val type: OutputType, val output: String)
@@ -222,8 +185,9 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
             process = Axeron.newProcess(
                 getQuickCmd(
-                    cmd,
-                    isCompatModeEnabled
+                    cmd = cmd,
+                    useBusybox = isCompatModeEnabled,
+                    withPid = true
                 ),
                 Axeron.getEnvironment(), null
             )
@@ -232,32 +196,32 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
             val stdout = process!!.inputStream
             val stderr = process!!.errorStream
+            val buf = ByteArray(1024 * 4)
 
             // baca stdout
             launch {
-                val buf = ByteArray(1024 * 4)
                 val regex = Regex("\r(\\d+)\r")
                 generateSequence { stdout.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
                         val chunk = String(buf, 0, len)
-                        val match = regex.find(chunk)
-                        if (match != null) {
-                            pid = match.groupValues[1].toInt()
-                            appendRaw(OutputType.TYPE_START, "[start] pid=$pid")
-                        } else {
-                            appendRaw(OutputType.TYPE_STDOUT, chunk.trimEnd())
+                        if (pid == null) {
+                            val match = regex.find(chunk)
+                            if (match != null) {
+                                pid = match.groupValues[1].toInt()
+                                append(OutputType.TYPE_START, "[start] pid=$pid")
+                                return@forEach
+                            }
                         }
+                        append(OutputType.TYPE_STDOUT, chunk)
                     }
             }
 
             // baca stderr
             launch {
-                val buf = ByteArray(1024 * 4)
-
                 generateSequence { stderr.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
                         val chunk = String(buf, 0, len)
-                        appendRaw(OutputType.TYPE_STDERR, chunk.trimEnd())
+                        append(OutputType.TYPE_STDERR, chunk)
                     }
             }
 
@@ -278,7 +242,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         isRunning = true
         debounceJob?.cancel()
         debounceJob = viewModelScope.launch {
-            delay(100)
+            delay(200)
             savedCommand = TextFieldValue(text = cmd, selection = TextRange(cmd.length))
             commandText = TextFieldValue(text = "")
             execMode = "Inputs"
@@ -295,8 +259,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun append(type: OutputType, output: String) {
-        runBlocking { appendRaw(type, output) }
+    private fun append(type: OutputType, output: String) = runBlocking(Dispatchers.IO) {
+        appendRaw(type, output)
     }
 
     private suspend fun appendRaw(type: OutputType, output: String) {
@@ -305,7 +269,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     override fun onCleared() {
         super.onCleared()
-        stop()
+        if (Axeron.pingBinder()) stop()
     }
 }
 

@@ -124,7 +124,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 "NeedUpdate ${Axeron.getInfo().versionCode} > ${AxeronService.VERSION_CODE}"
             )
             adbViewModel.isUpdating = true
-            Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand))
+            Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand), null, null)
         } else {
             adbViewModel.isUpdating = false
         }
@@ -382,7 +382,8 @@ fun StatusCard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .offset(38.dp, 45.dp),
+                            .offset(38.dp, 45.dp)
+                            .padding(16.dp),
                         contentAlignment = Alignment.BottomEnd
                     ) {
                         Icon(
@@ -391,7 +392,22 @@ fun StatusCard(
                             contentDescription = null
                         )
                     }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = 0.55f)
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                    )
                     Column(
+                        modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
@@ -461,7 +477,6 @@ fun StatusCard(
                             painter = painterResource(com.frb.engine.R.drawable.ic_axeron),
                             contentDescription = null
                         )
-
                     }
                     Box(
                         modifier = Modifier
