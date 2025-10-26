@@ -37,10 +37,10 @@ import java.util.concurrent.CompletableFuture
 class KsuWebInterface(
     val context: Context,
     private val webView: WebView,
-    private val modDir: String
+    private val modDir: File
 ) {
 
-    val PLUGINBIN
+    val PLUGINBIN: String
         get() = "${modDir}/system/bin"
 
     @JavascriptInterface
@@ -75,7 +75,7 @@ class KsuWebInterface(
             sb.append("cd ${cwd};")
         }
 
-        sb.append("[ -d $PLUGINBIN ] && [ -n \"$(ls -A $PLUGINBIN 2>/dev/null)\" ] && export PATH=\$PATH:$PLUGINBIN;")
+        sb.append("[ -d $PLUGINBIN ] && [ -n \"$(ls -A $PLUGINBIN 2>/dev/null)\" ] && export PATH=$PLUGINBIN:\$PATH;")
         opts.optJSONObject("env")?.let { env ->
             env.keys().forEach { key ->
                 sb.append("export ${key}=${env.getString(key)};")
@@ -202,7 +202,7 @@ class KsuWebInterface(
         val currentModuleInfo = JSONObject().also {
             it.put("moduleDir", modDir)
         }
-        val moduleId = File(modDir).getName()
+        val moduleId = modDir.getName()
         for (i in 0 until pluginInfos.size) {
             val currentInfo = JSONObject(pluginInfos[i])
 

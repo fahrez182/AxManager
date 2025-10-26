@@ -34,7 +34,7 @@ grep_prop() {
 }
 
 grep_get_prop() {
-  local result=$(grep_prop $@)
+  result=$(grep_ prop "$@")
   if [ -z "$result" ]; then
     # Fallback to getprop
     getprop "$1"
@@ -46,7 +46,6 @@ grep_get_prop() {
 #PLUGIN_INSTALLER
 
 api_level_arch_detect() {
-  API=$(grep_get_prop ro.build.version.sdk)
   ABI=$(grep_get_prop ro.product.cpu.abi)
   if [ "$ABI" = "arm64-v8a" ]; then
     ARCH=arm64

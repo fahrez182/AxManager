@@ -22,18 +22,49 @@ starter() {
     fi
 }
 
+add_external_bin() {
+    local bin="$1"
+    [ ! -d "$AXERONXBIN" ] && mkdir -p "$AXERONXBIN"
+    [ -d "$bin" ] && {
+        echo "- Linking external binaries from $bin"
+        for binary in "$bin"/*; do
+            xpath="${AXERONXBIN}/$(basename "$binary")"
+            [ -f "$binary" ] && {
+                busybox ln -sf "$binary" "$xpath"
+                echo "[+] Linked: $xpath"
+            }
+        done
+    }
+}
+
+remove_external_bin() {
+    local bin="$1"
+    [ ! -d "$AXERONXBIN" ] && mkdir -p "$AXERONXBIN"
+    [ -d "$bin" ] && {
+        echo "- Removing external binaries from $bin"
+        for binary in "$bin"/*; do
+            xpath="${AXERONXBIN}/$(basename "$binary")"
+            [ "$binary" = "$(busybox realpath "$xpath")" ] && {
+                rm -f "$xpath"
+                echo "[-] Removed: $xpath"
+            }
+        done
+    }
+}
+
 uninstall() {
-    [ -d "$3" ] && [ -n "$(ls -A "$3" 2>/dev/null)" ] && export PATH=$PATH:"$3"
+#    [ -d "$3" ] && [ -n "$(ls -A "$3" 2>/dev/null)" ] && export PATH=$PATH:"$3"
     if grep -q '^ASH_STANDALONE=1$' "$2" 2>/dev/null; then
         executor "$1:uninstall" busybox sh -o standalone "$2" &
     else
         executor "$1:uninstall" busybox sh "$2" &
     fi
+    remove_external_bin "$bin"
     rm -rf "$PLUGINS_DIR/$1"
 }
 
 service() {
-    [ -d "$3" ] && [ -n "$(ls -A "$3" 2>/dev/null)" ] && export PATH=$PATH:"$3"
+#    [ -d "$3" ] && [ -n "$(ls -A "$3" 2>/dev/null)" ] && export PATH=$PATH:"$3"
     if grep -q '^ASH_STANDALONE=1$' "$2" 2>/dev/null; then
         executor "$1" busybox sh -o standalone "$2" &
     else
@@ -45,16 +76,13 @@ service() {
 
 #sync_with_service
 system_prop() {
-    # only prop with debug prefix
-    grep ^debug "$2" 2>/dev/null | while IFS='=' read -r key val; do
-        [ -n "$key" ] && starter "$1:props" setprop "$key" "$val"
-    done
+    starter "$1:props" resetprop -f "$2"
 }
 
 
 #Sync function, wait until execute finish
 post_fs_data() {
-    [ -d "$3" ] && [ -n "$(ls -A "$3" 2>/dev/null)" ] && export PATH=$PATH:"$3"
+#    [ -d "$3" ] && [ -n "$(ls -A "$3" 2>/dev/null)" ] && export PATH=$PATH:"$3"
     if grep -q '^ASH_STANDALONE=1$' "$2" 2>/dev/null; then
         starter "$1:fsdata" busybox sh -o standalone "$2"
     else
@@ -65,18 +93,19 @@ post_fs_data() {
 start_plugin() {
     (
         local name="$1" fsdata="$2" sprop="$3" servicef="$4" bin="$5"
+        add_external_bin "$bin"
         if [ "$(getprop "log.tag.fs.$name" 2>/dev/null)" != "1" ]; then
-            [ -f "$fsdata" ] && post_fs_data "$name" "$fsdata" "$bin" && setprop "log.tag.fs.$name" 1
+            [ -f "$fsdata" ] && post_fs_data "$name" "$fsdata" && setprop "log.tag.fs.$name" 1
         fi
         if [ "$(getprop "log.tag.props.$name" 2>/dev/null)" != "1" ]; then
             [ -f "$sprop" ] && system_prop "$name" "$sprop" && setprop "log.tag.props.$name" 1
         fi
-        [ -f "$servicef" ] && service "$name" "$servicef" "$bin"
+        [ -f "$servicef" ] && service "$name" "$servicef"
     ) &
 }
 
 stop_plugin() {
-    local name="$1" servicef="$2"
+    local name="$1" servicef="$2" bin="$3"
     setprop "log.tag.fs.$name" 0
     setprop "log.tag.props.$name" 0
     pid=$(getprop "log.tag.service.$name")
@@ -87,6 +116,8 @@ stop_plugin() {
         pkill -f "$name"
     fi
     setprop "log.tag.service.$name" "-1"
+
+    [ -n "$bin" ] && remove_external_bin "$bin"
 }
 
 for plugin_update in "$PLUGINS_UPDATE_DIR"/*; do
@@ -116,7 +147,7 @@ for plugin in "$PLUGINS_DIR"/*; do
 
     if [ -f "$DISABLE" ]; then
         echo "- Disable $NAME"
-        stop_plugin "$NAME" "$SERVICE"
+        stop_plugin "$NAME" "$SERVICE" "$BIN"
         continue
     fi
 

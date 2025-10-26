@@ -11,12 +11,14 @@ public interface ConstantEngine {
         String CACHE = "cache/";
         String LOG = "logs/";
         String BINARY = "bin/";
+        String EXTERNAL_BINARY = "xbin/";
         String ZIP = "zip/";
 
         String SHELL_ROOT = ROOT + SHELL;
         String PARENT_PLUGIN = PARENT + PLUGIN;
         String PARENT_LOG = PARENT + LOG;
         String PARENT_BINARY = PARENT + BINARY;
+        String PARENT_EXTERNAL_BINARY = PARENT + EXTERNAL_BINARY;
         String PARENT_ZIP = PARENT + ZIP;
         String PARENT_PLUGIN_UPDATE = PARENT + PLUGIN_UPDATE;
     }

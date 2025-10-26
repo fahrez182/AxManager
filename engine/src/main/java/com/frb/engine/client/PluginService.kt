@@ -23,12 +23,14 @@ object PluginService {
 
     val BUSYBOX: String
         get() = "${application.applicationInfo.nativeLibraryDir}/libbusybox.so"
+    val RESETPROP: String
+        get() = "${application.applicationInfo.nativeLibraryDir}/libresetprop.so"
     val BASEAPK: String
         get() = application.applicationInfo.sourceDir
 
     val AXERONBIN: String
         get() = PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).absolutePath
-    val PLUGINDIR : String
+    val PLUGINDIR: String
         get() = PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).absolutePath
     val PLUGINUPDATEDIR: String
         get() = PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN_UPDATE).absolutePath
@@ -295,10 +297,10 @@ object PluginService {
         if (Axeron.isFirstInit(true)) {
             Log.i(TAG, "First Init: Removing old bin")
             removeScripts()
-            removeBusybox()
+            removeLibrary()
         }
 
-        if (!ensureBusybox()) return@withContext false
+        if (!ensureLibrary()) return@withContext false
         if (!ensureScripts()) return@withContext false
 
         val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -346,11 +348,11 @@ object PluginService {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun removeBusybox() {
+    suspend fun removeLibrary() {
         withContext(Dispatchers.IO) {
-            val dstFile = File(AXERONBIN, "busybox")
-            if (axFS.exists(dstFile.absolutePath)) {
-                if (axFS.delete(dstFile.absolutePath)) {
+            val dstBusybox = File(AXERONBIN, "busybox")
+            if (axFS.exists(dstBusybox.absolutePath)) {
+                if (axFS.delete(dstBusybox.absolutePath)) {
                     val removeBBSymlink = "find $AXERONBIN -type l -delete"
                     val result = execWithIO(removeBBSymlink, useBusybox = false, hideStderr = false)
 
@@ -360,6 +362,10 @@ object PluginService {
                         Log.e(TAG, "remove symlink failed: ${result.err}")
                     }
                 }
+            }
+            val dstResetprop = File(AXERONBIN, "resetprop")
+            if (axFS.exists(dstResetprop.absolutePath)) {
+                axFS.delete(dstResetprop.absolutePath)
             }
         }
     }
@@ -392,28 +398,38 @@ object PluginService {
         return true
     }
 
-    fun ensureBusybox(): Boolean {
+    fun ensureLibrary(): Boolean {
         return try {
-            val dstFile = File(AXERONBIN, "busybox")
-            if (axFS.exists(dstFile.absolutePath)) return true
+            val dstBusyBox = File(AXERONBIN, "busybox")
+            val dstResetProp = File(AXERONBIN, "resetprop")
+            if (axFS.exists(dstBusyBox.absolutePath) && axFS.exists(dstResetProp.absolutePath)) return true
 
-            if (!axFS.exists(dstFile.parent)) {
-                axFS.mkdirs(dstFile.parent)
+            if (!axFS.exists(AXERONBIN)) {
+                if (!axFS.mkdirs(AXERONBIN)) return false
             }
 
-            val cmd =
-                "cp $BUSYBOX ${dstFile.absolutePath} && chmod 755 ${dstFile.absolutePath} && chown 2000:2000 ${dstFile.absolutePath} && ${dstFile.absolutePath} --install -s $AXERONBIN"
-            val result = execWithIO(cmd, useBusybox = false, hideStderr = false)
+            val cmdBB =
+                "cp $BUSYBOX ${dstBusyBox.absolutePath} && chmod 755 ${dstBusyBox.absolutePath} && chown 2000:2000 ${dstBusyBox.absolutePath} && ${dstBusyBox.absolutePath} --install -s $AXERONBIN"
+            val resultBB = execWithIO(cmdBB, useBusybox = false, hideStderr = false)
 
-            if (result.isSuccess()) {
-                Log.i(TAG, "busybox extracted & installed to: ${dstFile.absolutePath}")
-                return true
-            } else {
-                Log.e(TAG, "ensureBusybox failed: ${result.err}")
+            if (!resultBB.isSuccess()) {
+                Log.e(TAG, "ensureBusybox failed: ${resultBB.err}")
                 return false
             }
+            Log.i(TAG, "busybox extracted & installed to: ${dstBusyBox.absolutePath}")
+
+            val cmdRP =
+                "cp $RESETPROP ${dstResetProp.absolutePath} && chmod 755 ${dstResetProp.absolutePath} && chown 2000:2000 ${dstResetProp.absolutePath}"
+            val resultRP = execWithIO(cmdRP, useBusybox = false, hideStderr = false)
+
+            if (!resultRP.isSuccess()) {
+                Log.e(TAG, "ensureResetprop failed: ${resultRP.err}")
+                return false
+            }
+            Log.i(TAG, "resetprop extracted to: ${dstResetProp.absolutePath}")
+            return true
         } catch (e: Exception) {
-            Log.e(TAG, "ensureBusybox failed: ${e.message}", e)
+            Log.e(TAG, "ensureLibrary failed: ${e.message}", e)
             false
         }
     }

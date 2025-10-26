@@ -7,12 +7,14 @@ import android.widget.Toast
 import com.frb.engine.client.PluginService
 import com.google.gson.Gson
 import org.json.JSONObject
+import java.io.File
 
 class AxWebInterface(
     val context: Context,
-    val modDir: String
+    val modDir: File
 ) {
-    val PLUGINBIN = "${modDir}/system/bin"
+    val PLUGINBIN: String 
+        get() = "${modDir}/system/bin"
 
     private fun processOptions(sb: StringBuilder, options: String?) {
         val opts = if (options == null) JSONObject() else {
@@ -24,7 +26,7 @@ class AxWebInterface(
             sb.append("cd ${cwd};")
         }
 
-        sb.append("[ -d $PLUGINBIN ] && [ -n \"$(ls -A $PLUGINBIN 2>/dev/null)\" ] && export PATH=\$PATH:$PLUGINBIN;")
+        sb.append("[ -d $PLUGINBIN ] && [ -n \"$(ls -A $PLUGINBIN 2>/dev/null)\" ] && export PATH=$PLUGINBIN:\$PATH;")
         opts.optJSONObject("env")?.let { env ->
             env.keys().forEach { key ->
                 sb.append("export ${key}=${env.getString(key)};")

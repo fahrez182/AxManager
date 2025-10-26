@@ -90,10 +90,10 @@ fun ExecutePluginActionScreen(
             return@LaunchedEffect
         }
         withContext(Dispatchers.IO) {
-            val pluginPath = "${PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN)}/${plugin.dirId}"
-            val pluginBin = "$pluginPath/system/bin"
+            val pluginPath = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN), plugin.dirId)
+            val pluginBin = "${pluginPath.absolutePath}/system/bin"
             val checkBin = "[ -d \"$pluginBin\" ] && [ -n \"$(ls -A \"$pluginBin\" 2>/dev/null)\" ]"
-            val cmd = "$checkBin && export PATH=\$PATH:$pluginBin; cd \"$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit \$RES"
+            val cmd = "$checkBin && export PATH=$pluginBin:\$PATH; cd \"$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit \$RES"
             PluginService.execWithIO(
                 cmd = cmd,
                 onStdout = {
