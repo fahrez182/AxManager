@@ -34,7 +34,7 @@ grep_prop() {
 }
 
 grep_get_prop() {
-  result=$(grep_ prop "$@")
+  result=$(grep_prop "$@")
   if [ -z "$result" ]; then
     # Fallback to getprop
     getprop "$1"

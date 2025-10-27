@@ -46,8 +46,8 @@ import rikka.shizuku.manager.ShizukuUserServiceManager;
 import rikka.shizuku.server.ShizukuService;
 
 public class AxeronService extends Service {
-    public static final String VERSION_NAME = "V1.3.0";
-    public static final int VERSION_CODE = 13000;
+    public static final String VERSION_NAME = "V1.3.1";
+    public static final int VERSION_CODE = 13100;
 
     public static final int TYPE_DEFAULT_ENV = -1;
     public static final int TYPE_ENV = 0;
