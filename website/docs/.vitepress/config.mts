@@ -31,7 +31,10 @@ export default defineConfig({
       },
       {
         text: "Plugin",
-        items: [{ text: "What is Plugin?", link: "/plugin/what-is-plugin" }],
+        items: [
+          { text: "What is Plugin?", link: "/plugin/what-is-plugin" },
+          { text: "Re-ignite (Reboot System)", link: "/plugin/re-ignite" },
+        ],
       },
     ],
 
