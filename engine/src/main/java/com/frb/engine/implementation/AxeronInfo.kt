@@ -9,18 +9,24 @@ import kotlinx.parcelize.Parcelize
 data class AxeronInfo(
     val version: String = "Unknown",
     val versionCode: Long = -1,
+    val patchCode: Long = 0,
     val uid: Int = -1,
     val pid: Int = -1,
     val selinuxContext: String = "Unknown",
     val starting: Long = SystemClock.elapsedRealtime(),
     val permission: Boolean = false
 ) : Parcelable {
+
+    fun getActualVersion(): Long {
+        return versionCode + patchCode
+    }
+
     fun isRunning(): Boolean {
-        return Axeron.pingBinder() && AxeronService.VERSION_CODE <= versionCode
+        return Axeron.pingBinder() && AxeronService.getActualVersion() <= getActualVersion()
     }
 
     fun isNeedUpdate(): Boolean {
-        return AxeronService.VERSION_CODE > versionCode && Axeron.pingBinder()
+        return AxeronService.getActualVersion() > getActualVersion() && Axeron.pingBinder()
     }
 
     fun isNeedExtraStep(): Boolean {

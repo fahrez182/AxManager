@@ -57,7 +57,6 @@ import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.client.Axeron
 import com.frb.engine.implementation.AxeronInfo
-import com.frb.engine.implementation.AxeronService
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -100,7 +99,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
 
         adbViewModel.checkAxeronService()
 
-        if (Axeron.pingBinder() && AxeronService.VERSION_CODE <= Axeron.getInfo().versionCode) {
+        if (Axeron.pingBinder() && Axeron.isUpdated()) {
             pluginViewModel.fetchModuleList()
             appsViewModel.loadInstalledApps()
             if (Shizuku.pingBinder()) {
@@ -120,7 +119,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived")
             adbViewModel.checkAxeronService()
-            if (Axeron.pingBinder() && AxeronService.VERSION_CODE <= Axeron.getInfo().versionCode) {
+            if (Axeron.pingBinder() && Axeron.isUpdated()) {
                 pluginViewModel.fetchModuleList()
                 appsViewModel.loadInstalledApps()
             }

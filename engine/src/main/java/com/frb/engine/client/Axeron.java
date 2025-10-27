@@ -21,6 +21,7 @@ import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
 import com.frb.engine.core.Engine;
 import com.frb.engine.implementation.AxeronInfo;
+import com.frb.engine.implementation.AxeronService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -126,6 +127,10 @@ public class Axeron {
         synchronized (RECEIVED_LISTENERS) {
             return RECEIVED_LISTENERS.removeIf(holder -> holder.listener == listener);
         }
+    }
+
+    public static boolean isUpdated() {
+        return AxeronService.getActualVersion() <= Axeron.getInfo().getActualVersion();
     }
 
     public static void onBinderReceived(IBinder newBinder, Context context) {

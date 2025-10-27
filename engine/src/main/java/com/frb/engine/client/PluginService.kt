@@ -286,7 +286,7 @@ object PluginService {
     }
 
     suspend fun igniteSuspendService(): Boolean = withContext(Dispatchers.IO) {
-        if (AxeronService.VERSION_CODE > Axeron.getInfo().versionCode) {
+        if (AxeronService.getActualVersion() > Axeron.getInfo().getActualVersion()) {
             Log.i(
                 TAG,
                 "Updating.. ${Axeron.getInfo().versionCode} < ${AxeronService.VERSION_CODE}"
