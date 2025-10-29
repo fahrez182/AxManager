@@ -322,7 +322,7 @@ public class AxeronService extends Service {
 
     @Override
     public void setNewEnvironment(Environment env) throws RemoteException {
-        environmentManager.replaceAll(env.getEnvMap());
+        environmentManager.replaceAllBlocking(env.getEnvMap());
         cachedMergedEnv = null; // invalidate cache
         shizukuUserServiceManager.setEnvironment(getEnvironment(TYPE_ENV).getEnv());
     }
