@@ -123,6 +123,10 @@ public abstract class Service extends IAxeronService.Stub {
 
     @Override
     public IShizukuService getShizukuService() throws RemoteException {
+        boolean isActive = new File(PathHelper.getShellPath(ConstantEngine.folder.PARENT), "ax_perm_companion").exists();
+        if (!isActive) {
+            shizukuService = null;
+        }
         return shizukuService;
     }
 

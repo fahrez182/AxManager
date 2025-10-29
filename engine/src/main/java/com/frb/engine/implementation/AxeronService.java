@@ -25,17 +25,17 @@ import android.system.Os;
 
 import com.frb.engine.Environment;
 import com.frb.engine.core.ConstantEngine;
+import com.frb.engine.manager.EnvironmentManager;
 import com.frb.engine.utils.ApkChangedObservers;
 import com.frb.engine.utils.BinderSender;
 import com.frb.engine.utils.IContentProviderCompat;
 import com.frb.engine.utils.PathHelper;
 import com.frb.engine.utils.ServerConstants;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
 
 import dev.rikka.tools.refine.Refine;
-import kotlin.collections.ArraysKt;
 import moe.shizuku.api.BinderContainer;
 import moe.shizuku.server.IShizukuService;
 import rikka.hidden.compat.ActivityManagerApis;
@@ -57,44 +57,10 @@ public class AxeronService extends Service {
     public static final int TYPE_ENV = 0;
     public static final int TYPE_NEW_ENV = 1;
     private final Long starting = SystemClock.elapsedRealtime();
+    private static final File AX_COMPANION =
+            new File(PathHelper.getShellPath(ConstantEngine.folder.PARENT), "ax_perm_companion");
     private final ShizukuUserServiceManager shizukuUserServiceManager;
-    private Map<String, String> newEnvMap = new HashMap<>();
-
-    public AxeronService(Context context) {
-        super(context);
-        waitSystemService("package");
-        waitSystemService(Context.ACTIVITY_SERVICE);
-        waitSystemService(Context.USER_SERVICE);
-        waitSystemService(Context.APP_OPS_SERVICE);
-
-        LOGGER.i("AxeronService start: " + getContext().getPackageName());
-
-        ApplicationInfo ai = getManagerApplicationInfo();
-
-        if (ai == null) {
-            System.exit(ServerConstants.MANAGER_APP_NOT_FOUND);
-        }
-
-        shizukuUserServiceManager = new ShizukuUserServiceManager(getEnvironment(TYPE_ENV).getEnv());
-
-        assert ai != null;
-        ApkChangedObservers.start(ai.sourceDir, () -> {
-            if (getManagerApplicationInfo() == null) {
-                System.exit(ServerConstants.MANAGER_APP_NOT_FOUND);
-            }
-        });
-
-        BinderSender.register(this);
-
-        mainHandler.post(() -> {
-            try {
-                sendBinderToClient();
-            } catch (RemoteException e) {
-                LOGGER.e("exception when call sendBinderToClient", e);
-            }
-            sendBinderToManager();
-        });
-    }
+    private static Environment cachedDefaultEnv;
 
     public static void main(String[] args) {
         DdmHandleAppName.setAppName("axeron_server", 0);
@@ -115,21 +81,7 @@ public class AxeronService extends Service {
         new AxeronService(context);
         Looper.loop();
     }
-
-    private static void sendBinderToClient(IBinder binder, int userId) {
-        try {
-            for (PackageInfo pi : PackageManagerApis.getInstalledPackagesNoThrow(PackageManager.GET_PERMISSIONS, userId)) {
-                if (pi == null || pi.requestedPermissions == null)
-                    continue;
-
-                if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
-                    sendBinderToUserApp(binder, pi.packageName, userId);
-                }
-            }
-        } catch (Throwable tr) {
-            LOGGER.e("exception when call getInstalledPackages", tr);
-        }
-    }
+    private final EnvironmentManager environmentManager;
 
     private static void sendBinderToManger(Binder binder) {
         for (int userId : UserManagerApis.getUserIdsNoThrow()) {
@@ -159,7 +111,93 @@ public class AxeronService extends Service {
     public static ApplicationInfo getManagerApplicationInfo() {
         return PackageManagerApis.getApplicationInfoNoThrow(MANAGER_APPLICATION_ID, 0, 0);
     }
+    private Environment cachedMergedEnv;
 
+    void sendBinderToClient() throws RemoteException {
+        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
+            IShizukuService shizukuService = getShizukuService();
+            if (shizukuService != null) {
+                sendBinderToClient(shizukuService.asBinder(), userId);
+            }
+        }
+    }
+
+    void sendBinderToManager() {
+        sendBinderToManger(this);
+    }
+
+    public boolean checkRuntime() {
+        try {
+            if (checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED) {
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
+    }
+
+    public AxeronService(Context context) {
+        super(context);
+        waitSystemService("package");
+        waitSystemService(Context.ACTIVITY_SERVICE);
+        waitSystemService(Context.USER_SERVICE);
+        waitSystemService(Context.APP_OPS_SERVICE);
+
+        LOGGER.i("AxeronService start: " + getContext().getPackageName());
+
+        ApplicationInfo ai = getManagerApplicationInfo();
+
+        if (ai == null) {
+            System.exit(ServerConstants.MANAGER_APP_NOT_FOUND);
+        }
+
+        environmentManager = new EnvironmentManager();
+        shizukuUserServiceManager = new ShizukuUserServiceManager(getEnvironment(TYPE_ENV).getEnv());
+        if (AX_COMPANION.exists()) {
+            shizukuService = new ShizukuService(
+                    mainHandler,
+                    shizukuUserServiceManager
+            );
+        }
+
+        assert ai != null;
+        ApkChangedObservers.start(ai.sourceDir, () -> {
+            if (getManagerApplicationInfo() == null) {
+                System.exit(ServerConstants.MANAGER_APP_NOT_FOUND);
+            }
+        });
+
+        BinderSender.register(this);
+
+        mainHandler.post(() -> {
+            try {
+                sendBinderToClient();
+            } catch (RemoteException e) {
+                LOGGER.e("exception when call sendBinderToClient", e);
+            }
+            sendBinderToManager();
+        });
+    }
+
+    private static void sendBinderToClient(IBinder binder, int userId) {
+        try {
+            for (PackageInfo pi : PackageManagerApis.getInstalledPackagesNoThrow(PackageManager.GET_PERMISSIONS, userId)) {
+                if (pi == null || pi.requestedPermissions == null)
+                    continue;
+
+                for (String perm : pi.requestedPermissions) {
+                    if (!PERMISSION.equals(perm)) continue;
+                    sendBinderToUserApp(binder, pi.packageName, userId);
+                }
+            }
+        } catch (Throwable tr) {
+            LOGGER.e("exception when call getInstalledPackages", tr);
+        }
+    }
+
+//    private static final Bundle sBinderBundle = new Bundle();
+//
     public static void sendBinderToUserApp(IBinder binder, String packageName, int userId, boolean retry) {
         try {
             DeviceIdleControllerApis.addPowerSaveTempWhitelistApp(packageName, 30 * 1000, userId,
@@ -224,52 +262,41 @@ public class AxeronService extends Service {
         }
     }
 
-    void sendBinderToClient() throws RemoteException {
-        for (int userId : UserManagerApis.getUserIdsNoThrow()) {
-            IShizukuService shizukuService = getShizukuService();
-            if (shizukuService != null) {
-                sendBinderToClient(shizukuService.asBinder(), userId);
-            }
-        }
-    }
-
-    void sendBinderToManager() {
-        sendBinderToManger(this);
-    }
-
-    public boolean checkRuntime() {
-        try {
-            if (checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED) {
-                return true;
-            }
-        } catch (Exception e) {
-            return false;
-        }
-        return false;
-    }
-
     public static Environment getDefaultEnvironment() {
-        return new Environment.Builder(false)
-                .put("AXERON", "true")
-                .put("AXERONDIR", PathHelper.getShellPath(ConstantEngine.folder.PARENT).getAbsolutePath())
-                .put("AXERONBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).getAbsolutePath())
-                .put("AXERONXBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_EXTERNAL_BINARY).getAbsolutePath())
-                .put("AXERONLIB", getManagerApplicationInfo().nativeLibraryDir)
-                .put("AXERONVER", String.valueOf(VERSION_CODE))
-                .put("TMPDIR", PathHelper.getShellPath(ConstantEngine.folder.CACHE).getAbsolutePath())
-                .put("PATH", "$AXERONXBIN:$PATH:$AXERONBIN")
-                .build();
+        if (cachedDefaultEnv == null) {
+            cachedDefaultEnv = new Environment.Builder(false)
+                    .put("AXERON", "true")
+                    .put("AXERONDIR", PathHelper.getShellPath(ConstantEngine.folder.PARENT).getAbsolutePath())
+                    .put("AXERONBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_BINARY).getAbsolutePath())
+                    .put("AXERONXBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_EXTERNAL_BINARY).getAbsolutePath())
+                    .put("AXERONLIB", getManagerApplicationInfo().nativeLibraryDir)
+                    .put("AXERONVER", String.valueOf(VERSION_CODE))
+                    .put("TMPDIR", PathHelper.getShellPath(ConstantEngine.folder.CACHE).getAbsolutePath())
+                    .put("PATH", "$AXERONXBIN:$PATH:$AXERONBIN")
+                    .build();
+        }
+
+        return cachedDefaultEnv;
     }
 
     @Override
     public void enableShizukuService(boolean enable) throws RemoteException {
         if (enable) {
-            shizukuService = new ShizukuService(
-                    mainHandler,
-                    shizukuUserServiceManager
-            );
+            try {
+                if (AX_COMPANION.createNewFile()) {
+                    LOGGER.i("Ax Companion Enabled");
+                    shizukuService = new ShizukuService(
+                            mainHandler,
+                            shizukuUserServiceManager
+                    );
+                }
+            } catch (IOException e) {
+                LOGGER.e(e, "Failed to create Ax Companion");
+            }
         } else {
-            shizukuService = null;
+            if (AX_COMPANION.delete()) {
+                shizukuService = null;
+            }
         }
     }
 
@@ -279,12 +306,15 @@ public class AxeronService extends Service {
             case TYPE_DEFAULT_ENV:
                 return getDefaultEnvironment();
             case TYPE_ENV:
-                return new Environment.Builder(true)
-                        .putAll(getDefaultEnvironment().getEnvMap())
-                        .putAll(newEnvMap)
-                        .build();
+                if (cachedMergedEnv == null) {
+                    cachedMergedEnv = new Environment.Builder(true)
+                            .putAll(getDefaultEnvironment().getEnvMap())
+                            .putAll(environmentManager.getAll())
+                            .build();
+                }
+                return cachedMergedEnv;
             case TYPE_NEW_ENV:
-                return new Environment(newEnvMap, true);
+                return new Environment(environmentManager.getAll(), true);
             default:
                 return null;
         }
@@ -292,7 +322,8 @@ public class AxeronService extends Service {
 
     @Override
     public void setNewEnvironment(Environment env) throws RemoteException {
-        newEnvMap = env.getEnvMap();
+        environmentManager.replaceAll(env.getEnvMap());
+        cachedMergedEnv = null; // invalidate cache
         shizukuUserServiceManager.setEnvironment(getEnvironment(TYPE_ENV).getEnv());
     }
 
