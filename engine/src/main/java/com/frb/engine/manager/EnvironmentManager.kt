@@ -13,7 +13,11 @@ import kotlin.concurrent.withLock
 class EnvironmentManager() {
 
     private val fileName = "axeron_env.json"
-    private val file: File get() = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT), fileName)
+    private val file: File
+        get() = File(
+            PathHelper.getShellPath(ConstantEngine.folder.PARENT),
+            fileName
+        )
     private val lock = ReentrantLock()
     private var data: HashMap<String, String> = hashMapOf()
 
@@ -84,21 +88,15 @@ class EnvironmentManager() {
     }
 
 
-    fun putBlocking(key: String, value: String) {
-        runBlocking {
-            put(key, value)
-        }
+    fun putBlocking(key: String, value: String) = runBlocking {
+        put(key, value)
     }
 
-    fun putAllBlocking(map: MutableMap<String, String>) {
-        runBlocking {
-            putAll(map)
-        }
+    fun putAllBlocking(map: MutableMap<String, String>) = runBlocking {
+        putAll(map)
     }
 
-    fun replaceAllBlocking(map: MutableMap<String, String>) {
-        runBlocking {
-            replaceAll(map)
-        }
+    fun replaceAllBlocking(map: MutableMap<String, String>) = runBlocking {
+        replaceAll(map)
     }
 }

@@ -18,9 +18,9 @@ public class IContentProviderCompat {
         Bundle result;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             result = provider.call((new AttributionSource.Builder(OsUtils.getUid())).setPackageName(callingPkg).build(), authority, method, arg, extras);
-        } else if (Build.VERSION.SDK_INT >= 30) {
+        } else if (Build.VERSION.SDK_INT == 30) {
             result = provider.call(callingPkg, null, authority, method, arg, extras);
-        } else if (Build.VERSION.SDK_INT >= 29) {
+        } else if (Build.VERSION.SDK_INT == 29) {
             result = provider.call(callingPkg, authority, method, arg, extras);
         } else {
             result = provider.call(callingPkg, method, arg, extras);

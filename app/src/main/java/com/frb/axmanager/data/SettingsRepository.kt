@@ -5,7 +5,7 @@ import android.provider.Settings
 import com.frb.engine.Environment
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
-import com.frb.engine.implementation.AxeronService.TYPE_NEW_ENV
+import com.frb.engine.implementation.AxeronService.Companion.TYPE_NEW_ENV
 
 
 private val SettingsRepository.SettingType.alias: String

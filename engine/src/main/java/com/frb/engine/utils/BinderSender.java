@@ -13,8 +13,11 @@ import android.text.TextUtils;
 
 import com.frb.engine.implementation.AxeronService;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import kotlin.collections.ArraysKt;
 import moe.shizuku.server.IShizukuService;
@@ -23,7 +26,6 @@ import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.PermissionManagerApis;
 import rikka.hidden.compat.adapter.ProcessObserverAdapter;
 import rikka.hidden.compat.adapter.UidObserverAdapter;
-//import rikka.shizuku.server.util.Logger;
 
 public class BinderSender {
 
@@ -34,8 +36,21 @@ public class BinderSender {
 
     private static AxeronService axeronService;
 
+    private static final Map<Integer, List<String>> UID_PACKAGE_CACHE = new ConcurrentHashMap<>();
+    private static final Set<String> SENT_BINDERS = ConcurrentHashMap.newKeySet();
+
+    private static List<String> getPackagesCached(int uid) {
+        return UID_PACKAGE_CACHE.computeIfAbsent(uid, PackageManagerApis::getPackagesForUidNoThrow);
+    }
+
     private static void sendBinder(int uid, int pid) throws RemoteException {
-        List<String> packages = PackageManagerApis.getPackagesForUidNoThrow(uid);
+        String key = uid + ":" + pid;
+        if (!SENT_BINDERS.add(key)) {
+            LOGGER.v("Skip duplicate binder send for %s", key);
+            return;
+        }
+
+        List<String> packages = getPackagesCached(uid);
         if (packages.isEmpty())
             return;
 
@@ -43,27 +58,31 @@ public class BinderSender {
 
         int userId = uid / 100000;
         for (String packageName : packages) {
-            PackageInfo pi = PackageManagerApis.getPackageInfoNoThrow(packageName, PackageManager.GET_PERMISSIONS, userId);
-            if (pi == null || pi.requestedPermissions == null)
-                continue;
+            try {
+                PackageInfo pi = PackageManagerApis.getPackageInfoNoThrow(packageName, PackageManager.GET_PERMISSIONS, userId);
+                if (pi == null || pi.requestedPermissions == null)
+                    continue;
 
-            if (ArraysKt.contains(pi.requestedPermissions, PERMISSION_MANAGER)) {
-                boolean granted;
-                if (pid == -1)
-                    granted = PermissionManagerApis.checkPermission(PERMISSION_MANAGER, uid) == PackageManager.PERMISSION_GRANTED;
-                else
-                    granted = ActivityManagerApis.checkPermission(PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
+                if (ArraysKt.contains(pi.requestedPermissions, PERMISSION_MANAGER)) {
+                    boolean granted;
+                    if (pid == -1)
+                        granted = PermissionManagerApis.checkPermission(PERMISSION_MANAGER, uid) == PackageManager.PERMISSION_GRANTED;
+                    else
+                        granted = ActivityManagerApis.checkPermission(PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
 
-                if (granted) {
-                    AxeronService.sendBinderToManager(axeronService, userId);
+                    if (granted) {
+                        AxeronService.sendBinderToManager(axeronService, userId);
+                        return;
+                    }
+                } else if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
+                    IShizukuService shizukuService = axeronService.getShizukuService();
+                    if (shizukuService != null) {
+                        AxeronService.sendBinderToUserApp(shizukuService.asBinder(), packageName, userId);
+                    }
                     return;
                 }
-            } else if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
-                IShizukuService shizukuService = axeronService.getShizukuService();
-                if (shizukuService != null) {
-                    AxeronService.sendBinderToUserApp(shizukuService.asBinder(), packageName, userId);
-                }
-                return;
+            } catch (Throwable e) {
+                LOGGER.w(e, "sendBinder failed for package %s", packageName);
             }
         }
     }
@@ -77,8 +96,7 @@ public class BinderSender {
             LOGGER.e(tr, "registerProcessObserver");
         }
 
-        int flags = UID_OBSERVER_GONE | UID_OBSERVER_IDLE | UID_OBSERVER_ACTIVE;
-        flags |= UID_OBSERVER_CACHED;
+        int flags = UID_OBSERVER_GONE | UID_OBSERVER_IDLE | UID_OBSERVER_ACTIVE | UID_OBSERVER_CACHED;
         try {
             ActivityManagerApis.registerUidObserver(new UidObserver(), flags,
                     ActivityManagerHidden.PROCESS_STATE_UNKNOWN,
@@ -90,7 +108,7 @@ public class BinderSender {
 
     private static class ProcessObserver extends ProcessObserverAdapter {
 
-        private static final List<Integer> PID_LIST = new ArrayList<>();
+        private static final Set<Integer> PID_LIST = new HashSet<>();
 
         @Override
         public void onForegroundActivitiesChanged(int pid, int uid, boolean foregroundActivities) throws RemoteException {
@@ -111,10 +129,7 @@ public class BinderSender {
             LOGGER.d("onProcessDied: pid=%d, uid=%d", pid, uid);
 
             synchronized (PID_LIST) {
-                int index = PID_LIST.indexOf(pid);
-                if (index != -1) {
-                    PID_LIST.remove(index);
-                }
+                PID_LIST.remove(pid);
             }
         }
 
@@ -135,7 +150,7 @@ public class BinderSender {
 
     private static class UidObserver extends UidObserverAdapter {
 
-        private static final List<Integer> UID_LIST = new ArrayList<>();
+        private static final Set<Integer> UID_LIST = new HashSet<>();
 
         @Override
         public void onUidActive(int uid) throws RemoteException {
@@ -161,7 +176,7 @@ public class BinderSender {
         }
 
         @Override
-        public void onUidGone(int uid, boolean disabled) throws RemoteException {
+        public void onUidGone(int uid, boolean disabled) {
             LOGGER.d("onUidGone: uid=%d, disabled=%s", uid, Boolean.toString(disabled));
 
             uidGone(uid);
@@ -182,11 +197,8 @@ public class BinderSender {
 
         private void uidGone(int uid) {
             synchronized (UID_LIST) {
-                int index = UID_LIST.indexOf(uid);
-                if (index != -1) {
-                    UID_LIST.remove(index);
-                    LOGGER.v("Uid %d dead", uid);
-                }
+                UID_LIST.remove(uid);
+                LOGGER.v("Uid %d dead", uid);
             }
         }
     }
