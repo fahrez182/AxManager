@@ -75,7 +75,7 @@ class KsuWebInterface(
             sb.append("cd ${cwd};")
         }
 
-        sb.append("[ -d $PLUGINBIN ] && [ -n \"$(ls -A $PLUGINBIN 2>/dev/null)\" ] && export PATH=$PLUGINBIN:\$PATH;")
+        sb.append("export PATH=$PLUGINBIN:\$PATH;")
         opts.optJSONObject("env")?.let { env ->
             env.keys().forEach { key ->
                 sb.append("export ${key}=${env.getString(key)};")
