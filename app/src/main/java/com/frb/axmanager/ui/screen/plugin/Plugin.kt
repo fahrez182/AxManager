@@ -64,6 +64,7 @@ import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.axmanager.ui.webui.WebUIActivity
 import com.frb.engine.client.PluginService
+import com.frb.engine.data.PluginInfo
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
@@ -374,30 +375,7 @@ fun ExtraFilterSettings(
 }
 
 
-val dummyPlugin = PluginViewModel.PluginInfo(
-    PluginViewModel.ModuleProp(
-        id = "dummy",
-        name = "Dummy",
-        author = "Dummy",
-        version = "Dummy",
-        versionCode = 0,
-        description = "Dummy",
-        updateJson = "false",
-        banner = "",
-        axeronPlugin = 0
-    ),
-    enabled = true,
-    update = false,
-    updateInstall = false,
-    updateRemove = false,
-    updateEnable = false,
-    updateDisable = false,
-    remove = false,
-    hasWebUi = false,
-    hasActionScript = false,
-    dirId = "dummy",
-    size = 0
-)
+val dummyPlugin = PluginInfo()
 
 @Preview
 @Composable

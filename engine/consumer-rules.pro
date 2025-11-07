@@ -23,8 +23,6 @@
     ** requireNonNull(...);
 }
 
--keepnames class com.frb.engine.utils.BinderContainer
-
 # Missing class android.app.IProcessObserver$Stub
 # Missing class android.app.IUidObserver$Stub
 -keepclassmembers class rikka.hidden.compat.adapter.ProcessObserverAdapter {

@@ -56,7 +56,7 @@ import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.axmanager.ui.viewmodel.ViewModelGlobal
 import com.frb.engine.client.Axeron
-import com.frb.engine.implementation.AxeronInfo
+import com.frb.engine.data.AxeronInfo
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs

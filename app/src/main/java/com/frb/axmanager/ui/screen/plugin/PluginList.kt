@@ -40,6 +40,7 @@ import com.frb.axmanager.ui.util.download
 import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.engine.client.PluginService
+import com.frb.engine.data.PluginInfo
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,7 +55,7 @@ fun PluginList(
     viewModel: PluginViewModel,
     modifier: Modifier,
     onInstallModule: (Uri) -> Unit,
-    onClickModule: (plugin: PluginViewModel.PluginInfo) -> Unit,
+    onClickModule: (plugin: PluginInfo) -> Unit,
     context: Context,
     snackBarHost: SnackbarHostState,
     listState: LazyListState
@@ -68,7 +69,7 @@ fun PluginList(
     var expandedPluginId by rememberSaveable { mutableStateOf<String?>(null) }
 
     suspend fun onModuleUpdate(
-        plugin: PluginViewModel.PluginInfo,
+        plugin: PluginInfo,
         changelogUrl: String,
         downloadUrl: String,
         fileName: String,
@@ -139,7 +140,7 @@ fun PluginList(
         }
     }
 
-    suspend fun onModuleUninstall(plugin: PluginViewModel.PluginInfo) {
+    suspend fun onModuleUninstall(plugin: PluginInfo) {
         val moduleStr = "Uninstall Plugin?"
         val uninstall = "Uninstall"
         val cancel = "Cancel"
@@ -179,7 +180,7 @@ fun PluginList(
         }
     }
 
-    suspend fun onModuleRestore(plugin: PluginViewModel.PluginInfo) {
+    suspend fun onModuleRestore(plugin: PluginInfo) {
         val moduleStr = "Restore Plugin?"
         val restore = "Restore"
         val cancel = "Cancel"

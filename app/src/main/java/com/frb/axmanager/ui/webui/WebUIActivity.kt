@@ -17,12 +17,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import com.frb.axmanager.ui.viewmodel.AppsViewModel
-import com.frb.axmanager.ui.viewmodel.PluginViewModel
-import com.frb.axmanager.ui.viewmodel.PluginViewModel.Companion.convertPluginInfo
 import com.frb.axmanager.ui.webui.interfaces.AxWebInterface
 import com.frb.axmanager.ui.webui.interfaces.KsuWebInterface
 import com.frb.engine.client.Axeron
 import com.frb.engine.core.ConstantEngine
+import com.frb.engine.data.PluginInfo
 import com.frb.engine.utils.AxWebLoader
 import com.frb.engine.utils.PathHelper
 import java.io.File
@@ -32,7 +31,7 @@ class WebUIActivity : ComponentActivity() {
 
     private lateinit var ksuWebInterface: KsuWebInterface
     private lateinit var axWebInterface: AxWebInterface
-    private lateinit var plugin: PluginViewModel.PluginInfo
+    private lateinit var plugin: PluginInfo
 
     fun erudaConsole(context: android.content.Context): String {
         return context.assets.open("js/eruda.min.js").bufferedReader().use { it.readText() }
@@ -48,9 +47,7 @@ class WebUIActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         plugin = runCatching {
-            convertPluginInfo(
-                Axeron.getPluginById(intent.getStringExtra("id")!!)
-            )
+            Axeron.getPluginById(intent.getStringExtra("id")!!)
         }.getOrElse {
             Toast.makeText(this, "Plugin not found", Toast.LENGTH_SHORT).show()
             finish()

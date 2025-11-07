@@ -6,7 +6,8 @@ import com.frb.engine.IRuntimeService;
 import com.frb.engine.IAxeronApplication;
 import moe.shizuku.server.IShizukuService;
 import rikka.parcelablelist.ParcelableListSlice;
-import com.frb.engine.implementation.AxeronInfo;
+import com.frb.engine.data.AxeronInfo;
+import com.frb.engine.data.PluginInfo;
 
 parcelable Environment;
 
@@ -16,8 +17,8 @@ interface IAxeronService {
     AxeronInfo getInfo() = 4;
     void bindAxeronApplication(in IAxeronApplication app) = 5;
     ParcelableListSlice<PackageInfo> getPackages(int flags) = 6;
-    List<String> getPlugins() = 7;
-    String getPluginById(in String id) = 8;
+    ParcelableListSlice<PluginInfo> getPlugins() = 7;
+    PluginInfo getPluginById(in String id) = 8;
     boolean isFirstInit(boolean markAsFirstInit) = 9;
     IShizukuService getShizukuService() = 10;
     void enableShizukuService(boolean enable) = 11;

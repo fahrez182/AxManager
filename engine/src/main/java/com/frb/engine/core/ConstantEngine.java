@@ -4,6 +4,7 @@ public interface ConstantEngine {
 
     interface folder {
         String ROOT = "/";
+        String TMP = "data/local/tmp/";
         String SHELL = "data/data/com.android.shell/";
         String PARENT = "AxManager/";
         String PLUGIN = "plugins/";
@@ -14,8 +15,8 @@ public interface ConstantEngine {
         String EXTERNAL_BINARY = "xbin/";
         String ZIP = "zip/";
 
-        String SHELL_ROOT = ROOT + SHELL;
         String PARENT_PLUGIN = PARENT + PLUGIN;
+        String PARENT_CACHE = PARENT + CACHE;
         String PARENT_LOG = PARENT + LOG;
         String PARENT_BINARY = PARENT + BINARY;
         String PARENT_EXTERNAL_BINARY = PARENT + EXTERNAL_BINARY;

@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.Parcel
+import android.os.RemoteException
 import android.os.UserHandle
 import android.os.UserHandleHidden
 import android.system.Os
@@ -20,11 +21,13 @@ import com.frb.engine.IAxeronService
 import com.frb.engine.IFileService
 import com.frb.engine.IRuntimeService
 import com.frb.engine.core.ConstantEngine
+import com.frb.engine.data.ModuleProp
+import com.frb.engine.data.ParcelableMapJson
+import com.frb.engine.data.PluginInfo
 import com.frb.engine.utils.Logger
 import com.frb.engine.utils.PathHelper
 import dev.rikka.tools.refine.Refine
 import moe.shizuku.server.IShizukuService
-import org.json.JSONObject
 import rikka.hidden.compat.PackageManagerApis
 import rikka.hidden.compat.PermissionManagerApis
 import rikka.parcelablelist.ParcelableListSlice
@@ -36,17 +39,23 @@ import java.io.File
 import java.io.FileReader
 import java.io.IOException
 import java.lang.ref.WeakReference
+import java.util.Collections
 import kotlin.system.exitProcess
 
 abstract class ServiceImpl : IAxeronService.Stub() {
 
     companion object {
         protected const val TAG: String = "AxeronService"
-        val LOGGER: Logger = Logger(TAG)
+
+        @JvmStatic
+        protected val LOGGER: Logger = Logger(TAG)
+
+        @JvmStatic
         val mainHandler by lazy {
             Handler(Looper.getMainLooper())
         }
     }
+
     private var context: WeakReference<Context>? = null
     var shizuku: ShizukuService? = null
     private var firstInitFlag = true
@@ -55,6 +64,7 @@ abstract class ServiceImpl : IAxeronService.Stub() {
         return FileService()
     }
 
+    @Throws(RemoteException::class)
     override fun getRuntimeService(
         command: Array<out String?>?,
         env: Environment?,
@@ -87,21 +97,24 @@ abstract class ServiceImpl : IAxeronService.Stub() {
         app.bindApplication(Bundle())
     }
 
+    @Throws(RemoteException::class)
     override fun getPackages(flags: Int): ParcelableListSlice<PackageInfo?>? {
         val list = PackageManagerApis.getInstalledPackagesNoThrow(flags.toLong(), 0)
         LOGGER.i(TAG, "getPackages: " + list.size)
         return ParcelableListSlice<PackageInfo?>(list)
     }
 
-    override fun getPlugins(): List<String?>? {
+    @Throws(RemoteException::class)
+    override fun getPlugins(): ParcelableListSlice<PluginInfo?>? {
         val pluginsPath =
             PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).absolutePath
-        return readAllPluginAsString(pluginsPath)
+        val plugins = readAllPlugin(pluginsPath)
+        return ParcelableListSlice<PluginInfo?>(plugins)
     }
 
-    override fun getPluginById(id: String): String? {
-        val dir =
-            File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).absolutePath, id)
+    @Throws(RemoteException::class)
+    override fun getPluginById(id: String): PluginInfo? {
+        val dir = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN).absolutePath, id)
         return getPluginByDir(dir)
     }
 
@@ -113,6 +126,7 @@ abstract class ServiceImpl : IAxeronService.Stub() {
         return firstInitFlag
     }
 
+    @Throws(RemoteException::class)
     override fun getShizukuService(): IShizukuService? {
         val isActive = File(
             PathHelper.getShellPath(ConstantEngine.folder.PARENT),
@@ -124,57 +138,56 @@ abstract class ServiceImpl : IAxeronService.Stub() {
         return shizuku
     }
 
-    private fun readAllPluginAsString(pluginsDirPath: String): MutableList<String?> {
-        val result: MutableList<String?> = ArrayList()
+    private fun readAllPlugin(pluginsDirPath: String): MutableList<PluginInfo?> {
         val pluginsDir = File(pluginsDirPath)
-
-        if (!pluginsDir.exists() || !pluginsDir.isDirectory()) {
-            LOGGER.e(TAG, "Plugins dir not found: $pluginsDirPath")
-            return result
-        }
+        val result: MutableList<PluginInfo?> = ArrayList()
+        if (!pluginsDir.exists() || !pluginsDir.isDirectory()) return result
 
         val subDirs = pluginsDir.listFiles { obj: File? -> obj!!.isDirectory() }
         if (subDirs == null) return result
 
         for (dir in subDirs) {
-            val pluginInfo: String? = getPluginByDir(dir)
-            if (pluginInfo == null) continue
+            val pluginInfo: PluginInfo = getPluginByDir(dir) ?: continue
             result.add(pluginInfo)
         }
 
         return result
     }
 
-    private fun getPluginByDir(dir: File): String? {
-        if (dir.isFile()) return null
-        var pluginInfo: MutableMap<String?, Any?>? = null
+    private fun getPluginByDir(dir: File): PluginInfo? {
+        if (!dir.isDirectory) return null
+
         val propFile = File(dir, "module.prop")
-        if (propFile.exists() && propFile.isFile()) {
-            pluginInfo = HashMap(readFileProp(propFile))
-        }
+        val moduleProp = if (propFile.exists() && propFile.isFile) readFileProp(propFile) else null
+        if (moduleProp == null) return null
 
-        if (pluginInfo == null) return null
-        val pluginId = pluginInfo["id"].toString()
+        val pluginId = moduleProp.id
+        val updateDir = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN_UPDATE), pluginId)
+        val updateFiles = updateDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
+        val isUpdate = updateFiles.isNotEmpty()
 
-        val updateDir =
-            File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_PLUGIN_UPDATE), pluginId)
-        val folderUpdateChild =
-            if (updateDir.exists() && updateDir.isDirectory()) updateDir.listFiles() else null
-        val isUpdate = folderUpdateChild != null && folderUpdateChild.size > 0
+        // List semua file/folder di plugin dir
+        val dirFiles = dir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
 
-        pluginInfo.put("dir_id", pluginId)
-        pluginInfo.put("enabled", !(File(dir, "disable").exists()))
-        pluginInfo.put("update", isUpdate.toString())
-        pluginInfo.put("update_install", File(updateDir, "update_install").exists())
-        pluginInfo.put("update_remove", File(updateDir, "update_remove").exists())
-        pluginInfo.put("update_enable", File(updateDir, "update_enable").exists())
-        pluginInfo.put("update_disable", File(updateDir, "update_disable").exists())
-        pluginInfo.put("remove", File(dir, "remove").exists())
-        pluginInfo.put("action", File(dir, "action.sh").exists())
-        pluginInfo.put("web", File(dir, "webroot/index.html").exists())
-        pluginInfo.put("size", getFolderSize(dir).toString())
-        return JSONObject(pluginInfo).toString()
+        val pluginInfo: MutableMap<String, Any?> = HashMap()
+
+        pluginInfo["prop"] = moduleProp.toMap()
+        pluginInfo["update"] = isUpdate
+        pluginInfo["update_install"] = "update_install" in updateFiles
+        pluginInfo["update_remove"] = "update_remove" in updateFiles
+        pluginInfo["update_enable"] = "update_enable" in updateFiles
+        pluginInfo["update_disable"] = "update_disable" in updateFiles
+
+        pluginInfo["enabled"] = "disable" !in dirFiles
+        pluginInfo["remove"] = "remove" in dirFiles
+        pluginInfo["action"] = "action.sh" in dirFiles
+        pluginInfo["web"] = "webroot" in dirFiles && File(dir, "webroot/index.html").exists()
+        pluginInfo["size"] = getFolderSize(dir)
+        pluginInfo["dir_id"] = pluginId
+
+        return ParcelableMapJson.fromMap<PluginInfo>(Collections.unmodifiableMap(pluginInfo))
     }
+
 
     private fun getFolderSize(folder: File?): Long {
         var length: Long = 0
@@ -195,8 +208,8 @@ abstract class ServiceImpl : IAxeronService.Stub() {
         return length
     }
 
-    private fun readFileProp(file: File): MutableMap<String?, String?> {
-        val map: MutableMap<String?, String?> = java.util.HashMap<String?, String?>()
+    private fun readFileProp(file: File): ModuleProp? {
+        val map: MutableMap<String?, Any?> = java.util.HashMap<String?, Any?>()
 
         try {
             BufferedReader(FileReader(file)).use { br ->
@@ -209,7 +222,35 @@ abstract class ServiceImpl : IAxeronService.Stub() {
                         line.split("=".toRegex(), limit = 2).toTypedArray()
                     if (parts.size == 2) {
                         val key = parts[0]!!.trim { it <= ' ' }
-                        val value = parts[1]!!.trim { it <= ' ' }
+                        val rawValue = parts[1]!!.trim { it <= ' ' }
+
+                        val value: Any = when {
+                            // Boolean
+                            rawValue.equals("true", ignoreCase = true) -> true
+                            rawValue.equals("false", ignoreCase = true) -> false
+
+                            // Integer/Long (tidak diawali 0 kecuali 0 sendiri)
+                            rawValue.matches(Regex("0|[1-9]\\d*")) -> {
+                                try {
+                                    rawValue.toLong()
+                                } catch (e: NumberFormatException) {
+                                    rawValue
+                                }
+                            }
+
+                            // Float/Double (tidak diawali 0 kecuali 0.x)
+                            rawValue.matches(Regex("0\\.\\d+|[1-9]\\d*\\.\\d+")) -> {
+                                try {
+                                    rawValue.toDouble()
+                                } catch (e: NumberFormatException) {
+                                    rawValue
+                                }
+                            }
+
+                            // Fallback string
+                            else -> rawValue
+                        }
+
                         map.put(key, value)
                     }
                 }
@@ -218,13 +259,19 @@ abstract class ServiceImpl : IAxeronService.Stub() {
             LOGGER.e(TAG, "Error reading file: " + file.absolutePath, e)
         }
 
-        return map
+        val pluginId = map["id"]
+
+        if (pluginId == null) return null
+
+        return ParcelableMapJson.fromMap<ModuleProp>(Collections.unmodifiableMap(map))
     }
 
+    @Throws(RemoteException::class)
     override fun destroy() {
         exitProcess(0)
     }
 
+    @Throws(RemoteException::class)
     fun transactRemote(data: Parcel, reply: Parcel?) {
         val targetBinder = data.readStrongBinder()
         val targetCode = data.readInt()
@@ -252,6 +299,7 @@ abstract class ServiceImpl : IAxeronService.Stub() {
         }
     }
 
+    @Throws(RemoteException::class)
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         if (code == 1) {
             data.enforceInterface(DESCRIPTOR)

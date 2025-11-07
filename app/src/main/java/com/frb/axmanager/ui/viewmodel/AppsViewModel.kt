@@ -101,9 +101,7 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
 
             // Ambil packageName yang sudah tersimpan
             addedPackageNames = getSavedPackageNames()
-            val allPackage = Axeron.getPackages(0)
-            if (allPackage == null) return@launch
-            val packages = allPackage.list
+            val packages = Axeron.getPackages(0)
 
             val apps = packages.map {
                 val appInfo = it.applicationInfo!!

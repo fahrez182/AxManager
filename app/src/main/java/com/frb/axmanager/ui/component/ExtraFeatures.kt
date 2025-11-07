@@ -13,8 +13,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.frb.axmanager.R
-import com.frb.axmanager.ui.viewmodel.PluginViewModel
 import com.frb.axmanager.ui.webui.WebUIActivity
+import com.frb.engine.data.PluginInfo
 import java.util.Locale
 
 @get:Composable
@@ -49,7 +49,7 @@ fun formatSize(size: Long): String {
     }
 }
 
-fun createWebUIShortcut(context: Context, plugin: PluginViewModel.PluginInfo) {
+fun createWebUIShortcut(context: Context, plugin: PluginInfo) {
     val shortcutManager = context.getSystemService(ShortcutManager::class.java)
 
     if (shortcutManager.pinnedShortcuts.any { it.id == plugin.prop.id }) {

@@ -76,6 +76,7 @@ import com.frb.axmanager.ui.viewmodel.SettingsViewModel
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
 import com.frb.engine.core.ConstantEngine
+import com.frb.engine.data.PluginInfo
 import com.frb.engine.utils.PathHelper
 import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActionScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -86,7 +87,7 @@ import java.io.File
 @Composable
 fun PluginConfig(
     showDialog: Boolean,
-    plugin: PluginViewModel.PluginInfo,
+    plugin: PluginInfo,
     onDismissRequest: () -> Unit
 ) {
     if (showDialog) {
@@ -137,13 +138,13 @@ fun PluginItem(
     navigator: DestinationsNavigator?,
     settings: SettingsViewModel,
     viewModel: PluginViewModel,
-    plugin: PluginViewModel.PluginInfo,
+    plugin: PluginInfo,
     updateUrl: String,
-    onUninstall: (PluginViewModel.PluginInfo) -> Unit,
-    onRestore: (PluginViewModel.PluginInfo) -> Unit,
+    onUninstall: (PluginInfo) -> Unit,
+    onRestore: (PluginInfo) -> Unit,
     onCheckChanged: (Boolean) -> Unit,
-    onUpdate: (PluginViewModel.PluginInfo) -> Unit,
-    onClick: (PluginViewModel.PluginInfo) -> Unit,
+    onUpdate: (PluginInfo) -> Unit,
+    onClick: (PluginInfo) -> Unit,
     expanded: Boolean,
     onExpandToggle: () -> Unit,
 ) {

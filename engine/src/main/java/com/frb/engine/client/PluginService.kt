@@ -54,7 +54,7 @@ object PluginService {
     ): FlashResult {
         val resolver = application.contentResolver
         with(resolver.openInputStream(uri)) {
-            val file = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT_ZIP), "module.zip")
+            val file = File(PathHelper.getTmpPath(ConstantEngine.folder.PARENT_ZIP), "module.zip")
 
             val fos = axFS.getStreamSession(file.absolutePath, true, false).outputStream
 
@@ -73,7 +73,7 @@ object PluginService {
 
             Log.i(TAG, "install module $uri result: $result")
 
-            file.delete()
+            axFS.delete(file.absolutePath)
 
             return FlashResult(result)
         }

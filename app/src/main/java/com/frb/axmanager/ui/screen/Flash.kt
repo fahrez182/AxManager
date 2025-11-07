@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,8 +45,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
+import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.frb.axmanager.BuildConfig
 import com.frb.axmanager.ui.component.AxSnackBarHost
 import com.frb.axmanager.ui.component.ConfirmResult
@@ -300,13 +303,28 @@ fun FlashScreen(
             LaunchedEffect(text) {
                 scrollState.animateScrollTo(scrollState.maxValue)
             }
-            Text(
+            text = if (developerOptionsEnabled) logContent.toString() else text
+            BasicText(
                 modifier = Modifier.padding(8.dp),
-                text = if (developerOptionsEnabled) logContent.toString() else text,
-                fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                fontFamily = FontFamily.Monospace,
-                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                text = text.parseAsAnsiAnnotatedString(),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    lineHeight = MaterialTheme.typography.bodyMedium.fontSize, // samain dengan fontSize
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = FontFamily.Monospace
+                ),
+                softWrap = true,   // MATIIN WRAP
             )
+//            Text(
+//                modifier = Modifier.padding(8.dp),
+//                text = if (developerOptionsEnabled) logContent.toString() else text,
+//                fontSize = MaterialTheme.typography.bodySmall.fontSize,
+//                fontFamily = FontFamily.Monospace,
+//                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+//            )
         }
     }
 

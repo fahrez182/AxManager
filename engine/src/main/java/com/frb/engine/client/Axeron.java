@@ -20,7 +20,8 @@ import com.frb.engine.Environment;
 import com.frb.engine.IAxeronApplication;
 import com.frb.engine.IAxeronService;
 import com.frb.engine.core.Engine;
-import com.frb.engine.implementation.AxeronInfo;
+import com.frb.engine.data.AxeronInfo;
+import com.frb.engine.data.PluginInfo;
 import com.frb.engine.implementation.AxeronService;
 
 import java.util.ArrayList;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Objects;
 
 import moe.shizuku.server.IShizukuService;
-import rikka.parcelablelist.ParcelableListSlice;
 import rikka.shizuku.Shizuku;
 
 public class Axeron {
@@ -272,23 +272,23 @@ public class Axeron {
 
     }
 
-    public static ParcelableListSlice<PackageInfo> getPackages(int flags) {
+    public static List<PackageInfo> getPackages(int flags) {
         try {
-            return requireService().getPackages(flags);
+            return requireService().getPackages(flags).getList();
         } catch (RemoteException ignored) {
         }
-        return null;
+        return new ArrayList<>();
     }
 
-    public static List<String> getPlugins() {
+    public static List<PluginInfo> getPlugins() {
         try {
-            return requireService().getPlugins();
-        } catch (RemoteException e) {
-            return null;
+            return requireService().getPlugins().getList();
+        } catch (RemoteException ignored) {
         }
+        return new ArrayList<>();
     }
 
-    public static String getPluginById(String id) {
+    public static PluginInfo getPluginById(String id) {
         try {
             return requireService().getPluginById(id);
         } catch (RemoteException e) {

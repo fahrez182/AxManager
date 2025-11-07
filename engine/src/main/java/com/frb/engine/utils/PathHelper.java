@@ -18,7 +18,12 @@ public class PathHelper {
     }
 
     public static File getShellPath(String folderName) {
+        if (folderName == null) return new File(ConstantEngine.folder.SHELL);
         return new File(ConstantEngine.folder.SHELL, folderName);
+    }
+
+    public static File getTmpPath(String folderName) {
+        return new File(ConstantEngine.folder.TMP, folderName);
     }
 
     public static String getRelativePath(String rootPath, String fullPath) {

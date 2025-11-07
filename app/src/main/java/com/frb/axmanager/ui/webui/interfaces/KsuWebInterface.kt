@@ -21,6 +21,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.frb.engine.client.Axeron
 import com.frb.engine.client.PluginService
+import com.frb.engine.utils.flattenOneLevel
+import com.google.gson.GsonBuilder
+import com.google.gson.ToNumberPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -199,32 +202,30 @@ class KsuWebInterface(
     @JavascriptInterface
     fun moduleInfo(): String {
         val pluginInfos = Axeron.getPlugins()
-        val currentModuleInfo = JSONObject().also {
-            it.put("moduleDir", modDir)
-        }
+        var currentModuleInfo: Map<String, Any?> = emptyMap()
         val moduleId = modDir.getName()
         for (i in 0 until pluginInfos.size) {
-            val currentInfo = JSONObject(pluginInfos[i])
+            val currentInfo = pluginInfos[i]
 
-            if (currentInfo.getString("id") != moduleId) {
+            if (currentInfo.prop.id != moduleId) {
                 continue
             }
 
-            val keys = currentInfo.keys()
-            for (key in keys) {
-                currentModuleInfo.put(key, currentInfo.get(key))
+            currentModuleInfo = flattenOneLevel(currentInfo.toMap()).toMutableMap().also {
+                it["moduleDir"] = modDir
             }
             break
         }
-        return currentModuleInfo.toString()
+        return GsonBuilder()
+            .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
+            .create()
+            .toJson(currentModuleInfo)
     }
 
     @JavascriptInterface
     fun listSystemPackages(): String {
 //        val pm = context.packageManager
-        val packages = Axeron.getPackages(0)
-        val packageNames = packages.list
-            .mapNotNull { pkg ->
+        val packages = Axeron.getPackages(0).mapNotNull { pkg ->
                 val appInfo = pkg.applicationInfo
                 if (appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
                     pkg.packageName
@@ -232,7 +233,7 @@ class KsuWebInterface(
             }
             .sorted()
         val jsonArray = JSONArray()
-        for (pkgName in packageNames) {
+        for (pkgName in packages) {
             jsonArray.put(pkgName)
         }
         return jsonArray.toString()
@@ -242,7 +243,6 @@ class KsuWebInterface(
     fun listUserPackages(): String {
 //        val pm = context.packageManager
         val packages = Axeron.getPackages(0)
-        val packageNames = packages.list
             .mapNotNull { pkg ->
                 val appInfo = pkg.applicationInfo
                 if (appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
@@ -251,7 +251,7 @@ class KsuWebInterface(
             }
             .sorted()
         val jsonArray = JSONArray()
-        for (pkgName in packageNames) {
+        for (pkgName in packages) {
             jsonArray.put(pkgName)
         }
         return jsonArray.toString()
@@ -261,9 +261,9 @@ class KsuWebInterface(
     fun listAllPackages(): String {
 //        val pm = context.packageManager
         val packages = Axeron.getPackages(0)
-        val packageNames = packages.list.map { it.packageName }.sorted()
+            .map { it.packageName }.sorted()
         val jsonArray = JSONArray()
-        for (pkgName in packageNames) {
+        for (pkgName in packages) {
             jsonArray.put(pkgName)
         }
         return jsonArray.toString()
@@ -309,7 +309,7 @@ class KsuWebInterface(
         val pm = context.packageManager
         val packages = Axeron.getPackages(0)
         val outputStream = ByteArrayOutputStream()
-        for (pkg in packages.list) {
+        for (pkg in packages) {
             val pkgName = pkg.packageName
             if (packageIconCache.containsKey(pkgName)) continue
             try {

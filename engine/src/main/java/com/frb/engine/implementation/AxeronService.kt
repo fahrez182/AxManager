@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.system.Os
 import com.frb.engine.Environment
 import com.frb.engine.core.ConstantEngine
+import com.frb.engine.data.AxeronInfo
 import com.frb.engine.manager.EnvironmentManager
 import com.frb.engine.utils.ApkChangedListener
 import com.frb.engine.utils.ApkChangedObservers
@@ -37,6 +38,7 @@ import kotlin.system.exitProcess
 open class AxeronService() : ServiceImpl() {
 
     companion object {
+        @Suppress("DEPRECATION")
         @JvmStatic
         fun main(args: Array<String>) {
             DdmHandleAppName.setAppName("axeron_server", 0)
@@ -48,7 +50,7 @@ open class AxeronService() : ServiceImpl() {
 
         const val VERSION_NAME = "V1.3.0"
         const val VERSION_CODE: Long = 13000
-        const val PATCH_CODE: Long = 7
+        const val PATCH_CODE: Long = 24
 
         @JvmStatic
         fun getActualVersion(): Long {
@@ -178,7 +180,6 @@ open class AxeronService() : ServiceImpl() {
         var cachedDefaultEnv: Environment? = null
 
         fun getDefaultEnvironment(): Environment {
-            // cache simple strong ref — Environment.Builder seharusnya immutable result.
             val cached = cachedDefaultEnv
             if (cached != null) return cached
 
@@ -189,8 +190,8 @@ open class AxeronService() : ServiceImpl() {
                 .put("AXERONXBIN", PathHelper.getShellPath(ConstantEngine.folder.PARENT_EXTERNAL_BINARY).absolutePath)
                 .put("AXERONLIB", getManagerApplicationInfo()?.nativeLibraryDir)
                 .put("AXERONVER", VERSION_CODE.toString())
-                .put("TMPDIR", "/data/local/tmp")
-                .put("PATH", "\$AXERONXBIN:\$PATH:\$AXERONBIN")
+                .put("TMPDIR", PathHelper.getTmpPath(ConstantEngine.folder.PARENT_CACHE).absolutePath)
+                .put("PATH", $$"$AXERONXBIN:$PATH:$AXERONBIN")
                 .build()
             cachedDefaultEnv = built
             return built
@@ -212,14 +213,9 @@ open class AxeronService() : ServiceImpl() {
         waitSystemService(Context.USER_SERVICE)
         waitSystemService(Context.APP_OPS_SERVICE)
 
+        val ai: ApplicationInfo =
+            getManagerApplicationInfo() ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
 
-        val ai: ApplicationInfo? = getManagerApplicationInfo()
-
-        if (ai == null) {
-            exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
-        }
-
-        val axCompanion = File(PathHelper.getShellPath(ConstantEngine.folder.PARENT), "ax_perm_companion")
         if (axCompanion.exists()) {
             // use lazy initialization via property above
             shizuku = ShizukuService(mainHandler, shizukuUserServiceManager)
@@ -233,7 +229,7 @@ open class AxeronService() : ServiceImpl() {
 
         BinderSender.register(this)
 
-        mainHandler?.post {
+        mainHandler.post {
             sendBinderToClient()
             sendBinderToManager()
         }

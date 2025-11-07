@@ -2,7 +2,7 @@
 agp = "8.13.0"
 api = "13.1.5"
 boringssl = "20250114"
-gson = "2.13.1"
+gson = "2.13.2"
 hiddenapibypass = "6.1"
 ksp = "2.1.21-2.0.2"
 kotlin = "2.2.10"

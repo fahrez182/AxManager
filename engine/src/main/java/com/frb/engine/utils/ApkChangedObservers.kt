@@ -82,7 +82,7 @@ class ApkChangedObserver(private val path: String) : FileObserver(path, DELETE o
         if (!active || path == null) return
         if (path == "base.apk") {
             active = false
-            mainHandler?.post {
+            mainHandler.post {
                 stopWatching()
                 listeners.forEach { it.onApkChanged() }
             }

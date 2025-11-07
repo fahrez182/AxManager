@@ -12,8 +12,8 @@ import androidx.annotation.Nullable;
 import androidx.webkit.internal.AssetHelper;
 
 import com.frb.engine.client.Axeron;
-import com.frb.engine.core.ConstantEngine;
 import com.frb.engine.utils.AxWebLoader;
+import com.frb.engine.utils.PathHelper;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,7 +25,7 @@ public class AxPathHandler implements AxWebLoader.AxPathHandler {
     private static final String[] FORBIDDEN_DATA_DIRS =
             new String[] {"/data/data", "/data/system"};
 
-    private static final String ALLOWED_DATA_DIRS = ConstantEngine.folder.SHELL_ROOT;
+    private static final String ALLOWED_DATA_DIRS = PathHelper.getShellPath(null).getAbsolutePath();
 
     @NonNull
     private final File mDirectory;

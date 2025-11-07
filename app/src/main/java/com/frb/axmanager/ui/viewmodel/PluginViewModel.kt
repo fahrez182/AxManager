@@ -3,7 +3,6 @@ package com.frb.axmanager.ui.viewmodel
 import android.app.Application
 import android.content.Context
 import android.net.Uri
-import android.os.Parcelable
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
@@ -17,11 +16,11 @@ import androidx.lifecycle.viewModelScope
 import com.frb.axmanager.axApp
 import com.frb.axmanager.ui.util.HanziToPinyin
 import com.frb.engine.client.Axeron
+import com.frb.engine.data.PluginInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.parcelize.Parcelize
 import org.json.JSONObject
 
 class PluginViewModel(application: Application) : AndroidViewModel(application) {
@@ -31,33 +30,33 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
     companion object {
         const val TAG = "PluginsViewModel"
 
-        fun convertPluginInfo(str: String): PluginInfo {
-            val obj = JSONObject(str)
-            return PluginInfo(
-                prop = ModuleProp(
-                    id = obj.getString("id"),
-                    name = obj.optString("name"),
-                    author = obj.optString("author", "Unknown"),
-                    version = obj.optString("version", "Unknown"),
-                    versionCode = obj.optInt("versionCode", 0),
-                    description = obj.optString("description"),
-                    banner = obj.optString("banner"),
-                    updateJson = obj.optString("updateJson"),
-                    axeronPlugin = obj.optInt("axeronPlugin")
-                ),
-                update = obj.getBoolean("update"),
-                updateInstall = obj.getBoolean("update_install"),
-                updateRemove = obj.getBoolean("update_remove"),
-                updateEnable = obj.getBoolean("update_enable"),
-                updateDisable = obj.getBoolean("update_disable"),
-                enabled = obj.getBoolean("enabled"),
-                remove = obj.getBoolean("remove"),
-                hasWebUi = obj.optBoolean("web"),
-                hasActionScript = obj.optBoolean("action"),
-                dirId = obj.getString("dir_id"),
-                size = obj.getLong("size")
-            )
-        }
+//        fun convertPluginInfo(str: String): PluginInfo {
+//            val obj = JSONObject(str)
+//            return PluginInfo(
+//                prop = ModuleProp(
+//                    id = obj.getString("id"),
+//                    name = obj.optString("name"),
+//                    author = obj.optString("author", "Unknown"),
+//                    version = obj.optString("version", "Unknown"),
+//                    versionCode = obj.optInt("versionCode", 0),
+//                    description = obj.optString("description"),
+//                    banner = obj.optString("banner"),
+//                    updateJson = obj.optString("updateJson"),
+//                    axeronPlugin = obj.optInt("axeronPlugin")
+//                ),
+//                update = obj.getBoolean("update"),
+//                updateInstall = obj.getBoolean("update_install"),
+//                updateRemove = obj.getBoolean("update_remove"),
+//                updateEnable = obj.getBoolean("update_enable"),
+//                updateDisable = obj.getBoolean("update_disable"),
+//                enabled = obj.getBoolean("enabled"),
+//                remove = obj.getBoolean("remove"),
+//                hasWebUi = obj.optBoolean("web"),
+//                hasActionScript = obj.optBoolean("action"),
+//                dirId = obj.getString("dir_id"),
+//                size = obj.getLong("size")
+//            )
+//        }
     }
 
     var search by mutableStateOf("")
@@ -110,37 +109,7 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-
-    @Parcelize
-    data class ModuleProp(
-        val id: String,
-        val name: String,
-        val author: String,
-        val version: String,
-        val versionCode: Int,
-        val description: String,
-        val banner: String,
-        val updateJson: String,
-        val axeronPlugin: Int
-    ) : Parcelable
-
-    @Parcelize
-    data class PluginInfo(
-        val prop: ModuleProp,
-        val update: Boolean,
-        val updateInstall: Boolean,
-        val updateRemove: Boolean,
-        val updateEnable: Boolean,
-        val updateDisable: Boolean,
-        val enabled: Boolean,
-        val remove: Boolean,
-        val hasWebUi: Boolean,
-        val hasActionScript: Boolean,
-        val dirId: String,
-        val size: Long,
-    ) : Parcelable
-
-    var plugins by mutableStateOf<List<PluginInfo>>(emptyList())
+    var plugins by mutableStateOf<List<PluginInfo>>(ArrayList())
         private set
 
     var isNeedReignite by mutableStateOf(false)
@@ -177,18 +146,22 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
                 val start = SystemClock.elapsedRealtime()
                 val oldPluginList = plugins
 
-                kotlin.runCatching {
-                    val result = Axeron.getPlugins()
-                    Log.i(TAG, "$result")
+                runCatching {
+//                    val result = Axeron.getPlugins().list
+//                    Log.i(TAG, "$result")
                     isNeedReignite = false
 
-                    plugins = result.map {
-                        val pluginInfo = convertPluginInfo(it)
-                        if (pluginInfo.update) {
-                            isNeedReignite = true
-                        }
-                        pluginInfo
-                    }
+                    plugins = Axeron.getPlugins()
+
+                    isNeedReignite = plugins.any { it.update }
+
+//                    plugins = result.map {
+//                        val pluginInfo = convertPluginInfo(it)
+//                        if (pluginInfo.update) {
+//                            isNeedReignite = true
+//                        }
+//                        pluginInfo
+//                    }
                     isNeedRefresh = false
                 }.onFailure { e ->
                     Log.e(TAG, "fetchModuleList: ", e)
