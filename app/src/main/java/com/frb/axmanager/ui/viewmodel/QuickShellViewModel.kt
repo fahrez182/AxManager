@@ -68,7 +68,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         VOLUME_DOWN
     }
 
-    data class Output(val type: OutputType, val output: String)
+    data class Output(val type: OutputType, var output: String)
 
     var isShellRestrictionEnabled: Boolean by mutableStateOf(
         prefs.getBoolean("shell_restriction", true)
@@ -199,36 +199,64 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
             val buf = ByteArray(1024 * 4)
 
             // baca stdout
+
             launch {
                 val regex = Regex("\r(\\d+)\r")
-                generateSequence { stdout.read(buf).takeIf { it > 0 } }
-                    .forEach { len ->
-                        val chunk = String(buf, 0, len)
+
+                while (isRunning) {
+                    val available = stdout.available()
+
+                    if (available > 0) {
+                        val len = stdout.read(buf, 0, minOf(buf.size, available))
+                        if (len <= 0) continue
+
+                        val text = String(buf, 0, len)
+
                         if (pid == null) {
-                            val match = regex.find(chunk)
+                            val match = regex.find(text)
                             if (match != null) {
                                 pid = match.groupValues[1].toInt()
-                                append(OutputType.TYPE_START, "[start] pid=$pid")
-                                return@forEach
+                                appendRaw(OutputType.TYPE_START, "[start] pid=$pid")
+                                continue
                             }
                         }
-                        append(OutputType.TYPE_STDOUT, chunk)
+
+                        appendRaw(OutputType.TYPE_STDOUT, text)
                     }
+                }
             }
+
+
+//            launch {
+//                val regex = Regex("\r(\\d+)\r")
+//                generateSequence { stdout.read(buf).takeIf { it > 0 } }
+//                    .forEach { len ->
+//                        val chunk = String(buf, 0, len)
+//                        if (pid == null) {
+//                            val match = regex.find(chunk)
+//                            if (match != null) {
+//                                pid = match.groupValues[1].toInt()
+//                                append(OutputType.TYPE_START, "[start] pid=$pid")
+//                                return@forEach
+//                            }
+//                        }
+//                        append(OutputType.TYPE_STDOUT, chunk)
+//                    }
+//            }
 
             // baca stderr
             launch {
                 generateSequence { stderr.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
                         val chunk = String(buf, 0, len)
-                        append(OutputType.TYPE_STDERR, chunk)
+                        appendRaw(OutputType.TYPE_STDERR, chunk)
                     }
             }
 
             launch {
                 val code = process?.waitFor() ?: -1
-                append(OutputType.TYPE_EXIT, "[exit] code=$code")
-                append(OutputType.TYPE_SPACE, "")
+                appendRaw(OutputType.TYPE_EXIT, "[exit] code=$code")
+                appendRaw(OutputType.TYPE_SPACE, "")
                 stop(false)
             }
         }
@@ -263,9 +291,36 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         appendRaw(type, output)
     }
 
+    private var pendingOutput: Output? = null
+
     private suspend fun appendRaw(type: OutputType, output: String) {
-        _output.emit(Output(type, output)) // langsung emit chunk
+        if (type == OutputType.TYPE_STDOUT || type == OutputType.TYPE_STDERR) {
+            val endsWithNewline = output.endsWith("\n") || output.endsWith("\r")
+            if (!endsWithNewline) {
+                if (pendingOutput == null) {
+                    pendingOutput = Output(type, output)
+                } else {
+                    pendingOutput!!.output += output.trimEnd()
+                }
+                return // belum emit karena belum newline
+            } else {
+                // ada newline → flush pending
+                pendingOutput?.let {
+                    it.output += output.trimEnd()
+                    _output.emit(it)
+                    pendingOutput = null
+                    return
+                }
+            }
+        }
+
+        // tipe lain → langsung emit tanpa buffering
+        _output.emit(Output(type, output.trimEnd()))
     }
+
+//    private suspend fun appendRaw(type: OutputType, output: String) {
+//        _output.emit(Output(type, output)) // langsung emit chunk
+//    }
 
     override fun onCleared() {
         super.onCleared()

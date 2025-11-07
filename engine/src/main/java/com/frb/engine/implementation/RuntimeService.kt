@@ -1,130 +1,133 @@
-package com.frb.engine.implementation;
+package com.frb.engine.implementation
 
-import android.os.IBinder;
-import android.os.ParcelFileDescriptor;
-import android.os.RemoteException;
+import android.os.IBinder
+import android.os.ParcelFileDescriptor
+import android.os.RemoteException
+import com.frb.engine.IRuntimeService
+import com.frb.engine.utils.Logger
+import com.frb.engine.utils.ParcelFileDescriptorUtil
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
-import com.frb.engine.IRuntimeService;
-import com.frb.engine.utils.Logger;
-import com.frb.engine.utils.ParcelFileDescriptorUtil;
+class RuntimeService(
+    private val process: Process,
+    token: IBinder?
+) : IRuntimeService.Stub() {
 
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+    private val logger = Logger("RuntimeServiceImpl")
 
-public class RuntimeService extends IRuntimeService.Stub {
+    private var inFd: ParcelFileDescriptor? = null
+    private var outFd: ParcelFileDescriptor? = null
+    private var errFd: ParcelFileDescriptor? = null
 
-    private static final Logger LOGGER = new Logger("RuntimeServiceImpl");
-
-    private final Process process;
-    private ParcelFileDescriptor in;
-    private ParcelFileDescriptor out;
-
-    public RuntimeService(Process process, IBinder token) {
-        this.process = process;
-
+    init {
         if (token != null) {
             try {
-                DeathRecipient deathRecipient = () -> {
+                val deathRecipient = IBinder.DeathRecipient {
                     try {
                         if (alive()) {
-                            destroy();
-                            LOGGER.i("destroy process because the owner is dead");
+                            destroy()
+                            logger.i("Destroyed process because the owner is dead")
                         }
-                    } catch (Throwable e) {
-                        LOGGER.w(e, "failed to destroy process");
-                    }
-                };
-                token.linkToDeath(deathRecipient, 0);
-            } catch (Throwable e) {
-                LOGGER.w(e, "linkToDeath");
-            }
-        }
-    }
-
-    @Override
-    public ParcelFileDescriptor getOutputStream() {
-        if (out == null) {
-            try {
-                out = ParcelFileDescriptorUtil.pipeTo(process.getOutputStream());
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        return out;
-    }
-
-    @Override
-    public ParcelFileDescriptor getInputStream() {
-        if (in == null) {
-            try {
-                in = ParcelFileDescriptorUtil.pipeFrom(process.getInputStream());
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        return in;
-    }
-
-    @Override
-    public ParcelFileDescriptor getErrorStream() {
-        try {
-            return ParcelFileDescriptorUtil.pipeFrom(process.getErrorStream());
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @Override
-    public int waitFor() {
-        try {
-            return process.waitFor();
-        } catch (InterruptedException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @Override
-    public int exitValue() {
-        return process.exitValue();
-    }
-
-    @Override
-    public void destroy() {
-        process.destroy();
-    }
-
-    @Override
-    public boolean alive() throws RemoteException {
-        try {
-            this.exitValue();
-            return false;
-        } catch (IllegalThreadStateException e) {
-            return true;
-        }
-    }
-
-    @Override
-    public boolean waitForTimeout(long timeout, String unitName) throws RemoteException {
-        TimeUnit unit = TimeUnit.valueOf(unitName);
-        long startTime = System.nanoTime();
-        long rem = unit.toNanos(timeout);
-
-        do {
-            try {
-                exitValue();
-                return true;
-            } catch (IllegalThreadStateException ex) {
-                if (rem > 0) {
-                    try {
-                        Thread.sleep(
-                                Math.min(TimeUnit.NANOSECONDS.toMillis(rem) + 1, 100));
-                    } catch (InterruptedException e) {
-                        throw new IllegalStateException();
+                    } catch (e: Throwable) {
+                        logger.w(e, "Failed to destroy process after death")
                     }
                 }
+                token.linkToDeath(deathRecipient, 0)
+            } catch (e: Throwable) {
+                logger.w(e, "linkToDeath failed")
             }
-            rem = unit.toNanos(timeout) - (System.nanoTime() - startTime);
-        } while (rem > 0);
-        return false;
+        }
+    }
+
+    override fun getOutputStream(): ParcelFileDescriptor {
+        if (outFd == null) {
+            outFd = try {
+                ParcelFileDescriptorUtil.pipeTo(process.outputStream)
+            } catch (e: IOException) {
+                throw IllegalStateException("Failed to get output stream", e)
+            }
+        }
+        return outFd!!
+    }
+
+    override fun getInputStream(): ParcelFileDescriptor {
+        if (inFd == null) {
+            inFd = try {
+                ParcelFileDescriptorUtil.pipeFrom(process.inputStream)
+            } catch (e: IOException) {
+                throw IllegalStateException("Failed to get input stream", e)
+            }
+        }
+        return inFd!!
+    }
+
+    override fun getErrorStream(): ParcelFileDescriptor {
+        if (errFd == null) {
+            errFd = try {
+                ParcelFileDescriptorUtil.pipeFrom(process.errorStream)
+            } catch (e: IOException) {
+                throw IllegalStateException("Failed to get error stream", e)
+            }
+        }
+        return errFd!!
+    }
+
+    override fun waitFor(): Int {
+        return try {
+            process.waitFor()
+        } catch (e: InterruptedException) {
+            throw IllegalStateException("Interrupted while waiting for process", e)
+        }
+    }
+
+    override fun exitValue(): Int = process.exitValue()
+
+    override fun destroy() {
+        tryClose(inFd)
+        tryClose(outFd)
+        tryClose(errFd)
+        process.destroy()
+    }
+
+    @Throws(RemoteException::class)
+    override fun alive(): Boolean {
+        return try {
+            process.exitValue()
+            false
+        } catch (_: IllegalThreadStateException) {
+            true
+        }
+    }
+
+    @Throws(RemoteException::class)
+    override fun waitForTimeout(timeout: Long, unitName: String): Boolean {
+        val unit = TimeUnit.valueOf(unitName)
+        val startTime = System.nanoTime()
+        var remaining = unit.toNanos(timeout)
+
+        while (remaining > 0) {
+            try {
+                process.exitValue()
+                return true
+            } catch (_: IllegalThreadStateException) {
+                try {
+                    Thread.sleep(
+                        minOf(TimeUnit.NANOSECONDS.toMillis(remaining) + 1, 100)
+                    )
+                } catch (_: InterruptedException) {
+                    throw IllegalStateException("Interrupted while waiting for timeout")
+                }
+            }
+            remaining = unit.toNanos(timeout) - (System.nanoTime() - startTime)
+        }
+        return false
+    }
+
+    private fun tryClose(fd: ParcelFileDescriptor?) {
+        try {
+            fd?.close()
+        } catch (_: IOException) {
+        }
     }
 }

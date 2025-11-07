@@ -1,5 +1,6 @@
 package com.frb.axmanager.ui.screen
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -72,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -270,9 +272,9 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             // collect flow
             LaunchedEffect(Unit) {
                 viewModel.output.collect { line ->
-                        if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && line.output.isBlank()) return@collect
-                        logs.add(QuickShellViewModel.Output(line.type, line.output.trimEnd()))
-                    }
+                    if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && line.output.isBlank()) return@collect
+                    logs.add(line)
+                }
             }
 
             val hScroll = rememberScrollState()
@@ -330,6 +332,11 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 }
             }
 
+            @SuppressLint("ConfigurationScreenWidthHeight")
+            val screen = LocalConfiguration.current.screenHeightDp
+            val paddingHeight = (screen * 0.52).dp
+
+
             ElevatedCard(
                 shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.elevatedCardColors().copy(
@@ -339,7 +346,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     .fillMaxWidth()
                     .run {
                         if (keyboardVisible) {
-                            padding(bottom = 270.dp)
+                            padding(bottom = paddingHeight)
                         } else {
                             padding(bottom = 0.dp)
                         }
@@ -358,6 +365,11 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                             Text(viewModel.execMode)
                         },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = MaterialTheme.typography.bodyLarge.fontSize,
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
+                            ),
                             fontFamily = FontFamily.Monospace
                         ),
                         maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
