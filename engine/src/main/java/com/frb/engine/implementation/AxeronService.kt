@@ -48,9 +48,9 @@ open class AxeronService() : ServiceImpl() {
             Looper.loop()
         }
 
-        const val VERSION_NAME = "V1.3.0"
-        const val VERSION_CODE: Long = 13000
-        const val PATCH_CODE: Long = 24
+        const val VERSION_NAME = "V1.3.1"
+        const val VERSION_CODE: Long = 13_100
+        const val PATCH_CODE: Long = 0
 
         @JvmStatic
         fun getActualVersion(): Long {

@@ -17,12 +17,12 @@ android {
         applicationId = "com.frb.axmanager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 13000
-        versionName = "1.3.0"
+        versionCode = 13_100
+        versionName = "1.3.1"
 
         externalNativeBuild {
             cmake {
-                arguments.add("-DANDROID_STL=none")
+                arguments += "-DANDROID_STL=none"
             }
         }
     }
@@ -45,12 +45,12 @@ android {
         }
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
             useLegacyPackaging = true
         }
         resources {
-            excludes.add("**")
+            excludes += "**"
         }
     }
 
