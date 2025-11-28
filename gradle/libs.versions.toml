@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.0"
+agp = "8.13.1"
 api = "13.1.5"
 boringssl = "20250114"
 gson = "2.13.2"
@@ -33,6 +33,8 @@ refine = "4.4.0"
 compose-destination = "2.2.0"
 foundation = "1.9.0"
 markdown = "4.6.2"
+annotationJvm = "1.9.1"
+lifecycleLivedataCoreKtx = "2.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,8 +50,6 @@ ansi-library = { module = "com.github.Fox2Code.AndroidANSI:library", version.ref
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
-shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "api" }
-shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "api" }
 sdp-android = { module = "com.intuit.sdp:sdp-android", version.ref = "sdpAndroid" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 toml4j = { module = "com.moandjiezana.toml:toml4j", version.ref = "toml4j" }
@@ -86,6 +86,8 @@ refine-annotation-processor = { group = "dev.rikka.tools.refine", name = "annota
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 markdown = { group = "io.noties.markwon", name = "core", version.ref = "markdown" }
+androidx-annotation-jvm = { group = "androidx.annotation", name = "annotation-jvm", version.ref = "annotationJvm" }
+androidx-lifecycle-livedata-core-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-core-ktx", version.ref = "lifecycleLivedataCoreKtx" }
 
 
 [plugins]

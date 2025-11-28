@@ -7,14 +7,15 @@ import android.ddm.DdmHandleAppName;
 import android.os.IBinder;
 import android.os.UserHandle;
 import android.os.UserHandleHidden;
+import android.system.Os;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.Nullable;
 
 import java.lang.reflect.Constructor;
 
 import dev.rikka.tools.refine.Refine;
+import kotlin.Triple;
 
 public class UserService {
 
@@ -25,12 +26,13 @@ public class UserService {
     }
 
     @Nullable
-    public static Pair<IBinder, String> create(String[] args) {
+    public static Triple<IBinder, String, Integer> create(String[] args) {
         String name = null;
         String token = null;
         String pkg = null;
         String cls = null;
         int uid = -1;
+        int pid = Os.getpid();
 
         for (String arg : args) {
             if (arg.startsWith("--debug-name=")) {
@@ -87,6 +89,6 @@ public class UserService {
             return null;
         }
 
-        return new Pair<>(service, token);
+        return new Triple<>(service, token, pid);
     }
 }

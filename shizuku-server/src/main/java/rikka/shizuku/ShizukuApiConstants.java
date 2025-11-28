@@ -7,7 +7,7 @@ import androidx.annotation.RestrictTo;
 public class ShizukuApiConstants {
 
     public static final int SERVER_VERSION = 13;
-    public static final int SERVER_PATCH_VERSION = 6;
+    public static final int SERVER_PATCH_VERSION = 5;
 
     // binder
     public static final String BINDER_DESCRIPTOR = "moe.shizuku.server.IShizukuService";
@@ -29,6 +29,7 @@ public class ShizukuApiConstants {
 
     @RestrictTo(LIBRARY_GROUP_PREFIX)
     public static final String USER_SERVICE_ARG_TOKEN = "shizuku:user-service-arg-token";
+    public static final String USER_SERVICE_ARG_PID = "shizuku:user-service-arg-pid";
 
     // bind application
     public static final String BIND_APPLICATION_SERVER_VERSION = "shizuku:attach-reply-version";

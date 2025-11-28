@@ -109,6 +109,12 @@ public abstract class UserServiceManager {
         }
     }
 
+    public void removeAllUserService() {
+        for (UserServiceRecord record : userServiceRecords.values()) {
+            removeUserServiceLocked(record);
+        }
+    }
+
     public int addUserService(IShizukuServiceConnection conn, Bundle options, int callingApiVersion) {
         Objects.requireNonNull(conn, "connection is null");
         Objects.requireNonNull(options, "options is null");
@@ -137,7 +143,7 @@ public abstract class UserServiceManager {
             UserServiceRecord record = getUserServiceRecordLocked(key);
             if (noCreate) {
                 LOGGER.i("No create for service record %s", key);
-                if (record != null) {
+                if (record != null && record.environment == environment) {
                     record.callbacks.register(conn);
 
                     if (record.service != null && record.service.pingBinder()) {
@@ -165,9 +171,7 @@ public abstract class UserServiceManager {
                     LOGGER.i("Service in record %s (%s) is alive", key, newRecord.token);
                     newRecord.broadcastBinderReceived();
                 } else if (!newRecord.starting) {
-                    LOGGER.i("Before starting process for service record %s (%s)...", key, newRecord.token);
                     newRecord.setStartingTimeout(DateUtils.SECOND_IN_MILLIS * 30);
-                    LOGGER.i("Starting process for service record %s (%s)...", key, newRecord.token);
                     Runnable runnable = () -> startUserService(newRecord, key, newRecord.token, packageName, className, processNameSuffix, uid, use32Bits, debug);
                     executor.execute(runnable);
                     return 0;
@@ -187,6 +191,8 @@ public abstract class UserServiceManager {
         if (record != null) {
             if (record.versionCode != versionCode) {
                 LOGGER.v("Remove service record %s (%s) because version code not matched (old=%d, new=%d)", key, record.token, record.versionCode, versionCode);
+            } else if (record.environment != environment) {
+                LOGGER.v("Remove service record %s (%s) because environment updated", key, record.token);
             } else if (!record.starting && (record.service == null || !record.service.pingBinder())) {
                 LOGGER.v("Service in record %s (%s) is dead", key, record.token);
             } else {
@@ -201,7 +207,7 @@ public abstract class UserServiceManager {
             removeUserServiceLocked(record);
         }
 
-        record = new UserServiceRecord(versionCode, daemon) {
+        record = new UserServiceRecord(versionCode, daemon, environment) {
 
             @Override
             public void removeSelf() {
@@ -222,6 +228,7 @@ public abstract class UserServiceManager {
         onUserServiceRecordCreated(record, packageInfo);
 
         userServiceRecords.put(key, record);
+        assert packageInfo.applicationInfo != null;
         LOGGER.i("New service record %s (%s): version=%d, daemon=%s, apk=%s", key, record.token, versionCode, Boolean.toString(daemon), packageInfo.applicationInfo.sourceDir);
         return record;
     }
@@ -247,6 +254,8 @@ public abstract class UserServiceManager {
         }
         if (exitCode != 0) {
             throw new IllegalStateException("sh exited with " + exitCode);
+        } else {
+            LOGGER.i("Started process for service record %s (%s)", key, token);
         }
     }
 
@@ -254,7 +263,7 @@ public abstract class UserServiceManager {
             UserServiceRecord record, String key, String token, String packageName,
             String classname, String processNameSuffix, int callingUid, boolean use32Bits, boolean debug);
 
-    private void sendUserServiceLocked(IBinder binder, String token) {
+    private void sendUserServiceLocked(IBinder binder, String token, int pid) {
         Map.Entry<String, UserServiceRecord> entry = null;
         for (Map.Entry<String, UserServiceRecord> e : userServiceRecords.entrySet()) {
             if (e.getValue().token.equals(token)) {
@@ -271,14 +280,17 @@ public abstract class UserServiceManager {
 
         UserServiceRecord record = entry.getValue();
         record.setBinder(binder);
+        record.setPid(pid);
     }
 
     public void attachUserService(IBinder binder, Bundle options) {
         Objects.requireNonNull(binder, "binder is null");
         String token = Objects.requireNonNull(options.getString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN), "token is null");
+        int pid = options.getInt(ShizukuApiConstants.USER_SERVICE_ARG_PID, -1);
+
 
         synchronized (this) {
-            sendUserServiceLocked(binder, token);
+            sendUserServiceLocked(binder, token, pid);
         }
     }
 
@@ -293,6 +305,10 @@ public abstract class UserServiceManager {
     public void removeUserServicesForPackage(String packageName) {
         List<UserServiceRecord> list = packageUserServiceRecords.get(packageName);
         if (list != null) {
+            for (UserServiceRecord record : list) {
+                record.removeSelf();
+                LOGGER.i("Remove user service %s for package %s", record.token, packageName);
+            }
             packageUserServiceRecords.remove(packageName);
         }
     }

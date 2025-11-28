@@ -5,10 +5,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
-import android.util.Pair;
 
 import java.util.Locale;
 
+import kotlin.Triple;
 import moe.shizuku.api.BinderContainer;
 import moe.shizuku.starter.util.IContentProviderCompat;
 import rikka.hidden.compat.ActivityManagerApis;
@@ -62,19 +62,21 @@ public class ServiceStarter {
 
         IBinder service;
         String token;
+        int pid;
 
         UserService.setTag(TAG);
-        Pair<IBinder, String> result = UserService.create(args);
+        Triple<IBinder, String, Integer> result = UserService.create(args);
 
         if (result == null) {
             System.exit(1);
             return;
         }
 
-        service = result.first;
-        token = result.second;
+        service = result.getFirst();
+        token = result.getSecond();
+        pid = result.getThird();
 
-        if (!sendBinder(service, token)) {
+        if (!sendBinder(service, token, pid)) {
             System.exit(1);
         }
 
@@ -84,11 +86,11 @@ public class ServiceStarter {
         LOGGER.i("service exited");
     }
 
-    private static boolean sendBinder(IBinder binder, String token) {
-        return sendBinder(binder, token, true);
+    private static boolean sendBinder(IBinder binder, String token, int pid) {
+        return sendBinder(binder, token, pid, true);
     }
 
-    private static boolean sendBinder(IBinder binder, String token, boolean retry) {
+    private static boolean sendBinder(IBinder binder, String token, int pid, boolean retry) {
         String packageName = ServerConstants.MANAGER_APPLICATION_ID;
         String name = packageName + ".server";
         int userId = 0;
@@ -109,7 +111,7 @@ public class ServiceStarter {
                     ActivityManagerApis.forceStopPackageNoThrow(packageName, userId);
                     LOGGER.e("kill %s in user %d and try again", packageName, userId);
                     Thread.sleep(1000);
-                    return sendBinder(binder, token, false);
+                    return sendBinder(binder, token, pid, false);
                 }
                 return false;
             }
@@ -121,6 +123,7 @@ public class ServiceStarter {
             Bundle extra = new Bundle();
             extra.putParcelable(EXTRA_BINDER, new BinderContainer(binder));
             extra.putString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN, token);
+            extra.putInt(ShizukuApiConstants.USER_SERVICE_ARG_PID, pid);
 
             Bundle reply = IContentProviderCompat.call(provider, null, null, name, "sendUserService", null, extra);
 

@@ -13,6 +13,7 @@ import static rikka.shizuku.ShizukuApiConstants.REQUEST_PERMISSION_REPLY_ALLOWED
 import static rikka.shizuku.ShizukuApiConstants.REQUEST_PERMISSION_REPLY_IS_ONETIME;
 import static rikka.shizuku.manager.ServerConstants.MANAGER_APPLICATION_ID;
 import static rikka.shizuku.manager.ServerConstants.PERMISSION;
+import static rikka.shizuku.manager.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID;
 
 import android.content.Context;
 import android.content.Intent;
@@ -58,6 +59,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     private final ShizukuClientManager clientManager;
     private final ShizukuConfigManager configManager;
     private final int managerAppId;
+    private final int shizukuManagerAppId;
 
     public ShizukuService(Handler mainHandler, ShizukuUserServiceManager shizukuUserServiceManager) {
         super(shizukuUserServiceManager);
@@ -76,12 +78,19 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         assert ai != null;
         managerAppId = ai.uid;
 
+        ApplicationInfo sai = getShizukuManagerApplicationInfo();
+        shizukuManagerAppId = Objects.requireNonNullElse(sai, ai).uid;
+
         configManager = getConfigManager();
         clientManager = getClientManager();
     }
 
     public static ApplicationInfo getManagerApplicationInfo() {
         return PackageManagerApis.getApplicationInfoNoThrow(MANAGER_APPLICATION_ID, 0, 0);
+    }
+
+    private static ApplicationInfo getShizukuManagerApplicationInfo() {
+        return PackageManagerApis.getApplicationInfoNoThrow(SHIZUKU_MANAGER_APPLICATION_ID, 0, 0);
     }
 
     private static void waitSystemService(String name) {
@@ -142,14 +151,18 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         return new ShizukuConfigManager();
     }
 
+    public boolean checkCaller(int callingUid) {
+        return UserHandleCompat.getAppId(callingUid) == managerAppId || UserHandleCompat.getAppId(callingUid) == shizukuManagerAppId;
+    }
+
     @Override
     public boolean checkCallerManagerPermission(String func, int callingUid, int callingPid) {
-        return UserHandleCompat.getAppId(callingUid) == managerAppId;
+        return checkCaller(callingUid);
     }
 
     @Override
     public boolean checkCallerPermission(String func, int callingUid, int callingPid, @Nullable ClientRecord clientRecord) {
-        if (UserHandleCompat.getAppId(callingUid) == managerAppId) {
+        if (checkCaller(callingUid)) {
             return true;
         }
         return clientRecord == null;
@@ -159,7 +172,6 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     public void exit() {
         enforceManagerPermission("exit");
         LOGGER.i("exit");
-        System.exit(0);
     }
 
     @Override
@@ -269,7 +281,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
 
     @Override
     public void dispatchPermissionConfirmationResult(int requestUid, int requestPid, int requestCode, Bundle data) throws RemoteException {
-        if (UserHandleCompat.getAppId(Binder.getCallingUid()) != managerAppId) {
+        if (!checkCaller(Binder.getCallingUid())) {
             LOGGER.w("dispatchPermissionConfirmationResult called not from the manager package");
             return;
         }
@@ -294,9 +306,14 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
                 record.allowed = allowed;
                 if (record.pid == requestPid) {
                     record.dispatchRequestPermissionResult(requestCode, allowed);
+                    if (!allowed) {
+                        onPermissionRevoked(record.packageName);
+                    }
                 }
             }
         }
+
+
 
         if (!onetime) {
             configManager.update(requestUid, packages, ConfigManager.MASK_PERMISSION, allowed ? ConfigManager.FLAG_ALLOWED : ConfigManager.FLAG_DENIED);
@@ -313,7 +330,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
 
     @Override
     public int getFlagsForUid(int uid, int mask) {
-        if (UserHandleCompat.getAppId(Binder.getCallingUid()) != managerAppId) {
+        if (!checkCaller(Binder.getCallingUid())) {
             LOGGER.w("updateFlagsForUid is allowed to be called only from the manager");
             return 0;
         }
@@ -322,12 +339,10 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
 
     @Override
     public void updateFlagsForUid(int uid, int mask, int value) throws RemoteException {
-        if (UserHandleCompat.getAppId(Binder.getCallingUid()) != managerAppId) {
+        if (!checkCaller(Binder.getCallingUid())) {
             LOGGER.w("updateFlagsForUid is allowed to be called only from the manager");
             return;
         }
-
-        int userId = UserHandleCompat.getUserId(uid);
 
         if ((mask & ConfigManager.MASK_PERMISSION) != 0) {
             boolean allowed = (value & ConfigManager.FLAG_ALLOWED) != 0;

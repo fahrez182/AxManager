@@ -21,7 +21,11 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AxManager"
-include(":app")
-include(":engine")
+include(":manager")
+include(":server")
 include(":shizuku-server")
 
+include(":aidl")
+include(":data-shared")
+include(":api-manager")
+include(":adb")

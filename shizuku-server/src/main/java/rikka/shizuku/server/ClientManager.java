@@ -6,6 +6,7 @@ import android.os.RemoteException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import moe.shizuku.server.IShizukuApplication;
 import rikka.shizuku.server.util.Logger;
@@ -35,6 +36,15 @@ public class ClientManager<ConfigMgr extends ConfigManager> {
             }
             return res;
         }
+    }
+
+    public ClientRecord findClient(String packageName) {
+        for (ClientRecord clientRecord : clientRecords) {
+            if (Objects.equals(clientRecord.packageName, packageName)) {
+                return clientRecord;
+            }
+        }
+        return null;
     }
 
     public ClientRecord findClient(int uid, int pid) {

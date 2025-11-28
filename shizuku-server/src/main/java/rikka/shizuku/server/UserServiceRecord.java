@@ -7,6 +7,7 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteCallbackList;
 
+import java.io.IOException;
 import java.util.UUID;
 
 import moe.shizuku.server.IShizukuServiceConnection;
@@ -21,11 +22,13 @@ public abstract class UserServiceRecord {
     public final RemoteCallbackList<IShizukuServiceConnection> callbacks = new ConnectionList();
     private final IBinder.DeathRecipient deathRecipient;
     public String token;
+    public int pid;
     public IBinder service;
     public boolean daemon;
     public boolean starting;
+    public String[] environment;
     private Runnable startTimeoutCallback;
-    public UserServiceRecord(int versionCode, boolean daemon) {
+    public UserServiceRecord(int versionCode, boolean daemon, String[] environment) {
         this.versionCode = versionCode;
         this.token = UUID.randomUUID().toString() + "-" + System.currentTimeMillis();
         this.deathRecipient = () -> {
@@ -33,6 +36,7 @@ public abstract class UserServiceRecord {
             removeSelf();
         };
         this.daemon = daemon;
+        this.environment = environment;
     }
 
     public void setStartingTimeout(long timeoutMillis) {
@@ -55,6 +59,10 @@ public abstract class UserServiceRecord {
 
     public void setDaemon(boolean daemon) {
         this.daemon = daemon;
+    }
+
+    public void setPid(int pid) {
+        this.pid = pid;
     }
 
     public void setBinder(IBinder binder) {
@@ -124,6 +132,14 @@ public abstract class UserServiceRecord {
         }
 
         callbacks.kill();
+        try {
+            int result = Runtime.getRuntime().exec("kill " + pid).waitFor();
+            if (result != 0) {
+                LOGGER.w("Failed to kill service pid record %s", pid);
+            }
+        } catch (IOException | InterruptedException e) {
+            LOGGER.w("Failed to kill service pid record %s", pid);
+        }
     }
 
     private class ConnectionList extends RemoteCallbackList<IShizukuServiceConnection> {
