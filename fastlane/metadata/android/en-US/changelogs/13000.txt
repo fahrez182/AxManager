@@ -1,0 +1,12 @@
+!! UPDATED PATH: ALL OF YOUR PLUGIN WILL BE LOST !!
+Learn More: https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html#axmanager-plugins
+• NEW: Ax Permission Companion with Shizuku-API
+• NEW: Settings Editor
+• NEW: Axeron Environment editor (in Settings Editor)
+• NEW: Added resetprop for system.prop implemention (root mode)
+• RENEW: Re-added applist method
+• Optimize: service activator using ADB Wireless
+• Optimize: environment logic
+• Optimize: new PATH priority on Action and WebUI
+• Fix/Optimize: update/restart service method
+• Fix/Update: now plugin can use other plugin binary (external binary)

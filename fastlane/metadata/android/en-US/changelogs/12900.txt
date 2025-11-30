@@ -1,0 +1,6 @@
+• Update UI and UX
+• New Settings configuration
+• New QuickShell configuration settings
+• New Plugin configuration and filter settings
+• New QuickIgnite on PluginList
+• Add some new behavior and features such as "Plugin WebUI Widget"
