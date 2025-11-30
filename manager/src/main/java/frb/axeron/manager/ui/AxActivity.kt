@@ -18,7 +18,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -212,11 +211,7 @@ fun BottomBar(
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp)
     ) {
-        NavigationBar(
-            modifier = Modifier.padding(vertical = 6.dp),
-            containerColor = Color.Transparent,
-            windowInsets = WindowInsets(bottom = 0)
-        ) {
+        NavigationBar(containerColor = Color.Transparent) {
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()

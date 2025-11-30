@@ -8,8 +8,6 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.text.TextUtils
 import android.util.Base64
 import android.view.Window
@@ -190,7 +188,7 @@ class KsuWebInterface(
     @JavascriptInterface
     fun fullScreen(enable: Boolean) {
         if (context is Activity) {
-            Handler(Looper.getMainLooper()).post {
+            webView.post {
                 if (enable) {
                     hideSystemUI(context.window)
                 } else {

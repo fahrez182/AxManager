@@ -17,7 +17,7 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 13_106
+        versionCode = 13_109
         versionName = "1.3.1"
     }
 
@@ -113,6 +113,6 @@ dependencies {
     implementation("com.github.Fox2Code.AndroidANSI:library:1.2.0")
     implementation("com.github.Fox2Code.AndroidANSI:library-ktx:1.2.1")
 
-    implementation("dev.chrisbanes.haze:haze:1.7.1")
-    implementation("dev.chrisbanes.haze:haze-materials:1.7.1")
+//    implementation("dev.chrisbanes.haze:haze:1.7.1")
+//    implementation("dev.chrisbanes.haze:haze-materials:1.7.1")
 }

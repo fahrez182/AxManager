@@ -1,8 +1,8 @@
 package frb.axeron.manager
 
-import android.R
 import android.content.Context
 import android.os.Build
+import androidx.compose.ui.unit.dp
 import coil.Coil
 import coil.ImageLoader
 import frb.axeron.api.core.AxeronSettings
@@ -44,12 +44,12 @@ class AxeronApplication : Engine() {
         init(axApp)
 
         val context = this
-        val iconSize = resources.getDimensionPixelSize(R.dimen.app_icon_size)
+        val iconSize = 48.dp
         Coil.setImageLoader(
             ImageLoader.Builder(context)
                 .components {
                     add(AppIconKeyer())
-                    add(AppIconFetcher.Factory(iconSize, false, context))
+                    add(AppIconFetcher.Factory(iconSize.value.toInt(), false, context))
                 }
                 .build()
         )

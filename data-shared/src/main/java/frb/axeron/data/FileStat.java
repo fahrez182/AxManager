@@ -4,9 +4,16 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 public class FileStat implements Parcelable {
-    public static final Creator<FileStat> CREATOR = new Creator<FileStat>() {
-        @Override public FileStat createFromParcel(Parcel in) { return new FileStat(in); }
-        @Override public FileStat[] newArray(int size) { return new FileStat[size]; }
+    public static final Creator<FileStat> CREATOR = new Creator<>() {
+        @Override
+        public FileStat createFromParcel(Parcel in) {
+            return new FileStat(in);
+        }
+
+        @Override
+        public FileStat[] newArray(int size) {
+            return new FileStat[size];
+        }
     };
     public String  path;
     public String  name;

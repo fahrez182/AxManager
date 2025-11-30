@@ -38,8 +38,9 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
         val packageInfo: PackageInfo,
         val isAdded: Boolean,
     ) : Parcelable {
-        class Handler : AxWebLoader.AxPathHandler {
+        class Handler : AxWebLoader.PathHandler {
             override fun handle(
+                context: Context,
                 view: WebView?,
                 request: WebResourceRequest?
             ): WebResourceResponse? {

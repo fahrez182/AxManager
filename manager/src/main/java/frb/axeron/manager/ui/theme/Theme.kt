@@ -14,7 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.manager.ui.component.blend
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 
-private val DarkColorScheme = darkColorScheme(
+val DarkColorScheme = darkColorScheme(
     //Primary
     primary = PRIMARY.blend(AMOLED_BLACK, 0.2f),
     onPrimary = PRIMARY.blend(AMOLED_BLACK, 0.8f),
@@ -46,7 +46,7 @@ private val DarkColorScheme = darkColorScheme(
     background = DARK_BLEND.blend(AMOLED_BLACK, 0.7f),
 )
 
-private val LightColorScheme = lightColorScheme(
+val LightColorScheme = lightColorScheme(
     //Primary
     primary = PRIMARY.blend(AMOLED_BLACK, 0.2f),
     onPrimary = PRIMARY.blend(Color.White, 0.8f),

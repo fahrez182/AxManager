@@ -27,19 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.rememberHazeState
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
@@ -141,7 +133,6 @@ fun PluginInfo(
     modifier: Modifier = Modifier,
     countTotal: Int = 0,
 ) {
-    val hazeState = rememberHazeState()
     val containerColor = colorScheme.surfaceVariant
 
     ElevatedCard(
@@ -156,8 +147,7 @@ fun PluginInfo(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset(20.dp, 15.dp)
-                    .hazeSource(hazeState),
+                    .offset(20.dp, 15.dp),
                 contentAlignment = Alignment.BottomEnd
             ) {
                 Icon(
@@ -170,24 +160,6 @@ fun PluginInfo(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .hazeEffect(hazeState, style = HazeStyle(
-                        blurRadius = 4.dp,
-                        backgroundColor = containerColor,
-                        tint = HazeTint(
-                            containerColor.copy(alpha = if (containerColor.luminance() >= 0.5) 0.35f else 0.55f),
-                        ),
-                    )) {
-                        progressive = HazeProgressive.Brush(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    containerColor.copy(alpha = 0.0f),
-                                    containerColor.copy(alpha = alpha)
-                                ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY
-                            )
-                        )
-                    }
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -224,14 +196,12 @@ fun PluginInfo(
     }
 }
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 @Preview
 fun PrivilegeInfo(
     modifier: Modifier = Modifier,
     countTotal: Int = 0,
 ) {
-    val hazeState = rememberHazeState()
     val containerColor = colorScheme.surfaceVariant
 
     ElevatedCard(
@@ -246,7 +216,6 @@ fun PrivilegeInfo(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(hazeState)
                     .offset(15.dp, 10.dp),
                 contentAlignment = Alignment.BottomEnd
             ) {
@@ -260,24 +229,6 @@ fun PrivilegeInfo(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .hazeEffect(hazeState, style = HazeStyle(
-                        blurRadius = 4.dp,
-                        backgroundColor = containerColor,
-                        tint = HazeTint(
-                            containerColor.copy(alpha = if (containerColor.luminance() >= 0.5) 0.35f else 0.55f),
-                        ),
-                    )) {
-                        progressive = HazeProgressive.Brush(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    containerColor.copy(alpha = 0.0f),
-                                    containerColor.copy(alpha = alpha)
-                                ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY
-                            )
-                        )
-                    }
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(

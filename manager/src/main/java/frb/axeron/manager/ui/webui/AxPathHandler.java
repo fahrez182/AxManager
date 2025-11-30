@@ -1,7 +1,7 @@
 package frb.axeron.manager.ui.webui;
 
 import android.annotation.SuppressLint;
-import android.os.Build;
+import android.content.Context;
 import android.os.RemoteException;
 import android.util.Log;
 import android.webkit.WebResourceRequest;
@@ -22,7 +22,7 @@ import frb.axeron.api.Axeron;
 import frb.axeron.api.utils.PathHelper;
 import frb.axeron.server.utils.AxWebLoader;
 
-public class AxPathHandler implements AxWebLoader.AxPathHandler {
+public class AxPathHandler implements AxWebLoader.PathHandler {
 
     private static final String TAG = "AxPathHandler";
     private static final String[] FORBIDDEN_DATA_DIRS =
@@ -33,9 +33,12 @@ public class AxPathHandler implements AxWebLoader.AxPathHandler {
     @NonNull
     private final File mDirectory;
 
+    private final InsetsSupplier mInsetsSupplier;
+
     @SuppressLint("RestrictedApi")
-    public AxPathHandler(@NonNull File directory) {
+    public AxPathHandler(@NonNull File directory, @NonNull InsetsSupplier insetsSupplier) {
         try {
+            mInsetsSupplier = insetsSupplier;
             mDirectory = new File(AssetHelper.getCanonicalDirPath(directory));
             if (!isAllowedInternalStorageDir()) {
                 throw new IllegalArgumentException("The given directory \"" + directory
@@ -48,38 +51,33 @@ public class AxPathHandler implements AxWebLoader.AxPathHandler {
         }
     }
 
-    private boolean isAllowedInternalStorageDir() throws IOException {
-        @SuppressLint("RestrictedApi") String dir = AssetHelper.getCanonicalDirPath(mDirectory);
-
-        for (String forbiddenPath : FORBIDDEN_DATA_DIRS) {
-            if (dir.startsWith(forbiddenPath) && !dir.startsWith(ALLOWED_DATA_DIRS)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    String css;
-
     @SuppressLint("RestrictedApi")
     @Nullable
     @Override
-    public WebResourceResponse handle(WebView view, WebResourceRequest request) {
+    public WebResourceResponse handle(Context context, WebView view, WebResourceRequest request) {
         String path = request.getUrl().getPath();
         if (path == null) return new WebResourceResponse(null, null, null);
+        Log.d(TAG, "Raw url: " + request.getUrl());
+        Log.d(TAG, "Raw path: " + path);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if ("internal/colors.css".equals(path)) {
-                view.post(() -> css = MonetColorsProvider.INSTANCE.getColorsCss(view.getContext()));
-                return new WebResourceResponse(
-                        "text/css",
-                        "utf-8",
-                        new ByteArrayInputStream(css.getBytes(StandardCharsets.UTF_8))
-                );
-            }
+        if ("/internal/insets.css".equals(path)) {
+            String css = mInsetsSupplier.get().getCss();
+            return new WebResourceResponse(
+                    "text/css",
+                    "utf-8",
+                    new ByteArrayInputStream(css.getBytes(StandardCharsets.UTF_8))
+            );
+        }
+        if ("/internal/colors.css".equals(path)) {
+            String css = MonetColorsProvider.INSTANCE.getColorsCss();
+            Log.d(TAG, "Raw css: " + css);
+            return new WebResourceResponse(
+                    "text/css",
+                    "utf-8",
+                    new ByteArrayInputStream(css.getBytes(StandardCharsets.UTF_8))
+            );
         }
         try {
-            Log.d(TAG, "Raw path: " + path);
             File file = AssetHelper.getCanonicalFileIfChild(mDirectory, path);
             if (file != null) {
                 Log.d(TAG, "Requested path: " + AssetHelper.getCanonicalDirPath(file));
@@ -100,5 +98,21 @@ public class AxPathHandler implements AxWebLoader.AxPathHandler {
             Log.e(TAG, "Error opening the requested path: " + path);
         }
         return new WebResourceResponse(null, null, null);
+    }
+
+    private boolean isAllowedInternalStorageDir() throws IOException {
+        @SuppressLint("RestrictedApi") String dir = AssetHelper.getCanonicalDirPath(mDirectory);
+
+        for (String forbiddenPath : FORBIDDEN_DATA_DIRS) {
+            if (dir.startsWith(forbiddenPath) && !dir.startsWith(ALLOWED_DATA_DIRS)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public interface InsetsSupplier {
+        @NonNull
+        Insets get();
     }
 }

@@ -1,6 +1,8 @@
 package frb.axeron.server.utils;
 
+import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -8,55 +10,62 @@ import android.webkit.WebView;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class AxWebLoader {
-    private final List<Route> routes;
+    private final Set<Route> routes;
 
-    private AxWebLoader(List<Route> routes) {
+    private AxWebLoader(Set<Route> routes) {
         this.routes = routes;
     }
 
     public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         for (Route route : routes) {
             if (route.matches(request)) {
-                return route.handler.handle(view, request);
+                return route.handler.handle(view.getRootView().getContext(), view, request);
             }
         }
         return null;
     }
 
-    public interface AxPathHandler {
+    public interface PathHandler {
         @WorkerThread
-        @Nullable WebResourceResponse handle(WebView view, WebResourceRequest request);
+        @Nullable WebResourceResponse handle(Context context, WebView view, WebResourceRequest request);
     }
 
     public static class Builder {
-        private final List<Route> routes = new ArrayList<>();
+        protected final Set<Route> routes = new HashSet<>();
 
         public TempRouteGroup addScheme(String scheme) {
+            return new TempRouteGroup(this, new String[]{scheme});
+        }
+
+        public TempRouteGroup addScheme(String... scheme) {
             return new TempRouteGroup(this, scheme);
-        }
-
-        protected void addRoute(Route route) {
-            routes.add(route);
-        }
-
-        public AxWebLoader build() {
-            return new AxWebLoader(routes);
         }
     }
 
     public static class TempRouteGroup {
-        private final Builder parent;
-        private final String scheme;
-        private final List<Route> groupRoutes = new ArrayList<>();
-        private final List<String> pendingDomains = new ArrayList<>();
+        protected final Builder parent;
+        protected final Set<String> pendingSchemes = new HashSet<>();
+        protected final Set<Route> groupRoutes = new HashSet<>();
+        protected final Set<String> pendingDomains = new HashSet<>();
 
-        TempRouteGroup(Builder parent, String scheme) {
+        TempRouteGroup(Builder parent, String[] scheme) {
             this.parent = parent;
-            this.scheme = scheme;
+            Collections.addAll(pendingSchemes, scheme);
+        }
+
+        public TempRouteGroup addScheme(String scheme) {
+            pendingSchemes.add(scheme);
+            return this;
+        }
+
+        public TempRouteGroup addScheme(String... scheme) {
+            Collections.addAll(pendingSchemes, scheme);
+            return this;
         }
 
         public TempRouteGroup addDomain(String domain) {
@@ -64,27 +73,41 @@ public class AxWebLoader {
             return this;
         }
 
-        public TempRouteGroup addHandler(AxPathHandler handler) {
-            for (String domain : pendingDomains) {
-                groupRoutes.add(new Route(scheme, domain, null, handler));
-            }
-            pendingDomains.clear(); // reset agar tidak dipakai lagi
+        public TempRouteGroup addDomain(String... domain) {
+            Collections.addAll(pendingDomains, domain);
             return this;
         }
 
-        public TempRouteGroup addPathHandler(String path, AxPathHandler handler) {
-            for (String domain : pendingDomains) {
-                groupRoutes.add(new Route(scheme, domain, path, handler));
-            }
-            pendingDomains.clear(); // reset agar tidak dipakai lagi
-            return this;
+        public TempHandlerGroup addHandler(PathHandler handler) {
+            return addPathHandler(null, handler) ;
         }
 
-        public Builder done() {
-            for (Route route : groupRoutes) {
-                parent.addRoute(route);
+        public TempHandlerGroup addPathHandler(String path, PathHandler handler) {
+            return new TempHandlerGroup(this, path, handler);
+        }
+
+        public AxWebLoader build() {
+            parent.routes.addAll(groupRoutes);
+            pendingSchemes.clear();
+            return new AxWebLoader(parent.routes);
+        }
+    }
+
+    public static class TempHandlerGroup {
+        private final TempRouteGroup routeGroup;
+
+        TempHandlerGroup(TempRouteGroup routeGroup, String path, PathHandler handler) {
+            this.routeGroup = routeGroup;
+            for (String scheme : routeGroup.pendingSchemes) {
+                for (String domain : routeGroup.pendingDomains) {
+                    routeGroup.groupRoutes.add(new Route(scheme, domain, path, handler));
+                }
             }
-            return parent;
+            routeGroup.pendingDomains.clear();
+        }
+
+        public TempRouteGroup done() {
+            return routeGroup;
         }
     }
 
@@ -92,13 +115,14 @@ public class AxWebLoader {
         private final String scheme;
         private final String domain;
         private final String pathPrefix;
-        private final AxPathHandler handler;
+        private final PathHandler handler;
 
-        Route(String scheme, String domain, String pathPrefix, AxPathHandler handler) {
+        Route(String scheme, String domain, String pathPrefix, PathHandler handler) {
             this.scheme = scheme;
             this.domain = domain;
             this.pathPrefix = pathPrefix;
             this.handler = handler;
+            Log.d("AxWebLoader", "Route added: " + scheme + "://" + domain + (pathPrefix == null ? "" : pathPrefix));
         }
 
         boolean matches(WebResourceRequest request) {

@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,12 +62,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActionScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
-import dev.chrisbanes.haze.rememberHazeState
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.utils.PathHelper
@@ -111,7 +106,7 @@ fun PluginConfig(
                 SettingsItem(
                     label = "WebUI Configuration",
                     iconVector = Icons.Outlined.Web,
-                ) { enabled, checked ->
+                ) { _, _ ->
                     HorizontalDivider(
                         Modifier,
                         DividerDefaults.Thickness,
@@ -138,7 +133,6 @@ fun PluginConfig(
     }
 }
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun PluginItem(
     navigator: DestinationsNavigator?,
@@ -155,7 +149,6 @@ fun PluginItem(
     onExpandToggle: () -> Unit,
 ) {
     var showExtraSetDialog by remember { mutableStateOf(false) }
-    var hazeState = rememberHazeState()
 
     PluginConfig(
         showExtraSetDialog,
@@ -208,7 +201,6 @@ fun PluginItem(
                             model = plugin.prop.banner,
                             contentDescription = null,
                             modifier = Modifier
-                                .hazeSource(hazeState)
                                 .fillMaxWidth()
                                 .fillMaxHeight(),
                             contentScale = ContentScale.Crop,
@@ -236,7 +228,6 @@ fun PluginItem(
                                     .build(),
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .hazeSource(hazeState)
                                     .fillMaxWidth()
                                     .fillMaxHeight(),
                                 contentScale = ContentScale.Crop,
@@ -248,29 +239,16 @@ fun PluginItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight()
-                            .hazeEffect(hazeState, style = HazeMaterials.ultraThin(MaterialTheme.colorScheme.surfaceVariant)) {
-                                progressive = HazeProgressive.Brush(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            fadeColor.copy(alpha = 0.0f),
-                                            fadeColor.copy(alpha = 0.0f),
-                                            fadeColor.copy(alpha = alpha)
-                                        ),
-                                        startY = 0f,
-                                        endY = Float.POSITIVE_INFINITY
-                                    )
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = alpha)
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
                                 )
-                            }
-//                            .background(
-//                                Brush.verticalGradient(
-//                                    colors = listOf(
-//                                        fadeColor.copy(alpha = 0.0f),
-//                                        fadeColor.copy(alpha = alpha)
-//                                    ),
-//                                    startY = 0f,
-//                                    endY = Float.POSITIVE_INFINITY
-//                                )
-//                            )
+                            )
                     )
                 }
             }

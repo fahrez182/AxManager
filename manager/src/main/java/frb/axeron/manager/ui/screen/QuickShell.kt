@@ -55,9 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -91,11 +89,6 @@ import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
-import dev.chrisbanes.haze.rememberHazeState
 import frb.axeron.api.Axeron
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
@@ -115,7 +108,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
@@ -130,8 +123,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 
     // FAB visibility
     var fabVisible by remember { mutableStateOf(true) }
-
-    val hazeState = rememberHazeState(true)
 
     val view = LocalView.current
     DisposableEffect(running) {
@@ -168,16 +159,10 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         showExtraDialog = false
     }
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
         topBar = {
             TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(Color.Transparent),
-                modifier = Modifier
-                    // We use hazeEffect on anything where we want the background
-                    // blurred.
-                    .fillMaxWidth(),
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -214,7 +199,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         Icon(Icons.Outlined.MoreVert, null)
                     }
                 },
-                scrollBehavior = scrollBehavior,
                 windowInsets = WindowInsets(top = 0)
             )
         },
@@ -304,7 +288,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             ) {
                 Box(
                     modifier = Modifier
-                        .hazeSource(hazeState)
                         .horizontalScroll(hScroll)
                 ) {
                     LazyColumn(
@@ -360,16 +343,8 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             ElevatedCard(
                 shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.elevatedCardColors().copy(
-//                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    containerColor = Color.Transparent
-                ),
-                elevation = CardDefaults.elevatedCardElevation(
-                    0.dp,
-                    0.dp,
-                    0.dp,
-                    0.dp,
-                    0.dp,
-                    0.dp,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+//                    containerColor = Color.Transparent
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -383,7 +358,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             ) {
                 Box(
                     modifier = Modifier
-                        .hazeEffect(hazeState, HazeMaterials.ultraThin())
                         .fillMaxWidth()
                 ) {
                     TextField(
