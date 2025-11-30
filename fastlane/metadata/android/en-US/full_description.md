@@ -5,20 +5,15 @@
 
 Unlike traditional "Managers" like KernelSU that strictly require rooting, AxManager is built with a **Non-Root / ADB-First** philosophy. It allows users to execute shell commands and manage system parameters using Wireless Debugging or Shizuku, while still allowing execution with **Root access** if available.
 
-**Key Features**
-
+**Features**
 - **Shell Executor:** Run shell commands directly from the app. Supports ADB/Non-Root execution and seamlessly switches to Root execution if available.
-- **Plugin System:** Manage third-party "Unrooted Modules" to extend device functionality without modifying the system partition.
-- **WebUI:** A unique web-based interactive interface for executing shell commands and managing the device.
-- **Wireless Debugging:** Automated tools to activate and manage Wireless Debugging sessions.
-- **Developer Tools:** Quick access to Developer Options and advanced debugging configurations.
+- **Plugin System:** Manage third-party modules to extend device functionality without modifying the system partition and without root access.
+- **WebUI:** Execute shell commands using a web-based interactive interface. [Learn More](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)
 
 **Why AxManager?**
-
 - **No Root Required:** Fully functional on locked bootloaders or devices where banking apps must remain intact.
 - **Universal Compatibility:** Usable on a wider range of devices compared to root-only managers.
 - **Safe & Reversible:** Since it operates largely via ADB shell, changes are generally less risky than modifying the system partition.
-- **Root Support:** Optional root support is available for those who prefer to use root access.
 
 **Notices & Credits**  
 This project is open-source and includes adapted code from reputable projects to handle Android IPC and ADB permissions:
