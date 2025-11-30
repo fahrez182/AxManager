@@ -17,7 +17,7 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 13_109
+        versionCode = 13_110
         versionName = "1.3.1"
     }
 
