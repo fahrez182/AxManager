@@ -1,0 +1,35 @@
+**Status: Early Development / Beta**  
+*Please note: This project is currently in an experimental stage. Features are subject to change.*
+
+**AxManager** is a system management tool designed to provide deeper control over Android applications and system settings.
+
+Unlike traditional "Managers" like KernelSU that strictly require rooting, AxManager is built with a **Non-Root / ADB-First** philosophy. It allows users to execute shell commands and manage system parameters using Wireless Debugging or Shizuku, while still allowing execution with **Root access** if available.
+
+**Key Features**
+
+- **Shell Executor:** Run shell commands directly from the app. Supports ADB/Non-Root execution and seamlessly switches to Root execution if available.
+- **Plugin System:** Manage third-party "Unrooted Modules" to extend device functionality without modifying the system partition.
+- **WebUI:** A unique web-based interactive interface for executing shell commands and managing the device.
+- **Wireless Debugging:** Automated tools to activate and manage Wireless Debugging sessions.
+- **Developer Tools:** Quick access to Developer Options and advanced debugging configurations.
+
+**Why AxManager?**
+
+- **No Root Required:** Fully functional on locked bootloaders or devices where banking apps must remain intact.
+- **Universal Compatibility:** Usable on a wider range of devices compared to root-only managers.
+- **Safe & Reversible:** Since it operates largely via ADB shell, changes are generally less risky than modifying the system partition.
+- **Root Support:** Optional root support is available for those who prefer to use root access.
+
+**Notices & Credits**  
+This project is open-source and includes adapted code from reputable projects to handle Android IPC and ADB permissions:
+
+- **[Magisk](https://github.com/topjohnwu/Magisk):** Inspiration for BusyBox and Module handling.
+- **[Shizuku](https://github.com/RikkaApps/Shizuku) / [API](https://github.com/RikkaApps/Shizuku-API):** Utilized for ADB/Permission handling logic. (Apache 2.0)
+- **[KernelSU](https://github.com/tiann/KernelSU) / [Next](https://github.com/KernelSU-Next/KernelSU-Next):** Inspiration for the UI/UX design.
+
+*AxManager is an independent project and is not affiliated with Shizuku or KernelSU.*
+
+**Links**  
+[Source Code](https://github.com/fahrez182/AxManager)  
+[Issue Tracker](https://github.com/fahrez182/AxManager/issues)  
+[Website](https://fahrez182.github.io/AxManager/)

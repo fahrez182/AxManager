@@ -1,0 +1,9 @@
+• Migrating: AxeronService to Kotlin
+• Optimize: Plugin list
+• Optimize: QuickShell output (fix race condition)
+• Preparing for WebUIX Implementation
+• Update: now Axeron Environment will be persistent after restart service
+• Update: now Ax Permission Companion state will be persistent after restart service
+• Fix: multi binary on plugin is not detected and cannot be called
+• Fix: Failed when installin plugin (TMPDIR Permission Denied)
+• Fix: Failed to copy tmp module.zip (Permission Denied)
