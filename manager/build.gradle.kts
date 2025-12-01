@@ -54,15 +54,15 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 
@@ -108,10 +108,10 @@ dependencies {
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.mmrl.ui)
-    implementation("dev.rikka.rikkax.compatibility:compatibility:2.0.0")
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
-    implementation("com.github.Fox2Code.AndroidANSI:library:1.2.0")
-    implementation("com.github.Fox2Code.AndroidANSI:library-ktx:1.2.1")
+    implementation(libs.dev.rikka.rikkax.compatibility)
+    implementation(libs.hiddenapibypass)
+    implementation(libs.ansi.library)
+    implementation(libs.ansi.library.ktx)
 
 //    implementation("dev.chrisbanes.haze:haze:1.7.1")
 //    implementation("dev.chrisbanes.haze:haze-materials:1.7.1")

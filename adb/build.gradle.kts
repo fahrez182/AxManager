@@ -47,8 +47,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     buildToolsVersion = "36.0.0"
@@ -57,19 +57,19 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 
 dependencies {
     implementation(project(":api-manager"))
-    implementation("dev.rikka.rikkax.core:core-ktx:1.4.1")
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
+    implementation(libs.dev.rikka.rikkax.core.ktx)
+    implementation(libs.bcpkix.jdk18on)
     implementation(libs.androidx.annotation.jvm)
     implementation(libs.androidx.lifecycle.livedata.core.ktx)
 
     implementation(libs.boringssl)
-    implementation("org.lsposed.libcxx:libcxx:27.0.12077973")
+    implementation(libs.org.lsposed.libcxx)
 
     implementation(libs.hidden.compat)
     compileOnly(libs.hidden.stub)

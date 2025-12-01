@@ -44,8 +44,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     buildToolsVersion = "36.0.0"
@@ -54,15 +54,15 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 
 dependencies {
 
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.0")
-    implementation("androidx.annotation:annotation:1.9.1")
-    implementation("com.moandjiezana.toml:toml4j:0.7.2")
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.annotation)
+    implementation(libs.toml4j)
 
     implementation(libs.dev.rikka.rikkax.parcelablelist)
     implementation(libs.hidden.compat)
@@ -72,7 +72,7 @@ dependencies {
     implementation(libs.refine.runtime)
     implementation(libs.androidx.core.ktx)
 
-    implementation("org.lsposed.libcxx:libcxx:27.0.12077973")
+    implementation(libs.org.lsposed.libcxx)
 
     implementation(project(":aidl"))
     implementation(project(":data-shared"))

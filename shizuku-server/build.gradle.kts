@@ -33,10 +33,9 @@ kotlin {
 }
 
 dependencies {
-
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.0")
-    implementation("androidx.annotation:annotation:1.9.1")
-    implementation("com.moandjiezana.toml:toml4j:0.7.2")
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.annotation)
+    implementation(libs.toml4j)
     implementation(libs.hidden.compat)
     compileOnly(libs.hidden.stub)
     implementation(libs.androidx.appcompat)

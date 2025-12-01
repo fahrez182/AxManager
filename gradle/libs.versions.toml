@@ -35,6 +35,12 @@ foundation = "1.9.0"
 markdown = "4.6.2"
 annotationJvm = "1.9.1"
 lifecycleLivedataCoreKtx = "2.10.0"
+compatibility = "2.0.0"
+libcxx = "27.0.12077973"
+lifecycleLivedataKtx = "2.9.0"
+annotation = "1.9.1"
+coreKtxRikka = "1.4.1"
+bcpkix = "1.80"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -88,6 +94,13 @@ androidx-foundation = { group = "androidx.compose.foundation", name = "foundatio
 markdown = { group = "io.noties.markwon", name = "core", version.ref = "markdown" }
 androidx-annotation-jvm = { group = "androidx.annotation", name = "annotation-jvm", version.ref = "annotationJvm" }
 androidx-lifecycle-livedata-core-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-core-ktx", version.ref = "lifecycleLivedataCoreKtx" }
+dev-rikka-rikkax-compatibility = { module = "dev.rikka.rikkax.compatibility:compatibility", version.ref = "compatibility" }
+org-lsposed-libcxx = { module = "org.lsposed.libcxx:libcxx", version.ref = "libcxx" }
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleLivedataKtx" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotation" }
+ansi-library-ktx = { module = "com.github.Fox2Code.AndroidANSI:library-ktx", version.ref = "library" }
+dev-rikka-rikkax-core-ktx = { module = "dev.rikka.rikkax.core:core-ktx", version.ref = "coreKtxRikka" }
+bcpkix-jdk18on = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bcpkix" }
 
 
 [plugins]
