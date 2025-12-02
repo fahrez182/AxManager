@@ -239,7 +239,6 @@ class WebUIActivity : ComponentActivity() {
                     return true
                 }
 
-                @RequiresApi(Build.VERSION_CODES.Q)
                 override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                     consoleMessage?.let {
                         val message = it.message()
@@ -317,7 +316,6 @@ class WebUIActivity : ComponentActivity() {
     private var pendingDownloadData: ByteArray? = null
     private var pendingDownloadSuggestedFilename: String? = null
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveDataUrlToDownloads(dataUrl: String, mimeTypeFromListener: String) {
         val (mimeType, base64Data) = extractMimeTypeAndBase64Data(dataUrl) ?: run {
             Toast.makeText(this, "Invalid data URL", Toast.LENGTH_SHORT).show()
