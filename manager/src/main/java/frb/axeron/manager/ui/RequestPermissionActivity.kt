@@ -176,14 +176,9 @@ fun RequestPermissionDialog(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
             ) {
-                AndroidView(
-                    factory = {
-                        ImageView(it).apply {
-                            setImageDrawable(pm.getApplicationIcon(applicationInfo))
-                            clipToOutline = true
-                            layoutParams = android.widget.LinearLayout.LayoutParams(120, 120)
-                        }
-                    },
+                AppIcon(
+                    applicationInfo = applicationInfo,
+                    pm = pm,
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(12.dp))
@@ -341,4 +336,22 @@ fun ButtonPreview() {
         }
 
     }
+}
+
+@Composable
+fun AppIcon(
+    applicationInfo: ApplicationInfo,
+    pm: PackageManager,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        factory = { context ->
+            ImageView(context).apply {
+                setImageDrawable(pm.getApplicationIcon(applicationInfo))
+                clipToOutline = true
+                layoutParams = android.widget.LinearLayout.LayoutParams(120, 120)
+            }
+        },
+        modifier = modifier
+    )
 }
