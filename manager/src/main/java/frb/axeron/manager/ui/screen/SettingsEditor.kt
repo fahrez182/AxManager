@@ -6,6 +6,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -230,21 +232,35 @@ fun SettingsEditorScreen(
                                 if (targetState.ordinal > initialState.ordinal) {
                                     slideInHorizontally(
                                         initialOffsetX = { it },
-                                        animationSpec = tween(250)
-                                    ) + fadeIn() togetherWith
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    ) + fadeIn(
+                                        animationSpec = tween(200)
+                                    ) togetherWith
                                             slideOutHorizontally(
                                                 targetOffsetX = { -it / 2 },
-                                                animationSpec = tween(250)
-                                            ) + fadeOut()
+                                                animationSpec = tween(200)
+                                            ) + fadeOut(
+                                                animationSpec = tween(150)
+                                            )
                                 } else {
                                     slideInHorizontally(
                                         initialOffsetX = { -it },
-                                        animationSpec = tween(250)
-                                    ) + fadeIn() togetherWith
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    ) + fadeIn(
+                                        animationSpec = tween(200)
+                                    ) togetherWith
                                             slideOutHorizontally(
                                                 targetOffsetX = { it / 2 },
-                                                animationSpec = tween(250)
-                                            ) + fadeOut()
+                                                animationSpec = tween(200)
+                                            ) + fadeOut(
+                                                animationSpec = tween(150)
+                                            )
                                 }
                             },
                             label = "SettingsSlideAnim"
@@ -320,10 +336,15 @@ fun RoundedTabRow(
         SettingsRepository.SettingType.entries.forEachIndexed { index, type ->
             val isSelected = index == selectedIndex
             val textColor by animateColorAsState(
-                if (isSelected)
+                targetValue = if (isSelected)
                     MaterialTheme.colorScheme.onPrimary
                 else
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "TabTextColor"
             )
 
             Tab(

@@ -10,6 +10,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -186,9 +190,9 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
                 },
                 defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition
-                        get() = { fadeIn(animationSpec = tween(340)) }
+                        get() = { fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) }
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition
-                        get() = { fadeOut(animationSpec = tween(340)) }
+                        get() = { fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing)) }
                 }
             )
         }
@@ -241,43 +245,66 @@ fun BottomBar(
                             icon = {
                                 if (destination == BottomBarDestination.Plugin && moduleUpdateCount > 0) {
                                     BadgedBox(badge = { Badge { Text(moduleUpdateCount.toString()) } }) {
-                                        if (isCurrentDestOnBackStack) {
+                                        Crossfade(
+                                            targetState = isCurrentDestOnBackStack,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            ),
+                                            label = "BadgeIconCrossfade"
+                                        ) { selected ->
                                             Icon(
-                                                destination.iconSelected,
-                                                destination.label
-                                            )
-                                        } else {
-                                            Icon(
-                                                destination.iconNotSelected,
+                                                if (selected) destination.iconSelected else destination.iconNotSelected,
                                                 destination.label
                                             )
                                         }
                                     }
                                 } else {
-                                    if (isCurrentDestOnBackStack) Icon(
-                                        imageVector = destination.iconSelected,
-                                        contentDescription = destination.label
-                                    ) else Icon(
-                                        imageVector = destination.iconNotSelected,
-                                        contentDescription = destination.label
-                                    )
+                                    Crossfade(
+                                        targetState = isCurrentDestOnBackStack,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        ),
+                                        label = "IconCrossfade"
+                                    ) { selected ->
+                                        Icon(
+                                            imageVector = if (selected) destination.iconSelected else destination.iconNotSelected,
+                                            contentDescription = destination.label
+                                        )
+                                    }
                                 }
                             },
                             label = {
                                 Column(
                                     modifier = Modifier
                                         .animateContentSize(
-                                            animationSpec = tween(durationMillis = 300)
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
                                         )
                                         .wrapContentHeight()
                                 ) {
                                     AnimatedVisibility(
                                         visible = isCurrentDestOnBackStack,
-                                        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-                                            initialOffsetY = { it / 2 }, animationSpec = tween(300)
+                                        enter = fadeIn(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) + slideInVertically(
+                                            initialOffsetY = { it / 3 },
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
                                         ),
-                                        exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
-                                            targetOffsetY = { it / 2 }, animationSpec = tween(300)
+                                        exit = fadeOut(
+                                            animationSpec = tween(200, easing = FastOutSlowInEasing)
+                                        ) + slideOutVertically(
+                                            targetOffsetY = { it / 3 },
+                                            animationSpec = tween(200, easing = FastOutSlowInEasing)
                                         )
                                     ) {
                                         Text(destination.label)
