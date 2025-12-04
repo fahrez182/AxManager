@@ -56,6 +56,7 @@ import rikka.shizuku.ktx.workerHandler
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import frb.axeron.manager.utils.getParcelableExtraCompat
 
 class RequestPermissionActivity : ComponentActivity() {
 
@@ -96,7 +97,7 @@ class RequestPermissionActivity : ComponentActivity() {
         val uid = intent.getIntExtra("uid", -1)
         val pid = intent.getIntExtra("pid", -1)
         val requestCode = intent.getIntExtra("requestCode", -1)
-        val ai = intent.getParcelableExtra("applicationInfo", ApplicationInfo::class.java)
+        val ai = intent.getParcelableExtraCompat("applicationInfo", ApplicationInfo::class.java)
 
         if (uid == -1 || pid == -1 || ai == null || !waitForBinder()) {
             finish()
@@ -175,14 +176,9 @@ fun RequestPermissionDialog(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
             ) {
-                AndroidView(
-                    factory = {
-                        ImageView(it).apply {
-                            setImageDrawable(pm.getApplicationIcon(applicationInfo))
-                            clipToOutline = true
-                            layoutParams = android.widget.LinearLayout.LayoutParams(120, 120)
-                        }
-                    },
+                AppIcon(
+                    applicationInfo = applicationInfo,
+                    pm = pm,
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(12.dp))
@@ -340,4 +336,22 @@ fun ButtonPreview() {
         }
 
     }
+}
+
+@Composable
+fun AppIcon(
+    applicationInfo: ApplicationInfo,
+    pm: PackageManager,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        factory = { context ->
+            ImageView(context).apply {
+                setImageDrawable(pm.getApplicationIcon(applicationInfo))
+                clipToOutline = true
+                layoutParams = android.widget.LinearLayout.LayoutParams(120, 120)
+            }
+        },
+        modifier = modifier
+    )
 }

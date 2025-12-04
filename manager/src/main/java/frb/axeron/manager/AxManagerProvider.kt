@@ -11,6 +11,7 @@ import rikka.shizuku.server.util.Logger
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import frb.axeron.manager.utils.getParcelableCompat
 
 class AxManagerProvider : AxeronProvider() {
 
@@ -30,7 +31,7 @@ class AxManagerProvider : AxeronProvider() {
 
                 val token = extras.getString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN) ?: return null
                 val pid = extras.getInt(ShizukuApiConstants.USER_SERVICE_ARG_PID)
-                val binder = extras.getParcelable(EXTRA_BINDER, BinderContainer::class.java)?.binder ?: return null
+                val binder = extras.getParcelableCompat(EXTRA_BINDER, BinderContainer::class.java)?.binder ?: return null
 
                 val countDownLatch = CountDownLatch(1)
                 var reply: Bundle? = Bundle()
