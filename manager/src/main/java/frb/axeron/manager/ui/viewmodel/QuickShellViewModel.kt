@@ -152,70 +152,67 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun runShell() {
-        val cmd = commandText.text.ifBlank {
-            return
-        }.replace(Regex("[^\\p{Print}\\n]"), "") //Sanitize
+        val cmd = commandText.text.ifBlank { return }
+            .replace(Regex("[^\\p{Print}\\n]"), "") // sanitize
 
-        // kalau sudah jalan → tulis command ke stdin
+        // Jika shell sudah jalan → kirim input saja
         if (isRunning && writer != null) {
             try {
                 writer!!.write(cmd)
                 writer!!.newLine()
                 writer!!.flush()
-                if (cmd.lines().size > 1) {
-                    append(OutputType.TYPE_STDIN, "[input]")
-                    append(OutputType.TYPE_STDIN, cmd.trim())
-                } else {
-                    append(OutputType.TYPE_STDIN, "[input] ${cmd.trim()}")
-                }
+
+                val tagInput = if (cmd.lines().size > 1) "[input]\n" else "[input] "
+                append(OutputType.TYPE_STDIN, tagInput + cmd.trim())
             } catch (t: Throwable) {
                 append(OutputType.TYPE_THROW, "[error write] ${t.message}")
             }
             return
         }
 
-        // kalau belum jalan → buat shell baru
+        // Shell belum jalan → buat baru
         launchSafely(cmd) {
+
+            // tampilkan command
             if (cmd.lines().size > 1) {
                 appendRaw(OutputType.TYPE_COMMAND, "[command]")
                 appendRaw(OutputType.TYPE_COMMAND, cmd.trim())
-            } else {
-                appendRaw(OutputType.TYPE_COMMAND, "[command] ${cmd.trim()}")
-            }
+            } else appendRaw(OutputType.TYPE_COMMAND, "[command] ${cmd.trim()}")
 
+            // start process
             process = Axeron.newProcess(
                 getQuickCmd(
                     cmd = cmd,
                     useBusybox = isCompatModeEnabled,
                     withPid = true
                 ),
-                Axeron.getEnvironment(), null
+                Axeron.getEnvironment(),
+                null
             )
 
             writer = BufferedWriter(OutputStreamWriter(process!!.outputStream))
 
             val stdout = process!!.inputStream
             val stderr = process!!.errorStream
-            val buf = ByteArray(1024 * 4)
+
+            // regex pid
+            val pidRegex = Regex("\r(\\d+)\r")
 
             // baca stdout
-
             launch {
-                val regex = Regex("\r(\\d+)\r")
-
+                val buf = ByteArray(4096)
                 while (isRunning) {
                     val available = stdout.available()
-
                     if (available > 0) {
                         val len = stdout.read(buf, 0, minOf(buf.size, available))
                         if (len <= 0) continue
 
                         val text = String(buf, 0, len)
 
+                        // Parse PID sekali saja
                         if (pid == null) {
-                            val match = regex.find(text)
-                            if (match != null) {
-                                pid = match.groupValues[1].toInt()
+                            pidRegex.find(text)?.let { m ->
+                                pid = m.groupValues[1].toInt()
                                 appendRaw(OutputType.TYPE_START, "[start] pid=$pid")
                                 continue
                             }
@@ -226,33 +223,16 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                 }
             }
 
-
-//            launch {
-//                val regex = Regex("\r(\\d+)\r")
-//                generateSequence { stdout.read(buf).takeIf { it > 0 } }
-//                    .forEach { len ->
-//                        val chunk = String(buf, 0, len)
-//                        if (pid == null) {
-//                            val match = regex.find(chunk)
-//                            if (match != null) {
-//                                pid = match.groupValues[1].toInt()
-//                                append(OutputType.TYPE_START, "[start] pid=$pid")
-//                                return@forEach
-//                            }
-//                        }
-//                        append(OutputType.TYPE_STDOUT, chunk)
-//                    }
-//            }
-
             // baca stderr
             launch {
+                val buf = ByteArray(4096)
                 generateSequence { stderr.read(buf).takeIf { it > 0 } }
                     .forEach { len ->
-                        val chunk = String(buf, 0, len)
-                        appendRaw(OutputType.TYPE_STDERR, chunk)
+                        appendRaw(OutputType.TYPE_STDERR, String(buf, 0, len))
                     }
             }
 
+            // tunggu exit
             launch {
                 val code = process?.waitFor() ?: -1
                 appendRaw(OutputType.TYPE_EXIT, "[exit] code=$code")
@@ -262,30 +242,33 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+
     private fun launchSafely(
         cmd: String,
         block: suspend CoroutineScope.() -> Unit
     ) {
         if (isRunning) return
         isRunning = true
+
         debounceJob?.cancel()
         debounceJob = viewModelScope.launch {
             delay(200)
             savedCommand = TextFieldValue(text = cmd, selection = TextRange(cmd.length))
-            commandText = TextFieldValue(text = "")
+            commandText = TextFieldValue("") // clear input
             execMode = "Inputs"
         }
 
         job = viewModelScope.launch(Dispatchers.IO) {
             try {
                 block()
-            } catch (ce: CancellationException) { /* ignore */
+            } catch (ce: CancellationException) {
                 append(OutputType.TYPE_THROW, "[Cancelled]")
             } catch (t: Throwable) {
                 append(OutputType.TYPE_THROW, "[throw] ${t.message}")
             }
         }
     }
+
 
     private fun append(type: OutputType, output: String) = runBlocking(Dispatchers.IO) {
         appendRaw(type, output)

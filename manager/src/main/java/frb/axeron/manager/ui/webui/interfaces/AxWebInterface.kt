@@ -6,6 +6,8 @@ import android.webkit.JavascriptInterface
 import android.widget.Toast
 import com.google.gson.Gson
 import frb.axeron.api.AxeronPluginService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.io.File
 
@@ -13,7 +15,7 @@ class AxWebInterface(
     val context: Context,
     val modDir: File
 ) {
-    val PLUGINBIN: String 
+    val PLUGINBIN: String
         get() = "${modDir}/system/bin"
 
     private fun processOptions(sb: StringBuilder, options: String?) {
@@ -41,12 +43,14 @@ class AxWebInterface(
         processOptions(finalCommand, options)
         finalCommand.append(command)
 
-        val result = AxeronPluginService.execWithIO(
-            cmd = finalCommand.toString(),
-            useBusybox = false,
-            hideStderr = false
-        )
-        return Gson().toJson(result).toString()
+        return runBlocking(Dispatchers.IO) {
+            val result = AxeronPluginService.execWithIO(
+                cmd = finalCommand.toString(),
+                useBusybox = false,
+                hideStderr = false
+            )
+            Gson().toJson(result).toString()
+        }
     }
 
     @JavascriptInterface

@@ -330,7 +330,7 @@ fun FlashScreen(
 
 }
 
-fun flashModulesSequentially(
+suspend fun flashModulesSequentially(
     uris: List<Uri>,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit
@@ -345,7 +345,7 @@ fun flashModulesSequentially(
     return AxeronPluginService.FlashResult(0, "", true)
 }
 
-fun uninstallPermanently(
+suspend fun uninstallPermanently(
     onStdout: (String) -> Unit, onStderr: (String) -> Unit
 ): AxeronPluginService.FlashResult {
     val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -354,7 +354,7 @@ fun uninstallPermanently(
     return AxeronPluginService.FlashResult(result)
 }
 
-fun flashIt(
+suspend fun flashIt(
     flashIt: FlashIt,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit

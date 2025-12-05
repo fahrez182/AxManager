@@ -3,7 +3,7 @@ package frb.axeron.data;
 public class AxeronConstant {
     public static class server {
         public static final String VERSION_NAME = "V1.3.1";
-        public static final long VERSION_CODE = 13_113;
+        public static final long VERSION_CODE = 13_115;
         public static final long PATCH_CODE = 0;
         public static final int TYPE_DEFAULT_ENV = -1;
         public static final int TYPE_ENV = 0;
