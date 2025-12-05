@@ -131,7 +131,7 @@ service() {
 #!/system/bin/sh
 script="$SERVICE"
 content=\$(busybox cat "\$script")
-if grep -q '^ASH_STANDALONE=1$' "$script" 2>/dev/null; then
+if grep -q '^ASH_STANDALONE=1$' "\$script" 2>/dev/null; then
     exec busybox sh -o standalone -c "\$content"
 else
     exec busybox sh -c "\$content"
