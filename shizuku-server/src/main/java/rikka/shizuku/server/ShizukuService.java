@@ -104,7 +104,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         }
     }
 
-    private ParcelableListSlice<PackageInfo> getApplications(int userId) {
+    private synchronized ParcelableListSlice<PackageInfo> getApplications(int userId) {
         List<PackageInfo> list = new ArrayList<>();
         List<Integer> users = new ArrayList<>();
         if (userId == -1) {
@@ -151,7 +151,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         return new ShizukuConfigManager();
     }
 
-    public boolean checkCaller(int callingUid) {
+    public synchronized boolean checkCaller(int callingUid) {
         return UserHandleCompat.getAppId(callingUid) == managerAppId || UserHandleCompat.getAppId(callingUid) == shizukuManagerAppId;
     }
 
@@ -320,7 +320,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         }
     }
 
-    private int  getFlagsForUidInternal(int uid, int mask) {
+    private synchronized int getFlagsForUidInternal(int uid, int mask) {
         ShizukuConfig.PackageEntry entry = configManager.find(uid);
         if (entry != null) {
             return entry.flags & mask;
@@ -377,7 +377,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
         return super.onTransact(code, data, reply, flags);
     }
 
-    private void onPermissionRevoked(String packageName) {
+    private synchronized void onPermissionRevoked(String packageName) {
         getUserServiceManager().removeUserServicesForPackage(packageName);
     }
 

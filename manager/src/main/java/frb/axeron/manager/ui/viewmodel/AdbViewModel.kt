@@ -40,27 +40,26 @@ class AdbViewModel : ViewModel() {
     var isNotificationEnabled by mutableStateOf(false)
         private set
 
-    var launchDevSettings by mutableStateOf(false)
+    var devSettings by mutableStateOf(false)
+        private set
+
+    fun setLaunchDevSettings(launch: Boolean) {
+        viewModelScope.launch(Dispatchers.Main) {
+            devSettings = launch
+        }
+    }
 
     var tryActivate by mutableStateOf(false)
         private set
 
     var isUpdating by mutableStateOf(false)
+        private set
 
-//    var running by mutableStateOf(
-//        Axeron.pingBinder() && AxeronConstant.server.getActualVersion() <= axeronInfo.getActualVersion()
-//    )
-//        private set
-//
-//    var needUpdate by mutableStateOf(
-//        AxeronConstant.server.getActualVersion() > axeronInfo.getActualVersion() && Axeron.pingBinder()
-//    )
-//        private set
-//
-//    var needExtraStep by mutableStateOf(
-//        running && !axeronInfo.permission
-//    )
-//        private set
+    fun setUpdatingState(update: Boolean) {
+        viewModelScope.launch {
+            isUpdating = update
+        }
+    }
 
     init {
         checkAxeronService()
@@ -109,7 +108,7 @@ class AdbViewModel : ViewModel() {
 
             if (!adbWifiEnabled && !tryConnect) {
                 tryActivate = false
-                launchDevSettings = true
+                setLaunchDevSettings(true)
                 startPairingService(context)
                 return@runBlocking false
             }
@@ -135,7 +134,7 @@ class AdbViewModel : ViewModel() {
                 }.onFailure {
                     Log.e(TAG, "AdbClient failed", it)
                     if (!tryConnect) {
-                        launchDevSettings = true
+                        setLaunchDevSettings(true)
                         startPairingService(context)
                         adbMdns?.run {
                             this.stop()
@@ -154,7 +153,7 @@ class AdbViewModel : ViewModel() {
                 Log.e(TAG, "AdbMdns failed", it)
                 it.printStackTrace()
                 if (!tryConnect) {
-                    launchDevSettings = true
+                    setLaunchDevSettings(true)
                     startPairingService(context)
                     adbMdns?.run {
                         this.stop()

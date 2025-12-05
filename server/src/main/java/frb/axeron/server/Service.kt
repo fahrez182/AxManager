@@ -85,8 +85,10 @@ abstract class Service : IAxeronService.Stub() {
     override fun bindAxeronApplication(app: IAxeronApplication) {
         val callingUid = getCallingUid()
         try {
-            PermissionManagerApis.grantRuntimePermission(MANAGER_APPLICATION_ID,
-                WRITE_SECURE_SETTINGS, UserHandleCompat.getUserId(callingUid))
+            PermissionManagerApis.grantRuntimePermission(
+                MANAGER_APPLICATION_ID,
+                WRITE_SECURE_SETTINGS, UserHandleCompat.getUserId(callingUid)
+            )
         } catch (e: Exception) {
             LOGGER.w(e, "grant WRITE_SECURE_SETTINGS")
         }
@@ -110,7 +112,8 @@ abstract class Service : IAxeronService.Stub() {
 
     @Throws(RemoteException::class)
     override fun getPluginById(id: String): PluginInfo? {
-        val dir = File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN).absolutePath, id)
+        val dir =
+            File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN).absolutePath, id)
         return getPluginByDir(dir)
     }
 
@@ -158,7 +161,8 @@ abstract class Service : IAxeronService.Stub() {
         if (moduleProp == null) return null
 
         val pluginId = moduleProp.id
-        val updateDir = File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN_UPDATE), pluginId)
+        val updateDir =
+            File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN_UPDATE), pluginId)
         val updateFiles = updateDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
         val isUpdate = updateFiles.isNotEmpty()
 
@@ -247,7 +251,7 @@ abstract class Service : IAxeronService.Stub() {
                             else -> rawValue
                         }
 
-                        map.put(key, value)
+                        map[key] = value
                     }
                 }
             }
@@ -255,9 +259,7 @@ abstract class Service : IAxeronService.Stub() {
             LOGGER.e(TAG, "Error reading file: " + file.absolutePath, e)
         }
 
-        val pluginId = map["id"]
-
-        if (pluginId == null) return null
+        map["id"] ?: return null
 
         return ParcelableMapJson.fromMap<ModuleProp>(Collections.unmodifiableMap(map))
     }

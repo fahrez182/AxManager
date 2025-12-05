@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -19,7 +20,6 @@ import kotlinx.coroutines.withContext
 import rikka.parcelablelist.ParcelableListSlice
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuApiConstants
-import rikka.shizuku.ktx.workerHandler
 import rikka.shizuku.manager.ServerConstants
 
 class PrivilegeViewModel(application: Application) : AndroidViewModel(application) {
@@ -46,40 +46,21 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    var isPrivilegeManagerEnabled by mutableStateOf(
+    var isPrivilegeEnabled by mutableStateOf(
         Axeron.pingBinder() && Axeron.getShizukuService() != null
     )
         private set
 
-    fun attachListener() {
-        Shizuku.addBinderReceivedListener(listenerReceived, workerHandler)
-        Shizuku.addBinderDeadListener(listenerDead, workerHandler)
-    }
-
-    val listenerReceived = object : Shizuku.OnBinderReceivedListener {
-        override fun onBinderReceived() {
-            isPrivilegeManagerEnabled = true
-            Shizuku.removeBinderReceivedListener(this)
+    fun setPrivilegeEnable(enabled: Boolean) {
+        viewModelScope.launch {
+            isPrivilegeEnabled = enabled
         }
-    }
-
-    val listenerDead = object : Shizuku.OnBinderDeadListener {
-        override fun onBinderDead() {
-            isPrivilegeManagerEnabled = false
-            Shizuku.removeBinderDeadListener(this)
-        }
-    }
-
-    fun enablePrivilegeManager(enabled: Boolean) {
-        attachListener()
-
-        Axeron.enableShizukuService(enabled)
     }
 
     var privileges by mutableStateOf<List<AppsViewModel.AppInfo>>(ArrayList())
         private set
 
-    var privilegedCount by mutableStateOf(0)
+    var privilegedCount by mutableIntStateOf(0)
         private set
 
 

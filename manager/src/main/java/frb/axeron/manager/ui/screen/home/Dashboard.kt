@@ -32,9 +32,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
+import frb.axeron.manager.ui.viewmodel.PluginViewModel
+import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
 
 @Composable
 @Preview
@@ -122,17 +125,18 @@ fun PreviewCard() {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        PluginInfo(Modifier.weight(1f))
-        PrivilegeInfo(Modifier.weight(1f))
+        PluginCard(Modifier.weight(1f))
+        PrivilegeCard(Modifier.weight(1f))
     }
 }
 
 @Composable
 @Preview
-fun PluginInfo(
+fun PluginCard(
     modifier: Modifier = Modifier,
-    countTotal: Int = 0,
+    pluginViewModel: PluginViewModel = viewModel(),
 ) {
+    val countTotal = pluginViewModel.plugins.size
     val containerColor = colorScheme.surfaceVariant
 
     ElevatedCard(
@@ -198,12 +202,12 @@ fun PluginInfo(
 
 @Composable
 @Preview
-fun PrivilegeInfo(
+fun PrivilegeCard(
     modifier: Modifier = Modifier,
-    countTotal: Int = 0,
+    privilegeViewModel: PrivilegeViewModel = viewModel(),
 ) {
+    val countTotal = privilegeViewModel.privilegedCount
     val containerColor = colorScheme.surfaceVariant
-
     ElevatedCard(
         colors = CardDefaults.cardColors(),
         modifier = modifier

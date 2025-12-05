@@ -91,10 +91,9 @@ class KsuWebInterface(
         callbackFunc: String
     ) {
         CoroutineScope(Dispatchers.IO).launch {
-            val finalCommand = buildString {
-                processOptions(this, options)
-                append(cmd)
-            }
+            val finalCommand = StringBuilder()
+            processOptions(finalCommand, options)
+            finalCommand.append(cmd)
 
             val result = AxeronPluginService.execWithIO(
                 cmd = finalCommand.toString(),
@@ -117,20 +116,17 @@ class KsuWebInterface(
     @JavascriptInterface
     fun spawn(command: String, args: String, options: String?, callbackFunc: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            val finalCommand = buildString {
-                processOptions(this, options)
-
-                if (!TextUtils.isEmpty(args)) {
-                    append(command).append(" ")
-                    JSONArray(args).let { argsArray ->
-                        for (i in 0 until argsArray.length()) {
-                            append(argsArray.getString(i))
-                            append(" ")
-                        }
+            val finalCommand = StringBuilder()
+            processOptions(finalCommand, options)
+            if (!TextUtils.isEmpty(args)) {
+                finalCommand.append(command).append(" ")
+                JSONArray(args).let { argsArray ->
+                    for (i in 0 until argsArray.length()) {
+                        finalCommand.append(argsArray.getString(i)).append(" ")
                     }
-                } else {
-                    append(command)
                 }
+            } else {
+                finalCommand.append(command)
             }
 
             val emitData = fun(name: String, data: String) {
@@ -146,7 +142,7 @@ class KsuWebInterface(
             }
 
             val future = AxeronPluginService.execWithIOFuture(
-                cmd = finalCommand,
+                cmd = finalCommand.toString(),
                 onStdout = { emitData("stdout", it) },
                 onStderr = { emitData("stderr", it) },
                 useBusybox = false,

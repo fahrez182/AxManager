@@ -200,7 +200,7 @@ fun WirelessDebuggingCard(
                             neutral = "Step-by-Step"
                         )
                         if (confirmResult == ConfirmResult.Confirmed) {
-                            adbViewModel.launchDevSettings = true
+                            adbViewModel.setLaunchDevSettings(true)
                         }
                         if (confirmResult == ConfirmResult.Neutral) {
                             uriHandler.openUri(stepByStepUrl)
@@ -219,14 +219,14 @@ fun WirelessDebuggingCard(
             }
             Spacer(modifier = Modifier.size(8.dp))
 
-            LaunchedEffect(adbViewModel.launchDevSettings) {
-                if (adbViewModel.launchDevSettings) {
+            LaunchedEffect(adbViewModel.devSettings) {
+                if (adbViewModel.devSettings) {
                     val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
                         putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
                     }
                     launcherDeveloper.launch(intent)
                     Log.d("AxManager", "launchDevSettings")
-                    adbViewModel.launchDevSettings = false
+                    adbViewModel.setLaunchDevSettings(false)
                 }
             }
 

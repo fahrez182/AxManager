@@ -1,7 +1,6 @@
 package frb.axeron.manager.ui.webui
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.ActivityManager
 import android.content.Intent
 import android.graphics.Color
@@ -23,7 +22,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -136,7 +134,7 @@ class WebUIActivity : ComponentActivity() {
         webView = WebView(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             val density = resources.displayMetrics.density
-            ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInsets ->
+            ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
                 val inset = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 insets = Insets(
                     top = (inset.top / density).toInt(),
@@ -231,7 +229,7 @@ class WebUIActivity : ComponentActivity() {
                     }
                     try {
                         fileChooserLauncher.launch(intent)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         this@WebUIActivity.filePathCallback?.onReceiveValue(null)
                         this@WebUIActivity.filePathCallback = null
                         return false
@@ -251,7 +249,7 @@ class WebUIActivity : ComponentActivity() {
                                 val mimeType = json.getString("mimeType")
                                 saveDataUrlToDownloads(dataUrl, mimeType)
                                 return true
-                            } catch (e: org.json.JSONException) {
+                            } catch (_: org.json.JSONException) {
                                 Toast.makeText(this@WebUIActivity, "Error parsing blob data from console", Toast.LENGTH_LONG).show()
                             }
                         }

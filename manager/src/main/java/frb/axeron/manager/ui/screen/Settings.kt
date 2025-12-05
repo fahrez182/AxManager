@@ -66,6 +66,7 @@ import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDe
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import frb.axeron.api.Axeron
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.SettingsItem
@@ -139,14 +140,14 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     iconPainter = painterResource(R.drawable.ic_axeron),
                     label = "AX-Permission",
                     description = "Permission manager built on Shizuku-API for scoping Ax-environment",
-                    checked = privilegeViewModel.isPrivilegeManagerEnabled,
+                    checked = privilegeViewModel.isPrivilegeEnabled,
 //                    onCheckedClick = {
 //                        if (it) {
 //                            navigator.navigate(PermissionScreenDestination)
 //                        }
 //                    },
                     onSwitchChange = {
-                        privilegeViewModel.enablePrivilegeManager(it)
+                        Axeron.enableShizukuService(it)
                     }
                 )
             }

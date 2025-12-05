@@ -87,7 +87,7 @@ public abstract class Service<
         return false;
     }
 
-    public final void enforceCallingPermission(String func) {
+    public synchronized final void enforceCallingPermission(String func) {
         int callingUid = Binder.getCallingUid();
         int callingPid = Binder.getCallingPid();
 
@@ -118,7 +118,7 @@ public abstract class Service<
         }
     }
 
-    public final void transactRemote(Parcel data, Parcel reply, int flags) throws RemoteException {
+    public synchronized final void transactRemote(Parcel data, Parcel reply, int flags) throws RemoteException {
         enforceCallingPermission("transactRemote");
 
         IBinder targetBinder = data.readStrongBinder();

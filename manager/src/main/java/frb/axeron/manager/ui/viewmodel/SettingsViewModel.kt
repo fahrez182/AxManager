@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -42,28 +44,38 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // fungsi toggle / set manual
 
     fun setIgniteWhenRelog(enabled: Boolean) {
-        isIgniteWhenRelogEnabled = enabled
-        prefs.edit { putBoolean("ignite_when_relog", enabled) }
+        viewModelScope.launch {
+            isIgniteWhenRelogEnabled = enabled
+            prefs.edit { putBoolean("ignite_when_relog", enabled) }
+        }
     }
 
     fun setDynamicColor(enabled: Boolean) {
-        isDynamicColorEnabled = enabled
-        prefs.edit { putBoolean("enable_dynamic_color", enabled) }
+        viewModelScope.launch {
+            isDynamicColorEnabled = enabled
+            prefs.edit { putBoolean("enable_dynamic_color", enabled) }
+        }
     }
 
     fun setAppTheme(themeId: Int) {
-        getAppThemeId = themeId
-        prefs.edit { putInt("app_theme_id", themeId) }
+        viewModelScope.launch {
+            getAppThemeId = themeId
+            prefs.edit { putInt("app_theme_id", themeId) }
+        }
     }
 
     fun setDeveloperOptions(enabled: Boolean) {
-        isDeveloperModeEnabled = enabled
-        prefs.edit { putBoolean("enable_developer_options", enabled) }
+        viewModelScope.launch {
+            isDeveloperModeEnabled = enabled
+            prefs.edit { putBoolean("enable_developer_options", enabled) }
+        }
     }
 
     fun setWebDebugging(enabled: Boolean) {
-        isWebDebuggingEnabled = enabled
-        prefs.edit { putBoolean("enable_web_debugging", enabled) }
+        viewModelScope.launch {
+            isWebDebuggingEnabled = enabled
+            prefs.edit { putBoolean("enable_web_debugging", enabled) }
+        }
     }
 
 }

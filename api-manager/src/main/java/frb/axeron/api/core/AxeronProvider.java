@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 
 import frb.axeron.api.Axeron;
 import moe.shizuku.api.BinderContainer;
+import rikka.shizuku.Shizuku;
 
 public class AxeronProvider extends ContentProvider {
     // For receive Binder from Shizuku
@@ -45,8 +46,6 @@ public class AxeronProvider extends ContentProvider {
     @Nullable
     @Override
     public Bundle call(@NonNull String method, @Nullable String arg, @Nullable Bundle extras) {
-        Log.i(TAG, "Called");
-
         if (extras == null) {
             return null;
         }
@@ -70,21 +69,27 @@ public class AxeronProvider extends ContentProvider {
     }
 
     private void handleSendBinder(@NonNull Bundle extras) {
-        if (Axeron.pingBinder()) {
-            Log.d(TAG, "sendBinder is called when already a living binder");
+        BinderContainer container = extras.getParcelable(EXTRA_BINDER);
+        if (!Axeron.pingBinder()) {
+            if (container != null && container.binder != null) {
+                Log.d(TAG, "binder received");
+
+                Axeron.onBinderReceived(container.binder, getContext());
+
+                Log.d(TAG, "broadcast binder");
+                Intent intent = new Intent(ACTION_BINDER_RECEIVED)
+                        .setPackage(getContext().getPackageName());
+                getContext().sendBroadcast(intent);
+            }
             return;
         }
+//        else {
+//            Log.d(TAG, "sendBinder is called when already a living binder");
+//        }
 
-        BinderContainer container = extras.getParcelable(EXTRA_BINDER);
-        if (container != null && container.binder != null) {
-            Log.d(TAG, "binder received");
-
-            Axeron.onBinderReceived(container.binder, getContext());
-
-            Log.d(TAG, "broadcast binder");
-            Intent intent = new Intent(ACTION_BINDER_RECEIVED)
-                    .setPackage(getContext().getPackageName());
-            getContext().sendBroadcast(intent);
+        if (!Shizuku.pingBinder() || Axeron.getShizukuService() == null) {
+            Log.d(TAG, "sendShizukuService is called");
+            Axeron.notifyShizuku();
         }
     }
 

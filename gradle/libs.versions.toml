@@ -4,8 +4,8 @@ api = "13.1.5"
 boringssl = "20250114"
 gson = "2.13.2"
 hiddenapibypass = "6.1"
-ksp = "2.2.10-2.0.2"
-kotlin = "2.2.10"
+ksp = "2.2.0-2.0.2"
+kotlin = "2.2.21"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -19,22 +19,26 @@ toml4j = "0.7.2"
 volley = "1.2.1"
 webkit = "1.14.0"
 constraintlayout = "2.2.1"
-workRuntime = "2.10.3"
+workRuntime = "2.11.0"
 zip4j = "2.11.5"
-activityCompose = "1.10.1"
-composeBom = "2025.08.01"
+activityCompose = "1.12.1"
+composeBom = "2025.12.00"
 parcelablelist = "2.0.1"
-navigationCompose = "2.9.3"
+navigationCompose = "2.9.6"
 coil-compose = "2.7.0"
 appiconloader-coil = "1.5.0"
 mmrl = "v33890"
 hidden-api = "4.4.0"
 refine = "4.4.0"
 compose-destination = "2.2.0"
-foundation = "1.9.0"
+foundation = "1.10.0"
 markdown = "4.6.2"
 annotationJvm = "1.9.1"
 lifecycleLivedataCoreKtx = "2.10.0"
+uiautomator = "2.3.0"
+benchmarkMacroJunit4 = "1.4.1"
+baselineprofile = "1.4.1"
+profileinstaller = "1.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -88,6 +92,9 @@ androidx-foundation = { group = "androidx.compose.foundation", name = "foundatio
 markdown = { group = "io.noties.markwon", name = "core", version.ref = "markdown" }
 androidx-annotation-jvm = { group = "androidx.annotation", name = "annotation-jvm", version.ref = "annotationJvm" }
 androidx-lifecycle-livedata-core-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-core-ktx", version.ref = "lifecycleLivedataCoreKtx" }
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 
 [plugins]
@@ -97,4 +104,6 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 tools-refine = { id = "dev.rikka.tools.refine", version.ref = "refine" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 

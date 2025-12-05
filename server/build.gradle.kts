@@ -65,8 +65,11 @@ dependencies {
     implementation("com.moandjiezana.toml:toml4j:0.7.2")
 
     implementation(libs.dev.rikka.rikkax.parcelablelist)
+    annotationProcessor(libs.refine.annotation.processor)
+    implementation(libs.refine.annotation)
     implementation(libs.hidden.compat)
     compileOnly(libs.hidden.stub)
+    compileOnly(project(":server:stub"))
 
     implementation(libs.androidx.appcompat)
     implementation(libs.refine.runtime)

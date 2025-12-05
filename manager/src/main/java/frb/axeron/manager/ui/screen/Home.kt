@@ -89,12 +89,11 @@ import frb.axeron.manager.ui.component.ExtraLabelDefaults
 import frb.axeron.manager.ui.component.PowerDialog
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
-import frb.axeron.manager.ui.screen.home.PluginInfo
-import frb.axeron.manager.ui.screen.home.PrivilegeInfo
+import frb.axeron.manager.ui.screen.home.PluginCard
+import frb.axeron.manager.ui.screen.home.PrivilegeCard
 import frb.axeron.manager.ui.util.checkNewVersion
 import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import frb.axeron.manager.ui.viewmodel.AdbViewModel
-import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.QuickShellViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.utils.Starter
@@ -120,10 +119,10 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 "AxManager",
                 "NeedUpdate ${Axeron.getAxeronInfo().getActualVersion()} > $VERSION_CODE"
             )
-            adbViewModel.isUpdating = true
+            adbViewModel.setUpdatingState(true)
             Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand), null, null)
         } else {
-            adbViewModel.isUpdating = false
+            adbViewModel.setUpdatingState(false)
         }
     }
 
@@ -224,24 +223,25 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             StatusCard(
-                adbViewModel = adbViewModel,
-                pluginViewModel = pluginViewModel
+                adbViewModel = adbViewModel
             ) {
                 if (!it) {
                     navigator.navigate(ActivateScreenDestination)
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                PluginInfo(
-                    Modifier.weight(1f),
-                    pluginViewModel.plugins.size
-                )
-                PrivilegeInfo(
-                    Modifier.weight(1f),
-                    privilegeViewModel.privilegedCount
-                )
+            AnimatedVisibility(visible = axeronInfo.isRunning()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    PluginCard(
+                        Modifier.weight(1f),
+                        pluginViewModel
+                    )
+                    PrivilegeCard(
+                        Modifier.weight(1f),
+                        privilegeViewModel
+                    )
+                }
             }
 
             UpdateCard()
@@ -335,7 +335,6 @@ fun LearnCard() {
 @Composable
 fun StatusCard(
     adbViewModel: AdbViewModel,
-    pluginViewModel: PluginViewModel,
     onClick: (Boolean) -> Unit = {}
 ) {
     val axeronInfo = adbViewModel.axeronInfo

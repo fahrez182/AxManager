@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.tools.refine)
     id("kotlin-parcelize")
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -17,7 +18,7 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 13_110
+        versionCode = 13_113
         versionName = "1.3.1"
     }
 
@@ -76,8 +77,10 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.destinations.core)
+    implementation(libs.androidx.profileinstaller)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
+    "baselineProfile"(project(":baselineprofile"))
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
     ksp(libs.compose.destinations.ksp)

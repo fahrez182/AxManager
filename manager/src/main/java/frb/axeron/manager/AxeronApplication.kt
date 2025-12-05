@@ -1,8 +1,8 @@
 package frb.axeron.manager
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
-import androidx.compose.ui.unit.dp
 import coil.Coil
 import coil.ImageLoader
 import frb.axeron.api.core.AxeronSettings
@@ -38,21 +38,23 @@ class AxeronApplication : Engine() {
         AxeronSettings.initialize(context)
     }
 
+    @SuppressLint("ResourceType")
     override fun onCreate() {
         super.onCreate()
         axApp = this
         init(axApp)
 
         val context = this
-        val iconSize = 48.dp
+        val iconSize = resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
         Coil.setImageLoader(
             ImageLoader.Builder(context)
                 .components {
                     add(AppIconKeyer())
-                    add(AppIconFetcher.Factory(iconSize.value.toInt(), false, context))
+                    add(AppIconFetcher.Factory(iconSize, false, context))
                 }
                 .build()
         )
+
 
         okhttpClient =
             OkHttpClient.Builder().cache(Cache(File(cacheDir, "okhttp"), 10 * 1024 * 1024))

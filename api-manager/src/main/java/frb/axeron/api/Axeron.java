@@ -140,7 +140,7 @@ public class Axeron {
         } else {
             SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
 
-            if (binder != null) {
+            if (pingBinder()) {
                 binder.unlinkToDeath(DEATH_RECIPIENT, 0);
             }
             binder = newBinder;
@@ -183,7 +183,7 @@ public class Axeron {
         }
     }
 
-    public static void notifyShizuku() {
+    public synchronized static void notifyShizuku() {
         IShizukuService shizukuService = getShizukuService();
         if (shizukuService != null) {
             Shizuku.onBinderReceived(shizukuService.asBinder(), Engine.getApplication().getPackageName());
@@ -195,7 +195,6 @@ public class Axeron {
     public static void enableShizukuService(boolean enable) {
         try {
             requireService().enableShizukuService(enable);
-            notifyShizuku();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -323,6 +322,9 @@ public class Axeron {
         }
     }
 
+    private static RuntimeException rethrowAsRuntimeException(String message, RemoteException e) {
+        return new RuntimeException(message, e);
+    }
     private static RuntimeException rethrowAsRuntimeException(RemoteException e) {
         return new RuntimeException(e);
     }
@@ -330,9 +332,8 @@ public class Axeron {
     public static void transactRemote(@NonNull Parcel data, @Nullable Parcel reply, int flags) {
         try {
             requireService().asBinder().transact(1, data, reply, flags);
-            Log.d(TAG, "transactRemote");
         } catch (RemoteException e) {
-            throw rethrowAsRuntimeException(e);
+            throw rethrowAsRuntimeException("Axeron", e);
         }
     }
 

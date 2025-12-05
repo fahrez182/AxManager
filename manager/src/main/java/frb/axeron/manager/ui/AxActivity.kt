@@ -98,12 +98,12 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
     DisposableEffect(Unit) {
 
         adbViewModel.checkAxeronService()
-        privilegeViewModel.attachListener()
 
         if (Axeron.pingBinder() && Axeron.isUpdated()) {
             pluginViewModel.fetchModuleList()
             appsViewModel.loadInstalledApps()
             if (Shizuku.pingBinder()) {
+                privilegeViewModel.setPrivilegeEnable(true)
                 privilegeViewModel.loadInstalledApps()
             }
         }
@@ -111,9 +111,14 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         val shizukuReceived = Shizuku.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onShizukuBinderReceived")
             if (Shizuku.pingBinder()) {
-
+                privilegeViewModel.setPrivilegeEnable(true)
                 privilegeViewModel.loadInstalledApps()
             }
+        }
+
+        val shizukuDead = Shizuku.OnBinderDeadListener {
+            Log.i("AxManagerBinder", "onShizukuBinderDead")
+            privilegeViewModel.setPrivilegeEnable(false)
         }
 
         val receivedListener = Axeron.OnBinderReceivedListener {
@@ -132,11 +137,13 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         Axeron.addBinderReceivedListener(receivedListener)
         Axeron.addBinderDeadListener(deadListener)
         Shizuku.addBinderReceivedListener(shizukuReceived)
+        Shizuku.addBinderDeadListener(shizukuDead)
 
         onDispose {
             Axeron.removeBinderReceivedListener(receivedListener)
             Axeron.removeBinderDeadListener(deadListener)
             Shizuku.removeBinderReceivedListener(shizukuReceived)
+            Shizuku.removeBinderDeadListener(shizukuDead)
         }
     }
 
@@ -167,7 +174,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
                 BottomBar(
                     navController,
                     adbViewModel.axeronInfo,
-                    privilegeViewModel.isPrivilegeManagerEnabled,
+                    privilegeViewModel.isPrivilegeEnabled,
                     pluginViewModel.pluginUpdateCount
                 )
             }
