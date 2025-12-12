@@ -124,27 +124,24 @@ service() {
     dir=$(dirname "$script")
 
     # Path wrapper
-    local wrapper="${dir}/._service_${name}.sh"
+    local wrapper
+    wrapper="${dir}/._service_$(date +"%Y%m%d_%H%M%S")"
 
     # Generate wrapper (overwrite every time)
-    cat > "$wrapper" <<EOF
-#!/system/bin/sh
-script="$SERVICE"
-content=\$(busybox cat "\$script")
-if grep -q '^ASH_STANDALONE=1$' "\$script" 2>/dev/null; then
-    exec busybox sh -o standalone -c "\$content"
-else
-    exec busybox sh -c "\$content"
-fi
+    busybox cat > "$wrapper" <<EOF
+#$name
+$script
+wait
 EOF
 
-    chmod 755 "$wrapper"
+    content=$(busybox cat "$wrapper")
 
-    # Jalankan wrapper sebagai service
-    if [ "$DEBUG" = "true" ]; then
-        executor "$name" busybox sh "$wrapper" &
+    rm -f "$wrapper"
+
+    if grep -q '^ASH_STANDALONE=1$' "$script" 2>/dev/null; then
+        executor "$name" busybox sh -o standalone -c "$content" &
     else
-        executor "$name" busybox sh "$wrapper" >/dev/null 2>&1 &
+        executor "$name" busybox sh -c "$content" &
     fi
 
     # PID wrapper (ini yang akan di-track)
