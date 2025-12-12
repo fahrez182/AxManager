@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,7 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -139,7 +138,6 @@ fun SettingsEditorScreen(
                 searchText = query,
                 onSearchTextChange = { query = it },
                 onClearClick = { query = "" },
-                windowInsets = WindowInsets(top = 0),
                 action = {
                     IconButton(
                         onClick = {
@@ -186,8 +184,7 @@ fun SettingsEditorScreen(
                     Icon(Icons.Filled.Add, null)
                 }
             }
-        },
-        contentWindowInsets = WindowInsets(top = 0)
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -306,7 +303,7 @@ fun RoundedTabRow(
 ) {
     val selectedIndex = SettingsRepository.SettingType.entries.indexOf(selectedType)
 
-    ScrollableTabRow(
+    SecondaryScrollableTabRow(
         selectedTabIndex = selectedIndex,
         modifier = Modifier
             .fillMaxWidth()

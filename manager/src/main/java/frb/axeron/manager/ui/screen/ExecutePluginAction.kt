@@ -164,7 +164,6 @@ fun ExecutePluginActionScreen(
                 )
             }
         },
-        contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { AxSnackBarHost(snackBarHost) }
     ) { innerPadding ->
         KeyEventBlocker {

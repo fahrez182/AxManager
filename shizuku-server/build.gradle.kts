@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.tools.refine)
+    alias(libs.plugins.rikka.tools.refine)
 }
 
 android {
@@ -34,14 +34,13 @@ kotlin {
 
 dependencies {
 
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.0")
-    implementation("androidx.annotation:annotation:1.9.1")
-    implementation("com.moandjiezana.toml:toml4j:0.7.2")
-    implementation(libs.hidden.compat)
-    compileOnly(libs.hidden.stub)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.refine.runtime)
-    implementation(libs.dev.rikka.rikkax.parcelablelist)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.annotation)
+    implementation(libs.toml4j)
+    implementation(libs.rikka.hidden.compat)
+    compileOnly(libs.rikka.hidden.stub)
+    implementation(libs.rikka.refine.runtime)
+    implementation(libs.rikka.parcelablelist)
     implementation(libs.androidx.core.ktx)
 
     implementation(project(":aidl"))

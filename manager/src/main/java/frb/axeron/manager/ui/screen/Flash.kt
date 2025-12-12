@@ -409,7 +409,6 @@ private fun TopBar(
                 )
             }
         },
-        windowInsets = WindowInsets(top = 0),
         scrollBehavior = scrollBehavior
     )
 }

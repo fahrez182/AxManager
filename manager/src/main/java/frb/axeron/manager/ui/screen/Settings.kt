@@ -117,11 +117,9 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     {
                         Icon(Icons.Outlined.Info, null)
                     }
-                },
-                windowInsets = WindowInsets(top = 0)
+                }
             )
-        },
-        contentWindowInsets = WindowInsets(top = 0, bottom = 0)
+        }
     ) { paddingValues ->
 
         val axeronRunning = adbViewModel.axeronInfo.isRunning()

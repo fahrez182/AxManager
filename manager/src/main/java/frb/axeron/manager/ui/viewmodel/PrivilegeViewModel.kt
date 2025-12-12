@@ -98,7 +98,7 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun loadInstalledApps() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             isRefreshing = true
 
             withContext(Dispatchers.IO) {
@@ -107,16 +107,22 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
                 val pm = getApplication<Application>().packageManager
 
                 // Ambil packageName yang sudah tersimpan
-                val packages = getApplications()
+                runCatching {
 
-                privileges = packages.map {
-                    val appInfo = it.applicationInfo!!
-                    Log.d("ShizukuViewModel", "loadInstalledApps(${it.packageName}): ${granted(appInfo.uid)}")
-                    AppsViewModel.AppInfo(
-                        label = appInfo.loadLabel(pm).toString(),
-                        packageInfo = it,
-                        isAdded = granted(appInfo.uid)
-                    )
+                    privileges = getApplications().map {
+                        val appInfo = it.applicationInfo!!
+                        Log.d(
+                            "ShizukuViewModel",
+                            "loadInstalledApps(${it.packageName}): ${granted(appInfo.uid)}"
+                        )
+                        AppsViewModel.AppInfo(
+                            label = appInfo.loadLabel(pm).toString(),
+                            packageInfo = it,
+                            isAdded = granted(appInfo.uid)
+                        )
+                    }
+                }.onFailure {
+                    isRefreshing = false
                 }
 
                 privilegedCount = privileges.count { it.isAdded }

@@ -129,13 +129,6 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
 
                     isNeedReignite = plugins.any { it.update }
 
-//                    plugins = result.map {
-//                        val pluginInfo = convertPluginInfo(it)
-//                        if (pluginInfo.update) {
-//                            isNeedReignite = true
-//                        }
-//                        pluginInfo
-//                    }
                     isNeedRefresh = false
                 }.onFailure { e ->
                     Log.e(TAG, "fetchModuleList: ", e)

@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.tools.refine)
+    alias(libs.plugins.rikka.tools.refine)
     id("kotlin-parcelize")
 }
 
@@ -49,7 +49,7 @@ android {
     }
 
     buildToolsVersion = "36.0.0"
-    ndkVersion = "29.0.13113456"
+    ndkVersion = "29.0.14206865"
 }
 
 kotlin {
@@ -60,22 +60,22 @@ kotlin {
 
 dependencies {
 
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.0")
-    implementation("androidx.annotation:annotation:1.9.1")
-    implementation("com.moandjiezana.toml:toml4j:0.7.2")
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.annotation)
+    implementation(libs.toml4j)
 
-    implementation(libs.dev.rikka.rikkax.parcelablelist)
-    annotationProcessor(libs.refine.annotation.processor)
-    implementation(libs.refine.annotation)
-    implementation(libs.hidden.compat)
-    compileOnly(libs.hidden.stub)
+    implementation(libs.rikka.parcelablelist)
+    annotationProcessor(libs.rikka.refine.annotation.processor)
+    implementation(libs.rikka.refine.runtime)
+    implementation(libs.rikka.refine.annotation)
+    implementation(libs.rikka.hidden.compat)
+    compileOnly(libs.rikka.hidden.stub)
     compileOnly(project(":server:stub"))
 
-    implementation(libs.androidx.appcompat)
-    implementation(libs.refine.runtime)
+//    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
 
-    implementation("org.lsposed.libcxx:libcxx:27.0.12077973")
+    implementation(libs.libcxx)
 
     implementation(project(":aidl"))
     implementation(project(":data-shared"))

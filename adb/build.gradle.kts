@@ -14,8 +14,6 @@ android {
 
     defaultConfig {
         minSdk = 24
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
 
         externalNativeBuild {
@@ -52,7 +50,7 @@ android {
     }
 
     buildToolsVersion = "36.0.0"
-    ndkVersion = "29.0.13113456"
+    ndkVersion = "29.0.14206865"
 }
 
 kotlin {
@@ -63,18 +61,14 @@ kotlin {
 
 dependencies {
     implementation(project(":api-manager"))
-    implementation("dev.rikka.rikkax.core:core-ktx:1.4.1")
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
+    implementation(libs.core.ktx)
+    implementation(libs.bcpkix.jdk18on)
     implementation(libs.androidx.annotation.jvm)
     implementation(libs.androidx.lifecycle.livedata.core.ktx)
 
     implementation(libs.boringssl)
-    implementation("org.lsposed.libcxx:libcxx:27.0.12077973")
+    implementation(libs.libcxx)
 
-    implementation(libs.hidden.compat)
-    compileOnly(libs.hidden.stub)
-
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    implementation(libs.rikka.hidden.compat)
+    compileOnly(libs.rikka.hidden.stub)
 }

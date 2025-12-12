@@ -140,7 +140,6 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                 onSearchTextChange = { pluginViewModel.search = it },
                 onClearClick = { pluginViewModel.search = "" },
                 scrollBehavior = scrollBehavior,
-                windowInsets = WindowInsets(top = 0),
                 action = {
                     IconButton(
                         onClick = {
@@ -234,8 +233,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                 }
             }
         },
-        snackbarHost = { AxSnackBarHost(hostState = snackBarHost) },
-        contentWindowInsets = WindowInsets(top = 0)
+        snackbarHost = { AxSnackBarHost(hostState = snackBarHost) }
     ) { paddingValues ->
         PluginList(
             navigator = navigator,

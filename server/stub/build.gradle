@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.library)
 }
@@ -16,14 +18,20 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 
 dependencies {
-    annotationProcessor libs.refine.annotation.processor
-    implementation libs.refine.annotation
-    compileOnly(libs.hidden.stub)
-    compileOnly "androidx.annotation:annotation:1.9.1"
+    annotationProcessor(libs.rikka.refine.annotation.processor)
+    implementation(libs.rikka.refine.annotation)
+    compileOnly(libs.rikka.hidden.stub)
+    compileOnly(libs.androidx.annotation)
 }

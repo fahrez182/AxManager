@@ -122,11 +122,9 @@ fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 searchText = appsViewModel.search,
                 onSearchTextChange = { appsViewModel.search = it },
                 onClearClick = { appsViewModel.search = "" },
-                scrollBehavior = scrollBehavior,
-                windowInsets = WindowInsets(top = 0)
+                scrollBehavior = scrollBehavior
             )
-        },
-        contentWindowInsets = WindowInsets(top = 0)
+        }
     ) { paddingValues ->
         if (appsViewModel.addedList.isEmpty()) {
             Box(

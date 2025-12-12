@@ -55,8 +55,7 @@ fun SearchAppBar(
     onBackClick: (() -> Unit)? = null,
     onConfirm: (() -> Unit)? = null,
     action: @Composable (() -> Unit)? = null,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    windowInsets: WindowInsets
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -152,7 +151,6 @@ fun SearchAppBar(
             }
 
         },
-        windowInsets = windowInsets,
         scrollBehavior = scrollBehavior
     )
 }
@@ -166,7 +164,6 @@ private fun SearchAppBarPreview() {
         title = { Text("Search text") },
         searchText = searchText,
         onSearchTextChange = { searchText = it },
-        onClearClick = { searchText = "" },
-        windowInsets = WindowInsets(top = 0)
+        onClearClick = { searchText = "" }
     )
 }

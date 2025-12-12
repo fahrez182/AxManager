@@ -77,7 +77,6 @@ import frb.axeron.manager.ui.component.createWebUIShortcut
 import frb.axeron.manager.ui.component.formatSize
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
-import frb.axeron.manager.ui.theme.DARK_BLEND
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -183,7 +182,7 @@ fun PluginItem(
                 val context = LocalContext.current
                 val fadeColor = when {
                     darkTheme -> colorScheme.surfaceVariant
-                    else -> DARK_BLEND.blend(Color.White, 0.3f)
+                    else -> colorScheme.surface.blend(Color.White, 0.3f)
                 }
                 val alpha = 0.5f
 

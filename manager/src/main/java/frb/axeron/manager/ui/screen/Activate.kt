@@ -80,11 +80,9 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     IconButton(onClick = { navigator.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                windowInsets = WindowInsets(top = 0, bottom = 0)
+                }
             )
-        },
-        contentWindowInsets = WindowInsets(top = 0, bottom = 0)
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier

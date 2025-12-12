@@ -196,7 +196,6 @@ fun RequestPermissionDialog(
                 )
             }
 
-            // 🔹 Konten utama
             Icon(
                 painter = painterResource(id = R.drawable.ic_axeron),
                 contentDescription = null,
@@ -264,77 +263,9 @@ fun RequestPermissionDialog(
                 }
 
             }
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceEvenly
-//            ) {
-//                OutlinedButton(
-//                    onClick = {
-//                        scope.launch { sheetState.hide() }.invokeOnCompletion { onDeny() }
-//                    },
-//                    shape = RoundedCornerShape(12.dp)
-//                ) {
-//                    Text("Deny (${remaining}s)")
-//                }
-//                Button(
-//                    onClick = {
-//                        scope.launch { sheetState.hide() }.invokeOnCompletion { onAllow() }
-//                    },
-//                    shape = RoundedCornerShape(12.dp)
-//                ) {
-//                    Text("Grant")
-//                }
-//            }
 
             Spacer(Modifier.height(8.dp))
         }
-    }
-}
-
-@Composable
-@Preview
-fun ButtonPreview() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.SpaceEvenly
-    ) {
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-            },
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Allow all the time")
-        }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-            },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            )
-        ) {
-            Text("Allow once this time")
-        }
-        OutlinedButton(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-            },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.error
-            ),
-            border = BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.error
-            )
-        ) {
-            Text("Don't Allow (10s)")
-        }
-
     }
 }
 

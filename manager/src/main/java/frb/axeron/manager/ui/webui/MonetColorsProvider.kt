@@ -9,8 +9,8 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import frb.axeron.api.core.Engine
-import frb.axeron.manager.ui.theme.DarkColorScheme
-import frb.axeron.manager.ui.theme.LightColorScheme
+import frb.axeron.manager.ui.theme.vortexDarkColorScheme
+import frb.axeron.manager.ui.theme.vortexLightColorScheme
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -38,9 +38,9 @@ object MonetColorsProvider {
         val dynamicColor: Boolean = prefs.getBoolean("enable_dynamic_color", false)
 
         var colorScheme = if (darkTheme) {
-            DarkColorScheme
+            vortexDarkColorScheme()
         } else {
-            LightColorScheme
+            vortexLightColorScheme()
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dynamicColor) {

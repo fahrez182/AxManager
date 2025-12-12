@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.tools.refine)
+    alias(libs.plugins.rikka.tools.refine)
     id("kotlin-parcelize")
     alias(libs.plugins.baselineprofile)
 }
@@ -18,7 +18,7 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 13_115
+        versionCode = 13_117
         versionName = "1.3.1"
     }
 
@@ -69,35 +69,27 @@ kotlin {
 
 dependencies {
 
-    implementation(libs.compose.activity)
     implementation(platform(libs.compose.bom))
-    implementation(libs.compose.ui)
-    implementation(libs.compose.ui.graphics)
+    androidTestImplementation(platform(libs.compose.bom))
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.destinations.core)
-    implementation(libs.androidx.profileinstaller)
-    androidTestImplementation(platform(libs.compose.bom))
-    androidTestImplementation(libs.compose.ui.test.junit4)
-    "baselineProfile"(project(":baselineprofile"))
-    debugImplementation(libs.compose.ui.tooling)
-    debugImplementation(libs.compose.ui.test.manifest)
     ksp(libs.compose.destinations.ksp)
 
-    implementation(libs.coil.compose)
+    implementation(libs.androidx.profileinstaller)
+    "baselineProfile"(project(":baselineprofile"))
+
+    implementation(libs.compose.coil)
     implementation(libs.appiconloader.coil)
 
-    implementation(libs.androidx.foundation)
-    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.constraintlayout)
 
-    implementation(libs.dev.rikka.rikkax.parcelablelist)
-    implementation(libs.hidden.compat)
-    compileOnly(libs.hidden.stub)
+    implementation(libs.rikka.compatibility)
+    implementation(libs.rikka.parcelablelist)
+    implementation(libs.rikka.hidden.compat)
+    compileOnly(libs.rikka.hidden.stub)
 
     implementation(libs.gson)
     implementation(libs.markdown)
@@ -111,11 +103,7 @@ dependencies {
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.mmrl.ui)
-    implementation("dev.rikka.rikkax.compatibility:compatibility:2.0.0")
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
-    implementation("com.github.Fox2Code.AndroidANSI:library:1.2.0")
-    implementation("com.github.Fox2Code.AndroidANSI:library-ktx:1.2.1")
-
-//    implementation("dev.chrisbanes.haze:haze:1.7.1")
-//    implementation("dev.chrisbanes.haze:haze-materials:1.7.1")
+    implementation(libs.hiddenapibypass)
+    implementation(libs.ansi.library)
+    implementation(libs.ansi.library.ktx)
 }

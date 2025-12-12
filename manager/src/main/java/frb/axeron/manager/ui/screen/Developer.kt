@@ -51,8 +51,7 @@ fun DeveloperScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModel
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(snackBarHost) },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        snackbarHost = { SnackbarHost(snackBarHost) }
     ) { paddingValues ->
 
         Column(
@@ -103,7 +102,6 @@ private fun TopBar(
                 onClick = onBack
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
         },
-        windowInsets = WindowInsets(top = 0),
         scrollBehavior = scrollBehavior
     )
 }

@@ -198,8 +198,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     ) {
                         Icon(Icons.Outlined.MoreVert, null)
                     }
-                },
-                windowInsets = WindowInsets(top = 0)
+                }
             )
         },
         floatingActionButton = {
@@ -218,8 +217,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 }
             }
         },
-        snackbarHost = { AxSnackBarHost(hostState = snackBarHost) },
-        contentWindowInsets = WindowInsets(top = 0, bottom = 0)
+        snackbarHost = { AxSnackBarHost(hostState = snackBarHost) }
     ) { paddingValues ->
         val context = LocalContext.current
         val focusManager = LocalFocusManager.current

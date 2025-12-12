@@ -29,5 +29,5 @@ android {
 
 dependencies {
     implementation(project(":data-shared"))
-    implementation(libs.dev.rikka.rikkax.parcelablelist)
+    implementation(libs.rikka.parcelablelist)
 }

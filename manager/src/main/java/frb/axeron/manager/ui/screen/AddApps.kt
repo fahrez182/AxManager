@@ -61,11 +61,9 @@ fun AddAppsScreen(
                 scrollBehavior = scrollBehavior,
                 onBackClick = {
                     navigator.popBackStack()
-                },
-                windowInsets = WindowInsets(top = 0)
+                }
             )
-        },
-        contentWindowInsets = WindowInsets(top = 0, bottom = 0)
+        }
     ) { paddingValues ->
         LazyColumn(
             state = listState,

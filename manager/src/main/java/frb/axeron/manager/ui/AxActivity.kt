@@ -18,6 +18,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -88,7 +89,6 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
     val snackBarHostState = remember { SnackbarHostState() }
     val navController = rememberNavController()
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
-
 
     val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
     val privilegeViewModel: PrivilegeViewModel = viewModel<PrivilegeViewModel>()
@@ -178,8 +178,8 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
                     pluginViewModel.pluginUpdateCount
                 )
             }
-
-        }
+        },
+        contentWindowInsets = WindowInsets()
     ) { innerPadding ->
         CompositionLocalProvider(
             LocalSnackbarHost provides snackBarHostState,
@@ -193,9 +193,9 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
                 },
                 defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition
-                        get() = { fadeIn(animationSpec = tween(340)) }
+                        get() = { fadeIn(animationSpec = tween(300)) }
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition
-                        get() = { fadeOut(animationSpec = tween(340)) }
+                        get() = { fadeOut(animationSpec = tween(300)) }
                 }
             )
         }

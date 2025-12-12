@@ -69,10 +69,8 @@ fun PrivilegeScreen(
 //                onBackClick = {
 //                    navigator.popBackStack()
 //                },
-                windowInsets = WindowInsets(top = 0)
             )
-        },
-        contentWindowInsets = WindowInsets(top = 0, bottom = 0)
+        }
     ) { paddingValues ->
         PullToRefreshBox(
             modifier = Modifier.padding(paddingValues),

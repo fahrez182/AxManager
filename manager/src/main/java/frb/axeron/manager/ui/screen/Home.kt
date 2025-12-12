@@ -196,7 +196,6 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                     Spacer(modifier = Modifier.padding(end = 12.dp))
                 },
                 scrollBehavior = scrollBehavior,
-                windowInsets = WindowInsets(top = 0)
             )
         },
         floatingActionButton = {
@@ -209,8 +208,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                     Icon(Icons.Filled.Terminal, null)
                 }
             }
-        },
-        contentWindowInsets = WindowInsets(top = 0)
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
