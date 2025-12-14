@@ -71,9 +71,9 @@ fun vortexDarkColorScheme(customPrimary: Color? = null) = darkColorScheme(
     inversePrimary = (customPrimary ?: basePrimaryDefault).blend(Color.White, 0.40f),
 
     // SECONDARY
-    secondary = if (customPrimary != null) customPrimary.blend(Color.White, 0.2f) else baseSecondaryDefault.blend(Color.White, 0.9f).blend(surfaceBase, 0.4f),
+    secondary = (customPrimary ?: basePrimaryDefault).blend(Color.White, 0.2f),
     onSecondary = Color.Black,
-    secondaryContainer = if (customPrimary != null) customPrimary.blend(surfaceBase, 0.6f) else baseSecondaryDefault.blend(Color.White, 0.55f).blend(surfaceBase, 0.7f),
+    secondaryContainer = (customPrimary ?: basePrimaryDefault).blend(surfaceBase, 0.6f),
     onSecondaryContainer = Color.White,
 
     // TERTIARY
@@ -109,11 +109,11 @@ fun vortexDarkColorScheme(customPrimary: Color? = null) = darkColorScheme(
     // SURFACE MULTI-LAYER (Material 3 elevations)
     surfaceBright = surfaceBright,
     surfaceDim = surfaceDim,
-    surfaceContainer = if (customPrimary != null) surfaceBase.blend(customPrimary, 0.08f) else surfaceBase.blend(Color.White, 0.05f),
-    surfaceContainerLow = if (customPrimary != null) surfaceBase.blend(customPrimary, 0.04f) else surfaceBase.blend(Color.White, 0.06f),
-    surfaceContainerLowest = if (customPrimary != null) surfaceBase else surfaceBase.blend(Color.White, 0.04f),
-    surfaceContainerHigh = if (customPrimary != null) surfaceBase.blend(customPrimary, 0.12f) else surfaceBase.blend(Color.White, 0.08f),
-    surfaceContainerHighest = if (customPrimary != null) surfaceBase.blend(customPrimary, 0.16f) else surfaceBase.blend(Color.White, 0.12f),
+    surfaceContainer = surfaceBase.blend(Color.White, 0.05f),
+    surfaceContainerLow = surfaceBase.blend(Color.White, 0.06f),
+    surfaceContainerLowest = surfaceBase.blend(Color.White, 0.04f),
+    surfaceContainerHigh = surfaceBase.blend(Color.White, 0.08f),
+    surfaceContainerHighest = surfaceBase.blend(Color.White, 0.12f),
 
     // FIXED TONES (M3 requirement untuk stabil light/dark)
     primaryFixed = customPrimary ?: basePrimaryDefault,
@@ -141,9 +141,9 @@ fun vortexLightColorScheme(customPrimary: Color? = null) = lightColorScheme(
 
     inversePrimary = (customPrimary ?: basePrimaryDefault).blend(surfaceBaseLight, 0.40f),
 
-    secondary = if (customPrimary != null) customPrimary.blend(Color.Black, 0.4f) else baseSecondaryDefault.blend(Color.Black, 0.85f).blend(surfaceBaseLight, 0.4f),
+    secondary = (customPrimary ?: basePrimaryDefault).blend(Color.Black, 0.4f),
     onSecondary = Color.Black,
-    secondaryContainer = if (customPrimary != null) customPrimary.blend(surfaceBaseLight, 0.7f) else baseSecondaryDefault.blend(Color.Black, 0.45f).blend(surfaceBaseLight, 0.7f),
+    secondaryContainer = (customPrimary ?: basePrimaryDefault).blend(surfaceBaseLight, 0.7f),
     onSecondaryContainer = Color.Black,
 
     tertiary = baseTertiaryDefault,
@@ -179,11 +179,11 @@ fun vortexLightColorScheme(customPrimary: Color? = null) = lightColorScheme(
     // SURFACE MULTI-LAYER (Material 3 elevations)
     surfaceBright = surfaceBrightLight,
     surfaceDim = surfaceDimLight,
-    surfaceContainer = if (customPrimary != null) surfaceBaseLight.blend(customPrimary, 0.08f) else surfaceBaseLight.blend(Color.Black, 0.05f),
-    surfaceContainerLow = if (customPrimary != null) surfaceBaseLight.blend(customPrimary, 0.04f) else surfaceBaseLight.blend(Color.Black, 0.06f),
-    surfaceContainerLowest = if (customPrimary != null) surfaceBaseLight else surfaceBaseLight.blend(Color.Black, 0.04f),
-    surfaceContainerHigh = if (customPrimary != null) surfaceBaseLight.blend(customPrimary, 0.12f) else surfaceBaseLight.blend(Color.Black, 0.08f),
-    surfaceContainerHighest = if (customPrimary != null) surfaceBaseLight.blend(customPrimary, 0.16f) else surfaceBaseLight.blend(Color.Black, 0.12f),
+    surfaceContainer = surfaceBaseLight.blend(Color.Black, 0.05f),
+    surfaceContainerLow = surfaceBaseLight.blend(Color.Black, 0.06f),
+    surfaceContainerLowest = surfaceBaseLight.blend(Color.Black, 0.04f),
+    surfaceContainerHigh = surfaceBaseLight.blend(Color.Black, 0.08f),
+    surfaceContainerHighest = surfaceBaseLight.blend(Color.Black, 0.12f),
 
     primaryFixed = customPrimary ?: basePrimaryDefault,
     primaryFixedDim = (customPrimary ?: basePrimaryDefault).blend(Color.Black, 0.20f),
