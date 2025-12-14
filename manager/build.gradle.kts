@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)
+    implementation(libs.colorpicker.compose)
 
     implementation(libs.androidx.profileinstaller)
     "baselineProfile"(project(":baselineprofile"))

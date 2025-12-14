@@ -1,17 +1,23 @@
 package frb.axeron.manager.ui.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,15 +38,23 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import frb.axeron.manager.ui.component.PaletteDialog
 import frb.axeron.manager.ui.component.SettingsItem
+import frb.axeron.manager.ui.component.hexToColor
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 
@@ -51,6 +65,7 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     val settingsViewModel = viewModelGlobal.settingsViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
+    var showColorPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -63,6 +78,7 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     ) { paddingValues ->
 
         val isDarkMode = isSystemInDarkTheme()
+        val currentColor = hexToColor(settingsViewModel.customPrimaryColorHex) ?: Color(0xFFF56A1C)
 
         Column(
             modifier = Modifier
@@ -125,6 +141,48 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 checked = settingsViewModel.isDynamicColorEnabled,
                 onSwitchChange = {
                     settingsViewModel.setDynamicColor(it)
+                }
+            )
+
+            SettingsItem(
+                iconVector = Icons.Filled.Palette,
+                label = "Color Palette",
+                description = if (settingsViewModel.isDynamicColorEnabled) "Overridden by Dynamic Color" else "Customize primary color",
+                enabled = !settingsViewModel.isDynamicColorEnabled,
+                onClick = { showColorPicker = true }
+            ) { _, _ ->
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Current:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(currentColor)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    )
+                }
+            }
+        }
+
+        if (showColorPicker) {
+            PaletteDialog(
+                initialColor = currentColor,
+                onDismiss = { showColorPicker = false },
+                onConfirm = { hex ->
+                    settingsViewModel.setCustomPrimaryColor(hex)
+                    showColorPicker = false
+                },
+                onReset = {
+                    settingsViewModel.setCustomPrimaryColor(null)
+                    showColorPicker = false
                 }
             )
         }
