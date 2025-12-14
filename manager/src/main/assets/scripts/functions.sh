@@ -166,6 +166,7 @@ install_plugin() {
   mkdir -p "$MODPATH_UPDATE"
   touch "$MODPATH"/update
   touch "$MODPATH_UPDATE"/update_install
+  touch "$MODPATH"/disable
   
   ui_print "- Done"
 }
