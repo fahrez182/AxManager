@@ -7,7 +7,7 @@ compatibility = "2.0.0"
 coreKtxVersion = "1.4.1"
 gson = "2.13.2"
 hiddenapibypass = "6.1"
-ksp = "2.2.0-2.0.2"
+ksp = "2.2.21-2.0.4"
 kotlin = "2.2.21"
 coreKtx = "1.17.0"
 libcxx = "29.0.14206865"
@@ -21,6 +21,7 @@ webkit = "1.14.0"
 zip4j = "2.11.5"
 composeBom = "2025.12.00"
 parcelablelist = "2.0.1"
+colorpicker-compose = "1.1.2"
 coil-compose = "2.7.0"
 appiconloader-coil = "1.5.0"
 mmrl = "v33890"
@@ -66,6 +67,7 @@ compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = 
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+colorpicker-compose = { module = "com.github.skydoves:colorpicker-compose", version.ref = "colorpicker-compose" }
 
 compose-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil-compose" }
 
