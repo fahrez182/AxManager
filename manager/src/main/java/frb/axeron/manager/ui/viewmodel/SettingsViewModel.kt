@@ -78,4 +78,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    var customPrimaryColorHex by mutableStateOf(
+        prefs.getString("custom_primary_color", null)
+    )
+        private set
+
+    fun setCustomPrimaryColor(hex: String?) {
+        viewModelScope.launch {
+            customPrimaryColorHex = hex
+            prefs.edit {
+                if (hex != null) {
+                    putString("custom_primary_color", hex)
+                } else {
+                    remove("custom_primary_color")
+                }
+            }
+        }
+    }
+
 }

@@ -171,6 +171,7 @@ object AxeronPluginService {
             err = if (!hideStderr) builderErr.toString() else ""
         )
     }.getOrElse { e ->
+        if (e is kotlinx.coroutines.CancellationException || e.toString().contains("CancellationException")) throw e
         ResultExec(-1, err = e.toString())
     }
 

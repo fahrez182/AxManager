@@ -12,62 +12,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.manager.ui.component.blend
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 
-//val DarkColorScheme = darkColorScheme(
-//    //Primary
-//    primary = PRIMARY.blend(AMOLED_BLACK, 0.2f),
-//    onPrimary = PRIMARY.blend(AMOLED_BLACK, 0.8f),
-//    primaryContainer = PRIMARY_DARK.blend(AMOLED_BLACK, 0.2f),
-//    onPrimaryContainer = Color.White.blend(PRIMARY, 0.2f),
-//    //Secondary
-//    secondary = SECONDARY,
-//    onSecondary = SECONDARY.blend(Color.White, 0.5f),
-//    secondaryContainer = SECONDARY_DARK.blend(AMOLED_BLACK, 0.55f),
-//    onSecondaryContainer = Color.White.blend(PRIMARY, 0.2f),
-//    //Tertiary
-//    tertiary = TERTIARY,
-//    onTertiary = Color.White.blend(AMOLED_BLACK, 0.2f),
-//    tertiaryContainer = TERTIARY.blend(AMOLED_BLACK, 0.4f),
-//    onTertiaryContainer = Color.White.blend(TERTIARY, 0.2f),
-//    //Surface
-//    surface = DARK_BLEND.blend(AMOLED_BLACK, 0.7f),
-//    onSurface = Color.White.blend(AMOLED_BLACK, 0.1f),
-//    surfaceVariant = DARK_BLEND.blend(AMOLED_BLACK, 0.4f),
-//    onSurfaceVariant = Color.White.blend(AMOLED_BLACK, 0.3f),
-//    surfaceTint = Color.White.blend(AMOLED_BLACK, 0.4f),
-//    surfaceContainer = DARK_BLEND.blend(AMOLED_BLACK, 0.4f),
-//    surfaceContainerLowest = DARK_BLEND.blend(AMOLED_BLACK, 0.6f),
-//    surfaceContainerLow = DARK_BLEND.blend(AMOLED_BLACK, 0.5f),
-//    surfaceContainerHigh = DARK_BLEND.blend(AMOLED_BLACK, 0.45f),
-//    surfaceContainerHighest = DARK_BLEND.blend(AMOLED_BLACK, 0.4f),
-//    errorContainer = RED.blend(AMOLED_BLACK, 0.5f),
-//    outline = DARK_BLEND.blend(Color.White, 0.1f),
-//    background = DARK_BLEND.blend(AMOLED_BLACK, 0.7f),
-//)
-//
-//val LightColorScheme = lightColorScheme(
-//    //Primary
-//    primary = PRIMARY.blend(AMOLED_BLACK, 0.2f),
-//    onPrimary = PRIMARY.blend(Color.White, 0.8f),
-//    primaryContainer = PRIMARY_DARK.blend(Color.White, 0.65f),
-//    onPrimaryContainer = DARK_BLEND,
-//    //Secondary
-//    secondary = SECONDARY.blend(AMOLED_BLACK, 0.2f),
-//    onSecondary = SECONDARY.blend(Color.White, 0.8f),
-//    secondaryContainer = SECONDARY_DARK.blend(Color.White, 0.55f),
-//    onSecondaryContainer = DARK_BLEND,
-//    //Surface
-//    surface = DARK_BLEND.blend(Color.White, 0.82f),
-//    surfaceVariant = DARK_BLEND.blend(Color.White, 0.7f),
-//    onSurfaceVariant = AMOLED_BLACK.blend(Color.White, 0.2f),
-//    surfaceContainer = DARK_BLEND.blend(Color.White, 0.95f),
-//    surfaceContainerLowest = DARK_BLEND.blend(Color.White, 0.98f),
-//    surfaceContainerLow = DARK_BLEND.blend(Color.White, 0.95f),
-//    surfaceContainerHigh = DARK_BLEND.blend(Color.White, 0.9f),
-//    surfaceContainerHighest = DARK_BLEND.blend(Color.White, 0.85f),
-//    errorContainer = RED.blend(Color.White, 0.5f),
-//    outline = DARK_BLEND.blend(Color.White, 0.1f),
-//    background = DARK_BLEND.blend(Color.White, 0.82f),
-//)
+fun hexToColor(hex: String?): Color? {
+    if (hex == null) return null
+    return try {
+        val cleanHex = hex.removePrefix("#")
+        when (cleanHex.length) {
+            6 -> Color(("FF$cleanHex").toLong(16))
+            8 -> Color(cleanHex.toLong(16))
+            else -> null
+        }
+    } catch (e: Exception) {
+        null
+    }
+}
 
 @Composable
 fun AxManagerTheme(
@@ -83,6 +40,7 @@ fun AxManagerTheme(
     }
 
     val dynamicColor = settingsViewModel.isDynamicColorEnabled
+    val customPrimaryColor = hexToColor(settingsViewModel.customPrimaryColorHex)
 
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -141,8 +99,8 @@ fun AxManagerTheme(
             }
         }
 
-        darkTheme -> vortexDarkColorScheme()
-        else -> vortexLightColorScheme()
+        darkTheme -> vortexDarkColorScheme(customPrimaryColor)
+        else -> vortexLightColorScheme(customPrimaryColor)
     }
 
     MaterialTheme(

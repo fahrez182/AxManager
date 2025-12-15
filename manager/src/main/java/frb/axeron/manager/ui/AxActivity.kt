@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -39,6 +40,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -164,39 +166,43 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         else -> true
     }
 
-    Scaffold(
-        bottomBar = {
-            AnimatedVisibility(
-                visible = showBottomBar,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    Box {
+        Scaffold(
+            contentWindowInsets = WindowInsets()
+        ) { innerPadding ->
+            CompositionLocalProvider(
+                LocalSnackbarHost provides snackBarHostState,
             ) {
-                BottomBar(
-                    navController,
-                    adbViewModel.axeronInfo,
-                    privilegeViewModel.isPrivilegeEnabled,
-                    pluginViewModel.pluginUpdateCount
+                DestinationsNavHost(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .padding(bottom = if (showBottomBar) 80.dp else 0.dp),
+                    navGraph = NavGraphs.root,
+                    navController = navController,
+                    dependenciesContainerBuilder = {
+                        dependency(viewModelGlobal)
+                    },
+                    defaultTransitions = object : NavHostAnimatedDestinationStyle() {
+                        override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition
+                            get() = { fadeIn(animationSpec = tween(300)) }
+                        override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition
+                            get() = { fadeOut(animationSpec = tween(300)) }
+                    }
                 )
             }
-        },
-        contentWindowInsets = WindowInsets()
-    ) { innerPadding ->
-        CompositionLocalProvider(
-            LocalSnackbarHost provides snackBarHostState,
+        }
+
+        AnimatedVisibility(
+            visible = showBottomBar,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            DestinationsNavHost(
-                modifier = Modifier.padding(innerPadding),
-                navGraph = NavGraphs.root,
-                navController = navController,
-                dependenciesContainerBuilder = {
-                    dependency(viewModelGlobal)
-                },
-                defaultTransitions = object : NavHostAnimatedDestinationStyle() {
-                    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition
-                        get() = { fadeIn(animationSpec = tween(300)) }
-                    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition
-                        get() = { fadeOut(animationSpec = tween(300)) }
-                }
+            BottomBar(
+                navController,
+                adbViewModel.axeronInfo,
+                privilegeViewModel.isPrivilegeEnabled,
+                pluginViewModel.pluginUpdateCount
             )
         }
     }
@@ -212,13 +218,16 @@ fun BottomBar(
     val navigator = navController.rememberDestinationsNavigator()
 
     Card(
-        colors = CardDefaults.elevatedCardColors(
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        elevation = CardDefaults.cardElevation(4.dp),
+        elevation = CardDefaults.cardElevation(0.dp),
         shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp)
     ) {
-        NavigationBar(containerColor = Color.Transparent) {
+        NavigationBar(
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp
+        ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
