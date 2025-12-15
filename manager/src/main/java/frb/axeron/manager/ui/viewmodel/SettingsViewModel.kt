@@ -9,6 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import frb.axeron.manager.ui.theme.basePrimaryDefault
+import frb.axeron.manager.ui.theme.toHexString
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -79,20 +81,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     var customPrimaryColorHex by mutableStateOf(
-        prefs.getString("custom_primary_color", null)
+        prefs.getString("custom_primary_color", null) ?: basePrimaryDefault.toHexString()
     )
         private set
 
-    fun setCustomPrimaryColor(hex: String?) {
+    fun setCustomPrimaryColor(hex: String) {
         viewModelScope.launch {
             customPrimaryColorHex = hex
             prefs.edit {
-                if (hex != null) {
-                    putString("custom_primary_color", hex)
-                } else {
-                    remove("custom_primary_color")
-                }
+                putString("custom_primary_color", hex)
             }
+        }
+    }
+
+    fun removeCustomPrimaryColor() {
+        viewModelScope.launch {
+            prefs.edit { remove("custom_primary_color") }
         }
     }
 
