@@ -65,14 +65,13 @@ public class AxeronSettings {
         getPreferences().edit().putInt("mode", method).apply();
     }
 
-//    @AppCompatDelegate.NightMode
-//    public static int getNightMode() {
-//        int defValue = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
-//        if (EnvironmentUtil.isWatch(ActivityThread.currentActivityThread().getApplication())) {
-//            defValue = AppCompatDelegate.MODE_NIGHT_YES;
-//        }
-//        return getPreferences().getInt(NIGHT_MODE, defValue);
-//    }
+    public static boolean getStartOnBoot() {
+        return getPreferences().getBoolean(KEEP_START_ON_BOOT, true);
+    }
+
+    public static void setStartOnBoot(boolean method) {
+        getPreferences().edit().putBoolean(KEEP_START_ON_BOOT, method).apply();
+    }
 
     public static Locale getLocale() {
         String tag = getPreferences().getString(LANGUAGE, null);

@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.topjohnwu.superuser.Shell
 import frb.axeron.adb.AdbClient
 import frb.axeron.adb.AdbKey
 import frb.axeron.adb.AdbMdns
@@ -30,9 +31,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-const val TAG = "AdbViewModel"
+class ActivateViewModel : ViewModel() {
 
-class AdbViewModel : ViewModel() {
+    companion object {
+        const val TAG = "AdbViewModel"
+    }
 
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
@@ -77,9 +80,30 @@ class AdbViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Update state apakah notifikasi aktif atau tidak
-     */
+    fun startRoot(): Boolean = runBlocking(Dispatchers.IO) {
+        if (tryActivate) return@runBlocking true
+        tryActivate = true
+
+        var result = false
+
+        if (!Shell.getShell().isRoot) {
+            Shell.getCachedShell()?.close()
+            tryActivate = false
+            return@runBlocking result
+        }
+
+
+        Shell.cmd(Starter.internalCommand).submit {
+            if (it.isSuccess) {
+                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ROOT)
+                result = true
+            }
+        }
+
+        tryActivate = false
+        return@runBlocking result
+    }
+
     @RequiresApi(Build.VERSION_CODES.R)
     fun updateNotificationState(context: Context) {
         viewModelScope.launch {
@@ -165,35 +189,33 @@ class AdbViewModel : ViewModel() {
         }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun startPairingService(context: Context) {
-        viewModelScope.launch {
-            if (!isNotificationEnabled) return@launch
-            val intent = AdbPairingService.startIntent(context)
-            try {
-                context.startForegroundService(intent)
-            } catch (e: Throwable) {
-                Log.e("AxManager", "startForegroundService", e)
+    fun startPairingService(context: Context) = runBlocking(Dispatchers.IO) {
+        if (!isNotificationEnabled) return@runBlocking
+        val intent = AdbPairingService.startIntent(context)
+        try {
+            context.startForegroundService(intent)
+        } catch (e: Throwable) {
+            Log.e("AxManager", "startForegroundService", e)
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                    && e is ForegroundServiceStartNotAllowedException
-                ) {
-                    val mode = context.getSystemService(AppOpsManager::class.java)
-                        .noteOpNoThrow(
-                            "android:start_foreground",
-                            android.os.Process.myUid(),
-                            context.packageName,
-                            null,
-                            null
-                        )
-                    if (mode == AppOpsManager.MODE_ERRORED) {
-                        Toast.makeText(
-                            context,
-                            "OP_START_FOREGROUND is denied. What are you doing?",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                    context.startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && e is ForegroundServiceStartNotAllowedException
+            ) {
+                val mode = context.getSystemService(AppOpsManager::class.java)
+                    .noteOpNoThrow(
+                        "android:start_foreground",
+                        android.os.Process.myUid(),
+                        context.packageName,
+                        null,
+                        null
+                    )
+                if (mode == AppOpsManager.MODE_ERRORED) {
+                    Toast.makeText(
+                        context,
+                        "OP_START_FOREGROUND is denied. What are you doing?",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
+                context.startService(intent)
             }
         }
     }

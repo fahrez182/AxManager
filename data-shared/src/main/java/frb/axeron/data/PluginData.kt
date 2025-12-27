@@ -1,7 +1,15 @@
 package frb.axeron.data
 
+import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
+data class PluginInstaller(
+    val uri: Uri,
+    var autoEnable: Boolean = true
+): Parcelable
 
 class ModuleProp(json: String = "") : ParcelableMapJson(json) {
     val id: String by field("id", "")

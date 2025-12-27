@@ -16,6 +16,26 @@ android {
         minSdk = 24
 
         consumerProguardFiles("consumer-rules.pro")
+
+        buildConfigField(
+            "String",
+            "SERVER_VERSION_NAME",
+            "\"${AppVersion.VERSION_NAME}\""
+        )
+        buildConfigField(
+            "int",
+            "SERVER_VERSION_CODE",
+            "${ServerVersion.VERSION_CODE}"
+        )
+        buildConfigField(
+            "int",
+            "SERVER_PATCH_CODE",
+            "${ServerVersion.PATCH_CODE}"
+        )
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {

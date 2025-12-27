@@ -2,7 +2,6 @@ package frb.axeron.manager.ui.screen.plugin
 
 import android.app.Activity.RESULT_OK
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -13,7 +12,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -59,6 +57,7 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.data.PluginInfo
+import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.SettingsItem
@@ -166,20 +165,20 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                     val data = result.data ?: return@rememberLauncherForActivityResult
                     val clipData = data.clipData
 
-                    val uris = mutableListOf<Uri>()
+                    val installers = mutableListOf<PluginInstaller>()
                     if (clipData != null) {
                         for (i in 0 until clipData.itemCount) {
-                            clipData.getItemAt(i)?.uri?.let { uris.add(it) }
+                            clipData.getItemAt(i)?.uri?.let { installers.add(PluginInstaller(it)) }
                         }
                     } else {
-                        data.data?.let { uris.add(it) }
+                        data.data?.let { installers.add(PluginInstaller(it)) }
                     }
 
-                    if (uris.isEmpty()) return@rememberLauncherForActivityResult
+                    if (installers.isEmpty()) return@rememberLauncherForActivityResult
 
-                    pluginViewModel.updateZipUris(uris)
+                    pluginViewModel.updateZipUris(installers)
 
-                    navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(uris)))
+                    navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(installers)))
                     pluginViewModel.clearZipUris()
                     pluginViewModel.markNeedRefresh()
                 }
@@ -241,7 +240,8 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
             viewModel = pluginViewModel,
             modifier = Modifier.padding(paddingValues),
             onInstallModule = {
-                navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(listOf(it))))
+                navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(listOf(
+                    PluginInstaller(it)))))
             },
             onClickModule = { plugin ->
                 if (plugin.hasWebUi) {

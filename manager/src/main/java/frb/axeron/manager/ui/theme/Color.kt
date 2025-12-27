@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
@@ -59,21 +60,41 @@ fun Color.toHexString(includeAlpha: Boolean = true): String {
 val AMOLED_BLACK: Color = Color(0xFF000000)
 
 val basePrimaryDefault = Color(0xFFF56A1C)
+
 //private val baseSecondaryDefault = Color(0xFFDE5900)
 //private val baseTertiaryDefault = Color(0xFFAD6804)
 private val baseError = Color(0xFFFF452C)
 
 // Surface logic → tipikal dark mode M3
-private val surfaceBase = Color(0xFF151515)
-private val surfaceBright = surfaceBase.blend(Color.White, 0.10f)
-private val surfaceDim = surfaceBase.blend(Color.Black, 0.10f)
-
-private val surfaceBaseLight = Color(0xFFFFFFFF)
-private val surfaceBrightLight = surfaceBaseLight.blend(Color.Black, 0.05f)
-private val surfaceDimLight = surfaceBaseLight.blend(Color.Black, 0.10f)
 
 
-fun vortexDarkColorScheme(customPrimary: Color = basePrimaryDefault) = darkColorScheme(
+fun getVortexDarkColorScheme(
+    customPrimary: Color = basePrimaryDefault,
+): ColorScheme {
+    val surfaceBase = Color(0xFF151515).blend(customPrimary, 0.02f)
+    val surfaceBright = surfaceBase.blend(Color.White, 0.10f)
+    val surfaceDim = surfaceBase.blend(Color.Black, 0.10f)
+
+    return vortexDarkColorScheme(customPrimary, surfaceBase, surfaceBright, surfaceDim)
+}
+
+fun getVortexLightColorScheme(
+    customPrimary: Color = basePrimaryDefault,
+): ColorScheme {
+    val surfaceBaseLight = Color(0xFFFFFFFF).blend(customPrimary, 0.02f)
+    val surfaceBrightLight = surfaceBaseLight.blend(Color.Black, 0.05f)
+    val surfaceDimLight = surfaceBaseLight.blend(Color.Black, 0.10f)
+
+    return vortexLightColorScheme(customPrimary, surfaceBaseLight, surfaceBrightLight, surfaceDimLight)
+}
+
+
+private fun vortexDarkColorScheme(
+    customPrimary: Color,
+    surfaceBase: Color,
+    surfaceBright: Color,
+    surfaceDim: Color
+) = darkColorScheme(
 
     // PRIMARY
     primary = customPrimary,
@@ -145,7 +166,12 @@ fun vortexDarkColorScheme(customPrimary: Color = basePrimaryDefault) = darkColor
 )
 
 
-fun vortexLightColorScheme(customPrimary: Color = basePrimaryDefault) = lightColorScheme(
+private fun vortexLightColorScheme(
+    customPrimary: Color,
+    surfaceBaseLight: Color,
+    surfaceBrightLight: Color,
+    surfaceDimLight: Color
+) = lightColorScheme(
     primary = customPrimary,
     onPrimary = customPrimary.blend(Color.White, 0.80f),
     primaryContainer = customPrimary.blend(surfaceBaseLight, 0.45f),

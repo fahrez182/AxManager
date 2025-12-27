@@ -18,8 +18,8 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = 13_117
-        versionName = "1.3.1"
+        versionCode = AppVersion.VERSION_CODE
+        versionName = AppVersion.VERSION_NAME
     }
 
     buildTypes {
@@ -91,6 +91,8 @@ dependencies {
     implementation(libs.rikka.parcelablelist)
     implementation(libs.rikka.hidden.compat)
     compileOnly(libs.rikka.hidden.stub)
+
+    implementation(libs.topjohnwu.libsu.core)
 
     implementation(libs.gson)
     implementation(libs.markdown)

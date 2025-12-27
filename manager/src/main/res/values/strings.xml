@@ -8,4 +8,5 @@
     <string name="home_update">Need Re-Activate</string>
     <string name="notification_warn_miui">MIUI users may need to switch notification style to \"Android\" from \"Notification\" - \"Notification shade\" in system settings.</string>
     <string name="notification_warn_miui_2">Otherwise, you may not able to enter paring code from the notification.</string>
+    <string name="activate_by_root"><![CDATA[In addition, AxManager can be started automatically on boot. If not, please check if your system or third-party tools have restricted AxManager.<br>You can refer to %s.]]></string>
 </resources>

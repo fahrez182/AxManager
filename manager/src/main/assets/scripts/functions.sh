@@ -113,6 +113,7 @@ uninstall_axmanager() {
 }
 
 install_plugin() {
+  local AUTO_ENABLE=$1
   rm -rf "$TMPDIR"
   mkdir -p "$TMPDIR"
   cd "$TMPDIR" || exit
@@ -166,7 +167,7 @@ install_plugin() {
   mkdir -p "$MODPATH_UPDATE"
   touch "$MODPATH"/update
   touch "$MODPATH_UPDATE"/update_install
-  touch "$MODPATH"/disable
+  [ -n "$AUTO_ENABLE" ] && [ "$AUTO_ENABLE" != "true" ] && touch "$MODPATH/disable"
   
   ui_print "- Done"
 }

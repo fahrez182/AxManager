@@ -1,18 +1,14 @@
 package frb.axeron.manager.ui.screen
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,12 +25,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TextSnippet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.ButtonDefaults
@@ -56,10 +56,12 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -87,7 +89,7 @@ import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,32 +99,70 @@ fun SettingsEditorScreen(
     navigator: DestinationsNavigator,
     viewModelGlobal: ViewModelGlobal
 ) {
-    val contentResolver = LocalContext.current.contentResolver
-    var selectedType by remember { mutableStateOf(SettingsRepository.SettingType.GLOBAL) }
-    var query by remember { mutableStateOf("") }
-    var settingsMap by remember { mutableStateOf<Map<String, String?>>(emptyMap()) }
-    var isRefreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val settingsRepository = SettingsRepository(contentResolver)
     val context = LocalContext.current
+    val contentResolver = context.contentResolver
+    val scope = rememberCoroutineScope()
 
-    val scrollStates =
-        remember { mutableStateMapOf<SettingsRepository.SettingType, LazyListState>() }
+    /* ================= SOURCE OF TRUTH ================= */
 
+    val settingTypes = remember {
+        SettingsRepository.SettingType.entries.toList()
+    }
+
+    var selectedType by remember {
+        mutableStateOf(SettingsRepository.SettingType.GLOBAL)
+    }
+
+    var query by remember { mutableStateOf("") }
     var showFab by remember { mutableStateOf(true) }
 
-    fun loadData() {
+    val settingsRepository = remember(contentResolver) {
+        SettingsRepository(contentResolver)
+    }
+
+    /* ================= PAGER ================= */
+
+    val pagerState = rememberPagerState(
+        initialPage = settingTypes.indexOf(selectedType),
+        pageCount = { settingTypes.size }
+    )
+
+    /* ================= STATE CACHES ================= */
+
+    val dataCache = remember {
+        mutableStateMapOf<SettingsRepository.SettingType, Map<String, String?>>()
+    }
+
+    val loadingStates = remember {
+        mutableStateMapOf<SettingsRepository.SettingType, Boolean>()
+    }
+
+    val scrollStates = remember {
+        mutableStateMapOf<SettingsRepository.SettingType, LazyListState>()
+    }
+
+    /* ================= SYNC PAGER → TAB ================= */
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                selectedType = settingTypes[page]
+                showFab = true
+            }
+    }
+
+    /* ================= REFRESH EVENT ================= */
+
+    fun refresh(type: SettingsRepository.SettingType) {
         scope.launch {
-            isRefreshing = true
-            settingsMap = settingsRepository.getAll(selectedType)
-            isRefreshing = false
+            loadingStates[type] = true
+            dataCache[type] = settingsRepository.getAll(type)
+            loadingStates[type] = false
         }
     }
 
-    LaunchedEffect(selectedType) {
-        showFab = true
-        loadData()
-    }
+    /* ================= UI ================= */
 
     Scaffold(
         topBar = {
@@ -131,7 +171,7 @@ fun SettingsEditorScreen(
                     Text(
                         text = "Settings Editor",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.SemiBold
                     )
                 },
                 searchLabel = "Search Settings",
@@ -139,16 +179,7 @@ fun SettingsEditorScreen(
                 onSearchTextChange = { query = it },
                 onClearClick = { query = "" },
                 action = {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                isRefreshing = true
-                                settingsMap = settingsRepository.getAll(selectedType)
-                                delay(100)
-                                isRefreshing = false
-                            }
-                        }
-                    ) {
+                    IconButton(onClick = { refresh(selectedType) }) {
                         Icon(Icons.Outlined.Refresh, null)
                     }
                 }
@@ -163,138 +194,140 @@ fun SettingsEditorScreen(
                 showDialog = isAdding,
                 selectedType = selectedType,
                 settingsRepository = settingsRepository,
-                onDismissRequest = {
-                    isAdding = false
-                },
-                onRefresh = {
-                    loadData()
-                }
+                onDismissRequest = { isAdding = false },
+                onRefresh = { refresh(selectedType) }
             )
 
             AnimatedVisibility(
                 visible = showFab,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it }
             ) {
-                FloatingActionButton(
-                    onClick = {
-                        isAdding = true
-                    }
-                ) {
+                FloatingActionButton(onClick = { isAdding = true }) {
                     Icon(Icons.Filled.Add, null)
                 }
             }
         }
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
         ) {
+            val scope = rememberCoroutineScope()
+
             RoundedTabRow(
                 selectedType = selectedType,
                 onSelect = {
-                    selectedType = it
+                    scope.launch {
+                        if (selectedType == it) return@launch
+                        val target = settingTypes.indexOf(it)
+                        if (pagerState.currentPage != target && target >= 0) {
+                            pagerState.animateScrollToPage(target)
+                        }
+                        showFab = true
+                    }
                 }
             )
 
-            PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = {
-                    scope.launch {
-                        isRefreshing = true
-                        settingsMap = settingsRepository.getAll(selectedType)
-                        delay(100)
-                        isRefreshing = false
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                key = { page -> settingTypes[page].name }
+            ) { page ->
+
+                val type = settingTypes[page]
+
+                /* ========== INITIAL LOAD (ONCE PER PAGE) ========== */
+
+                LaunchedEffect(type) {
+                    if (!dataCache.containsKey(type)) {
+                        loadingStates[type] = true
+                        dataCache[type] = settingsRepository.getAll(type)
+                        loadingStates[type] = false
+                        Log.d("SettingsEditor", "loaded $type")
                     }
                 }
-            ) {
 
-                Column {
-                    if (isRefreshing) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                val data = dataCache[type] ?: emptyMap()
+                val loading = loadingStates[type] == true
+
+                val filtered by remember(data, query) {
+                    derivedStateOf {
+                        data.filter {
+                            it.key.contains(query, true) ||
+                                    it.value?.contains(query, true) == true
+                        }
+                    }
+                }
+
+                val listState = scrollStates.getOrPut(type) {
+                    LazyListState()
+                }
+
+                /* ========== FAB AUTO HIDE ========== */
+
+                LaunchedEffect(type) {
+                    var lastIndex = listState.firstVisibleItemIndex
+                    var lastOffset = listState.firstVisibleItemScrollOffset
+
+                    snapshotFlow {
+                        listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+                    }.collect { (i, o) ->
+                        val down = i > lastIndex || (i == lastIndex && o > lastOffset + 4)
+                        val up = i < lastIndex || (i == lastIndex && o < lastOffset - 4)
+
+                        when {
+                            down && showFab -> showFab = false
+                            up && !showFab -> showFab = true
+                        }
+
+                        lastIndex = i
+                        lastOffset = o
+                    }
+                }
+
+                /* ========== CONTENT ========== */
+
+                PullToRefreshBox(
+                    isRefreshing = loading,
+                    onRefresh = { refresh(type) }
+                ) {
+                    if (loading && data.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             CircularProgressIndicator()
                         }
                     } else {
-                        val filtered = settingsMap.filter {
-                            it.key.contains(query, ignoreCase = true) || it.value?.contains(query, ignoreCase = true) == true
-                        }
-
-                        AnimatedContent(
-                            targetState = selectedType,
-                            transitionSpec = {
-                                // Dari kiri ke kanan saat maju, kanan ke kiri saat mundur
-                                if (targetState.ordinal > initialState.ordinal) {
-                                    slideInHorizontally(
-                                        initialOffsetX = { it },
-                                        animationSpec = tween(250)
-                                    ) + fadeIn() togetherWith
-                                            slideOutHorizontally(
-                                                targetOffsetX = { -it / 2 },
-                                                animationSpec = tween(250)
-                                            ) + fadeOut()
-                                } else {
-                                    slideInHorizontally(
-                                        initialOffsetX = { -it },
-                                        animationSpec = tween(250)
-                                    ) + fadeIn() togetherWith
-                                            slideOutHorizontally(
-                                                targetOffsetX = { it / 2 },
-                                                animationSpec = tween(250)
-                                            ) + fadeOut()
-                                }
-                            },
-                            label = "SettingsSlideAnim"
-                        ) { type ->
-
-                            val listState = scrollStates.getOrPut(type) { LazyListState() }
-
-                            LaunchedEffect(listState) {
-                                var lastIndex = listState.firstVisibleItemIndex
-                                var lastOffset = listState.firstVisibleItemScrollOffset
-
-                                snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-                                    .collect { (currIndex, currOffset) ->
-                                        val isScrollingDown = currIndex > lastIndex ||
-                                                (currIndex == lastIndex && currOffset > lastOffset + 4)
-                                        val isScrollingUp = currIndex < lastIndex ||
-                                                (currIndex == lastIndex && currOffset < lastOffset - 4)
-
-                                        when {
-                                            isScrollingDown && showFab -> showFab = false
-                                            isScrollingUp && !showFab -> showFab = true
-                                        }
-
-                                        lastIndex = currIndex
-                                        lastOffset = currOffset
-                                    }
-                            }
-
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                state = listState
-                            ) {
-                                items(filtered.entries.toList(), key = { it.key }) { entry ->
-                                    TableItem(
-                                        context = context,
-                                        key = entry.key,
-                                        value = entry.value ?: "",
-                                        selectedType = selectedType,
-                                        settingsRepository = settingsRepository
-                                    ) {
-                                        loadData()
-                                    }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            state = listState
+                        ) {
+                            items(
+                                items = filtered.entries.toList(),
+                                key = { it.key }
+                            ) { entry ->
+                                TableItem(
+                                    context = context,
+                                    key = entry.key,
+                                    value = entry.value ?: "",
+                                    selectedType = type,
+                                    settingsRepository = settingsRepository
+                                ) {
+                                    refresh(type)
                                 }
                             }
                         }
                     }
                 }
-
             }
-
         }
     }
 }
+
 
 @Composable
 fun RoundedTabRow(
@@ -484,12 +517,12 @@ fun TableEditor(
                                 imageVector = Icons.Outlined.Delete,
                                 contentDescription = null
                             )
-                            Text(
-                                modifier = Modifier.padding(start = 7.dp),
-                                text = "Remove",
-                                fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                fontSize = MaterialTheme.typography.labelMedium.fontSize
-                            )
+//                            Text(
+//                                modifier = Modifier.padding(start = 7.dp),
+//                                text = "Remove",
+//                                fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+//                                fontSize = MaterialTheme.typography.labelMedium.fontSize
+//                            )
                         }
                     }
 
@@ -510,12 +543,24 @@ fun TableEditor(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = null
                         )
-                        Text(
-                            modifier = Modifier.padding(start = 7.dp),
-                            text = "Key",
-                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                            fontSize = MaterialTheme.typography.labelMedium.fontSize
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(12.dp)
+                                .padding(horizontal = 4.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
+                        Icon(
+                            modifier = Modifier.size(18.dp),
+                            imageVector = Icons.Outlined.Key,
+                            contentDescription = null
+                        )
+//                        Text(
+//                            modifier = Modifier.padding(start = 7.dp),
+//                            text = "Key",
+//                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+//                            fontSize = MaterialTheme.typography.labelMedium.fontSize
+//                        )
                     }
 
                     Spacer(Modifier.width(10.dp))
@@ -535,12 +580,24 @@ fun TableEditor(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = null
                         )
-                        Text(
-                            modifier = Modifier.padding(start = 7.dp),
-                            text = "Value",
-                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                            fontSize = MaterialTheme.typography.labelMedium.fontSize
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(12.dp)
+                                .padding(horizontal = 4.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
+                        Icon(
+                            modifier = Modifier.size(18.dp),
+                            imageVector = Icons.AutoMirrored.Outlined.TextSnippet,
+                            contentDescription = null
+                        )
+//                        Text(
+//                            modifier = Modifier.padding(start = 7.dp),
+//                            text = "Value",
+//                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+//                            fontSize = MaterialTheme.typography.labelMedium.fontSize
+//                        )
                     }
 
                     Spacer(Modifier.width(10.dp))

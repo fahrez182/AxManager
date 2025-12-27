@@ -63,7 +63,7 @@ import frb.axeron.api.AxeronInfo
 import frb.axeron.manager.ui.navigation.BottomBarDestination
 import frb.axeron.manager.ui.theme.AxManagerTheme
 import frb.axeron.manager.ui.util.LocalSnackbarHost
-import frb.axeron.manager.ui.viewmodel.AdbViewModel
+import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
@@ -94,12 +94,12 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
 
     val appsViewModel: AppsViewModel = viewModel<AppsViewModel>()
     val privilegeViewModel: PrivilegeViewModel = viewModel<PrivilegeViewModel>()
-    val adbViewModel: AdbViewModel = viewModel<AdbViewModel>()
+    val activateViewModel: ActivateViewModel = viewModel<ActivateViewModel>()
     val pluginViewModel: PluginViewModel = viewModel<PluginViewModel>()
 
     DisposableEffect(Unit) {
 
-        adbViewModel.checkAxeronService()
+        activateViewModel.checkAxeronService()
 
         if (Axeron.pingBinder() && Axeron.isUpdated()) {
             pluginViewModel.fetchModuleList()
@@ -125,7 +125,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
 
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived")
-            adbViewModel.checkAxeronService()
+            activateViewModel.checkAxeronService()
             if (Axeron.pingBinder() && Axeron.isUpdated()) {
                 pluginViewModel.fetchModuleList()
                 appsViewModel.loadInstalledApps()
@@ -133,7 +133,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         }
         val deadListener = Axeron.OnBinderDeadListener {
             Log.i("AxManagerBinder", "onBinderDead")
-            adbViewModel.checkAxeronService()
+            activateViewModel.checkAxeronService()
         }
 
         Axeron.addBinderReceivedListener(receivedListener)
@@ -153,7 +153,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         ViewModelGlobal(
             settingsViewModel = settingsViewModel,
             appsViewModel = appsViewModel,
-            adbViewModel = adbViewModel,
+            activateViewModel = activateViewModel,
             pluginViewModel = pluginViewModel,
             privilegeViewModel = privilegeViewModel
         )
@@ -200,7 +200,7 @@ fun MainScreen(settingsViewModel: SettingsViewModel) {
         ) {
             BottomBar(
                 navController,
-                adbViewModel.axeronInfo,
+                activateViewModel.axeronInfo,
                 privilegeViewModel.isPrivilegeEnabled,
                 pluginViewModel.pluginUpdateCount
             )

@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.topjohnwu.superuser.Shell
 import frb.axeron.adb.AdbClient
 import frb.axeron.adb.AdbKey
 import frb.axeron.adb.AdbMdns
@@ -21,16 +22,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-const val TAG = "BootCompleteReceiver"
-
 class BootCompleteReceiver : BroadcastReceiver() {
+
+    companion object {
+        const val TAG = "BootCompleteReceiver"
+    }
 
     override fun onReceive(context: Context, intent: Intent) {
         // Hanya handle BOOT_COMPLETED
-        if (Intent.ACTION_LOCKED_BOOT_COMPLETED != intent.action
-            && Intent.ACTION_BOOT_COMPLETED != intent.action) {
+        val isBootAction =
+            intent.action == Intent.ACTION_BOOT_COMPLETED ||
+                    intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED
+
+        if (!isBootAction || !AxeronSettings.getStartOnBoot()) {
             return
         }
+
 
         if (Axeron.pingBinder()) {
             Log.d(TAG, "status: ${Axeron.pingBinder()}")
@@ -41,14 +48,25 @@ class BootCompleteReceiver : BroadcastReceiver() {
             context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED &&
             AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
         ) {
-
             val pending = goAsync()
             startAdb(context, pending, 0, 5) // attempt=0, maxAttempts=5
+        } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT) {
+            startRoot()
         } else {
             Log.w(TAG, "No support start on boot")
         }
 
         Log.d(TAG, "onReceive: ${intent.action}")
+    }
+
+    private fun startRoot() {
+        if (!Shell.getShell().isRoot) {
+            //NotificationHelper.notify(context, AppConstants.NOTIFICATION_ID_STATUS, AppConstants.NOTIFICATION_CHANNEL_STATUS, R.string.notification_service_start_no_root)
+            Shell.getCachedShell()?.close()
+            return
+        }
+
+        Shell.cmd(Starter.internalCommand).exec()
     }
 
     @RequiresApi(Build.VERSION_CODES.R)

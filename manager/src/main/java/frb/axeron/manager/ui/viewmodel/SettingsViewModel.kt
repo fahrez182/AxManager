@@ -1,7 +1,6 @@
 package frb.axeron.manager.ui.viewmodel
 
 import android.app.Application
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -9,17 +8,23 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import frb.axeron.api.core.AxeronSettings
 import frb.axeron.manager.ui.theme.basePrimaryDefault
 import frb.axeron.manager.ui.theme.toHexString
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val prefs = AxeronSettings.getPreferences()
 
     val themeOptions = listOf("Follow System", "Dark Theme", "Light Theme")
 
     var isIgniteWhenRelogEnabled by mutableStateOf(
         prefs.getBoolean("ignite_when_relog", false)
+    )
+        private set
+
+    var isActivateOnBootEnabled by mutableStateOf(
+        AxeronSettings.getStartOnBoot()
     )
         private set
 
@@ -49,6 +54,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             isIgniteWhenRelogEnabled = enabled
             prefs.edit { putBoolean("ignite_when_relog", enabled) }
+        }
+    }
+
+    fun setActivateOnBoot(enabled: Boolean) {
+        viewModelScope.launch {
+            isActivateOnBootEnabled = enabled
+            AxeronSettings.setStartOnBoot(enabled)
         }
     }
 
@@ -95,6 +107,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun removeCustomPrimaryColor() {
+        customPrimaryColorHex = basePrimaryDefault.toHexString()
         viewModelScope.launch {
             prefs.edit { remove("custom_primary_color") }
         }

@@ -2,7 +2,6 @@ package frb.axeron.manager.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
-import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
@@ -15,6 +14,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
 import frb.axeron.data.PluginInfo
+import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.axApp
 import frb.axeron.manager.ui.util.HanziToPinyin
 import kotlinx.coroutines.Dispatchers
@@ -104,14 +104,14 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         isNeedRefresh = true
     }
 
-    var zipUris by mutableStateOf<List<Uri>>(emptyList())
+    var pluginInstalers by mutableStateOf<List<PluginInstaller>>(emptyList())
 
-    fun updateZipUris(uris: List<Uri>) {
-        zipUris = uris
+    fun updateZipUris(installers: List<PluginInstaller>) {
+        pluginInstalers = installers
     }
 
     fun clearZipUris() {
-        zipUris = emptyList()
+        pluginInstalers = emptyList()
     }
 
     fun fetchModuleList() {

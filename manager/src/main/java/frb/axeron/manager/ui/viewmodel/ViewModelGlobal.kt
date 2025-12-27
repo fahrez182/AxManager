@@ -5,6 +5,6 @@ class ViewModelGlobal(
     val settingsViewModel: SettingsViewModel,
     val appsViewModel: AppsViewModel,
     val privilegeViewModel: PrivilegeViewModel,
-    val adbViewModel: AdbViewModel,
+    val activateViewModel: ActivateViewModel,
     val pluginViewModel: PluginViewModel
 )

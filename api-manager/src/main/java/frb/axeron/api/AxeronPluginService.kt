@@ -1,13 +1,13 @@
 package frb.axeron.api
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import com.google.gson.annotations.SerializedName
 import frb.axeron.api.core.Engine.Companion.application
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.AxeronConstant.server.VERSION_CODE
+import frb.axeron.data.PluginInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -51,12 +51,12 @@ object AxeronPluginService {
     }
 
     suspend fun flashPlugin(
-        uri: Uri,
+        installer: PluginInstaller,
         onStdout: (String) -> Unit,
         onStderr: (String) -> Unit
     ): FlashResult {
         val resolver = application.contentResolver
-        with(resolver.openInputStream(uri)) {
+        with(resolver.openInputStream(installer.uri)) {
             val file = File(PathHelper.getTmpPath(AxeronConstant.folder.PARENT_ZIP), "module.zip")
 
             val fos = axFS.getStreamSession(file.absolutePath, true, false).outputStream
@@ -71,10 +71,10 @@ object AxeronPluginService {
             fos.flush()
             this?.close()
 
-            val cmd = "ZIPFILE=${file.absolutePath}; . functions.sh; install_plugin; exit 0"
+            val cmd = "ZIPFILE=${file.absolutePath}; . functions.sh; install_plugin ${installer.autoEnable}; exit 0"
             val result = execWithIO(cmd, onStdout, onStderr, standAlone = true)
 
-            Log.i(TAG, "install module $uri result: $result")
+            Log.i(TAG, "install module ${installer.uri} result: $result")
 
             axFS.delete(file.absolutePath)
 

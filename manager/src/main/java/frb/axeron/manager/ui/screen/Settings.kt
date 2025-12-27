@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
@@ -79,7 +80,7 @@ import kotlinx.coroutines.launch
 @Destination<RootGraph>
 @Composable
 fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    val adbViewModel = viewModelGlobal.adbViewModel
+    val activateViewModel = viewModelGlobal.activateViewModel
     val settings = viewModelGlobal.settingsViewModel
     val privilegeViewModel = viewModelGlobal.privilegeViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -122,7 +123,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
         }
     ) { paddingValues ->
 
-        val axeronRunning = adbViewModel.axeronInfo.isRunning()
+        val axeronRunning = activateViewModel.axeronInfo.isRunning()
 
         Column(
             modifier = Modifier
@@ -157,6 +158,16 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 checked = settings.isIgniteWhenRelogEnabled,
                 onSwitchChange = {
                     settings.setIgniteWhenRelog(it)
+                }
+            )
+
+            SettingsItem(
+                iconVector = Icons.Filled.RestartAlt,
+                label = "Activate on Boot",
+                description = "Auto activate AxManager on boot (Root / ADB on Android 11+ (Experimental))",
+                checked = settings.isActivateOnBootEnabled,
+                onSwitchChange = {
+                    settings.setActivateOnBoot(it)
                 }
             )
 
@@ -281,7 +292,7 @@ fun DeveloperInfo(
                         .size(110.dp)
                         .shadow(8.dp, CircleShape)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        .background(Color(0xFF303030)),
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
@@ -291,6 +302,7 @@ fun DeveloperInfo(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape)
+                            .background(Color(0xFF303030))
                     )
                 }
 

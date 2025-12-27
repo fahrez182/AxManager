@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import coil.Coil
 import coil.ImageLoader
+import com.topjohnwu.superuser.Shell
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine
 import me.zhanghai.android.appiconloader.coil.AppIconFetcher
@@ -21,8 +22,10 @@ class AxeronApplication : Engine() {
 
         init {
 //            logd("ShizukuApplication", "init")
-//
-//            Shell.setDefaultBuilder(Shell.Builder.create().setFlags(Shell.FLAG_REDIRECT_STDERR))
+            Shell.setDefaultBuilder(Shell.Builder.create())
+            Shell.enableLegacyStderrRedirection = true
+            Shell.enableVerboseLogging = BuildConfig.DEBUG
+
             if (Build.VERSION.SDK_INT >= 28) {
                 HiddenApiBypass.setHiddenApiExemptions("")
             }

@@ -15,7 +15,6 @@ import android.os.PowerManager
 import android.os.SELinux
 import android.os.ServiceManager
 import android.os.SystemClock
-import android.os.WorkSource
 import android.system.Os
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
@@ -75,7 +74,8 @@ open class AxeronService() : Service() {
 
         val powerManager: SystemServiceBinder<IPowerManager> by lazy {
             SystemServiceBinder<IPowerManager>(
-                "power", IPowerManager.Stub::asInterface);
+                "power", IPowerManager.Stub::asInterface
+            )
         }
 
         fun getManagerApplicationInfo(): ApplicationInfo? {
@@ -245,7 +245,7 @@ open class AxeronService() : Service() {
                 powerManager.get().acquireWakeLockWithUid(lockToken, flags, tag, pkg, uid)
             }
             LOGGER.i("Acquire wakelock success")
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             LOGGER.e("Acquire wakelock failed", e)
         }
     }
@@ -253,9 +253,9 @@ open class AxeronService() : Service() {
     fun release() {
         LOGGER.i("Release wakelock")
         try {
-            powerManager.get().releaseWakeLock(lockToken, 0);
+            powerManager.get().releaseWakeLock(lockToken, 0)
             LOGGER.i("Release wakelock success")
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             LOGGER.e("Release wakelock failed", e)
         }
     }
@@ -286,7 +286,7 @@ open class AxeronService() : Service() {
 
         if (axCompanion.exists()) {
             // use lazy initialization via property above
-            shizuku = ShizukuService(mainHandler, shizukuUserServiceManager)
+            shizuku = ShizukuService(mainHandler, shizukuUserServiceManager, this)
         }
 
         // make ApkChangedObservers lazy or start on-demand; and keep reference to listener so you can stop it
@@ -326,7 +326,8 @@ open class AxeronService() : Service() {
                 LOGGER.i("AX-Scope")
                 shizuku = ShizukuService(
                     mainHandler,
-                    shizukuUserServiceManager
+                    shizukuUserServiceManager,
+                    this
                 )
             }
         } else {

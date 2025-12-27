@@ -49,7 +49,7 @@ fun AxManagerTheme(
             val dynamicLightColorScheme = dynamicLightColorScheme(context)
 
             when {
-                darkTheme -> vortexDarkColorScheme().copy(
+                darkTheme -> getVortexDarkColorScheme().copy(
                     primary = dynamicDarkColorScheme.primary.blend(AMOLED_BLACK, 0.2f),
                     onPrimary = dynamicDarkColorScheme.onPrimary.blend(AMOLED_BLACK, 0.2f),
                     primaryContainer = dynamicDarkColorScheme.primaryContainer.blend(
@@ -73,7 +73,7 @@ fun AxManagerTheme(
                     ),
                 )
 
-                else -> vortexLightColorScheme().copy(
+                else -> getVortexLightColorScheme().copy(
                     primary = dynamicLightColorScheme.primary.blend(Color.White, 0.25f),
                     onPrimary = dynamicLightColorScheme.onPrimary.blend(Color.White, 0.8f),
                     primaryContainer = dynamicLightColorScheme.primaryContainer.blend(
@@ -99,8 +99,8 @@ fun AxManagerTheme(
             }
         }
 
-        darkTheme -> vortexDarkColorScheme(customPrimaryColor)
-        else -> vortexLightColorScheme(customPrimaryColor)
+        darkTheme -> getVortexDarkColorScheme(customPrimaryColor)
+        else -> getVortexLightColorScheme(customPrimaryColor)
     }
 
     MaterialTheme(

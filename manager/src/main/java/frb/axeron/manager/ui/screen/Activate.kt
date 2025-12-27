@@ -3,24 +3,33 @@ package frb.axeron.manager.ui.screen
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.text.Html
+import android.text.method.LinkMovementMethod
 import android.util.Log
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -34,13 +43,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -49,7 +59,7 @@ import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
-import frb.axeron.manager.ui.viewmodel.AdbViewModel
+import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.utils.Starter
 import kotlinx.coroutines.launch
@@ -59,8 +69,8 @@ import rikka.compatibility.DeviceCompatibility
 @Destination<RootGraph>
 @Composable
 fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    val adbViewModel = viewModelGlobal.adbViewModel
-    val axeronInfo = adbViewModel.axeronInfo
+    val activateViewModel = viewModelGlobal.activateViewModel
+    val axeronInfo = activateViewModel.axeronInfo
 
     if (axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()) {
         navigator.popBackStack()
@@ -84,11 +94,13 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             )
         }
     ) { paddingValues ->
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (DeviceCompatibility.isMiui()) {
@@ -123,8 +135,9 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WirelessDebuggingCard(navigator, adbViewModel)
+                WirelessDebuggingCard(navigator, activateViewModel)
             }
+            RootCard(navigator, activateViewModel)
             ComputerCard()
         }
     }
@@ -136,25 +149,25 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 @Composable
 fun WirelessDebuggingCard(
     navigator: DestinationsNavigator,
-    adbViewModel: AdbViewModel
+    activateViewModel: ActivateViewModel
 ) {
     val context = LocalContext.current
 
     // Panggil sekali untuk update state dari ViewModel
     LaunchedEffect(Unit) {
-        adbViewModel.updateNotificationState(context)
+        activateViewModel.updateNotificationState(context)
     }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        adbViewModel.updateNotificationState(context) // auto re-check izin
+        activateViewModel.updateNotificationState(context) // auto re-check izin
     }
 
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        adbViewModel.startAdb(context, true)
+        activateViewModel.startAdb(context, true)
     }
 
     val dialogDeveloper = rememberConfirmDialog()
@@ -173,11 +186,23 @@ fun WirelessDebuggingCard(
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            Text(
-                text = "Start via Wireless debugging",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Wifi,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Text(
+                    text = "Start via Wireless debugging",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             Spacer(modifier = Modifier.size(20.dp))
 
             Text(
@@ -198,7 +223,7 @@ fun WirelessDebuggingCard(
                             neutral = "Step-by-Step"
                         )
                         if (confirmResult == ConfirmResult.Confirmed) {
-                            adbViewModel.setLaunchDevSettings(true)
+                            activateViewModel.setLaunchDevSettings(true)
                         }
                         if (confirmResult == ConfirmResult.Neutral) {
                             uriHandler.openUri(stepByStepUrl)
@@ -217,14 +242,14 @@ fun WirelessDebuggingCard(
             }
             Spacer(modifier = Modifier.size(8.dp))
 
-            LaunchedEffect(adbViewModel.devSettings) {
-                if (adbViewModel.devSettings) {
+            LaunchedEffect(activateViewModel.devSettings) {
+                if (activateViewModel.devSettings) {
                     val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
                         putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
                     }
                     launcherDeveloper.launch(intent)
                     Log.d("AxManager", "launchDevSettings")
-                    adbViewModel.setLaunchDevSettings(false)
+                    activateViewModel.setLaunchDevSettings(false)
                 }
             }
 
@@ -232,20 +257,20 @@ fun WirelessDebuggingCard(
 
             Button(
                 onClick = {
-                    if (!adbViewModel.isNotificationEnabled) {
+                    if (!activateViewModel.isNotificationEnabled) {
                         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                         }
                         launcher.launch(intent)
                         return@Button
                     } else {
-                        if (adbViewModel.tryActivate) {
+                        if (activateViewModel.tryActivate) {
                             Toast.makeText(context, "Please Wait...", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         scope.launch {
                             val success = loadingDialog.withLoading {
-                                adbViewModel.startAdb(context)
+                                activateViewModel.startAdb(context)
                             }
 
                             if (success) {
@@ -257,7 +282,7 @@ fun WirelessDebuggingCard(
                 }
             ) {
                 when {
-                    !adbViewModel.isNotificationEnabled -> {
+                    !activateViewModel.isNotificationEnabled -> {
                         Icon(
                             imageVector = Icons.Filled.Notifications,
                             modifier = Modifier
@@ -286,6 +311,94 @@ fun WirelessDebuggingCard(
 }
 
 @Composable
+fun RootCard(
+    navigator: DestinationsNavigator,
+    activateViewModel: ActivateViewModel
+) {
+    val context = LocalContext.current
+
+    val scope = rememberCoroutineScope()
+
+    ElevatedCard(
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Text(
+                    text = "Start (for rooted devices)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.size(20.dp))
+
+            @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
+            AndroidView(
+                factory = { context ->
+                    TextView(context).apply {
+                        text = Html.fromHtml(
+                            context.getString(R.string.activate_by_root,
+                                "<b><a href=\"https://dontkillmyapp.com/\">Don\'t kill my app!</a></b>"),
+                            Html.FROM_HTML_MODE_LEGACY
+                        )
+                        movementMethod = LinkMovementMethod.getInstance()
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.size(20.dp))
+
+            val loadingDialog = rememberLoadingDialog()
+
+            Button(
+                onClick = {
+                    if (activateViewModel.tryActivate) {
+                        Toast.makeText(context, "Please Wait...", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    scope.launch {
+                        val success = loadingDialog.withLoading {
+                            activateViewModel.startRoot()
+                        }
+
+                        if (success) {
+                            navigator.popBackStack()
+                        } else {
+                            Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .size(16.dp),
+                    contentDescription = "Start"
+                )
+                Text("Start")
+            }
+        }
+    }
+}
+
+@Composable
 fun ComputerCard() {
     val context = LocalContext.current
 
@@ -305,11 +418,24 @@ fun ComputerCard() {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(
-                text = "Start by connecting to a computer",
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Computer,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Text(
+                    text = "Start by connecting to a computer",
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
             Text(
                 text = stringResource(R.string.activate_by_computer_description),
                 style = MaterialTheme.typography.bodyMedium,
@@ -366,10 +492,4 @@ fun ComputerCard() {
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = false)
-@Composable
-fun CardPreview() {
 }
