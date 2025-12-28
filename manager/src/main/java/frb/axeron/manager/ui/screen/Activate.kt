@@ -212,12 +212,13 @@ fun WirelessDebuggingCard(
             )
             Spacer(modifier = Modifier.size(20.dp))
 
+            val content = stringResource(R.string.enable_wireless_debugging_message)
             Button(
                 onClick = {
                     scope.launch {
                         val confirmResult = dialogDeveloper.awaitConfirm(
                             title = "Enable Wireless Debugging",
-                            content = context.getString(R.string.enable_wireless_debugging_message),
+                            content = content,
                             confirm = "Developer",
                             dismiss = "Cancel",
                             neutral = "Step-by-Step"

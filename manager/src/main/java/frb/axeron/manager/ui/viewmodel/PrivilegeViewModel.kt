@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import frb.axeron.api.Axeron
 import frb.axeron.manager.ui.util.HanziToPinyin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,17 +42,6 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
                         .contains(search, ignoreCase = true)
         }.also {
             isRefreshing = false
-        }
-    }
-
-    var isPrivilegeEnabled by mutableStateOf(
-        Axeron.pingBinder() && Axeron.getShizukuService() != null
-    )
-        private set
-
-    fun setPrivilegeEnable(enabled: Boolean) {
-        viewModelScope.launch {
-            isPrivilegeEnabled = enabled
         }
     }
 

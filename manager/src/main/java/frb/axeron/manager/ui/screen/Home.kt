@@ -112,19 +112,6 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
 
     val axeronInfo = activateViewModel.axeronInfo
 
-    LaunchedEffect(axeronInfo) {
-        if (axeronInfo.isNeedUpdate()) {
-            Log.d(
-                "AxManager",
-                "NeedUpdate ${Axeron.getAxeronInfo().getActualVersion()} > $VERSION_CODE"
-            )
-            activateViewModel.setUpdatingState(true)
-            Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand), null, null)
-        } else {
-            activateViewModel.setUpdatingState(false)
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -346,7 +333,7 @@ fun StatusCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
                 when {
-                    activateViewModel.isUpdating -> MaterialTheme.colorScheme.primaryContainer
+                    axeronInfo.isNeedUpdate() -> MaterialTheme.colorScheme.primaryContainer
                     axeronInfo.isNeedExtraStep() -> MaterialTheme.colorScheme.errorContainer
                     axeronInfo.isRunning() -> MaterialTheme.colorScheme.primaryContainer
                     else -> MaterialTheme.colorScheme.errorContainer
@@ -361,11 +348,11 @@ fun StatusCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    if (activateViewModel.isUpdating) {
+                    if (axeronInfo.isNeedUpdate()) {
                         Toast.makeText(context, "Updating...", Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
-                    if (axeronInfo.isNeedUpdate()) {
+                    if (axeronInfo.isNeedExtraStep()) {
                         uriHandler.openUri(extraStepUrl)
                         return@clickable
                     }
@@ -380,7 +367,7 @@ fun StatusCard(
             }
 
             when {
-                activateViewModel.isUpdating -> {
+                axeronInfo.isNeedUpdate() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -509,7 +496,7 @@ fun StatusCard(
                                 fontWeight = FontWeight.SemiBold
                             )
                             ExtraLabel(
-                                text = axeronInfo.serverInfo.getMode(),
+                                text = axeronInfo.serverInfo.getMode().label,
                                 style = ExtraLabelDefaults.style.copy(
                                     allCaps = false
                                 )
@@ -729,11 +716,6 @@ fun InfoCard(activateViewModel: ActivateViewModel) {
                             fontWeight = FontWeight.Bold
                         )
                     }
-//                    HorizontalDivider(
-//                        Modifier.padding(top = 12.dp),
-//                        DividerDefaults.Thickness,
-//                        MaterialTheme.colorScheme.surfaceContainerHighest
-//                    )
                 }
             }
 

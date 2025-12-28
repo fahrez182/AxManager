@@ -82,7 +82,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
     val activateViewModel = viewModelGlobal.activateViewModel
     val settings = viewModelGlobal.settingsViewModel
-    val privilegeViewModel = viewModelGlobal.privilegeViewModel
+//    val privilegeViewModel = viewModelGlobal.privilegeViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val confirmDialog = rememberConfirmDialog()
     val scope = rememberCoroutineScope()
@@ -139,27 +139,12 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     iconPainter = painterResource(R.drawable.ic_axeron),
                     label = "AX-Permission",
                     description = "Permission manager built on Shizuku-API for scoping Ax-environment",
-                    checked = privilegeViewModel.isPrivilegeEnabled,
-//                    onCheckedClick = {
-//                        if (it) {
-//                            navigator.navigate(PermissionScreenDestination)
-//                        }
-//                    },
+                    checked = activateViewModel.isShizukuActive,
                     onSwitchChange = {
                         Axeron.enableShizukuService(it)
                     }
                 )
             }
-
-            SettingsItem(
-                iconVector = Icons.Filled.Refresh,
-                label = "Relog to Ignite",
-                description = "When you relog AxManager will Re-Ignite",
-                checked = settings.isIgniteWhenRelogEnabled,
-                onSwitchChange = {
-                    settings.setIgniteWhenRelog(it)
-                }
-            )
 
             SettingsItem(
                 iconVector = Icons.Filled.RestartAlt,
@@ -172,29 +157,15 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             )
 
 
-//            AnimatedVisibility(visible = axeronRunning) {
-//                SettingsItem(
-//                    iconVector = Icons.Filled.PowerSettingsNew,
-//                    label = "Stop/Restart Service",
-//                    description = "This action will not disable/stop your plugins",
-//                    onClick = {
-//                        scope.launch {
-//                            val confirmResult = confirmDialog.awaitConfirm(
-//                                "Stop Now?",
-//                                content = "This action will not disable your plugins",
-//                                confirm = "Stop",
-//                                dismiss = "Cancel",
-//                                neutral = "Restart"
-//                            )
-//                            if (confirmResult == ConfirmResult.Confirmed) {
-//                                Axeron.destroy()
-//                            } else if (confirmResult == ConfirmResult.Neutral) {
-//                                Axeron.newProcess(QuickShellViewModel.getQuickCmd(Starter.internalCommand), null, null)
-//                            }
-//                        }
-//                    }
-//                )
-//            }
+            SettingsItem(
+                iconVector = Icons.Filled.Refresh,
+                label = "Relog to Ignite",
+                description = "When you relog AxManager will Re-Ignite",
+                checked = settings.isIgniteWhenRelogEnabled,
+                onSwitchChange = {
+                    settings.setIgniteWhenRelog(it)
+                }
+            )
 
             AnimatedVisibility(visible = axeronRunning) {
                 SettingsItem(

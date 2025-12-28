@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import frb.axeron.manager.ui.component.blend
 import frb.axeron.manager.ui.component.hexToColor
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 
@@ -45,57 +44,9 @@ fun AxManagerTheme(
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            val dynamicDarkColorScheme = dynamicDarkColorScheme(context)
-            val dynamicLightColorScheme = dynamicLightColorScheme(context)
-
             when {
-                darkTheme -> getVortexDarkColorScheme().copy(
-                    primary = dynamicDarkColorScheme.primary.blend(AMOLED_BLACK, 0.2f),
-                    onPrimary = dynamicDarkColorScheme.onPrimary.blend(AMOLED_BLACK, 0.2f),
-                    primaryContainer = dynamicDarkColorScheme.primaryContainer.blend(
-                        AMOLED_BLACK,
-                        0.2f
-                    ),
-                    onPrimaryContainer = dynamicDarkColorScheme.onPrimaryContainer.blend(
-                        Color.White,
-                        0.2f
-                    ),
-
-                    secondary = dynamicDarkColorScheme.secondary.blend(AMOLED_BLACK, 0.25f),
-                    onSecondary = dynamicDarkColorScheme.onSecondary.blend(AMOLED_BLACK, 0.5f),
-                    secondaryContainer = dynamicDarkColorScheme.secondaryContainer.blend(
-                        AMOLED_BLACK,
-                        0.2f
-                    ),
-                    onSecondaryContainer = dynamicDarkColorScheme.onSecondaryContainer.blend(
-                        Color.White,
-                        0.2f
-                    ),
-                )
-
-                else -> getVortexLightColorScheme().copy(
-                    primary = dynamicLightColorScheme.primary.blend(Color.White, 0.25f),
-                    onPrimary = dynamicLightColorScheme.onPrimary.blend(Color.White, 0.8f),
-                    primaryContainer = dynamicLightColorScheme.primaryContainer.blend(
-                        AMOLED_BLACK,
-                        0.1f
-                    ),
-                    onPrimaryContainer = dynamicLightColorScheme.onPrimaryContainer.blend(
-                        AMOLED_BLACK,
-                        0.2f
-                    ),
-                    secondary = dynamicLightColorScheme.secondary.blend(Color.White, 0.25f),
-                    onSecondary = dynamicLightColorScheme.onSecondary.blend(Color.White, 0.8f),
-                    secondaryContainer = dynamicLightColorScheme.secondaryContainer.blend(
-                        AMOLED_BLACK,
-                        0.1f
-                    ),
-                    onSecondaryContainer = dynamicLightColorScheme.onSecondaryContainer.blend(
-                        AMOLED_BLACK,
-                        0.2f
-                    )
-
-                )
+                darkTheme -> dynamicDarkColorScheme(context)
+                else -> dynamicLightColorScheme(context)
             }
         }
 

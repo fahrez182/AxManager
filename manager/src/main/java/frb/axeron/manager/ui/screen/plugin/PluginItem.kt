@@ -9,7 +9,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,7 +51,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +70,6 @@ import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.SettingsItemType
-import frb.axeron.manager.ui.component.blend
 import frb.axeron.manager.ui.component.createWebUIShortcut
 import frb.axeron.manager.ui.component.formatSize
 import frb.axeron.manager.ui.component.rememberConfirmDialog
@@ -173,17 +170,9 @@ fun PluginItem(
             val useBanner = prefs.getBoolean("use_banner", true)
 
             if (useBanner && plugin.prop.banner.isNotEmpty()) {
-                val darkTheme = when (settings.getAppThemeId) {
-                    1 -> true
-                    2 -> false
-                    else -> isSystemInDarkTheme()
-                }
                 val colorScheme = MaterialTheme.colorScheme
                 val context = LocalContext.current
-                val fadeColor = when {
-                    darkTheme -> colorScheme.surfaceVariant
-                    else -> colorScheme.surface.blend(Color.White, 0.3f)
-                }
+                val fadeColor = colorScheme.surfaceVariant
                 val alpha = 0.5f
 
                 Box(

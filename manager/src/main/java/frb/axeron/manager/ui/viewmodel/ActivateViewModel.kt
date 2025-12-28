@@ -28,8 +28,12 @@ import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine
 import frb.axeron.server.utils.Starter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import rikka.shizuku.Shizuku
 
 class ActivateViewModel : ViewModel() {
 
@@ -38,6 +42,9 @@ class ActivateViewModel : ViewModel() {
     }
 
     var axeronInfo by mutableStateOf(AxeronInfo())
+        private set
+
+    var isShizukuActive by mutableStateOf(false)
         private set
 
     var isNotificationEnabled by mutableStateOf(false)
@@ -55,27 +62,68 @@ class ActivateViewModel : ViewModel() {
     var tryActivate by mutableStateOf(false)
         private set
 
-    var isUpdating by mutableStateOf(false)
-        private set
+    fun axeronObserve(): Flow<AxeronInfo> = callbackFlow {
+        if (Axeron.pingBinder()) {
+            trySend(Axeron.getAxeronInfo())
+        }
+        val receivedListener = Axeron.OnBinderReceivedListener {
+            Log.i("AxManagerBinder", "onBinderReceived")
+            trySend(Axeron.getAxeronInfo())
+        }
+        val deadListener = Axeron.OnBinderDeadListener {
+            Log.i("AxManagerBinder", "onBinderDead")
+            trySend(AxeronInfo())
+        }
+        Axeron.addBinderReceivedListener(receivedListener)
+        Axeron.addBinderDeadListener(deadListener)
+        awaitClose {
+            Axeron.removeBinderReceivedListener(receivedListener)
+            Axeron.removeBinderDeadListener(deadListener)
+        }
+    }
 
-    fun setUpdatingState(update: Boolean) {
-        viewModelScope.launch {
-            isUpdating = update
+    fun shizukuObserve(): Flow<Boolean> = callbackFlow {
+        if (Shizuku.pingBinder()) {
+            trySend(true)
+        }
+        val shizukuReceived = Shizuku.OnBinderReceivedListener {
+            Log.i("AxManagerBinder", "onShizukuBinderReceived")
+            trySend(true)
+        }
+
+        val shizukuDead = Shizuku.OnBinderDeadListener {
+            Log.i("AxManagerBinder", "onShizukuBinderDead")
+            trySend(false)
+        }
+        Shizuku.addBinderReceivedListener(shizukuReceived)
+        Shizuku.addBinderDeadListener(shizukuDead)
+
+        awaitClose {
+            Shizuku.removeBinderReceivedListener(shizukuReceived)
+            Shizuku.removeBinderDeadListener(shizukuDead)
         }
     }
 
     init {
-        checkAxeronService()
-    }
-
-    fun checkAxeronService() {
         viewModelScope.launch {
-            if (Axeron.pingBinder()) {
+            axeronObserve().collect {
+                axeronInfo = it
+                if (axeronInfo.isNeedUpdate()) {
+                    tryActivate = true
+                    Axeron.newProcess(
+                        QuickShellViewModel.getQuickCmd(Starter.internalCommand),
+                        null,
+                        null
+                    )
+                    return@collect
+                }
                 tryActivate = false
-                axeronInfo = Axeron.getAxeronInfo()
-            } else {
-                if (isUpdating) return@launch
-                axeronInfo = AxeronInfo()
+            }
+        }
+
+        viewModelScope.launch {
+            shizukuObserve().collect {
+                isShizukuActive = it
             }
         }
     }

@@ -192,13 +192,6 @@ fun ExecutePluginActionScreen(
                 ),
                 softWrap = true,   // MATIIN WRAP
             )
-//            Text(
-//                modifier = Modifier.padding(8.dp),
-//                text = if (developerOptionsEnabled) logContent.toString() else text,
-//                fontSize = MaterialTheme.typography.bodySmall.fontSize,
-//                fontFamily = FontFamily.Monospace,
-//                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-//            )
         }
     }
 }

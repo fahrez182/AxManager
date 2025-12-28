@@ -2,9 +2,12 @@ package frb.axeron.data
 
 import android.os.Parcelable
 import android.os.SystemClock
-//import com.frb.engine.client.Axeron
-//import com.frb.engine.implementation.AxeronService
 import kotlinx.parcelize.Parcelize
+
+enum class Mode(val label: String) {
+    NOT_ACTIVATED("Not Activated"), ROOT("Root"), SHELL("Shell"), USER("User")
+}
+
 
 @Parcelize
 data class ServerInfo(
@@ -37,12 +40,12 @@ data class ServerInfo(
 //        return isRunning(ping, actualVersion) && !permission
 //    }
 
-    fun getMode(): String {
+    fun getMode(): Mode {
         return when (uid) {
-            -1 -> "Not Activated"
-            0 -> "Root"
-            2000 -> "Shell"
-            else -> "User"
+            -1 -> Mode.NOT_ACTIVATED
+            0 -> Mode.ROOT
+            2000 -> Mode.SHELL
+            else -> Mode.ROOT
         }
     }
 }
