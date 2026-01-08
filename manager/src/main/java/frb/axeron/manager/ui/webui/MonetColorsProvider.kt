@@ -8,9 +8,11 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine
 import frb.axeron.manager.ui.theme.getVortexDarkColorScheme
 import frb.axeron.manager.ui.theme.getVortexLightColorScheme
+import frb.axeron.manager.ui.theme.hexToColor
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -27,20 +29,21 @@ object MonetColorsProvider {
     fun getColorsCss(context: Context): String {
 
         val isDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        AxeronSettings.getPreferences()
 
-        val darkTheme = when (prefs.getInt("app_theme_id", 0)) {
+        val darkTheme = when (AxeronSettings.getAppThemeId()) {
             1 -> true
             2 -> false
             else -> isDark
         }
 
-        val dynamicColor: Boolean = prefs.getBoolean("enable_dynamic_color", false)
+        val dynamicColor: Boolean = AxeronSettings.getEnableDynamicColor()
 
+        val primaryColor = hexToColor(AxeronSettings.getCustomPrimaryColor())
         var colorScheme = if (darkTheme) {
-            getVortexDarkColorScheme()
+            getVortexDarkColorScheme(primaryColor)
         } else {
-            getVortexLightColorScheme()
+            getVortexLightColorScheme(primaryColor)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dynamicColor) {

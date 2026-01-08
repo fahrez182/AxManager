@@ -3,8 +3,6 @@ package frb.axeron.api;
 
 import static frb.axeron.data.AxeronConstant.server.TYPE_ENV;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import frb.axeron.api.core.AxeronSettings;
 import frb.axeron.api.core.Engine;
 import frb.axeron.data.AxeronConstant;
 import frb.axeron.data.Environment;
@@ -128,7 +127,7 @@ public class Axeron {
         }
     }
 
-    public static void onBinderReceived(IBinder newBinder, Context context) {
+    public static void onBinderReceived(IBinder newBinder) {
         if (binder == newBinder) return;
 
         if (newBinder == null) {
@@ -138,7 +137,7 @@ public class Axeron {
 
             scheduleBinderDeadListeners();
         } else {
-            SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+//            SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
 
             if (pingBinder()) {
                 binder.unlinkToDeath(DEATH_RECIPIENT, 0);
@@ -160,7 +159,7 @@ public class Axeron {
                     @Override
                     public void bindApplication(Bundle data) {
                         if (isFirstInit(false)
-                                || prefs.getBoolean("ignite_when_relog", false)) {
+                                || AxeronSettings.getEnableIgniteRelog()) {
                             Log.d(TAG, "igniteService");
                             AxeronPluginService.igniteService();
                         }
@@ -235,7 +234,7 @@ public class Axeron {
 
     private static final IBinder.DeathRecipient DEATH_RECIPIENT = () -> {
         binderReady = false;
-        onBinderReceived(null, null);
+        onBinderReceived(null);
     };
 
     public static AxeronNewProcess newProcess(@NonNull String cmd) {
@@ -349,28 +348,13 @@ public class Axeron {
         void onBinderDead();
     }
 
-    private static class ListenerHolder<T> {
+    private record ListenerHolder<T>(T listener, Handler handler) {
 
-        private final T listener;
-        private final Handler handler;
+            private ListenerHolder(@NonNull T listener, @Nullable Handler handler) {
+                this.listener = listener;
+                this.handler = handler;
+            }
 
-        private ListenerHolder(@NonNull T listener, @Nullable Handler handler) {
-            this.listener = listener;
-            this.handler = handler;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ListenerHolder<?> that = (ListenerHolder<?>) o;
-            return Objects.equals(listener, that.listener) && Objects.equals(handler, that.handler);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(listener, handler);
-        }
     }
 
 

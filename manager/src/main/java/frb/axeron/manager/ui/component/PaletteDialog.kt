@@ -39,20 +39,8 @@ import androidx.compose.ui.unit.dp
 import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
+import frb.axeron.manager.ui.theme.hexToColor
 import kotlin.math.roundToInt
-
-fun hexToColor(hex: String): Color? {
-    return try {
-        val cleanHex = hex.removePrefix("#")
-        when (cleanHex.length) {
-            6 -> Color(("FF$cleanHex").toLong(16))
-            8 -> Color(cleanHex.toLong(16))
-            else -> null
-        }
-    } catch (e: Exception) {
-        null
-    }
-}
 
 fun colorToHex(color: Color): String {
     val r = (color.red * 255).roundToInt()
@@ -179,7 +167,7 @@ fun PaletteDialog(
                     value = hexInput,
                     onValueChange = { input ->
                         hexInput = input
-                        hexToColor(input)?.let { color ->
+                        hexToColor(input).let { color ->
                             selectedColor = color
                             redValue = color.red * 255
                             greenValue = color.green * 255

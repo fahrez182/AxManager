@@ -9,19 +9,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import frb.axeron.manager.ui.component.hexToColor
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 
-fun hexToColor(hex: String): Color? {
-    return try {
-        val cleanHex = hex.removePrefix("#")
-        when (cleanHex.length) {
-            6 -> Color(("FF$cleanHex").toLong(16))
-            8 -> Color(cleanHex.toLong(16))
-            else -> null
-        }
-    } catch (e: Exception) {
-        null
+fun hexToColor(hex: String): Color {
+    val cleanHex = hex.removePrefix("#")
+    val cleanDefault = basePrimaryDefault.toHexString().removePrefix("#")
+    return when (cleanHex.length) {
+        6 -> Color(("FF$cleanHex").toLong(16))
+        8 -> Color(cleanHex.toLong(16))
+        else -> Color(cleanDefault.toLong(16))
     }
 }
 
@@ -39,7 +35,8 @@ fun AxManagerTheme(
     }
 
     val dynamicColor = settingsViewModel.isDynamicColorEnabled
-    val customPrimaryColor = hexToColor(settingsViewModel.customPrimaryColorHex) ?: basePrimaryDefault
+    val customPrimaryColor =
+        hexToColor(settingsViewModel.customPrimaryColorHex)
 
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

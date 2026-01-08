@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import frb.axeron.api.core.AxeronSettings
@@ -14,12 +13,12 @@ import frb.axeron.manager.ui.theme.toHexString
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val prefs = AxeronSettings.getPreferences()
+//    private val prefs = AxeronSettings.getPreferences()
 
     val themeOptions = listOf("Follow System", "Dark Theme", "Light Theme")
 
     var isIgniteWhenRelogEnabled by mutableStateOf(
-        prefs.getBoolean("ignite_when_relog", false)
+        AxeronSettings.getEnableIgniteRelog()
     )
         private set
 
@@ -29,22 +28,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private set
 
     var isDynamicColorEnabled by mutableStateOf(
-        prefs.getBoolean("enable_dynamic_color", false)
+        AxeronSettings.getEnableDynamicColor()
     )
         private set
 
     var getAppThemeId by mutableIntStateOf(
-        prefs.getInt("app_theme_id", 0)
+        AxeronSettings.getAppThemeId()
     )
         private set
 
     var isDeveloperModeEnabled by mutableStateOf(
-        prefs.getBoolean("enable_developer_options", false)
+        AxeronSettings.getEnableDeveloperOptions()
     )
         private set
 
     var isWebDebuggingEnabled by mutableStateOf(
-        prefs.getBoolean("enable_web_debugging", false)
+        AxeronSettings.getEnableWebDebugging()
     )
         private set
 
@@ -53,7 +52,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setIgniteWhenRelog(enabled: Boolean) {
         viewModelScope.launch {
             isIgniteWhenRelogEnabled = enabled
-            prefs.edit { putBoolean("ignite_when_relog", enabled) }
+            AxeronSettings.setEnableIgniteRelog(enabled)
         }
     }
 
@@ -67,49 +66,47 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDynamicColor(enabled: Boolean) {
         viewModelScope.launch {
             isDynamicColorEnabled = enabled
-            prefs.edit { putBoolean("enable_dynamic_color", enabled) }
+            AxeronSettings.setEnableDynamicColor(enabled)
         }
     }
 
     fun setAppTheme(themeId: Int) {
         viewModelScope.launch {
             getAppThemeId = themeId
-            prefs.edit { putInt("app_theme_id", themeId) }
+            AxeronSettings.setAppThemeId(themeId)
         }
     }
 
     fun setDeveloperOptions(enabled: Boolean) {
         viewModelScope.launch {
             isDeveloperModeEnabled = enabled
-            prefs.edit { putBoolean("enable_developer_options", enabled) }
+            AxeronSettings.setEnableDeveloperOptions(enabled)
         }
     }
 
     fun setWebDebugging(enabled: Boolean) {
         viewModelScope.launch {
             isWebDebuggingEnabled = enabled
-            prefs.edit { putBoolean("enable_web_debugging", enabled) }
+            AxeronSettings.setEnableWebDebugging(enabled)
         }
     }
 
     var customPrimaryColorHex by mutableStateOf(
-        prefs.getString("custom_primary_color", null) ?: basePrimaryDefault.toHexString()
+        AxeronSettings.getCustomPrimaryColor() ?: basePrimaryDefault.toHexString()
     )
         private set
 
     fun setCustomPrimaryColor(hex: String) {
         viewModelScope.launch {
             customPrimaryColorHex = hex
-            prefs.edit {
-                putString("custom_primary_color", hex)
-            }
+            AxeronSettings.setPrimaryColor(hex)
         }
     }
 
     fun removeCustomPrimaryColor() {
-        customPrimaryColorHex = basePrimaryDefault.toHexString()
         viewModelScope.launch {
-            prefs.edit { remove("custom_primary_color") }
+            customPrimaryColorHex = basePrimaryDefault.toHexString()
+            AxeronSettings.removePrimaryColor()
         }
     }
 

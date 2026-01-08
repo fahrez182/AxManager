@@ -54,7 +54,6 @@ open class AxeronService() : Service() {
         @JvmStatic
         fun main(args: Array<String>) {
             DdmHandleAppName.setAppName("axeron_server", 0)
-            print("Hello")
 
             Looper.prepareMainLooper()
             AxeronService()

@@ -16,6 +16,7 @@ import android.os.UserHandle
 import android.os.UserHandleHidden
 import android.system.Os
 import dev.rikka.tools.refine.Refine
+import frb.axeron.aidl.AxeronInterface
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.Environment
@@ -38,7 +39,7 @@ import java.lang.ref.WeakReference
 import java.util.Collections
 import kotlin.system.exitProcess
 
-abstract class Service : IAxeronService.Stub() {
+abstract class Service : IAxeronService.Stub(), AxeronInterface {
 
     companion object {
         protected const val TAG: String = "AxeronService"

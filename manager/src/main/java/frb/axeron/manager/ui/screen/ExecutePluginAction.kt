@@ -1,6 +1,5 @@
 package frb.axeron.manager.ui.screen
 
-import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +42,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
+import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.PluginInfo
@@ -64,9 +63,7 @@ fun ExecutePluginActionScreen(
     navigator: DestinationsNavigator,
     plugin: PluginInfo
 ) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
 
     var isActionRunning by rememberSaveable { mutableStateOf(true) }
 

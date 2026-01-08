@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "frb.axeron.manager"
-        minSdk = 27
+        minSdk = 26
         targetSdk = 36
         versionCode = AppVersion.VERSION_CODE
         versionName = AppVersion.VERSION_NAME

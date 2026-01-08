@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.net.Uri
 import android.os.Parcelable
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -75,14 +76,13 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
-import frb.axeron.api.core.Engine.Companion.application
+import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
-import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.theme.GREEN
 import frb.axeron.manager.ui.theme.ORANGE
@@ -99,6 +99,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class FlashingStatus {
+    IDLE,
     FLASHING,
     SUCCESS,
     FAILED
@@ -133,12 +134,12 @@ sealed class FlashIt : Parcelable {
 @ExperimentalMaterial3Api
 @Composable
 fun InstallDialog(
-    confirmed: Boolean,
+    confirm: Boolean = false,
     flashIt: FlashIt,
     onConfirm: (FlashIt) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (flashIt is FlashIt.FlashPlugins && !confirmed) {
+    if (flashIt is FlashIt.FlashPlugins && confirm) {
         ModalBottomSheet(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -271,11 +272,10 @@ fun FlashScreen(
     val context = LocalContext.current
     val activity = context.findActivity()
 
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
 
     var flashing by rememberSaveable {
-        mutableStateOf(FlashingStatus.FLASHING)
+        mutableStateOf(FlashingStatus.IDLE)
     }
 
     val view = LocalView.current
@@ -295,54 +295,29 @@ fun FlashScreen(
         if (finishIntent) activity?.finish()
     }
 
-    rememberConfirmDialog()
-    var confirmed by rememberSaveable { mutableStateOf(flashIt !is FlashIt.FlashPlugins) }
+//    var confirmed by rememberSaveable { mutableStateOf(flashIt !is FlashIt.FlashPlugins) }
     var pendingFlashIt by rememberSaveable { mutableStateOf<FlashIt?>(null) }
 
+
+    if (flashIt is FlashIt.FlashUninstall) {
+        flashing == FlashingStatus.FLASHING
+        pendingFlashIt = flashIt
+    }
+
+
     InstallDialog(
-        confirmed = confirmed,
+        confirm = flashing == FlashingStatus.IDLE,
         flashIt = flashIt,
         onConfirm = {
-            confirmed = true
+            flashing = FlashingStatus.FLASHING
             pendingFlashIt = it
         },
         onDismiss = {
-            confirmed = true
+            flashing = FlashingStatus.FAILED
             navigator.popBackStack()
             if (finishIntent) activity?.finish()
         }
     )
-
-//    LaunchedEffect(flashIt) {
-//        if (flashIt is FlashIt.FlashPlugins && !confirmed) {
-//            installDialog = true
-//            val uris = flashIt.uris
-//            val moduleNames =
-//                uris.mapIndexed { index, uri -> "\n${index + 1}. ${uri.getFileName(context)}" }
-//                    .joinToString("")
-//            val confirmContent =
-//                String.format("The following modules will be installed: %s", moduleNames)
-//            val confirmTitle = "Install Plugin?"
-//            val result = confirmDialog.awaitConfirm(
-//                title = confirmTitle,
-//                content = confirmContent,
-//                markdown = true,
-//                confirm = "Install",
-//                dismiss = "Cancel"
-//            )
-//            if (result == ConfirmResult.Confirmed) {
-//                confirmed = true
-//                pendingFlashIt = flashIt
-//            } else {
-//                // User cancelled, go back
-//                navigator.popBackStack()
-//                if (finishIntent) activity?.finish()
-//            }
-//        } else {
-//            confirmed = true
-//            pendingFlashIt = flashIt
-//        }
-//    }
 
     var tempText: String
     val logContent = rememberSaveable { StringBuilder() }
@@ -350,8 +325,9 @@ fun FlashScreen(
     var text by rememberSaveable { mutableStateOf("") }
     var hasFlashed by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(confirmed, pendingFlashIt) {
-        if (!confirmed || pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
+    LaunchedEffect(pendingFlashIt) {
+        Log.d("FlashScreen", "flashing: $flashing")
+        if (pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
         hasFlashed = true
         withContext(Dispatchers.IO) {
             flashIt(
@@ -447,6 +423,7 @@ fun FlashScreen(
                     onClick = {
                         navigator.popBackStack()
                         if (finishIntent) activity?.finish()
+
                     }
                 )
             }
@@ -505,13 +482,9 @@ suspend fun flashModulesSequentially(
 suspend fun uninstallPermanently(
     onStdout: (String) -> Unit, onStderr: (String) -> Unit
 ): AxeronPluginService.FlashResult {
-    val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val cmd = ". functions.sh; uninstall_axmanager \"${
-        prefs.getBoolean(
-            "enable_developer_options",
-            false
-        )
-    }\" \"${BuildConfig.APPLICATION_ID}\"; exit 0"
+    val cmd = """
+        . functions.sh; uninstall_axmanager "${AxeronSettings.getEnableDeveloperOptions()}" "${BuildConfig.APPLICATION_ID}"; exit 0
+    """.trimIndent()
     val result =
         AxeronPluginService.execWithIO(cmd, onStdout, onStderr, standAlone = true, useSetsid = true)
     return AxeronPluginService.FlashResult(result)
@@ -546,6 +519,9 @@ private fun TopBar(
                     FlashingStatus.FLASHING -> "Flashing"
                     FlashingStatus.SUCCESS -> "Success"
                     FlashingStatus.FAILED -> "Failed"
+                    else -> {
+                        "Idle"
+                    }
                 },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
@@ -553,6 +529,9 @@ private fun TopBar(
                     FlashingStatus.FLASHING -> ORANGE
                     FlashingStatus.SUCCESS -> GREEN
                     FlashingStatus.FAILED -> RED
+                    else -> {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 }
             )
         },

@@ -40,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,7 +48,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.ui.component.PaletteDialog
 import frb.axeron.manager.ui.component.SettingsItem
-import frb.axeron.manager.ui.component.hexToColor
+import frb.axeron.manager.ui.theme.hexToColor
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 
@@ -73,7 +72,7 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     ) { paddingValues ->
 
         val isDarkMode = isSystemInDarkTheme()
-        val currentColor = hexToColor(settingsViewModel.customPrimaryColorHex) ?: Color(0xFFF56A1C)
+        val currentColor = hexToColor(settingsViewModel.customPrimaryColorHex)
 
         Column(
             modifier = Modifier

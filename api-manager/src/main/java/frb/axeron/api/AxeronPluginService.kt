@@ -38,7 +38,8 @@ object AxeronPluginService {
     val PLUGINUPDATEDIR: String
         get() = PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN_UPDATE).absolutePath
 
-    val axFS = Axeron.newFileService()!!
+    val axFS
+        get() = Axeron.newFileService()!!
 
     data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
         constructor(result: ResultExec, showReboot: Boolean) : this(
@@ -107,9 +108,29 @@ object AxeronPluginService {
 
         Log.d(TAG, "execWithIO: $cmd")
 
+//        val process = Axeron.newProcess(
+//            if (useSetsid) arrayOf(BUSYBOX, "setsid", "sh")
+//            else arrayOf(BUSYBOX,"sh"),
+//            Axeron.getEnvironment(),
+//            null
+//        )
+
         val process = Axeron.newProcess(
-            if (useSetsid) arrayOf(BUSYBOX, "setsid", "sh")
-            else arrayOf("sh"),
+            when {
+                useBusybox -> {
+                    if (useSetsid) {
+                        arrayOf(BUSYBOX, "setsid", "sh")
+                    } else {
+                        arrayOf(BUSYBOX, "sh")
+                    }
+                }
+                useSetsid -> {
+                    arrayOf("setsid", "sh")
+                }
+                else -> {
+                    arrayOf("sh")
+                }
+            },
             Axeron.getEnvironment(),
             null
         )
@@ -336,8 +357,8 @@ object AxeronPluginService {
         if (!ensureScripts()) return@withContext false
 
         val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val cmd =
-            "$AXERONBIN/ignite_plugins.sh ${prefs.getBoolean("enable_developer_options", false)}"
+//        val cmd = "$AXERONBIN/ignite_plugins.sh ${prefs.getBoolean("enable_developer_options", false)}"
+        val cmd = "CLASSPATH=$AXERONBIN/ax_reignite.dex; app_process / frb.axeron.reignite.Igniter ${prefs.getBoolean("enable_developer_options", false)}"
         Log.d(TAG, "Start Init Service: $cmd")
 
         return@withContext runCatching {
@@ -364,7 +385,6 @@ object AxeronPluginService {
     }
 
 
-    @OptIn(DelicateCoroutinesApi::class)
     suspend fun removeScripts() {
         val files = application.assets.list("scripts") ?: return
         if (files.isEmpty()) return
@@ -373,7 +393,11 @@ object AxeronPluginService {
             for (filename in files) {
                 val dstFile = File(AXERONBIN, filename)
                 if (axFS.exists(dstFile.absolutePath)) {
-                    axFS.delete(dstFile.absolutePath)
+                    if (axFS.delete(dstFile.absolutePath)) {
+                        Log.i(TAG, "removed ${dstFile.absolutePath}")
+                    } else {
+                        Log.e(TAG, "failed to remove ${dstFile.absolutePath}")
+                    }
                 }
             }
         }

@@ -27,6 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import frb.axeron.api.Axeron
+import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.PluginInfo
@@ -119,9 +120,8 @@ class WebUIActivity : ComponentActivity() {
         }
         setTaskDescription(taskDescription)
 
-        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
-        val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
-        val enableWebDebugging = prefs.getBoolean("enable_web_debugging", false)
+        val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
+        val enableWebDebugging = AxeronSettings.getEnableWebDebugging()
 
         WebView.setWebContentsDebuggingEnabled(developerOptionsEnabled && enableWebDebugging)
 

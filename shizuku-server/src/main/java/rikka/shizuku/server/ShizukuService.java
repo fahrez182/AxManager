@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import frb.axeron.server.IAxeronService;
+import frb.axeron.aidl.AxeronInterface;
 import kotlin.collections.ArraysKt;
 import moe.shizuku.server.IShizukuApplication;
 import rikka.hidden.compat.ActivityManagerApis;
@@ -65,7 +65,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     public ShizukuService(
             Handler mainHandler,
             ShizukuUserServiceManager shizukuUserServiceManager,
-            IAxeronService axeronService
+            AxeronInterface axeronInterface
     ) {
         super(shizukuUserServiceManager);
         HandlerUtil.setMainHandler(mainHandler);
@@ -88,7 +88,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
 
         configManager = getConfigManager();
         clientManager = getClientManager();
-        this.axeronService = axeronService;
+        this.axeronInterface = axeronInterface;
     }
 
     public static ApplicationInfo getManagerApplicationInfo() {
@@ -177,7 +177,7 @@ public class ShizukuService extends Service<ShizukuUserServiceManager, ShizukuCl
     @Override
     public void exit() throws RemoteException {
         enforceManagerPermission("exit");
-        axeronService.enableShizukuService(false);
+        axeronInterface.enableShizukuService(false);
         LOGGER.i("exit");
     }
 

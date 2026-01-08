@@ -17,7 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
-import frb.axeron.server.IAxeronService;
+import frb.axeron.aidl.AxeronInterface;
 import moe.shizuku.server.IRemoteProcess;
 import moe.shizuku.server.IShizukuApplication;
 import moe.shizuku.server.IShizukuService;
@@ -39,7 +39,7 @@ public abstract class Service<
     private final ConfigMgr configManager;
     private final ClientMgr clientManager;
 
-    public IAxeronService axeronService;
+    public AxeronInterface axeronInterface;
 
     public Service(UserServiceMgr shizukuUserServiceManager) {
         userServiceManager = shizukuUserServiceManager;
@@ -158,7 +158,7 @@ public abstract class Service<
     @Override
     public final int getVersion() throws RemoteException {
         enforceCallingPermission("getVersion");
-        return (int) axeronService.getServerInfo().getVersionCode();
+        return (int) axeronInterface.getServerInfo().getVersionCode();
     }
 
     @Override
