@@ -184,12 +184,12 @@ object Igniter {
                 # optional: expose child pid
                 resetprop log.tag.service.$$name.child "$child"
             
-                wait $child
+                # wait $child
               ' | {
                 read pid
                 resetprop log.tag.service.$$name "$pid"
               } $$log
-            ) &
+            );
         """.trimIndent()
         println(" - startService $name")
         exec(arrayOf("busybox", "sh", "-c", service))
