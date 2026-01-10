@@ -174,21 +174,10 @@ object Igniter {
         val service = $$"""
             (
               busybox setsid busybox sh -c '
-                echo $$
-            
-                # jalankan service sebagai child
                 $$execLine &
-            
                 child=$!
-            
-                # optional: expose child pid
-                resetprop log.tag.service.$$name.child "$child"
-            
-                # wait $child
-              ' | {
-                read pid
-                resetprop log.tag.service.$$name "$pid"
-              } $$log
+                resetprop log.tag.service.$$name "$child"
+              ' $$log
             );
         """.trimIndent()
         println(" - startService $name")
@@ -204,13 +193,6 @@ object Igniter {
         SystemProp.set("log.tag.fs.$name", "0")
         SystemProp.set("log.tag.props.$name", "0")
 
-
-        val childPid = SystemProp.get("log.tag.service.$name.child")
-        if (childPid.isNotBlank() && childPid != "-1") {
-            println(" - try to stopping child service $name:$childPid")
-            execWait(arrayOf("busybox", "kill", "-TERM", childPid))
-        }
-
         val pid = SystemProp.get("log.tag.service.$name")
         if (pid.isNotBlank() && pid != "-1") {
             println(" - try to stopping service $name:$pid")
@@ -219,7 +201,6 @@ object Igniter {
 
         println(" - try to cleanup service $name")
         execWait(arrayOf("busybox", "pkill", "-f", name))
-        SystemProp.set("log.tag.service.$name.child", "-1")
         SystemProp.set("log.tag.service.$name", "-1")
 
         println(" - try to unlink $name")
