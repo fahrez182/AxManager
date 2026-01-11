@@ -445,6 +445,8 @@ fun ComputerCard() {
 
             val dialogDeveloper = rememberConfirmDialog()
             val scope = rememberCoroutineScope()
+            val content = stringResource(R.string.view_command_message,
+                Starter.adbCommand)
 
             Button(
                 onClick = {
@@ -452,10 +454,7 @@ fun ComputerCard() {
                     scope.launch {
                         val confirmResult = dialogDeveloper.awaitConfirm(
                             title = "View Command",
-                            content = context.getString(
-                                R.string.view_command_message,
-                                Starter.adbCommand
-                            ),
+                            content = content,
                             markdown = true,
                             confirm = "Copy",
                             dismiss = "Cancel",
