@@ -78,9 +78,6 @@ dependencies {
     ksp(libs.compose.destinations.ksp)
     implementation(libs.colorpicker.compose)
 
-    implementation(libs.androidx.profileinstaller)
-    "baselineProfile"(project(":baselineprofile"))
-
     implementation(libs.compose.coil)
     implementation(libs.appiconloader.coil)
 
