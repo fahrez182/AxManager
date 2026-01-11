@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "frb.axeron.reignite"
-        minSdk = 24
+        minSdk = 27
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -26,6 +26,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            multiDexEnabled = false
         }
     }
     compileOptions {
