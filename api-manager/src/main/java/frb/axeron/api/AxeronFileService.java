@@ -99,10 +99,9 @@ public class AxeronFileService implements Parcelable {
         }
     }
 
-    @Nullable
     public FileInputStream setFileInputStream(String source) throws RemoteException {
         ParcelFileDescriptor pfd = fileService.read(source);
-        if (pfd == null) return null;
+//        if (pfd == null) return null;
         return new ParcelFileDescriptor.AutoCloseInputStream(pfd);
     }
 

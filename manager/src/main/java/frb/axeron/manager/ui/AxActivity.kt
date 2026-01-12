@@ -12,20 +12,14 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -285,83 +279,59 @@ class AxActivity : ComponentActivity() {
                 containerColor = Color.Transparent,
                 tonalElevation = 0.dp
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    BottomBarDestination.entries
-                        .forEach { destination ->
-                            if (!axeronServerInfo.isRunning() && destination.needAxeron) return@forEach
-                            if (!isShizukuActive && destination.needShizuku) return@forEach
+                BottomBarDestination.entries
+                    .forEach { destination ->
+                        if (!axeronServerInfo.isRunning() && destination.needAxeron) return@forEach
+                        if (!isShizukuActive && destination.needShizuku) return@forEach
 
-                            val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(
-                                destination.direction
-                            )
-                            NavigationBarItem(
-                                selected = isCurrentDestOnBackStack,
-                                onClick = {
-                                    if (isCurrentDestOnBackStack) {
-                                        navigator.popBackStack(destination.direction, false)
+                        val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(
+                            destination.direction
+                        )
+                        NavigationBarItem(
+                            selected = isCurrentDestOnBackStack,
+                            onClick = {
+                                if (isCurrentDestOnBackStack) {
+                                    navigator.popBackStack(destination.direction, false)
+                                }
+                                navigator.navigate(destination.direction) {
+                                    popUpTo(NavGraphs.root) {
+                                        saveState = true
                                     }
-                                    navigator.navigate(destination.direction) {
-                                        popUpTo(NavGraphs.root) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = {
-                                    if (destination == BottomBarDestination.Plugin && moduleUpdateCount > 0) {
-                                        BadgedBox(badge = { Badge { Text(moduleUpdateCount.toString()) } }) {
-                                            if (isCurrentDestOnBackStack) {
-                                                Icon(
-                                                    destination.iconSelected,
-                                                    destination.label
-                                                )
-                                            } else {
-                                                Icon(
-                                                    destination.iconNotSelected,
-                                                    destination.label
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        if (isCurrentDestOnBackStack) Icon(
-                                            imageVector = destination.iconSelected,
-                                            contentDescription = destination.label
-                                        ) else Icon(
-                                            imageVector = destination.iconNotSelected,
-                                            contentDescription = destination.label
-                                        )
-                                    }
-                                },
-                                label = {
-                                    Column(
-                                        modifier = Modifier
-                                            .animateContentSize(
-                                                animationSpec = tween(durationMillis = 300)
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = {
+                                if (destination == BottomBarDestination.Plugin && moduleUpdateCount > 0) {
+                                    BadgedBox(badge = { Badge { Text(moduleUpdateCount.toString()) } }) {
+                                        if (isCurrentDestOnBackStack) {
+                                            Icon(
+                                                destination.iconSelected,
+                                                destination.label
                                             )
-                                            .wrapContentHeight()
-                                    ) {
-                                        AnimatedVisibility(
-                                            visible = isCurrentDestOnBackStack,
-                                            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-                                                initialOffsetY = { it / 2 },
-                                                animationSpec = tween(300)
-                                            ),
-                                            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
-                                                targetOffsetY = { it / 2 },
-                                                animationSpec = tween(300)
+                                        } else {
+                                            Icon(
+                                                destination.iconNotSelected,
+                                                destination.label
                                             )
-                                        ) {
-                                            Text(destination.label)
                                         }
                                     }
-                                },
-                            )
-                        }
-                }
+                                } else {
+                                    if (isCurrentDestOnBackStack) Icon(
+                                        imageVector = destination.iconSelected,
+                                        contentDescription = destination.label
+                                    ) else Icon(
+                                        imageVector = destination.iconNotSelected,
+                                        contentDescription = destination.label
+                                    )
+                                }
+                            },
+                            label = {
+                                Text(destination.label)
+                            },
+                            alwaysShowLabel = false
+                        )
+                    }
             }
         }
     }

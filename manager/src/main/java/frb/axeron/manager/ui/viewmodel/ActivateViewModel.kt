@@ -23,6 +23,7 @@ import frb.axeron.adb.AdbMdns
 import frb.axeron.adb.AdbPairingService
 import frb.axeron.adb.PreferenceAdbKeyStore
 import frb.axeron.api.Axeron
+import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine
@@ -111,7 +112,7 @@ class ActivateViewModel : ViewModel() {
                 if (axeronInfo.isNeedUpdate()) {
                     tryActivate = true
                     Axeron.newProcess(
-                        QuickShellViewModel.getQuickCmd(Starter.internalCommand),
+                        AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
                         null,
                         null
                     )

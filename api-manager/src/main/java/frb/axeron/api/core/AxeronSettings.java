@@ -9,6 +9,7 @@ import android.text.TextUtils;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.lang.annotation.Retention;
 import java.util.Locale;
@@ -133,6 +134,7 @@ public class AxeronSettings {
 
     //PRIMARY COLOR
 
+    @Nullable
     public static String getCustomPrimaryColor() {
         return getPreferences().getString(CUSTOM_PRIMARY_COLOR, null);
     }

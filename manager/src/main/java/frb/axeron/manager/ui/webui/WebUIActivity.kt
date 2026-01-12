@@ -17,6 +17,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -46,45 +47,67 @@ import java.util.Locale
 
 @SuppressLint("SetJavaScriptEnabled")
 class WebUIActivity : ComponentActivity() {
+    private lateinit var webView: WebView
+    private lateinit var container: FrameLayout
     private lateinit var insets: Insets
-    private var insetsContinuation: CancellableContinuation<Unit>? = null
     private lateinit var plugin: PluginInfo
 
     private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
-    private lateinit var webView: WebView
+    private lateinit var saveFileLauncher: ActivityResultLauncher<Intent>
+    private var pendingDownloadData: ByteArray? = null
+    private var pendingDownloadSuggestedFilename: String? = null
+
+    private var insetsContinuation: CancellableContinuation<Unit>? = null
+
+    private var isInsetsEnabled = false
 
     fun erudaConsole(context: android.content.Context): String {
         return context.assets.open("js/eruda.min.js").bufferedReader().use { it.readText() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Enable edge to edge
         enableEdgeToEdge()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
 
         super.onCreate(savedInstanceState)
 
-        fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val data = result.data
-                var uris: Array<Uri>? = null
-                data?.dataString?.let {
-                    uris = arrayOf(it.toUri())
+        fileChooserLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    val data = result.data
+                    var uris: Array<Uri>? = null
+                    data?.dataString?.let {
+                        uris = arrayOf(it.toUri())
+                    }
+                    data?.clipData?.let { clipData ->
+                        uris = Array(clipData.itemCount) { i ->
+                            clipData.getItemAt(i).uri
+                        }
+                    }
+                    filePathCallback?.onReceiveValue(uris)
+                } else {
+                    filePathCallback?.onReceiveValue(null)
                 }
-                data?.clipData?.let { clipData ->
-                    uris = Array(clipData.itemCount) { i -> clipData.getItemAt(i).uri }
-                }
-                filePathCallback?.onReceiveValue(uris)
-                filePathCallback = null
-            } else {
-                filePathCallback?.onReceiveValue(null)
                 filePathCallback = null
             }
-        }
+
+        saveFileLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    result.data?.data?.let { uri ->
+                        contentResolver.openOutputStream(uri)?.use { out ->
+                            pendingDownloadData?.let { out.write(it) }
+                        }
+                    }
+                }
+                pendingDownloadData = null
+                pendingDownloadSuggestedFilename = null
+            }
 
         lifecycleScope.launch {
             setupWebView()
@@ -131,35 +154,56 @@ class WebUIActivity : ComponentActivity() {
 
         insets = Insets(0, 0, 0, 0)
 
+        container = FrameLayout(this)
+
         webView = WebView(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             val density = resources.displayMetrics.density
-            ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
-                val inset = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            ViewCompat.setOnApplyWindowInsetsListener(container) { view, windowInsets ->
+                val inset = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+
                 insets = Insets(
                     top = (inset.top / density).toInt(),
                     bottom = (inset.bottom / density).toInt(),
                     left = (inset.left / density).toInt(),
                     right = (inset.right / density).toInt()
                 )
+
+                if (isInsetsEnabled) {
+                    view.setPadding(0, 0, 0, 0)
+                } else {
+                    view.setPadding(inset.left, inset.top, inset.right, inset.bottom)
+                }
+
                 insetsContinuation?.resumeWith(Result.success(Unit))
                 insetsContinuation = null
+
                 WindowInsetsCompat.CONSUMED
             }
         }
 
-        setContentView(webView)
+        container.addView(webView)
+        setContentView(container)
 
+        // coroutine-safe inset wait
         if (insets == Insets(0, 0, 0, 0)) {
-            suspendCancellableCoroutine { cont ->
-                insetsContinuation = cont
-                cont.invokeOnCancellation {
-                    insetsContinuation = null
+            lifecycleScope.launch {
+                suspendCancellableCoroutine<Unit> { cont ->
+                    insetsContinuation = cont
+                    cont.invokeOnCancellation {
+                        if (insetsContinuation === cont) {
+                            insetsContinuation = null
+                        }
+                    }
                 }
             }
         }
 
-        val axPathHandler = AxPathHandler(webRoot) { insets }
+        val axPathHandler = AxPathHandler(
+            webRoot,
+            { insets },
+            { enable -> enableInsets(enable) }
+        )
         val iconHandler = AppsViewModel.AppInfo.Handler()
 
         val axWebLoader = AxWebLoader.Builder()
@@ -223,7 +267,8 @@ class WebUIActivity : ComponentActivity() {
                     fileChooserParams: FileChooserParams?
                 ): Boolean {
                     this@WebUIActivity.filePathCallback = filePathCallback
-                    val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
+                    val intent = fileChooserParams?.createIntent()
+                        ?: Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
                     if (fileChooserParams?.mode == FileChooserParams.MODE_OPEN_MULTIPLE) {
                         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                     }
@@ -250,7 +295,11 @@ class WebUIActivity : ComponentActivity() {
                                 saveDataUrlToDownloads(dataUrl, mimeType)
                                 return true
                             } catch (_: org.json.JSONException) {
-                                Toast.makeText(this@WebUIActivity, "Error parsing blob data from console", Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    this@WebUIActivity,
+                                    "Error parsing blob data from console",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }
@@ -300,43 +349,48 @@ class WebUIActivity : ComponentActivity() {
     }
 
     private fun extractMimeTypeAndBase64Data(dataUrl: String): Pair<String, String>? {
-        val prefix = "data:"
-        if (!dataUrl.startsWith(prefix)) return null
+        if (!dataUrl.startsWith("data:")) return null
         val commaIndex = dataUrl.indexOf(',')
         if (commaIndex == -1) return null
-        val header = dataUrl.substring(prefix.length, commaIndex)
+
+        val header = dataUrl.substring(5, commaIndex)
         val data = dataUrl.substring(commaIndex + 1)
-        val mimeType = header.substringBefore(';', header).ifEmpty { "application/octet-stream" }
-        return Pair(mimeType, data)
+        val mimeType = header.substringBefore(';').ifEmpty {
+            "application/octet-stream"
+        }
+
+        return mimeType to data
     }
 
-    private lateinit var saveFileLauncher: ActivityResultLauncher<Intent>
-    private var pendingDownloadData: ByteArray? = null
-    private var pendingDownloadSuggestedFilename: String? = null
-
-    private fun saveDataUrlToDownloads(dataUrl: String, mimeTypeFromListener: String) {
-        val (mimeType, base64Data) = extractMimeTypeAndBase64Data(dataUrl) ?: run {
+    private fun saveDataUrlToDownloads(
+        dataUrl: String,
+        mimeTypeFromListener: String
+    ) {
+        val extracted = extractMimeTypeAndBase64Data(dataUrl) ?: run {
             Toast.makeText(this, "Invalid data URL", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val finalMimeType = if (mimeType == "application/octet-stream" && mimeTypeFromListener.isNotBlank()) mimeTypeFromListener else mimeType
-        var extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(finalMimeType)
-        if (extension != null && !extension.startsWith(".")) {
+        val (mimeFromData, base64Data) = extracted
+
+        val finalMimeType =
+            if (mimeFromData == "application/octet-stream" && mimeTypeFromListener.isNotBlank())
+                mimeTypeFromListener
+            else
+                mimeFromData
+
+        var extension =
+            MimeTypeMap.getSingleton().getExtensionFromMimeType(finalMimeType)
+
+        if (!extension.isNullOrEmpty() && !extension.startsWith(".")) {
             extension = ".$extension"
-        }
-        if (extension.isNullOrEmpty()) {
-            extension = ""
         }
 
         val sdf = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.getDefault())
-        val formattedDate = sdf.format(Date(System.currentTimeMillis()))
-        val fileName = "${plugin.prop.id}_${formattedDate}${extension}"
+        val fileName = "${plugin.dirId}_${sdf.format(Date())}${extension ?: ""}"
 
         try {
-            val decodedData = Base64.decode(base64Data, Base64.DEFAULT)
-
-            pendingDownloadData = decodedData
+            pendingDownloadData = Base64.decode(base64Data, Base64.DEFAULT)
             pendingDownloadSuggestedFilename = fileName
 
             val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -344,12 +398,26 @@ class WebUIActivity : ComponentActivity() {
                 type = finalMimeType
                 putExtra(Intent.EXTRA_TITLE, fileName)
             }
+
             saveFileLauncher.launch(intent)
 
         } catch (e: Exception) {
-            Toast.makeText(this, "Error preparing file for saving: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                "Error preparing file: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
             pendingDownloadData = null
             pendingDownloadSuggestedFilename = null
+        }
+    }
+
+    fun enableInsets(enable: Boolean = true) {
+        runOnUiThread {
+            if (isInsetsEnabled != enable) {
+                isInsetsEnabled = enable
+                ViewCompat.requestApplyInsets(container)
+            }
         }
     }
 

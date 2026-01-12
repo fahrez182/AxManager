@@ -7,13 +7,15 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.text.TextUtils
 import android.util.Base64
 import android.view.Window
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -22,9 +24,7 @@ import com.google.gson.ToNumberPolicy
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.server.utils.flattenOneLevel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -41,8 +41,8 @@ class KsuWebInterface(
     private val modDir: File
 ) {
 
-    val PLUGINBIN: String
-        get() = "${modDir}/system/bin"
+    val pluginBin: String
+        get() = "${modDir.absolutePath}/system/bin"
 
     @JavascriptInterface
     fun exec(cmd: String): String {
@@ -76,7 +76,7 @@ class KsuWebInterface(
             sb.append("cd ${cwd};")
         }
 
-        sb.append("export PATH=$PLUGINBIN:\$PATH;")
+        sb.append($$"export PATH=$$pluginBin:$PATH;")
         opts.optJSONObject("env")?.let { env ->
             env.keys().forEach { key ->
                 sb.append("export ${key}=${env.getString(key)};")
@@ -90,13 +90,17 @@ class KsuWebInterface(
         options: String?,
         callbackFunc: String
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val finalCommand = StringBuilder()
-            processOptions(finalCommand, options)
-            finalCommand.append(cmd)
+        runBlocking(Dispatchers.IO) {
+            val finalCommand = buildString {
+                processOptions(this, options)
+                append(cmd)
+            }
+//            val finalCommand = StringBuilder()
+//            processOptions(finalCommand, options)
+//            finalCommand.append(cmd)
 
             val result = AxeronPluginService.execWithIO(
-                cmd = finalCommand.toString(),
+                cmd = finalCommand,
                 useBusybox = false,
                 hideStderr = false
             )
@@ -115,19 +119,35 @@ class KsuWebInterface(
 
     @JavascriptInterface
     fun spawn(command: String, args: String, options: String?, callbackFunc: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val finalCommand = StringBuilder()
-            processOptions(finalCommand, options)
-            if (!TextUtils.isEmpty(args)) {
-                finalCommand.append(command).append(" ")
-                JSONArray(args).let { argsArray ->
-                    for (i in 0 until argsArray.length()) {
-                        finalCommand.append(argsArray.getString(i)).append(" ")
+        runBlocking(Dispatchers.IO) {
+            val finalCommand = buildString {
+                processOptions(this, options)
+
+                if (!TextUtils.isEmpty(args)) {
+                    append(command).append(" ")
+                    JSONArray(args).let { argsArray ->
+                        for (i in 0 until argsArray.length()) {
+                            append(argsArray.getString(i))
+                            append(" ")
+                        }
                     }
+                } else {
+                    append(command)
                 }
-            } else {
-                finalCommand.append(command)
             }
+
+//            val finalCommand = StringBuilder()
+//            processOptions(finalCommand, options)
+//            if (!TextUtils.isEmpty(args)) {
+//                finalCommand.append(command).append(" ")
+//                JSONArray(args).let { argsArray ->
+//                    for (i in 0 until argsArray.length()) {
+//                        finalCommand.append(argsArray.getString(i)).append(" ")
+//                    }
+//                }
+//            } else {
+//                finalCommand.append(command)
+//            }
 
             val emitData = fun(name: String, data: String) {
                 val jsCode =
@@ -142,7 +162,7 @@ class KsuWebInterface(
             }
 
             val future = AxeronPluginService.execWithIOFuture(
-                cmd = finalCommand.toString(),
+                cmd = finalCommand,
                 onStdout = { emitData("stdout", it) },
                 onStderr = { emitData("stderr", it) },
                 useBusybox = false,
@@ -184,7 +204,7 @@ class KsuWebInterface(
     @JavascriptInterface
     fun fullScreen(enable: Boolean) {
         if (context is Activity) {
-            webView.post {
+            Handler(Looper.getMainLooper()).post {
                 if (enable) {
                     hideSystemUI(context.window)
                 } else {
@@ -215,6 +235,27 @@ class KsuWebInterface(
             .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
             .create()
             .toJson(currentModuleInfo)
+    }
+
+    @JavascriptInterface
+    fun listPackages(type: String): String {
+        val packageNames = Axeron.getPackages(0)
+            .filter { packageInfo ->
+                val flags = packageInfo.applicationInfo?.flags ?: 0
+                when (type.lowercase()) {
+                    "system" -> (flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    "user" -> (flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                    else -> true
+                }
+            }
+            .map { it.packageName }
+            .sorted()
+
+        val jsonArray = JSONArray()
+        for (pkgName in packageNames) {
+            jsonArray.put(pkgName)
+        }
+        return jsonArray.toString()
     }
 
     @JavascriptInterface
@@ -269,29 +310,21 @@ class KsuWebInterface(
         val pm = context.packageManager
         val packageNames = JSONArray(packageNamesJson)
         val jsonArray = JSONArray()
+        val appMap = Axeron.getPackages(0).associateBy { it.packageName }
         for (i in 0 until packageNames.length()) {
             val pkgName = packageNames.getString(i)
-            try {
-                val pkg = pm.getPackageInfo(pkgName, 0)
-                val appInfo = pkg.applicationInfo
+            val appInfo = appMap[pkgName]
+            if (appInfo != null) {
+                val app = appInfo.applicationInfo
                 val obj = JSONObject()
-                obj.put("packageName", pkg.packageName)
-                obj.put("versionName", pkg.versionName ?: "")
-                @Suppress("DEPRECATION")
-                val versionCode =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pkg.longVersionCode else pkg.versionCode
-                obj.put("versionCode", versionCode)
-                obj.put(
-                    "appLabel",
-                    if (appInfo != null) pm.getApplicationLabel(appInfo).toString() else ""
-                )
-                obj.put(
-                    "isSystem",
-                    appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                )
-                obj.put("uid", appInfo?.uid ?: JSONObject.NULL)
+                obj.put("packageName", appInfo.packageName)
+                obj.put("versionName", appInfo.versionName ?: "")
+                obj.put("versionCode", PackageInfoCompat.getLongVersionCode(appInfo))
+                obj.put("appLabel", app?.loadLabel(pm).toString())
+                obj.put("isSystem", if (app != null) ((app.flags and ApplicationInfo.FLAG_SYSTEM) != 0) else JSONObject.NULL)
+                obj.put("uid", app?.uid ?: JSONObject.NULL)
                 jsonArray.put(obj)
-            } catch (e: Exception) {
+            } else {
                 val obj = JSONObject()
                 obj.put("packageName", pkgName)
                 obj.put("error", "Package not found or inaccessible")
@@ -313,7 +346,7 @@ class KsuWebInterface(
             if (packageIconCache.containsKey(pkgName)) continue
             try {
                 val appInfo = pkg.applicationInfo!!
-                val drawable = pm.getApplicationIcon(appInfo)
+                val drawable = appInfo.loadIcon(pm)
                 val bitmap = drawableToBitmap(drawable, size)
                 outputStream.reset()
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
@@ -341,7 +374,7 @@ class KsuWebInterface(
             if (iconBase64 == null) {
                 try {
                     val appInfo = pm.getApplicationInfo(pkgName, 0)
-                    val drawable = pm.getApplicationIcon(appInfo)
+                    val drawable = appInfo.loadIcon(pm)
                     val bitmap = drawableToBitmap(drawable, size)
                     outputStream.reset()
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)

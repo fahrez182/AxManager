@@ -79,6 +79,7 @@ import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDes
 import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
+import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.data.AxeronConstant.server.VERSION_CODE
 import frb.axeron.manager.BuildConfig
@@ -93,7 +94,6 @@ import frb.axeron.manager.ui.screen.home.PrivilegeCard
 import frb.axeron.manager.ui.util.checkNewVersion
 import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
-import frb.axeron.manager.ui.viewmodel.QuickShellViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.utils.Starter
 import kotlinx.coroutines.Dispatchers
@@ -159,7 +159,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                             onShutdown = { Axeron.destroy() },
                             onRestart = {
                                 Axeron.newProcess(
-                                    QuickShellViewModel.getQuickCmd(Starter.internalCommand),
+                                    AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
                                     null,
                                     null
                                 )
