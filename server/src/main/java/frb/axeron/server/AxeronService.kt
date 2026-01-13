@@ -17,6 +17,8 @@ import android.os.ServiceManager
 import android.os.SystemClock
 import android.system.Os
 import frb.axeron.api.utils.PathHelper
+import frb.axeron.data.ApkChangedListener
+import frb.axeron.data.ApkChangedObservers
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.AxeronConstant.server.PATCH_CODE
 import frb.axeron.data.AxeronConstant.server.TYPE_DEFAULT_ENV
@@ -27,8 +29,6 @@ import frb.axeron.data.AxeronConstant.server.VERSION_NAME
 import frb.axeron.data.Environment
 import frb.axeron.data.ServerInfo
 import frb.axeron.server.manager.EnvironmentManager
-import frb.axeron.server.utils.ApkChangedListener
-import frb.axeron.server.utils.ApkChangedObservers
 import frb.axeron.server.utils.BinderSender
 import frb.axeron.server.utils.IContentProviderCompat
 import moe.shizuku.api.BinderContainer
@@ -50,11 +50,11 @@ import kotlin.system.exitProcess
 open class AxeronService() : Service() {
 
     companion object {
-        @Suppress("DEPRECATION")
         @JvmStatic
         fun main(args: Array<String>) {
             DdmHandleAppName.setAppName("axeron_server", 0)
 
+            @Suppress("DEPRECATION")
             Looper.prepareMainLooper()
             AxeronService()
             Looper.loop()
@@ -292,7 +292,7 @@ open class AxeronService() : Service() {
         val apkObserver = ApkChangedListener {
             if (getManagerApplicationInfo() == null) exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
         }
-        ApkChangedObservers.start(ai.sourceDir, apkObserver)
+        ApkChangedObservers.start(ai.sourceDir, mainHandler, apkObserver)
 
         BinderSender.register(this)
 

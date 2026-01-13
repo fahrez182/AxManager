@@ -61,4 +61,5 @@ kotlin {
 
 dependencies {
     implementation(libs.gson)
+    implementation(libs.androidx.annotation.jvm)
 }

@@ -302,7 +302,7 @@ fun WirelessDebuggingCard(
                                 .size(16.dp),
                             contentDescription = "Start"
                         )
-                        Text("Start")
+                        Text("Start Pairing")
                     }
                 }
 

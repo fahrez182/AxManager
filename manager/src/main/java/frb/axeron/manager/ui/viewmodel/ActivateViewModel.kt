@@ -42,6 +42,9 @@ class ActivateViewModel : ViewModel() {
         const val TAG = "AdbViewModel"
     }
 
+    var activateStatus by mutableStateOf<ActivateStatus>(ActivateStatus.Disable)
+        private set
+
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
 
@@ -63,17 +66,31 @@ class ActivateViewModel : ViewModel() {
     var tryActivate by mutableStateOf(false)
         private set
 
-    fun axeronObserve(): Flow<AxeronInfo> = callbackFlow {
+    sealed class ActivateStatus {
+        object Disable : ActivateStatus()
+        object Updating : ActivateStatus()
+        class Running(val axeronInfo: AxeronInfo) : ActivateStatus()
+    }
+
+    fun axeronObserve(): Flow<ActivateStatus> = callbackFlow {
         if (Axeron.pingBinder()) {
-            trySend(Axeron.getAxeronInfo())
+            trySend(ActivateStatus.Running(Axeron.getAxeronInfo()))
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived")
-            trySend(Axeron.getAxeronInfo())
+            if (Axeron.pingBinder() && Axeron.getAxeronInfo().isNeedUpdate()) {
+                trySend(ActivateStatus.Updating)
+            } else {
+                trySend(ActivateStatus.Running(Axeron.getAxeronInfo()))
+            }
         }
         val deadListener = Axeron.OnBinderDeadListener {
             Log.i("AxManagerBinder", "onBinderDead")
-            trySend(AxeronInfo())
+            if (Axeron.pingBinder() && Axeron.getAxeronInfo().isNeedUpdate()) {
+                trySend(ActivateStatus.Updating)
+            } else {
+                trySend(ActivateStatus.Disable)
+            }
         }
         Axeron.addBinderReceivedListener(receivedListener)
         Axeron.addBinderDeadListener(deadListener)
@@ -107,16 +124,21 @@ class ActivateViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            axeronObserve().collect {
-                axeronInfo = it
-                if (axeronInfo.isNeedUpdate()) {
-                    tryActivate = true
-                    Axeron.newProcess(
-                        AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
-                        null,
-                        null
-                    )
-                    return@collect
+            axeronObserve().collect { status ->
+                if (status is ActivateStatus.Running) {
+                    if (status.axeronInfo.isNeedUpdate()) {
+                        activateStatus = ActivateStatus.Updating
+                        tryActivate = true
+                        Axeron.newProcess(
+                            AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
+                            null,
+                            null
+                        )
+
+                        return@collect
+                    }
+                    axeronInfo = status.axeronInfo
+                    activateStatus = status
                 }
                 tryActivate = false
             }

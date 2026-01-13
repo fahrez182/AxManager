@@ -1,53 +1,94 @@
-package rikka.shizuku.manager
+package frb.axeron.data
 
+import android.os.Build
 import android.os.FileObserver
+import android.os.Handler
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.io.File
-import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArraySet
 
-interface ApkChangedListener {
+fun interface ApkChangedListener {
     fun onApkChanged()
 }
 
-private val observers = Collections.synchronizedMap(HashMap<String, ApkChangedObserver>())
+private val observers = ConcurrentHashMap<String, ApkChangedObserver>()
 
 object ApkChangedObservers {
 
     @JvmStatic
-    fun start(apkPath: String, listener: ApkChangedListener) {
+    fun start(apkPath: String, mainHandler: Handler, listener: ApkChangedListener) {
         // inotify watchs inode, if the there are still processes holds the file, DELTE_SELF will not be triggered
         // so we need to watch the parent folder
 
-        val path = File(apkPath).parent!!
-        val observer = observers.getOrPut(path) {
-            ApkChangedObserver(path).apply {
-                startWatching()
+        val path = File(apkPath)
+        val observer = observers.getOrPut(path.parent) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ApkChangedObserver(mainHandler, path).apply {
+                    startWatching()
+                }
+            } else {
+                ApkChangedObserver(mainHandler, path.parent).apply {
+                    startWatching()
+                }
             }
         }
         observer.addListener(listener)
     }
 
+//    @JvmStatic
+//    fun stop(listener: ApkChangedListener) {
+//        val pathToRemove = mutableListOf<String>()
+//
+//        for ((path, observer) in observers) {
+//            observer.removeListener(listener)
+//
+//            if (!observer.hasListeners()) {
+//                pathToRemove.add(path)
+//            }
+//        }
+//
+//        for (path in pathToRemove) {
+//            observers.remove(path)?.stopWatching()
+//        }
+//    }
+
     @JvmStatic
     fun stop(listener: ApkChangedListener) {
-        val pathToRemove = mutableListOf<String>()
-
-        for ((path, observer) in observers) {
+        observers.entries.removeIf { (_, observer) ->
             observer.removeListener(listener)
-
             if (!observer.hasListeners()) {
-                pathToRemove.add(path)
-            }
-        }
-
-        for (path in pathToRemove) {
-            observers.remove(path)?.stopWatching()
+                observer.stopWatching()
+                true
+            } else false
         }
     }
+
 }
 
-class ApkChangedObserver(private val path: String) : FileObserver(path, DELETE) {
+class ApkChangedObserver : FileObserver {
 
-    private val listeners = mutableSetOf<ApkChangedListener>()
+    private val path: File
+    private val handler: Handler
+    private val listeners: CopyOnWriteArraySet<ApkChangedListener>
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    constructor(mainHandler: Handler, path: File) : super(path, DELETE or DELETE_SELF or MOVE_SELF or CLOSE_WRITE) {
+        this.path = path
+        this.handler = mainHandler
+        this.listeners = CopyOnWriteArraySet<ApkChangedListener>()
+    }
+
+    @Suppress("DEPRECATION")
+    constructor(mainHandler: Handler, path: String?) : super(path, DELETE or DELETE_SELF or MOVE_SELF or CLOSE_WRITE) {
+        if (path == null) throw IllegalArgumentException("path cannot be null")
+        this.path = File(path)
+        this.handler = mainHandler
+        this.listeners = CopyOnWriteArraySet<ApkChangedListener>()
+    }
+
+
 
     fun addListener(listener: ApkChangedListener): Boolean {
         return listeners.add(listener)
@@ -61,27 +102,28 @@ class ApkChangedObserver(private val path: String) : FileObserver(path, DELETE) 
         return listeners.isNotEmpty()
     }
 
+    @Volatile
+    private var active = true
+
     override fun onEvent(event: Int, path: String?) {
-        Log.d("ShizukuServer", "onEvent: ${eventToString(event)} $path")
-
-        if ((event and 0x00008000 /* IN_IGNORED */) != 0 || path == null) {
-            return
-        }
-
+        if (!active || path == null) return
         if (path == "base.apk") {
-            stopWatching()
-            ArrayList(listeners).forEach { it.onApkChanged() }
+            active = false
+            handler.post {
+                stopWatching()
+                listeners.forEach { it.onApkChanged() }
+            }
         }
     }
 
     override fun startWatching() {
         super.startWatching()
-        Log.d("ShizukuServer", "start watching $path")
+        Log.d("AxeronServer", "start watching $path")
     }
 
     override fun stopWatching() {
         super.stopWatching()
-        Log.d("ShizukuServer", "stop watching $path")
+        Log.d("AxeronServer", "stop watching $path")
     }
 }
 

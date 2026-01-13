@@ -1,5 +1,7 @@
 package rikka.shizuku.manager;
 
+import static rikka.shizuku.server.util.HandlerUtil.getMainHandler;
+
 import android.content.pm.PackageInfo;
 import android.util.ArrayMap;
 
@@ -8,6 +10,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import frb.axeron.data.ApkChangedListener;
+import frb.axeron.data.ApkChangedObservers;
 import moe.shizuku.starter.ServiceStarter;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.UserManagerApis;
@@ -67,12 +71,12 @@ public class ShizukuUserServiceManager extends UserServiceManager {
                 } else {
                     LOGGER.v("update apk listener for record %s since package %s is upgrading", record.token, packageName);
                     ApkChangedObservers.stop(this);
-                    ApkChangedObservers.start(newSourceDir, this);
+                    ApkChangedObservers.start(newSourceDir, getMainHandler(), this);
                 }
             }
         };
 
-        ApkChangedObservers.start(packageInfo.applicationInfo.sourceDir, listener);
+        ApkChangedObservers.start(packageInfo.applicationInfo.sourceDir, getMainHandler(), listener);
         apkChangedListeners.put(record, listener);
     }
 

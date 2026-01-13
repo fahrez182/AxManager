@@ -319,7 +319,7 @@ abstract class Service : IAxeronService.Stub(), AxeronInterface {
             )
             try {
                 context = WeakReference<Context>(
-                    Refine.unsafeCast<ContextHidden?>(systemContext).createPackageContextAsUser(
+                    Refine.unsafeCast<ContextHidden>(systemContext).createPackageContextAsUser(
                         MANAGER_APPLICATION_ID,
                         Context.CONTEXT_INCLUDE_CODE or Context.CONTEXT_IGNORE_SECURITY,
                         userHandle

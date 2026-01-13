@@ -14,6 +14,7 @@ import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.pm.PackageInfo;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.format.DateUtils;
@@ -71,7 +72,12 @@ public abstract class UserServiceManager {
     }
 
     public int removeUserService(IShizukuServiceConnection conn, Bundle options) {
-        ComponentName componentName = Objects.requireNonNull(options.getParcelable(USER_SERVICE_ARG_COMPONENT), "component is null");
+        ComponentName componentName;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            componentName = Objects.requireNonNull(options.getParcelable(USER_SERVICE_ARG_COMPONENT, ComponentName.class), "component is null");
+        } else {
+            componentName = Objects.requireNonNull(options.getParcelable(USER_SERVICE_ARG_COMPONENT), "component is null");
+        }
 
         int uid = Binder.getCallingUid();
         int appId = UserHandleCompat.getAppId(uid);
@@ -123,7 +129,13 @@ public abstract class UserServiceManager {
         int appId = UserHandleCompat.getAppId(uid);
         int userId = UserHandleCompat.getUserId(uid);
 
-        ComponentName componentName = Objects.requireNonNull(options.getParcelable(USER_SERVICE_ARG_COMPONENT), "component is null");
+        ComponentName componentName;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            componentName = Objects.requireNonNull(options.getParcelable(USER_SERVICE_ARG_COMPONENT, ComponentName.class), "component is null");
+        } else {
+            componentName = Objects.requireNonNull(options.getParcelable(USER_SERVICE_ARG_COMPONENT), "component is null");
+        }
+
         String packageName = Objects.requireNonNull(componentName.getPackageName(), "package is null");
         PackageInfo packageInfo = ensureCallingPackageForUserService(packageName, appId, userId);
 

@@ -32,6 +32,10 @@ kotlin {
     }
 }
 
+tasks.withType<JavaCompile> {
+    options.isDeprecation = true
+}
+
 dependencies {
 
     implementation(libs.androidx.lifecycle.livedata.ktx)

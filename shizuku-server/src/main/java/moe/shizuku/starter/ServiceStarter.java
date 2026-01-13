@@ -131,12 +131,17 @@ public class ServiceStarter {
                 reply.setClassLoader(BinderContainer.class.getClassLoader());
 
                 LOGGER.i("send binder to %s in user %d", packageName, userId);
-                BinderContainer container = reply.getParcelable(EXTRA_BINDER);
+                BinderContainer container;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    container = reply.getParcelable(EXTRA_BINDER, BinderContainer.class);
+                } else {
+                    container = reply.getParcelable(EXTRA_BINDER);
+                }
 
                 if (container != null && container.binder != null && container.binder.pingBinder()) {
                     shizukuBinder = container.binder;
                     shizukuBinder.linkToDeath(() -> {
-                        LOGGER.i( "exiting...");
+                        LOGGER.i("exiting...");
                         System.exit(0);
                     }, 0);
                     return true;

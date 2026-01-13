@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.ProviderInfo;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -69,7 +70,13 @@ public class AxeronProvider extends ContentProvider {
     }
 
     private void handleSendBinder(@NonNull Bundle extras) {
-        BinderContainer container = extras.getParcelable(EXTRA_BINDER);
+        BinderContainer container;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            container = extras.getParcelable(EXTRA_BINDER, BinderContainer.class);
+        } else {
+            container = extras.getParcelable(EXTRA_BINDER);
+        }
+
         if (!Axeron.pingBinder()) {
             if (container != null && container.binder != null) {
                 Log.d(TAG, "binder received");
@@ -83,9 +90,6 @@ public class AxeronProvider extends ContentProvider {
             }
             return;
         }
-//        else {
-//            Log.d(TAG, "sendBinder is called when already a living binder");
-//        }
 
         if (!Shizuku.pingBinder() || Axeron.getShizukuService() == null) {
             Log.d(TAG, "sendShizukuService is called");

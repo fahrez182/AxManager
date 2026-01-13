@@ -2,7 +2,6 @@ package frb.axeron.manager.ui.screen
 
 import android.os.Build
 import android.os.SystemClock
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -159,7 +158,11 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                             onShutdown = { Axeron.destroy() },
                             onRestart = {
                                 Axeron.newProcess(
-                                    AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
+                                    AxeronCommandSession.getQuickCmd(
+                                        Starter.internalCommand,
+                                        true,
+                                        false
+                                    ),
                                     null,
                                     null
                                 )
@@ -323,7 +326,7 @@ fun StatusCard(
 ) {
     val axeronInfo = activateViewModel.axeronInfo
     val context = LocalContext.current
-    Log.d("AxManager", "NeedUpdate: ${axeronInfo.isNeedUpdate()}")
+    val updating = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Updating
 
     val uriHandler = LocalUriHandler.current
     val extraStepUrl =
@@ -333,7 +336,7 @@ fun StatusCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
                 when {
-                    axeronInfo.isNeedUpdate() -> MaterialTheme.colorScheme.primaryContainer
+                    updating -> MaterialTheme.colorScheme.primaryContainer
                     axeronInfo.isNeedExtraStep() -> MaterialTheme.colorScheme.errorContainer
                     axeronInfo.isRunning() -> MaterialTheme.colorScheme.primaryContainer
                     else -> MaterialTheme.colorScheme.errorContainer
@@ -348,7 +351,7 @@ fun StatusCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    if (axeronInfo.isNeedUpdate()) {
+                    if (updating) {
                         Toast.makeText(context, "Updating...", Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
@@ -367,7 +370,7 @@ fun StatusCard(
             }
 
             when {
-                axeronInfo.isNeedUpdate() -> {
+                updating -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

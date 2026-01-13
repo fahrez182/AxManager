@@ -82,7 +82,7 @@ public class UserService {
             if (constructorWithContext != null) {
                 service = (IBinder) constructorWithContext.newInstance(context);
             } else {
-                service = (IBinder) serviceClass.newInstance();
+                service = (IBinder) serviceClass.getDeclaredConstructor().newInstance();
             }
         } catch (Throwable tr) {
             Log.w(TAG, String.format("unable to start service %s/%s...", pkg, cls), tr);
