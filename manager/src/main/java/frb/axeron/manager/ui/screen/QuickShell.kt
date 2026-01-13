@@ -90,6 +90,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
+import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.manager.R
@@ -258,6 +259,8 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
+
+
             LaunchedEffect(viewModel.clear) {
                 logs.clear()
             }
@@ -269,12 +272,97 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             }
 
             // collect flow
-            LaunchedEffect(Unit) {
+            LaunchedEffect(viewModel.output) {
                 viewModel.output.collect { line ->
-                    if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && line.output.isBlank()) return@collect
-                    logs.add(line)
+                    val raw = line.output
+
+                    if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && raw.isBlank()) return@collect
+                    // ===== DETECT SCREEN MODE =====
+
+                    // ===== SCREEN MODE (top, watch, htop, etc) =====
+                    if (AnsiFilter.isScreenControl(raw)) {
+                        val clean = AnsiFilter.stripAnsi(raw)
+
+                        if (clean.isEmpty()) return@collect
+                        if (logs.isEmpty()) {
+                            logs.add(
+                                QuickShellViewModel.Output(
+                                    type = line.type,
+                                    output = clean,
+                                    completed = false
+                                )
+                            )
+                        } else {
+                            val last = logs.last()
+                            logs[logs.lastIndex] = last.copy(output = clean)
+                        }
+                        return@collect
+                    }
+
+
+                    // selain stdout/stderr → selalu item baru
+                    if (line.type != QuickShellViewModel.OutputType.TYPE_STDOUT && line.type != QuickShellViewModel.OutputType.TYPE_STDERR) {
+                        logs.add(line.copy(completed = true))
+                        return@collect
+                    }
+
+                    val hasNewline =
+                        raw.contains('\n') || raw.contains("\r\n")
+
+                    val hasCarriageReturn =
+                        raw.contains('\r') && !raw.contains('\n')
+
+                    val clean = raw.trimEnd('\n', '\r')
+
+                    val last = logs.lastOrNull()
+
+                    when {
+
+                        /* ===============================
+                           CASE 1: CARRIAGE RETURN (\r)
+                           overwrite baris terakhir
+                           =============================== */
+                        hasCarriageReturn && last != null &&
+                                !last.completed &&
+                                last.type == line.type -> {
+
+                            val i = logs.lastIndex
+                            logs[i] = last.copy(
+                                output = clean,
+                                completed = false
+                            )
+                        }
+
+                        /* ===============================
+                           CASE 2: LANJUT BARIS SEBELUMNYA
+                           =============================== */
+                        last != null &&
+                                !last.completed &&
+                                last.type == line.type -> {
+
+                            val i = logs.lastIndex
+                            logs[i] = last.copy(
+                                output = last.output + clean,
+                                completed = hasNewline
+                            )
+                        }
+
+                        /* ===============================
+                           CASE 3: BARIS BARU
+                           =============================== */
+                        else -> {
+                            logs.add(
+                                QuickShellViewModel.Output(
+                                    type = line.type,
+                                    output = clean,
+                                    completed = hasNewline
+                                )
+                            )
+                        }
+                    }
                 }
             }
+
 
             val hScroll = rememberScrollState()
 
@@ -311,19 +399,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                                 ),
                                 softWrap = false,   // MATIIN WRAP
                             )
-//                            Text(
-//                                text = line.output.parseAsAnsiAnnotatedString(),
-//                                style = MaterialTheme.typography.labelSmall.copy(
-//                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
-//                                    lineHeightStyle = LineHeightStyle(
-//                                        alignment = LineHeightStyle.Alignment.Center,
-//                                        trim = LineHeightStyle.Trim.Both
-//                                    )
-//                                ),
-//                                softWrap = false,   // MATIIN WRAP
-//                                fontFamily = FontFamily.Monospace,
-//                                color = MaterialTheme.colorScheme.onSurfaceVariant
-//                            )
                         }
 
                         item {

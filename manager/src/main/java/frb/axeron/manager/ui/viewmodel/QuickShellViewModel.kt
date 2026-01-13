@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.api.utils.AnsiFilter
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -44,10 +45,12 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                 commandText = TextFieldValue("")
             }
 
-            override fun onProcessFinished(exitCode: Int) {
+            override fun onProcessFinished(exitCode: Int, lastOutput: String) {
                 Log.i("QuickShellViewModel", "onProcessFinished: $exitCode")
-                append(OutputType.TYPE_EXIT, "[exit] code=$exitCode")
-                append(OutputType.TYPE_SPACE, "")
+                if (!AnsiFilter.isScreenControl(lastOutput)) {
+                    append(OutputType.TYPE_EXIT, "[exit] code=$exitCode")
+                    append(OutputType.TYPE_SPACE, "")
+                }
                 execMode = "Commands"
                 if (savedCommand != null) {
                     commandText = savedCommand!!
@@ -91,7 +94,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         VOLUME_DOWN
     }
 
-    data class Output(val type: OutputType, var output: String)
+    data class Output(val type: OutputType, var output: String, var completed: Boolean = false)
 
     var isShellRestrictionEnabled: Boolean by mutableStateOf(
         prefs.getBoolean("shell_restriction", true)
@@ -155,14 +158,9 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun append(type: OutputType, output: String) {
         viewModelScope.launch {
-            _output.emit(Output(type, output.trimEnd()))
+            _output.emit(Output(type, output))
         }
     }
-
-    private suspend fun appendRaw(type: OutputType, output: String) {
-        _output.emit(Output(type, output.trimEnd()))
-    }
-
 
     override fun onCleared() {
         super.onCleared()

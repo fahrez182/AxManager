@@ -77,6 +77,7 @@ import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.PluginInstaller
@@ -319,7 +320,6 @@ fun FlashScreen(
         }
     )
 
-    var tempText: String
     val logContent = rememberSaveable { StringBuilder() }
     //Is text is a log?
     var text by rememberSaveable { mutableStateOf("") }
@@ -333,11 +333,10 @@ fun FlashScreen(
             flashIt(
                 pendingFlashIt!!,
                 onStdout = {
-                    tempText = "$it\n"
-                    if (tempText.startsWith("[H[J")) { // clear command
-                        text = tempText.substring(6)
+                    if (AnsiFilter.isScreenControl(it)) { // clear command
+                        text = AnsiFilter.stripAnsi(it)
                     } else {
-                        text += tempText
+                        text += it
                     }
                     logContent.append(it).append("\n")
                 },

@@ -43,6 +43,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.PluginInfo
@@ -80,7 +81,6 @@ fun ExecutePluginActionScreen(
     }
 
     var text by rememberSaveable { mutableStateOf("") }
-    var tempText: String
     val logContent = rememberSaveable { StringBuilder() }
 
     LaunchedEffect(Unit) {
@@ -94,11 +94,10 @@ fun ExecutePluginActionScreen(
             AxeronPluginService.execWithIO(
                 cmd = cmd,
                 onStdout = {
-                    tempText = "$it\n"
-                    if (tempText.startsWith("[H[J")) { // clear command
-                        text = tempText.drop(6)
+                    if (AnsiFilter.isScreenControl(it)) { // clear command
+                        text = AnsiFilter.stripAnsi(it)
                     } else {
-                        text += tempText
+                        text += it
                     }
                     logContent.append(it).append("\n")
                 },
