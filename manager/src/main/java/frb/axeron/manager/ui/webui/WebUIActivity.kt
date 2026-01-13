@@ -17,7 +17,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -48,7 +47,6 @@ import java.util.Locale
 @SuppressLint("SetJavaScriptEnabled")
 class WebUIActivity : ComponentActivity() {
     private lateinit var webView: WebView
-    private lateinit var container: FrameLayout
     private lateinit var insets: Insets
     private lateinit var plugin: PluginInfo
 
@@ -60,8 +58,6 @@ class WebUIActivity : ComponentActivity() {
     private var pendingDownloadSuggestedFilename: String? = null
 
     private var insetsContinuation: CancellableContinuation<Unit>? = null
-
-    private var isInsetsEnabled = false
 
     fun erudaConsole(context: android.content.Context): String {
         return context.assets.open("js/eruda.min.js").bufferedReader().use { it.readText() }
@@ -154,56 +150,37 @@ class WebUIActivity : ComponentActivity() {
 
         insets = Insets(0, 0, 0, 0)
 
-        container = FrameLayout(this)
-
         webView = WebView(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             val density = resources.displayMetrics.density
-            ViewCompat.setOnApplyWindowInsetsListener(container) { view, windowInsets ->
-                val inset = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-
+            ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
+                val inset = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 insets = Insets(
                     top = (inset.top / density).toInt(),
                     bottom = (inset.bottom / density).toInt(),
                     left = (inset.left / density).toInt(),
                     right = (inset.right / density).toInt()
                 )
-
-                if (isInsetsEnabled) {
-                    view.setPadding(0, 0, 0, 0)
-                } else {
-                    view.setPadding(inset.left, inset.top, inset.right, inset.bottom)
-                }
-
                 insetsContinuation?.resumeWith(Result.success(Unit))
                 insetsContinuation = null
-
                 WindowInsetsCompat.CONSUMED
             }
         }
 
-        container.addView(webView)
-        setContentView(container)
+        setContentView(webView)
 
-        // coroutine-safe inset wait
         if (insets == Insets(0, 0, 0, 0)) {
-            lifecycleScope.launch {
-                suspendCancellableCoroutine<Unit> { cont ->
-                    insetsContinuation = cont
-                    cont.invokeOnCancellation {
-                        if (insetsContinuation === cont) {
-                            insetsContinuation = null
-                        }
+            suspendCancellableCoroutine { cont ->
+                insetsContinuation = cont
+                cont.invokeOnCancellation {
+                    if (insetsContinuation === cont) {
+                        insetsContinuation = null
                     }
                 }
             }
         }
 
-        val axPathHandler = AxPathHandler(
-            webRoot,
-            { insets },
-            { enable -> enableInsets(enable) }
-        )
+        val axPathHandler = AxPathHandler(webRoot) { insets }
         val iconHandler = AppsViewModel.AppInfo.Handler()
 
         val axWebLoader = AxWebLoader.Builder()
@@ -385,6 +362,9 @@ class WebUIActivity : ComponentActivity() {
         if (!extension.isNullOrEmpty() && !extension.startsWith(".")) {
             extension = ".$extension"
         }
+        if (extension.isNullOrEmpty()) {
+            extension = ""
+        }
 
         val sdf = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.getDefault())
         val fileName = "${plugin.dirId}_${sdf.format(Date())}${extension ?: ""}"
@@ -409,15 +389,6 @@ class WebUIActivity : ComponentActivity() {
             ).show()
             pendingDownloadData = null
             pendingDownloadSuggestedFilename = null
-        }
-    }
-
-    fun enableInsets(enable: Boolean = true) {
-        runOnUiThread {
-            if (isInsetsEnabled != enable) {
-                isInsetsEnabled = enable
-                ViewCompat.requestApplyInsets(container)
-            }
         }
     }
 

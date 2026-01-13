@@ -37,13 +37,10 @@ public class AxPathHandler implements AxWebLoader.PathHandler {
 
     private final InsetsSupplier mInsetsSupplier;
 
-    private final OnInsetsRequestedListener mOnInsetsRequestedListener;
-
     @SuppressLint("RestrictedApi")
-    public AxPathHandler(@NonNull File directory, @NonNull InsetsSupplier insetsSupplier, OnInsetsRequestedListener onInsetsRequestedListener) {
+    public AxPathHandler(@NonNull File directory, @NonNull InsetsSupplier insetsSupplier) {
         try {
             mInsetsSupplier = insetsSupplier;
-            mOnInsetsRequestedListener = onInsetsRequestedListener;
             mDirectory = new File(getCanonicalDirPath(directory));
             if (!isAllowedInternalStorageDir()) {
                 throw new IllegalArgumentException("The given directory \"" + directory
@@ -96,9 +93,6 @@ public class AxPathHandler implements AxWebLoader.PathHandler {
         Log.d(TAG, "Raw path: " + path);
 
         if ("/internal/insets.css".equals(path)) {
-            if (mOnInsetsRequestedListener != null) {
-                mOnInsetsRequestedListener.onInsetsRequested(true);
-            }
             String css = mInsetsSupplier.get().getCss();
             return new WebResourceResponse(
                     "text/css",
