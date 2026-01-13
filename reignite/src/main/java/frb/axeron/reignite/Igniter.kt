@@ -71,16 +71,14 @@ object Igniter {
                 update.exists() -> {
                     println("- Updating $name")
                     stopPlugin(name, bin)
-                    println(" - try to remove update tags")
                     if (update.delete()) {
-                        println(" - Updated $name")
+                        println(" - Update $name Complete")
                     } else {
                         println(" - Failed to update $name")
                     }
-                    println("- Update $name Complete")
                 }
 
-                isRunning(name) -> {
+                isServiceRunning(name) -> {
                     val pid = SystemProp.get("log.tag.service.$name")
                     println("- $name:$pid is already running, skip.")
                     return@forEach
@@ -189,7 +187,6 @@ object Igniter {
     // STOP / UNINSTALL
     // ===============================
     private fun stopPlugin(name: String, bin: File) {
-        println(" - try to removing tags $name")
         SystemProp.set("log.tag.fs.$name", "0")
         SystemProp.set("log.tag.props.$name", "0")
 
@@ -199,11 +196,9 @@ object Igniter {
             execWait(arrayOf("busybox", "kill", "-TERM", pid))
         }
 
-        println(" - try to cleanup service $name")
         execWait(arrayOf("busybox", "pkill", "-f", name))
         SystemProp.set("log.tag.service.$name", "-1")
 
-        println(" - try to unlink $name")
         unlinkBin(bin)
     }
 
@@ -243,13 +238,10 @@ object Igniter {
     }
 
     private fun unlinkBin(bin: File) {
-        println(" - Unlinking bin")
         if (!bin.exists()) return
         bin.listFiles()?.forEach { src ->
             val dst = File(AXERONXBIN, src.name)
-            println(" - Start ${src.absolutePath}")
             if (!dst.exists()) return@forEach
-            println(" - Unlinking ${src.absolutePath}")
             if (Os.readlink(dst.absolutePath) == src.absolutePath) {
                 println(" - Unlinked : ${dst.absolutePath}")
                 File(AXERONXBIN, src.name).delete()
@@ -266,13 +258,9 @@ object Igniter {
         }
     }
 
-    private fun isRunning(name: String): Boolean {
+    private fun isServiceRunning(name: String): Boolean {
         val pid = SystemProp.get("log.tag.service.$name")
-        return if (pid.isNotBlank() && pid != "-1") {
-            execWait(arrayOf("busybox", "pgrep", "-f", name)) == 0
-        } else {
-            false
-        }
+        return (pid.isNotBlank() && pid != "-1") || File("/proc/$pid").exists() || execWait(arrayOf("busybox", "pgrep", "-f", name)) == 0
     }
 
     private fun execWait(cmd: Array<String>): Int =

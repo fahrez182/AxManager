@@ -52,7 +52,6 @@ import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -80,6 +79,7 @@ fun ExecutePluginActionScreen(
         // Disable back button if action is running
     }
 
+    val scope = rememberCoroutineScope()
     var text by rememberSaveable { mutableStateOf("") }
     val logContent = rememberSaveable { StringBuilder() }
 
@@ -87,17 +87,18 @@ fun ExecutePluginActionScreen(
         if (text.isNotEmpty()) {
             return@LaunchedEffect
         }
-        withContext(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             val pluginPath = File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN), plugin.dirId)
             val pluginBin = "${pluginPath.absolutePath}/system/bin"
-            val cmd = "export PATH=$pluginBin:\$PATH; cd \"$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit \$RES"
+            val cmd =
+                $$"export PATH=$$pluginBin:$PATH; cd \"$$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit $RES"
             AxeronPluginService.execWithIO(
                 cmd = cmd,
                 onStdout = {
                     if (AnsiFilter.isScreenControl(it)) { // clear command
-                        text = AnsiFilter.stripAnsi(it)
+                        text = AnsiFilter.stripAnsi(it) + "\n"
                     } else {
-                        text += it
+                        text += "$it\n"
                     }
                     logContent.append(it).append("\n")
                 },
@@ -110,7 +111,6 @@ fun ExecutePluginActionScreen(
     }
 
     val snackBarHost = LocalSnackbarHost.current
-    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
     Scaffold(

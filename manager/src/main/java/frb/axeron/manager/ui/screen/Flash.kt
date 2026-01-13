@@ -92,7 +92,6 @@ import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import java.io.File
 import java.text.SimpleDateFormat
@@ -320,6 +319,7 @@ fun FlashScreen(
         }
     )
 
+    val scope = rememberCoroutineScope()
     val logContent = rememberSaveable { StringBuilder() }
     //Is text is a log?
     var text by rememberSaveable { mutableStateOf("") }
@@ -329,14 +329,14 @@ fun FlashScreen(
         Log.d("FlashScreen", "flashing: $flashing")
         if (pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
         hasFlashed = true
-        withContext(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             flashIt(
                 pendingFlashIt!!,
                 onStdout = {
                     if (AnsiFilter.isScreenControl(it)) { // clear command
-                        text = AnsiFilter.stripAnsi(it)
+                        text = AnsiFilter.stripAnsi(it) + "\n"
                     } else {
-                        text += it
+                        text += "$it\n"
                     }
                     logContent.append(it).append("\n")
                 },
@@ -354,7 +354,6 @@ fun FlashScreen(
         }
     }
 
-    val scope = rememberCoroutineScope()
     val snackBarHost = LocalSnackbarHost.current
     val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())

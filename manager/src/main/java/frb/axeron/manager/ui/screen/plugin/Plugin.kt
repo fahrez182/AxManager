@@ -166,12 +166,25 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                     val clipData = data.clipData
 
                     val installers = mutableListOf<PluginInstaller>()
+                    val resolver = context.contentResolver
+
                     if (clipData != null) {
                         for (i in 0 until clipData.itemCount) {
-                            clipData.getItemAt(i)?.uri?.let { installers.add(PluginInstaller(it)) }
+                            val uri = clipData.getItemAt(i).uri
+                            resolver.takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            )
+                            installers.add(PluginInstaller(uri))
                         }
                     } else {
-                        data.data?.let { installers.add(PluginInstaller(it)) }
+                        data.data?.let { uri ->
+                            resolver.takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            )
+                            installers.add(PluginInstaller(uri))
+                        }
                     }
 
                     if (installers.isEmpty()) return@rememberLauncherForActivityResult
@@ -220,10 +233,16 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                     FloatingActionButton(
                         onClick = {
                             // Select the zip files to install
-                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                setType("application/zip")
+                            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "application/zip"
                                 putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                addFlags(
+                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                                )
                             }
+
                             selectZipLauncher.launch(intent)
                         }
                     ) {
@@ -240,8 +259,15 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
             viewModel = pluginViewModel,
             modifier = Modifier.padding(paddingValues),
             onInstallModule = {
-                navigator.navigate(FlashScreenDestination(FlashIt.FlashPlugins(listOf(
-                    PluginInstaller(it)))))
+                navigator.navigate(
+                    FlashScreenDestination(
+                        FlashIt.FlashPlugins(
+                            listOf(
+                                PluginInstaller(it)
+                            )
+                        )
+                    )
+                )
             },
             onClickModule = { plugin ->
                 if (plugin.hasWebUi) {
