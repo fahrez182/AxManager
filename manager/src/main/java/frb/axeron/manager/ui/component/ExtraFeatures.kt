@@ -5,12 +5,12 @@ import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -25,20 +25,18 @@ import java.util.Locale
 val Int.scaleDp: Dp
     get() {
         val configuration = LocalConfiguration.current
-        val density = LocalDensity.current
         val fontScale = configuration.fontScale
-        return with(density) { (this@scaleDp * fontScale).dp }
+        return (this@scaleDp * fontScale).dp
     }
 
-fun Color.blend(other: Color, ratio: Float): Color {
-    val inverse = 1f - ratio
-    return Color(
-        red = red * inverse + other.red * ratio,
-        green = green * inverse + other.green * ratio,
-        blue = blue * inverse + other.blue * ratio,
-        alpha = alpha
-    )
-}
+fun Uri.resolveDisplayName(context: Context): String =
+    context.contentResolver.query(
+        this,
+        arrayOf(OpenableColumns.DISPLAY_NAME),
+        null, null, null
+    )?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0) else "unknown.zip"
+    } ?: "unknown.zip"
 
 @Composable
 fun UseLifecycle(

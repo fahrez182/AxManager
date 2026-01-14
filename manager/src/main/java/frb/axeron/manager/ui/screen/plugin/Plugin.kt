@@ -166,24 +166,15 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                     val clipData = data.clipData
 
                     val installers = mutableListOf<PluginInstaller>()
-                    val resolver = context.contentResolver
-
                     if (clipData != null) {
                         for (i in 0 until clipData.itemCount) {
-                            val uri = clipData.getItemAt(i).uri
-                            resolver.takePersistableUriPermission(
-                                uri,
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            )
-                            installers.add(PluginInstaller(uri))
+                            clipData.getItemAt(i)?.uri?.let {
+                                installers.add(PluginInstaller(it))
+                            }
                         }
                     } else {
-                        data.data?.let { uri ->
-                            resolver.takePersistableUriPermission(
-                                uri,
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            )
-                            installers.add(PluginInstaller(uri))
+                        data.data?.let {
+                            installers.add(PluginInstaller(it))
                         }
                     }
 
@@ -233,16 +224,10 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                     FloatingActionButton(
                         onClick = {
                             // Select the zip files to install
-                            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                                addCategory(Intent.CATEGORY_OPENABLE)
-                                type = "application/zip"
+                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                setType("application/zip")
                                 putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                                addFlags(
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                                )
                             }
-
                             selectZipLauncher.launch(intent)
                         }
                     ) {

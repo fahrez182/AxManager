@@ -85,6 +85,7 @@ import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.component.resolveDisplayName
 import frb.axeron.manager.ui.theme.GREEN
 import frb.axeron.manager.ui.theme.ORANGE
 import frb.axeron.manager.ui.theme.RED
@@ -92,6 +93,7 @@ import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import java.io.File
 import java.text.SimpleDateFormat
@@ -175,7 +177,9 @@ fun InstallDialog(
 
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
                 ) {
                     items(installers.size) { index ->
                         val pluginInstaller = installers[index]
@@ -208,7 +212,7 @@ fun InstallDialog(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = pluginInstaller.uri.getFileName(LocalContext.current),
+                                        text = pluginInstaller.uri.resolveDisplayName(LocalContext.current),
                                         style = MaterialTheme.typography.bodyLarge,
                                         maxLines = 1
                                     )
@@ -329,30 +333,45 @@ fun FlashScreen(
         Log.d("FlashScreen", "flashing: $flashing")
         if (pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
         hasFlashed = true
-        scope.launch(Dispatchers.IO) {
-            flashIt(
+        // No need for an external 'scope' when inside LaunchedEffect
+        launch(Dispatchers.IO) {
+            val result = flashIt(
                 pendingFlashIt!!,
                 onStdout = {
-                    if (AnsiFilter.isScreenControl(it)) { // clear command
-                        text = AnsiFilter.stripAnsi(it) + "\n"
-                    } else {
-                        text += "$it\n"
-                    }
                     logContent.append(it).append("\n")
+                    if (AnsiFilter.isScreenControl(it)) { // clear command
+                        // Switch to the main thread to update state
+                        launch(Dispatchers.Main) {
+                            text = AnsiFilter.stripAnsi(it) + "\n"
+                        }
+                    } else {
+                        // Switch to the main thread to update state
+                        launch(Dispatchers.Main) {
+                            text += "$it\n"
+                        }
+                    }
                 },
                 onStderr = {
                     logContent.append(it).append("\n")
-                }).apply {
-                if (code != 0) {
-                    text += "Error code: $code.\n $err Please save and check the log.\n"
+                })
+
+            // After the background task is done, switch to the main thread to update the final state
+            withContext(Dispatchers.Main) {
+                var finalLogText = ""
+                if (result.code != 0) {
+                    finalLogText += "Error code: ${result.code}.\n ${result.err} Please save and check the log.\n"
                 }
-                if (showReboot) {
-                    text += "\n\n\n"
+                if (result.showReboot) {
+                    finalLogText += "\n\n\n"
                 }
-                flashing = if (code == 0) FlashingStatus.SUCCESS else FlashingStatus.FAILED
+                if (finalLogText.isNotEmpty()) {
+                    text += finalLogText
+                }
+                flashing = if (result.code == 0) FlashingStatus.SUCCESS else FlashingStatus.FAILED
             }
         }
     }
+
 
     val snackBarHost = LocalSnackbarHost.current
     val scrollState = rememberScrollState()
@@ -478,7 +497,8 @@ suspend fun flashModulesSequentially(
 }
 
 suspend fun uninstallPermanently(
-    onStdout: (String) -> Unit, onStderr: (String) -> Unit
+    onStdout: (String) -> Unit,
+    onStderr: (String) -> Unit
 ): AxeronPluginService.FlashResult {
     val cmd = """
         . functions.sh; uninstall_axmanager "${AxeronSettings.getEnableDeveloperOptions()}" "${BuildConfig.APPLICATION_ID}"; exit 0

@@ -1,6 +1,10 @@
 package frb.axeron.api
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import com.google.gson.annotations.SerializedName
 import frb.axeron.api.core.Engine.Companion.application
@@ -40,6 +44,62 @@ object AxeronPluginService {
 
     val axFS
         get() = Axeron.newFileService()!!
+
+    enum class AppOpState {
+        ALLOW,
+        IGNORE,
+        DEFAULT,
+        DENY,
+        ERRORED,
+        UNKNOWN
+    }
+
+    fun parseManageExternalStorageAppOp(output: String): AppOpState {
+        val normalized = output
+            .lowercase()
+            .replace("\n", " ")
+            .trim()
+
+        return when {
+            normalized.contains("deny") -> AppOpState.DENY
+            normalized.contains("ignore") -> AppOpState.IGNORE
+            normalized.contains("errored") -> AppOpState.ERRORED
+            normalized.contains("default") -> AppOpState.DEFAULT
+            normalized.contains("allow") -> AppOpState.ALLOW
+            else -> AppOpState.UNKNOWN
+        }
+    }
+
+    fun checkManageExternalStorageViaShell(
+        packageName: String
+    ): AppOpState = runBlocking {
+        val process = Axeron.newProcess(
+            arrayOf("cmd", "appops", "get", packageName, "MANAGE_EXTERNAL_STORAGE"),
+            null,
+            null
+        )
+
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        process.waitFor()
+
+        return@runBlocking parseManageExternalStorageAppOp(output)
+    }
+
+    fun requestManageExternalStoragePermission(
+        context: Context,
+        packageName: String
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                Uri.parse("package:$packageName")
+            ).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        }
+    }
+
 
     data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
         constructor(result: ResultExec, showReboot: Boolean) : this(

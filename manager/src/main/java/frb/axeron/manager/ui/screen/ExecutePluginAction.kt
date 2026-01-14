@@ -87,8 +87,9 @@ fun ExecutePluginActionScreen(
         if (text.isNotEmpty()) {
             return@LaunchedEffect
         }
-        scope.launch(Dispatchers.IO) {
-            val pluginPath = File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN), plugin.dirId)
+        launch(Dispatchers.IO) {
+            val pluginPath =
+                File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN), plugin.dirId)
             val pluginBin = "${pluginPath.absolutePath}/system/bin"
             val cmd =
                 $$"export PATH=$$pluginBin:$PATH; cd \"$$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit $RES"
@@ -96,9 +97,13 @@ fun ExecutePluginActionScreen(
                 cmd = cmd,
                 onStdout = {
                     if (AnsiFilter.isScreenControl(it)) { // clear command
-                        text = AnsiFilter.stripAnsi(it) + "\n"
+                        launch(Dispatchers.Main) {
+                            text = AnsiFilter.stripAnsi(it) + "\n"
+                        }
                     } else {
-                        text += "$it\n"
+                        launch(Dispatchers.Main) {
+                            text += "$it\n"
+                        }
                     }
                     logContent.append(it).append("\n")
                 },
@@ -123,7 +128,8 @@ fun ExecutePluginActionScreen(
                 onSave = {
                     if (!isActionRunning) {
                         scope.launch {
-                            val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
+                            val format =
+                                SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
                             val date = format.format(Date())
 
                             val baseDir = PathHelper.getPath(AxeronConstant.folder.PARENT_LOG)
@@ -134,7 +140,8 @@ fun ExecutePluginActionScreen(
                             val file = File(baseDir, "AxManager_action_log_${date}.log")
 
                             try {
-                                val fos = Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
+                                val fos = Axeron.newFileService()
+                                    .getStreamSession(file.absolutePath, true, false).outputStream
                                 fos.write("$logContent\n".toByteArray())
                                 fos.flush()
 

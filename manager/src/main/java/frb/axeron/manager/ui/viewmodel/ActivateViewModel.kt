@@ -78,19 +78,11 @@ class ActivateViewModel : ViewModel() {
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived")
-            if (Axeron.pingBinder() && Axeron.getAxeronInfo().isNeedUpdate()) {
-                trySend(ActivateStatus.Updating)
-            } else {
-                trySend(ActivateStatus.Running(Axeron.getAxeronInfo()))
-            }
+            trySend(ActivateStatus.Running(Axeron.getAxeronInfo()))
         }
         val deadListener = Axeron.OnBinderDeadListener {
             Log.i("AxManagerBinder", "onBinderDead")
-            if (Axeron.pingBinder() && Axeron.getAxeronInfo().isNeedUpdate()) {
-                trySend(ActivateStatus.Updating)
-            } else {
-                trySend(ActivateStatus.Disable)
-            }
+            trySend(ActivateStatus.Disable)
         }
         Axeron.addBinderReceivedListener(receivedListener)
         Axeron.addBinderDeadListener(deadListener)
@@ -126,7 +118,8 @@ class ActivateViewModel : ViewModel() {
         viewModelScope.launch {
             axeronObserve().collect { status ->
                 if (status is ActivateStatus.Running) {
-                    if (status.axeronInfo.isNeedUpdate()) {
+                    axeronInfo = status.axeronInfo
+                    if (axeronInfo.isNeedUpdate()) {
                         activateStatus = ActivateStatus.Updating
                         tryActivate = true
                         Axeron.newProcess(
@@ -137,7 +130,6 @@ class ActivateViewModel : ViewModel() {
 
                         return@collect
                     }
-                    axeronInfo = status.axeronInfo
                     activateStatus = status
                 }
                 tryActivate = false
