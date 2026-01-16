@@ -266,65 +266,53 @@ class ActivateViewModel : ViewModel() {
         if (tryActivate) throw ActivateException.TryToActivate("Already trying to activate")
         setTryToActivate(true)
 
-        WifiReadyGate(
+        WifiReadyGate(context).await(ActivateException.FailedToConnectToWifi("Failed to connect to Wifi"))
+
+        val cr = context.contentResolver
+
+        if (context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
+            Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+            Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+            Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+        }
+
+        AdbWifiGate(context).await(ActivateException.FailedToAutoActivateAdb("Failed to auto activate ADB"))
+
+        AdbMdns(
             context,
-            onReady = {
-                val cr = context.contentResolver
+            AdbMdns.TLS_CONNECT
+        ) { data ->
+            Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+            if (data.port <= 0) throw ActivateException.FailedToGetHostAndPort("Failed to get Host and Port")
 
-                if (context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
-                    Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
-                    Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-                    Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
-                }
-
-                AdbWifiGate(
-                    context,
-                    onReady = {
-                        AdbMdns(
-                            context,
-                            AdbMdns.TLS_CONNECT
-                        ) { data ->
-                            Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
-                            if (data.port <= 0) throw ActivateException.FailedToGetHostAndPort("Failed to get Host and Port")
-
-                            AdbClient(
-                                data.host,
-                                data.port,
-                                AdbKey(
-                                    PreferenceAdbKeyStore(AxeronSettings.getPreferences()),
-                                    "axeron"
-                                )
-                            ).runCatching {
-                                Log.d(TAG, "AdbClient running")
-                                Log.d(TAG, Starter.internalCommand)
-                                connect()
-                                shellCommand(Starter.internalCommand, null)
-                                close()
-                            }.onSuccess {
-                                Log.d(TAG, "AdbClient success")
-                                context.startService(AdbPairingService.stopIntent(context))
-                                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
-                                setTryToActivate(false)
-                            }.onFailure {
-                                throw ActivateException.FailedToConnectToClient("Failed to connect to ADB Client")
-                            }
-                        }.runCatching {
-                            Log.d(TAG, "AdbMdns running")
-                            start()
-                            setTryToActivate(false)
-                        }.onFailure {
-                            throw ActivateException.FailedToStartAdbMdns("Failed to start ADB mDNS (Multicast DNS)")
-                        }
-                    },
-                    onFail = {
-                        throw ActivateException.FailedToAutoActivateAdb("Failed to auto-active adb")
-                    }
-                ).await()
-            },
-            onFail = {
-                throw ActivateException.FailedToConnectToWifi("Failed to connect to Wifi")
+            AdbClient(
+                data.host,
+                data.port,
+                AdbKey(
+                    PreferenceAdbKeyStore(AxeronSettings.getPreferences()),
+                    "axeron"
+                )
+            ).runCatching {
+                Log.d(TAG, "AdbClient running")
+                Log.d(TAG, Starter.internalCommand)
+                connect()
+                shellCommand(Starter.internalCommand, null)
+                close()
+            }.onSuccess {
+                Log.d(TAG, "AdbClient success")
+                context.startService(AdbPairingService.stopIntent(context))
+                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+                setTryToActivate(false)
+            }.onFailure {
+                throw ActivateException.FailedToConnectToClient("Failed to connect to ADB Client")
             }
-        ).await()
+        }.runCatching {
+            Log.d(TAG, "AdbMdns running")
+            start()
+            setTryToActivate(false)
+        }.onFailure {
+            throw ActivateException.FailedToStartAdbMdns("Failed to start ADB mDNS (Multicast DNS)")
+        }
     }
 
 

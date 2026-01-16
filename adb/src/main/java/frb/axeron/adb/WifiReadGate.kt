@@ -4,26 +4,77 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.os.Handler
-import android.os.Looper
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class WifiReadyGate(
-    context: Context,
-    private val timeoutMs: Long = 15_000L,
-    private val onReady: () -> Unit,
-    private val onFail: () -> Unit
+    private val ctx: Context,
+    private val timeoutMs: Long = 15_000L
 ) {
+    @Throws(RuntimeException::class)
+    fun await(th: Throwable) {
+        val latch = CountDownLatch(1)
+        var error: Throwable? = null
 
-    private val cm =
-        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        fun ready() {
+            latch.countDown()
+        }
 
-    private val handler = Handler(Looper.getMainLooper())
-    private var fired = false
-    private var started = false
+        fun fail() {
+            error = th
+            latch.countDown()
+        }
 
-    fun await() {
-        if (started) return
-        started = true
+        check(::ready, ::fail)
+
+        val finished = latch.await(timeoutMs + 500, TimeUnit.MILLISECONDS)
+        if (!finished) {
+            throw th
+        }
+
+        error?.let { throw it }
+    }
+
+    private fun check(
+        onReady: () -> Unit,
+        onFail: () -> Unit
+    ) {
+        val cm =
+            ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        fun isUsable(network: Network): Boolean {
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+        }
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                if (isUsable(network)) {
+                    cleanup()
+                    onReady()
+                }
+            }
+
+            override fun onCapabilitiesChanged(
+                network: Network,
+                caps: NetworkCapabilities
+            ) {
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                ) {
+                    cleanup()
+                    onReady()
+                }
+            }
+
+            fun cleanup() {
+                try {
+                    cm.unregisterNetworkCallback(this)
+                } catch (_: Exception) {
+                }
+            }
+        }
 
         val current = cm.activeNetwork
         if (current == null || !isUsable(current)) {
@@ -31,52 +82,5 @@ class WifiReadyGate(
         }
 
         cm.registerDefaultNetworkCallback(callback)
-
-        // timeout hard-stop
-        handler.postDelayed({
-            if (!fired) {
-                cleanup()
-                onFail()
-            }
-        }, timeoutMs)
-    }
-
-    private fun fire() {
-        if (fired) return
-        fired = true
-        cleanup()
-        onReady()
-    }
-
-    private fun cleanup() {
-        try {
-            cm.unregisterNetworkCallback(callback)
-        } catch (_: Exception) {
-        }
-        handler.removeCallbacksAndMessages(null)
-    }
-
-    private fun isUsable(network: Network): Boolean {
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-    }
-
-    private val callback = object : ConnectivityManager.NetworkCallback() {
-
-        override fun onAvailable(network: Network) {
-            if (isUsable(network)) fire()
-        }
-
-        override fun onCapabilitiesChanged(
-            network: Network,
-            caps: NetworkCapabilities
-        ) {
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-            ) {
-                fire()
-            }
-        }
     }
 }

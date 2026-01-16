@@ -7,34 +7,57 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class AdbWifiGate(
     private val ctx: Context,
-    private val timeoutMs: Long = 5_000,
-    private val onReady: () -> Unit,
-    private val onFail: () -> Unit
+    private val timeoutMs: Long = 5_000L
 ) {
-    private val handler = Handler(Looper.getMainLooper())
+
     private val startAt = SystemClock.uptimeMillis()
+    private val handler = Handler(Looper.getMainLooper())
 
-    fun await() {
-        check()
-    }
+    @Throws(RuntimeException::class)
+    fun await(th: Throwable) {
+        val latch = CountDownLatch(1)
+        var error: Throwable? = null
 
-    private fun check() {
-        val permission = ctx.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
-
-        if (!permission) {
-            onFail()
-            return
+        fun ready() {
+            latch.countDown()
         }
 
-        val enabled =
-            Settings.Global.getInt(ctx.contentResolver, "adb_wifi_enabled", 0) == 1 &&
-                    Settings.Global.getInt(ctx.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1
+        fun fail() {
+            error = th
+            latch.countDown()
+        }
+
+        check(::ready, ::fail)
+
+        val finished = latch.await(timeoutMs + 500, TimeUnit.MILLISECONDS)
+        if (!finished) {
+            throw th
+        }
+
+        error?.let { throw it }
+    }
+
+    private fun check(
+        onReady: () -> Unit,
+        onFail: () -> Unit
+    ) {
+        val enabled = Settings.Global.getInt(ctx.contentResolver, "adb_wifi_enabled", 0) == 1
 
         if (enabled) {
             onReady()
+            return
+        }
+
+        val permission =
+            ctx.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
+
+        if (!permission) {
+            onFail()
             return
         }
 
@@ -43,6 +66,6 @@ class AdbWifiGate(
             return
         }
 
-        handler.postDelayed({ check() }, 300)
+        handler.postDelayed({ check(onReady, onFail) }, 300)
     }
 }

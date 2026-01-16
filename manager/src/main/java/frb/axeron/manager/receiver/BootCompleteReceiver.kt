@@ -18,6 +18,7 @@ import frb.axeron.adb.PreferenceAdbKeyStore
 import frb.axeron.adb.WifiReadyGate
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.manager.ui.viewmodel.ActivateException
 import frb.axeron.server.utils.Starter
 
 class BootCompleteReceiver : BroadcastReceiver() {
@@ -46,10 +47,13 @@ class BootCompleteReceiver : BroadcastReceiver() {
             AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
         ) {
             val pending = goAsync()
-            startAdb(context, pending)
+            try {
+                startAdb(context)
+            } catch (_: ActivateException) {
+            }
+            safeFinish(pending)
         } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT) {
-            val pending = goAsync()
-            startRoot(pending)
+            startRoot()
         } else {
             Log.w(TAG, "No support start on boot")
         }
@@ -57,76 +61,60 @@ class BootCompleteReceiver : BroadcastReceiver() {
         Log.d(TAG, "onReceive: ${intent.action}")
     }
 
-    private fun startRoot(pending: PendingResult) {
+    private fun startRoot() {
         if (!Shell.getShell().isRoot) {
             Shell.getCachedShell()?.close()
-            safeFinish(pending)
             return
         }
 
         Shell.cmd(Starter.internalCommand).exec()
-        safeFinish(pending)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    private fun startAdb(
-        context: Context,
-        pending: PendingResult
-    ) {
-        WifiReadyGate(
+    @Throws(ActivateException::class)
+    private fun startAdb(context: Context) {
+        WifiReadyGate(context).await(ActivateException.FailedToConnectToWifi("Failed to connect to Wifi"))
+
+        val cr = context.contentResolver
+
+        Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+        Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+        Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+
+        AdbWifiGate(context).await(ActivateException.FailedToAutoActivateAdb("Failed to auto activate ADB"))
+
+        AdbMdns(
             context,
-            onReady = {
-                val cr = context.contentResolver
+            AdbMdns.TLS_CONNECT
+        ) { data ->
+            Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+            if (data.port <= 0) throw ActivateException.FailedToGetHostAndPort("Failed to get Host and Port")
 
-                Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
-                Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-                Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
-
-                AdbWifiGate(
-                    context,
-                    onReady = {
-                        AdbMdns(context, AdbMdns.TLS_CONNECT) { data ->
-                            Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
-                            if (data.port <= 0) {
-                                safeFinish(pending)
-                                return@AdbMdns
-                            }
-
-                            AdbClient(
-                                data.host,
-                                data.port,
-                                AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
-                            ).runCatching {
-                                Log.d(TAG, "AdbClient running")
-                                connect()
-                                shellCommand(Starter.internalCommand, null)
-                                close()
-                            }.onSuccess {
-                                Log.d(TAG, "AdbClient success")
-                                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
-                                safeFinish(pending)
-                            }.onFailure {
-                                Log.e(TAG, "AdbClient failed", it)
-                                safeFinish(pending)
-                            }
-
-                        }.runCatching {
-                            Log.d(TAG, "AdbMdns running")
-                            start()
-                        }.onFailure {
-                            Log.e(TAG, "AdbMdns failed", it)
-                            safeFinish(pending)
-                        }
-                    },
-                    onFail = {
-                        safeFinish(pending)
-                    }
-                ).await()
-            },
-            onFail = {
-                safeFinish(pending)
+            AdbClient(
+                data.host,
+                data.port,
+                AdbKey(
+                    PreferenceAdbKeyStore(AxeronSettings.getPreferences()),
+                    "axeron"
+                )
+            ).runCatching {
+                Log.d(TAG, "AdbClient running")
+                Log.d(TAG, Starter.internalCommand)
+                connect()
+                shellCommand(Starter.internalCommand, null)
+                close()
+            }.onSuccess {
+                Log.d(TAG, "AdbClient success")
+                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+            }.onFailure {
+                throw ActivateException.FailedToConnectToClient("Failed to connect to ADB Client")
             }
-        ).await()
+        }.runCatching {
+            Log.d(TAG, "AdbMdns running")
+            start()
+        }.onFailure {
+            throw ActivateException.FailedToStartAdbMdns("Failed to start ADB mDNS (Multicast DNS)")
+        }
     }
 
     fun safeFinish(pending: PendingResult) {
