@@ -8,7 +8,7 @@ import java.io.File
 
 object Igniter {
 
-    private var VERSION = 6
+    private var VERSION = 10
 
     private val AXERONDIR = System.getenv("AXERONDIR")
     private val PLUGINS_DIR = File("$AXERONDIR/plugins")
@@ -170,14 +170,13 @@ object Igniter {
             "exec busybox sh \"${service.absolutePath}\""
 
         val service = $$"""
-            (
-              busybox setsid busybox sh -c '
-                $$execLine &
-                child=$!
-                resetprop log.tag.service.$$name "$child"
-              ' $$log
-            );
+            busybox setsid sh -c '
+              $$execLine
+            ' $$log &
+            pid=$!
+            resetprop log.tag.service.$$name "$pid"
         """.trimIndent()
+
         println(" - startService $name")
         exec(arrayOf("busybox", "sh", "-c", service))
     }
@@ -192,8 +191,8 @@ object Igniter {
 
         val pid = SystemProp.get("log.tag.service.$name")
         if (pid.isNotBlank() && pid != "-1") {
-            println(" - try to stopping service $name:$pid")
-            execWait(arrayOf("busybox", "kill", "-TERM", pid))
+            println(" - try to stopping service $name:-$pid")
+            execWait(arrayOf("busybox", "kill", "-TERM", "-$pid"))
         }
 
         execWait(arrayOf("busybox", "pkill", "-f", name))
@@ -228,9 +227,14 @@ object Igniter {
             val dst = File(AXERONXBIN, src.name)
 
             try {
+                if (dst.exists()) {
+                    if (!dst.delete()) {
+                        println(" - Failed to remove: ${dst.absolutePath}")
+                    }
+                }
                 // buat symlink baru
                 Os.symlink(src.absolutePath, dst.absolutePath)
-                println(" - Linked : ${src.absolutePath}")
+                println(" - Linked : ${dst.absolutePath}")
             } catch (_: ErrnoException) {
                 println(" - Failed Linking : ${src.absolutePath}")
             }
@@ -260,7 +264,9 @@ object Igniter {
 
     private fun isServiceRunning(name: String): Boolean {
         val pid = SystemProp.get("log.tag.service.$name")
-        return (pid.isNotBlank() && pid != "-1") || File("/proc/$pid").exists() || execWait(arrayOf("busybox", "pgrep", "-f", name)) == 0
+        return (pid.isNotBlank() && pid != "-1")
+                || (pid.isNotBlank() && File("/proc/$pid").exists())
+                || execWait(arrayOf("busybox", "pgrep", "-f", name)) == 0
     }
 
     private fun execWait(cmd: Array<String>): Int =
