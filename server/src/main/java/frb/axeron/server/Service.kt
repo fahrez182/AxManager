@@ -17,11 +17,11 @@ import android.os.UserHandleHidden
 import android.system.Os
 import dev.rikka.tools.refine.Refine
 import frb.axeron.aidl.AxeronInterface
-import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
 import frb.axeron.data.Environment
 import frb.axeron.data.ModuleProp
 import frb.axeron.data.ParcelableMapJson
+import frb.axeron.data.PathHelper
 import frb.axeron.data.PluginInfo
 import frb.axeron.server.utils.Logger
 import moe.shizuku.server.IShizukuService

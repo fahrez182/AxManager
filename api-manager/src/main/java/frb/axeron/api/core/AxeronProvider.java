@@ -81,6 +81,7 @@ public class AxeronProvider extends ContentProvider {
             if (container != null && container.binder != null) {
                 Log.d(TAG, "binder received");
 
+                AxeronSettings.initialize(getContext());
                 Axeron.onBinderReceived(container.binder);
 
                 Log.d(TAG, "broadcast binder");

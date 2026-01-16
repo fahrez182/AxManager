@@ -62,8 +62,8 @@ import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActi
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
+import frb.axeron.data.PathHelper
 import frb.axeron.data.PluginInfo
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.ExtraLabel

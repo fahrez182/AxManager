@@ -293,10 +293,12 @@ public class Axeron {
         if (binder != null) {
             try {
                 requireService().destroy();
-            } catch (RemoteException ignored) {}
+            } catch (RemoteException ignored) {
+            }
             binder = null;
             service = null;
             axeronInfo = null;
+            scheduleBinderDeadListeners();
             notifyShizuku();
         }
     }
@@ -324,6 +326,7 @@ public class Axeron {
     private static RuntimeException rethrowAsRuntimeException(String message, RemoteException e) {
         return new RuntimeException(message, e);
     }
+
     private static RuntimeException rethrowAsRuntimeException(RemoteException e) {
         return new RuntimeException(e);
     }
@@ -350,10 +353,10 @@ public class Axeron {
 
     private record ListenerHolder<T>(T listener, Handler handler) {
 
-            private ListenerHolder(@NonNull T listener, @Nullable Handler handler) {
-                this.listener = listener;
-                this.handler = handler;
-            }
+        private ListenerHolder(@NonNull T listener, @Nullable Handler handler) {
+            this.listener = listener;
+            this.handler = handler;
+        }
 
     }
 

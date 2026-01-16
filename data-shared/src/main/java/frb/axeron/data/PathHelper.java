@@ -1,4 +1,4 @@
-package frb.axeron.api.utils;
+package frb.axeron.data;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -10,16 +10,14 @@ import androidx.annotation.Nullable;
 
 import java.io.File;
 
-import frb.axeron.data.AxeronConstant;
-
 public class PathHelper {
     public static File getPath(String folderName) {
         return new File(Environment.getExternalStorageDirectory(), folderName);
     }
 
     public static File getShellPath(String folderName) {
-        if (folderName == null) return new File(AxeronConstant.folder.SHELL);
-        return new File(AxeronConstant.folder.SHELL, folderName);
+        if (folderName == null) return new File(AxeronConstant.folder.SHELL_DE);
+        return new File(AxeronConstant.folder.SHELL_DE, folderName);
     }
 
     public static File getTmpPath(String folderName) {

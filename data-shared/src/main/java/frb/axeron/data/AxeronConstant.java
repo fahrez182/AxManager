@@ -18,7 +18,8 @@ public class AxeronConstant {
         String ROOT = "/";
         String TMP = "data/local/tmp/";
         String SHELL = "data/data/com.android.shell/";
-        String PARENT = "AxManager/";
+        String SHELL_DE = "data/user_de/0/com.android.shell/";
+        String PARENT = "axeron/";
         String PLUGIN = "plugins/";
         String PLUGIN_UPDATE = "plugins_update/";
         String CACHE = "cache/";

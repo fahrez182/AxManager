@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.ext.SdkExtensions
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -21,15 +23,14 @@ class AdbMdns(
     private val observer: Observer<AdbData>
 ) {
 
-    data class AdbData(val status: Int, val host: String, val port: Int)
-
+    data class AdbData(val status: Int, val host: String = "", val port: Int = -1)
     private var registered = false
     private var running = false
     private var serviceName: String? = null
     private val listener = DiscoveryListener(this)
     private val nsdManager: NsdManager = context.getSystemService(NsdManager::class.java)
-
     private val executor = Executors.newFixedThreadPool(1)
+    private val handlerTimeout = Handler(Looper.getMainLooper())
 
     fun start() {
         if (running) return
@@ -65,7 +66,7 @@ class AdbMdns(
     }
 
     private fun onServiceLost(info: NsdServiceInfo) {
-        if (info.serviceName == serviceName) observer.onChanged(AdbData(STATUS_LOST, "", -1))
+        if (info.serviceName == serviceName) observer.onChanged(AdbData(STATUS_LOST))
     }
 
     private fun onServiceResolved(resolvedService: NsdServiceInfo) {
@@ -86,10 +87,10 @@ class AdbMdns(
             && isPortAvailable(resolvedService.port)
         ) {
             serviceName = resolvedService.serviceName
-             val host = if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 7) {
+            val host = if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 7) {
                 resolvedService.hostAddresses.first().hostAddress
             } else {
-                 @Suppress("DEPRECATION")
+                @Suppress("DEPRECATION")
                 resolvedService.host.hostAddress
             }
 

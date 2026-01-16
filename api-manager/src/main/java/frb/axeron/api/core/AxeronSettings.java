@@ -21,13 +21,15 @@ public class AxeronSettings {
 
     public static final String NAME = "settings";
     public static final String APP_THEME_ID = "app_theme_id";
+
+    public static final String LAUNCH_MODE = "mode";
     public static final String ENABLE_DYNAMIC_COLOR = "enable_dynamic_color";
     public static final String ENABLE_DEVELOPER_OPTIONS = "enable_developer_options";
     public static final String ENABLE_WEB_DEBUGGING = "enable_web_debugging";
     public static final String CUSTOM_PRIMARY_COLOR = "custom_primary_color";
     public static final String ENABLE_IGNITE_RELOG = "enable_ignite_relog";
     public static final String LANGUAGE = "language";
-    public static final String KEEP_START_ON_BOOT = "start_on_boot";
+    public static final String ENABLE_START_ON_BOOT = "enable_start_on_boot";
 
     private static SharedPreferences sPreferences;
 
@@ -64,11 +66,11 @@ public class AxeronSettings {
 
     @LaunchMethod
     public static int getLastLaunchMode() {
-        return getPreferences().getInt("mode", LaunchMethod.UNKNOWN);
+        return getPreferences().getInt(LAUNCH_MODE, LaunchMethod.UNKNOWN);
     }
 
     public static void setLastLaunchMode(@LaunchMethod int method) {
-        getPreferences().edit().putInt("mode", method).apply();
+        getPreferences().edit().putInt(LAUNCH_MODE, method).apply();
     }
 
     // IGNITE RELOG
@@ -125,11 +127,11 @@ public class AxeronSettings {
     // ON BOOT
 
     public static boolean getStartOnBoot() {
-        return getPreferences().getBoolean(KEEP_START_ON_BOOT, true);
+        return getPreferences().getBoolean(ENABLE_START_ON_BOOT, true);
     }
 
     public static void setStartOnBoot(boolean method) {
-        getPreferences().edit().putBoolean(KEEP_START_ON_BOOT, method).apply();
+        getPreferences().edit().putBoolean(ENABLE_START_ON_BOOT, method).apply();
     }
 
     //PRIMARY COLOR

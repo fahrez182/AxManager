@@ -78,8 +78,8 @@ import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
-import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
+import frb.axeron.data.PathHelper
 import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.ui.component.AxSnackBarHost

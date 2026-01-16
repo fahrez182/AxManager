@@ -24,6 +24,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import frb.axeron.data.AxeronConstant;
+import frb.axeron.data.PathHelper;
 import kotlin.collections.ArraysKt;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.UserManagerApis;
@@ -41,7 +43,7 @@ public class ShizukuConfigManager extends ConfigManager {
     private static final long WRITE_DELAY = 10 * 1000;
 
     @SuppressLint("SdCardPath")
-    private static final File FILE = new File("/data/data/com.android.shell/AxManager/ax_permission.json");
+    private static final File FILE = PathHelper.getShellPath(AxeronConstant.folder.PARENT + "ax_permission.json");
     private static final AtomicFile ATOMIC_FILE = new AtomicFile(FILE);
     private final ShizukuConfig config;
     private final Runnable mWriteRunner = new Runnable() {

@@ -109,7 +109,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
     val privilegeViewModel = viewModelGlobal.privilegeViewModel
     val activateViewModel = viewModelGlobal.activateViewModel
 
-    val axeronInfo = activateViewModel.axeronInfo
+    val isRunning = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Running
 
     Scaffold(
         topBar = {
@@ -170,7 +170,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                         )
                     }
 
-                    AnimatedVisibility(visible = axeronInfo.isRunning()) {
+                    AnimatedVisibility(visible = isRunning) {
                         IconButton(
                             modifier = Modifier.padding(end = 2.dp),
                             onClick = { showDialog = true }
@@ -188,7 +188,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
             )
         },
         floatingActionButton = {
-            AnimatedVisibility(visible = axeronInfo.isRunning()) {
+            AnimatedVisibility(visible = isRunning) {
                 FloatingActionButton(
                     onClick = {
                         navigator.navigate(QuickShellScreenDestination)
@@ -216,7 +216,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                     navigator.navigate(ActivateScreenDestination)
                 }
             }
-            AnimatedVisibility(visible = axeronInfo.isRunning()) {
+            AnimatedVisibility(visible = isRunning) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -326,7 +326,9 @@ fun StatusCard(
 ) {
     val axeronInfo = activateViewModel.axeronInfo
     val context = LocalContext.current
-    val updating = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Updating
+    val isRunning = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Running
+    val isUpdating = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Updating
+    val isNeedExtraStep = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.NeedExtraStep
 
     val uriHandler = LocalUriHandler.current
     val extraStepUrl =
@@ -336,9 +338,9 @@ fun StatusCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
                 when {
-                    updating -> MaterialTheme.colorScheme.primaryContainer
-                    axeronInfo.isNeedExtraStep() -> MaterialTheme.colorScheme.errorContainer
-                    axeronInfo.isRunning() -> MaterialTheme.colorScheme.primaryContainer
+                    isUpdating -> MaterialTheme.colorScheme.primaryContainer
+                    isNeedExtraStep -> MaterialTheme.colorScheme.errorContainer
+                    isRunning -> MaterialTheme.colorScheme.primaryContainer
                     else -> MaterialTheme.colorScheme.errorContainer
                 }
             }
@@ -351,15 +353,15 @@ fun StatusCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    if (updating) {
+                    if (isUpdating) {
                         Toast.makeText(context, "Updating...", Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
-                    if (axeronInfo.isNeedExtraStep()) {
+                    if (isNeedExtraStep) {
                         uriHandler.openUri(extraStepUrl)
                         return@clickable
                     }
-                    onClick(axeronInfo.isRunning())
+                    onClick(isRunning)
                 }
         ) {
             val isDark = isSystemInDarkTheme()
@@ -370,7 +372,7 @@ fun StatusCard(
             }
 
             when {
-                updating -> {
+                isUpdating -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -413,7 +415,7 @@ fun StatusCard(
                     }
                 }
 
-                axeronInfo.isNeedExtraStep() -> {
+                isNeedExtraStep -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -456,7 +458,7 @@ fun StatusCard(
                     }
                 }
 
-                axeronInfo.isRunning() -> {
+                isRunning -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

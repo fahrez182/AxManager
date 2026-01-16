@@ -21,12 +21,13 @@ import frb.axeron.adb.AdbClient
 import frb.axeron.adb.AdbKey
 import frb.axeron.adb.AdbMdns
 import frb.axeron.adb.AdbPairingService
+import frb.axeron.adb.AdbWifiGate
 import frb.axeron.adb.PreferenceAdbKeyStore
+import frb.axeron.adb.WifiReadyGate
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.api.core.Engine
 import frb.axeron.server.utils.Starter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -42,7 +43,12 @@ class ActivateViewModel : ViewModel() {
         const val TAG = "AdbViewModel"
     }
 
-    var activateStatus by mutableStateOf<ActivateStatus>(ActivateStatus.Disable)
+    var activateStatus by mutableStateOf<ActivateStatus>(run {
+        if (Axeron.pingBinder() && Axeron.getAxeronInfo().isNeedUpdate()) {
+            ActivateStatus.Updating(Axeron.getAxeronInfo())
+        }
+        ActivateStatus.Disable
+    })
         private set
 
     var axeronInfo by mutableStateOf(AxeronInfo())
@@ -66,19 +72,57 @@ class ActivateViewModel : ViewModel() {
     var tryActivate by mutableStateOf(false)
         private set
 
+    fun setTryToActivate(activate: Boolean) {
+        viewModelScope.launch(Dispatchers.Main) {
+            tryActivate = activate
+        }
+    }
+
+
     sealed class ActivateStatus {
         object Disable : ActivateStatus()
-        object Updating : ActivateStatus()
+        object NeedExtraStep : ActivateStatus()
+        class Updating(val axeronInfo: AxeronInfo) : ActivateStatus()
         class Running(val axeronInfo: AxeronInfo) : ActivateStatus()
     }
 
     fun axeronObserve(): Flow<ActivateStatus> = callbackFlow {
         if (Axeron.pingBinder()) {
-            trySend(ActivateStatus.Running(Axeron.getAxeronInfo()))
+            Log.i("AxManagerBinder", "binderHasReceived")
+            val axeronInfo = Axeron.getAxeronInfo()
+            when {
+                axeronInfo.isNeedUpdate() -> {
+                    trySend(ActivateStatus.Updating(axeronInfo))
+                    setTryToActivate(true)
+                    Axeron.newProcess(
+                        AxeronCommandSession.getQuickCmd(
+                            Starter.internalCommand,
+                            true,
+                            false
+                        ),
+                        null,
+                        null
+                    )
+                }
+                axeronInfo.isRunning() -> {
+                    trySend(ActivateStatus.Running(axeronInfo))
+                }
+                axeronInfo.isNeedExtraStep() -> {
+                    trySend(ActivateStatus.NeedExtraStep)
+                }
+            }
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived")
-            trySend(ActivateStatus.Running(Axeron.getAxeronInfo()))
+            val axeronInfo = Axeron.getAxeronInfo()
+            when {
+                axeronInfo.isRunning() -> {
+                    trySend(ActivateStatus.Running(axeronInfo))
+                }
+                axeronInfo.isNeedExtraStep() -> {
+                    trySend(ActivateStatus.NeedExtraStep)
+                }
+            }
         }
         val deadListener = Axeron.OnBinderDeadListener {
             Log.i("AxManagerBinder", "onBinderDead")
@@ -94,6 +138,7 @@ class ActivateViewModel : ViewModel() {
 
     fun shizukuObserve(): Flow<Boolean> = callbackFlow {
         if (Shizuku.pingBinder()) {
+            Log.i("AxManagerBinder", "shizukuBinderHasReceived")
             trySend(true)
         }
         val shizukuReceived = Shizuku.OnBinderReceivedListener {
@@ -117,22 +162,26 @@ class ActivateViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             axeronObserve().collect { status ->
-                if (status is ActivateStatus.Running) {
-                    axeronInfo = status.axeronInfo
-                    if (axeronInfo.isNeedUpdate()) {
-                        activateStatus = ActivateStatus.Updating
-                        tryActivate = true
-                        Axeron.newProcess(
-                            AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
-                            null,
-                            null
-                        )
-
-                        return@collect
+                val isStillUpdating = status is ActivateStatus.Disable && activateStatus is ActivateStatus.Updating
+                axeronInfo = when (status) {
+                    is ActivateStatus.Running -> {
+                        status.axeronInfo
                     }
-                    activateStatus = status
+                    is ActivateStatus.Updating -> {
+                        status.axeronInfo
+                    }
+                    else -> {
+                        if (isStillUpdating) {
+                            (activateStatus as ActivateStatus.Updating).axeronInfo
+                        } else {
+                            AxeronInfo()
+                        }
+                    }
                 }
-                tryActivate = false
+                if (isStillUpdating) return@collect
+                Log.i("AxManagerBinder", "status: $status")
+                activateStatus = status
+                setTryToActivate(false)
             }
         }
 
@@ -143,28 +192,65 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    fun startRoot(): Boolean = runBlocking(Dispatchers.IO) {
-        if (tryActivate) return@runBlocking true
-        tryActivate = true
-
-        var result = false
+//    init {
+//        viewModelScope.launch {
+//            axeronObserve().collect { status ->
+//                setTryToActivate(false)
+//                if (status is ActivateStatus.Running) {
+//                    axeronInfo = status.axeronInfo
+//                    when {
+//                        axeronInfo.isNeedUpdate() -> {
+//                            activateStatus = ActivateStatus.Updating
+//                            setTryToActivate(true)
+//                            Axeron.newProcess(
+//                                AxeronCommandSession.getQuickCmd(
+//                                    Starter.internalCommand,
+//                                    true,
+//                                    false
+//                                ),
+//                                null,
+//                                null
+//                            )
+//                            return@collect
+//                        }
+//
+//                        axeronInfo.isNeedExtraStep() -> {
+//                            activateStatus = ActivateStatus.NeedExtraStep
+//                            return@collect
+//                        }
+//                    }
+//                    activateStatus = status
+//                    return@collect
+//                }
+//                axeronInfo = AxeronInfo()
+//                activateStatus = status
+//            }
+//        }
+//
+//        viewModelScope.launch {
+//            shizukuObserve().collect {
+//                isShizukuActive = it
+//            }
+//        }
+//    }
+    @Throws(ActivateException::class)
+    fun startRoot() {
+        if (tryActivate) return
+        setTryToActivate(true)
 
         if (!Shell.getShell().isRoot) {
             Shell.getCachedShell()?.close()
-            tryActivate = false
-            return@runBlocking result
+            throw ActivateException.FailedToConnectToClient("Failed to connect to root")
         }
 
 
         Shell.cmd(Starter.internalCommand).submit {
             if (it.isSuccess) {
                 AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ROOT)
-                result = true
             }
         }
 
-        tryActivate = false
-        return@runBlocking result
+        setTryToActivate(false)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -174,86 +260,79 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    var adbMdns: AdbMdns? = null
-
     @RequiresApi(Build.VERSION_CODES.R)
-    fun startAdb(context: Context, tryConnect: Boolean = false): Boolean =
-        runBlocking(Dispatchers.IO) {
-            if (tryActivate) return@runBlocking true
-            tryActivate = true
+    @Throws(ActivateException::class)
+    fun startAdb(context: Context) {
+        if (tryActivate) throw ActivateException.TryToActivate("Already trying to activate")
+        setTryToActivate(true)
 
-            val cr = Engine.application.contentResolver
-            if (Engine.application.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED &&
-                AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
-            ) {
-                Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
-                Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-                Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
-            }
+        WifiReadyGate(
+            context,
+            onReady = {
+                val cr = context.contentResolver
 
-            val adbWifiEnabled = Settings.Global.getInt(cr, "adb_wifi_enabled", 0) == 1
+                if (context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
+                    Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+                    Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+                    Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+                }
 
-            if (!adbWifiEnabled && !tryConnect) {
-                tryActivate = false
-                setLaunchDevSettings(true)
-                startPairingService(context)
-                return@runBlocking false
-            }
+                AdbWifiGate(
+                    context,
+                    onReady = {
+                        AdbMdns(
+                            context,
+                            AdbMdns.TLS_CONNECT
+                        ) { data ->
+                            Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+                            if (data.port <= 0) throw ActivateException.FailedToGetHostAndPort("Failed to get Host and Port")
 
-            AdbMdns(
-                context,
-                AdbMdns.TLS_CONNECT
-            ) { data ->
-                Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
-                AdbClient(
-                    data.host,
-                    data.port,
-                    AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
-                ).runCatching {
-                    Log.d(TAG, "AdbClient running")
-                    Log.d(TAG, Starter.internalCommand)
-                    connect()
-                    shellCommand(Starter.internalCommand, null)
-                    close()
-                }.onSuccess {
-                    Log.d(TAG, "AdbClient success")
-                    AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
-                }.onFailure {
-                    Log.e(TAG, "AdbClient failed", it)
-                    if (!tryConnect) {
-                        setLaunchDevSettings(true)
-                        startPairingService(context)
-                        adbMdns?.run {
-                            this.stop()
+                            AdbClient(
+                                data.host,
+                                data.port,
+                                AdbKey(
+                                    PreferenceAdbKeyStore(AxeronSettings.getPreferences()),
+                                    "axeron"
+                                )
+                            ).runCatching {
+                                Log.d(TAG, "AdbClient running")
+                                Log.d(TAG, Starter.internalCommand)
+                                connect()
+                                shellCommand(Starter.internalCommand, null)
+                                close()
+                            }.onSuccess {
+                                Log.d(TAG, "AdbClient success")
+                                context.startService(AdbPairingService.stopIntent(context))
+                                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+                                setTryToActivate(false)
+                            }.onFailure {
+                                throw ActivateException.FailedToConnectToClient("Failed to connect to ADB Client")
+                            }
+                        }.runCatching {
+                            Log.d(TAG, "AdbMdns running")
+                            start()
+                            setTryToActivate(false)
+                        }.onFailure {
+                            throw ActivateException.FailedToStartAdbMdns("Failed to start ADB mDNS (Multicast DNS)")
                         }
+                    },
+                    onFail = {
+                        throw ActivateException.FailedToAutoActivateAdb("Failed to auto-active adb")
                     }
-                }
-
-                tryActivate = false
-            }.runCatching {
-                Log.d(TAG, "AdbMdns running")
-                adbMdns = this
-                adbMdns?.run {
-                    this.start()
-                }
-            }.onFailure {
-                Log.e(TAG, "AdbMdns failed", it)
-                it.printStackTrace()
-                if (!tryConnect) {
-                    setLaunchDevSettings(true)
-                    startPairingService(context)
-                    adbMdns?.run {
-                        this.stop()
-                    }
-                }
+                ).await()
+            },
+            onFail = {
+                throw ActivateException.FailedToConnectToWifi("Failed to connect to Wifi")
             }
-            tryActivate = false
-            return@runBlocking false
-        }
+        ).await()
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.R)
     fun startPairingService(context: Context) = runBlocking(Dispatchers.IO) {
         if (!isNotificationEnabled) return@runBlocking
+        setLaunchDevSettings(true)
+
         val intent = AdbPairingService.startIntent(context)
         try {
             context.startForegroundService(intent)
@@ -290,8 +369,30 @@ class ActivateViewModel : ViewModel() {
     @RequiresApi(Build.VERSION_CODES.R)
     private fun checkNotificationEnabled(context: Context): Boolean {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val channel = nm.getNotificationChannel(AdbPairingService.notificationChannel)
+        val channel = nm.getNotificationChannel(AdbPairingService.NOTIFICATION_CHANNEL)
         return nm.areNotificationsEnabled() &&
                 (channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE)
     }
+}
+
+sealed class ActivateException(message: String, cause: Throwable? = null) :
+    RuntimeException(message, cause) {
+    class TryToActivate(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToAutoActivateAdb(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToConnectToWifi(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToStartAdbMdns(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToGetHostAndPort(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToConnectToClient(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
 }

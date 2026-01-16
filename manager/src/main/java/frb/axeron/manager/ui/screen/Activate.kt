@@ -57,8 +57,8 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
-import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
+import frb.axeron.manager.ui.viewmodel.ActivateException
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.utils.Starter
@@ -167,7 +167,12 @@ fun WirelessDebuggingCard(
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        activateViewModel.startAdb(context, true)
+        try {
+            activateViewModel.startAdb(context)
+        } catch (e: ActivateException) {
+            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+            activateViewModel.setTryToActivate(false)
+        }
     }
 
     val dialogDeveloper = rememberConfirmDialog()
@@ -254,8 +259,6 @@ fun WirelessDebuggingCard(
                 }
             }
 
-            val loadingDialog = rememberLoadingDialog()
-
             Button(
                 onClick = {
                     if (!activateViewModel.isNotificationEnabled) {
@@ -265,20 +268,15 @@ fun WirelessDebuggingCard(
                         launcher.launch(intent)
                         return@Button
                     } else {
-                        if (activateViewModel.tryActivate) {
-                            Toast.makeText(context, "Please Wait...", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        scope.launch {
-                            val success = loadingDialog.withLoading {
-                                activateViewModel.startAdb(context)
-                            }
-
-                            if (success) {
-                                navigator.popBackStack()
+                        try {
+                            activateViewModel.startAdb(context)
+                        } catch (e: ActivateException) {
+                            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                            activateViewModel.setTryToActivate(false)
+                            if (e !is ActivateException.TryToActivate) {
+                                activateViewModel.startPairingService(context)
                             }
                         }
-
                     }
                 }
             ) {
@@ -318,7 +316,6 @@ fun RootCard(
 ) {
     val context = LocalContext.current
 
-    val scope = rememberCoroutineScope()
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(
@@ -354,8 +351,10 @@ fun RootCard(
                 factory = { context ->
                     TextView(context).apply {
                         text = Html.fromHtml(
-                            context.getString(R.string.activate_by_root,
-                                "<b><a href=\"https://dontkillmyapp.com/\">Don\'t kill my app!</a></b>"),
+                            context.getString(
+                                R.string.activate_by_root,
+                                "<b><a href=\"https://dontkillmyapp.com/\">Don\'t kill my app!</a></b>"
+                            ),
                             Html.FROM_HTML_MODE_LEGACY
                         )
                         movementMethod = LinkMovementMethod.getInstance()
@@ -364,24 +363,13 @@ fun RootCard(
             )
             Spacer(modifier = Modifier.size(20.dp))
 
-            val loadingDialog = rememberLoadingDialog()
-
             Button(
                 onClick = {
-                    if (activateViewModel.tryActivate) {
-                        Toast.makeText(context, "Please Wait...", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    scope.launch {
-                        val success = loadingDialog.withLoading {
-                            activateViewModel.startRoot()
-                        }
-
-                        if (success) {
-                            navigator.popBackStack()
-                        } else {
-                            Toast.makeText(context, "Failed", Toast.LENGTH_SHORT).show()
-                        }
+                    try {
+                        activateViewModel.startRoot()
+                    } catch (e: ActivateException) {
+                        Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                        activateViewModel.setTryToActivate(false)
                     }
 
                 }
@@ -445,8 +433,10 @@ fun ComputerCard() {
 
             val dialogDeveloper = rememberConfirmDialog()
             val scope = rememberCoroutineScope()
-            val content = stringResource(R.string.view_command_message,
-                Starter.adbCommand)
+            val content = stringResource(
+                R.string.view_command_message,
+                Starter.adbCommand
+            )
 
             Button(
                 onClick = {

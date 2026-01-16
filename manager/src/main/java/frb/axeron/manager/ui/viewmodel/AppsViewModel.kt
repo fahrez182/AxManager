@@ -17,8 +17,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import frb.axeron.api.Axeron
-import frb.axeron.api.utils.PathHelper
 import frb.axeron.data.AxeronConstant
+import frb.axeron.data.PathHelper
 import frb.axeron.manager.axApp
 import frb.axeron.manager.ui.util.HanziToPinyin
 import frb.axeron.manager.ui.webui.AppIconUtil

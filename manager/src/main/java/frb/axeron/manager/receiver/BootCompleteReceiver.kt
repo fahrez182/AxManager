@@ -13,14 +13,12 @@ import com.topjohnwu.superuser.Shell
 import frb.axeron.adb.AdbClient
 import frb.axeron.adb.AdbKey
 import frb.axeron.adb.AdbMdns
+import frb.axeron.adb.AdbWifiGate
 import frb.axeron.adb.PreferenceAdbKeyStore
+import frb.axeron.adb.WifiReadyGate
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.server.utils.Starter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class BootCompleteReceiver : BroadcastReceiver() {
 
@@ -38,7 +36,6 @@ class BootCompleteReceiver : BroadcastReceiver() {
             return
         }
 
-
         if (Axeron.pingBinder()) {
             Log.d(TAG, "status: ${Axeron.pingBinder()}")
             return
@@ -49,9 +46,10 @@ class BootCompleteReceiver : BroadcastReceiver() {
             AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
         ) {
             val pending = goAsync()
-            startAdb(context, pending, 0, 5) // attempt=0, maxAttempts=5
+            startAdb(context, pending)
         } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT) {
-            startRoot()
+            val pending = goAsync()
+            startRoot(pending)
         } else {
             Log.w(TAG, "No support start on boot")
         }
@@ -59,74 +57,83 @@ class BootCompleteReceiver : BroadcastReceiver() {
         Log.d(TAG, "onReceive: ${intent.action}")
     }
 
-    private fun startRoot() {
+    private fun startRoot(pending: PendingResult) {
         if (!Shell.getShell().isRoot) {
-            //NotificationHelper.notify(context, AppConstants.NOTIFICATION_ID_STATUS, AppConstants.NOTIFICATION_CHANNEL_STATUS, R.string.notification_service_start_no_root)
             Shell.getCachedShell()?.close()
+            safeFinish(pending)
             return
         }
 
         Shell.cmd(Starter.internalCommand).exec()
+        safeFinish(pending)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun startAdb(
         context: Context,
-        pending: PendingResult,
-        attempt: Int,
-        maxAttempts: Int
+        pending: PendingResult
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val cr = context.contentResolver
+        WifiReadyGate(
+            context,
+            onReady = {
+                val cr = context.contentResolver
 
-            // Force ON adb wifi setiap attempt
-            Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
-            Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-            Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+                Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+                Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+                Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
 
-            val adbWifiEnabled = Settings.Global.getInt(cr, "adb_wifi_enabled", 0)
-            if (adbWifiEnabled != 1) {
-                Log.w(TAG, "ADB Wi-Fi not Activated, attempt=$attempt")
-                if (attempt < maxAttempts) {
-                    delay(2000L * (attempt + 1)) // exponential backoff
-                    return@launch startAdb(context, pending, attempt + 1, maxAttempts)
-                }
-            }
+                AdbWifiGate(
+                    context,
+                    onReady = {
+                        AdbMdns(context, AdbMdns.TLS_CONNECT) { data ->
+                            Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+                            if (data.port <= 0) {
+                                safeFinish(pending)
+                                return@AdbMdns
+                            }
 
-            AdbMdns(context, AdbMdns.TLS_CONNECT) { data ->
-                Log.d(TAG, "AdbMdns ${data.host} ${data.port}")
+                            AdbClient(
+                                data.host,
+                                data.port,
+                                AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
+                            ).runCatching {
+                                Log.d(TAG, "AdbClient running")
+                                connect()
+                                shellCommand(Starter.internalCommand, null)
+                                close()
+                            }.onSuccess {
+                                Log.d(TAG, "AdbClient success")
+                                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+                                safeFinish(pending)
+                            }.onFailure {
+                                Log.e(TAG, "AdbClient failed", it)
+                                safeFinish(pending)
+                            }
 
-                AdbClient(
-                    data.host,
-                    data.port,
-                    AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
-                ).runCatching {
-                    Log.d(TAG, "AdbClient running")
-                    connect()
-                    shellCommand(Starter.internalCommand, null)
-                    close()
-                }.onSuccess {
-                    Log.d(TAG, "AdbClient success")
-                    AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
-                    pending.finish()
-                }.onFailure {
-                    if (attempt < maxAttempts) {
-                        Log.w(TAG, "AdbClient failed, attempt=$attempt")
-                        CoroutineScope(Dispatchers.IO).launch {
-                            delay(2000L * (attempt + 1))
-                            startAdb(context, pending, attempt + 1, maxAttempts)
+                        }.runCatching {
+                            Log.d(TAG, "AdbMdns running")
+                            start()
+                        }.onFailure {
+                            Log.e(TAG, "AdbMdns failed", it)
+                            safeFinish(pending)
                         }
-                    } else {
-                        Log.e(TAG, "AdbClient failed", it)
+                    },
+                    onFail = {
+                        safeFinish(pending)
                     }
-                }
-
-            }.runCatching {
-                Log.d(TAG, "AdbMdns running")
-                start()
-            }.onFailure {
-                Log.e(TAG, "AdbMdns failed", it)
+                ).await()
+            },
+            onFail = {
+                safeFinish(pending)
             }
+        ).await()
+    }
+
+    fun safeFinish(pending: PendingResult) {
+        try {
+            pending.finish()
+        } catch (e: Exception) {
+            Log.e(TAG, "safeFinish failed", e)
         }
     }
 }
