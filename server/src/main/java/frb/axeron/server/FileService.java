@@ -5,17 +5,11 @@ import android.os.RemoteException;
 import android.system.ErrnoException;
 import android.system.Os;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -74,39 +68,6 @@ public class FileService extends IFileService.Stub {
         return asc ? c : c.reversed();
     }
 
-    private static boolean copyFile(File src, File dst, boolean overwrite) throws IOException {
-        if (!src.exists() || !src.isFile()) return false;
-        File parent = dst.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            // gagal buat parent
-        }
-        if (dst.exists()) {
-            if (!overwrite) return false;
-            if (!dst.delete()) return false;
-        }
-        final byte[] buf = new byte[64 * 1024];
-        try (InputStream in = new BufferedInputStream(new FileInputStream(src));
-             OutputStream out = new BufferedOutputStream(new FileOutputStream(dst))) {
-            int r;
-            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
-            out.flush();
-        }
-        // sync metadata minimal
-        dst.setLastModified(src.lastModified());
-        return true;
-    }
-
-    private static boolean deleteRecursiveInternal(File file) {
-        if (!file.exists()) return true;
-        if (file.isFile()) return file.delete();
-        File[] children = file.listFiles();
-        if (children != null) {
-            for (File c : children) {
-                if (!deleteRecursiveInternal(c)) return false;
-            }
-        }
-        return file.delete();
-    }
 
     // ---------- Implementasi IAxFile ----------
 
@@ -126,9 +87,10 @@ public class FileService extends IFileService.Stub {
 
         try {
             FileOutputStream fos = new FileOutputStream(path, false);
+            Os.fsync(fos.getFD());
             fos.close();
             return true;
-        } catch (IOException e) {
+        } catch (IOException | ErrnoException e) {
             return false;
         }
     }
@@ -136,16 +98,6 @@ public class FileService extends IFileService.Stub {
     @Override
     public boolean delete(String path) {
         return f(path).delete();
-    }
-
-    @Override
-    public boolean deleteRecursive(String path) {
-        return deleteRecursiveInternal(f(path));
-    }
-
-    @Override
-    public boolean rename(String from, String to) {
-        return f(from).renameTo(f(to));
     }
 
     @Override
@@ -226,6 +178,7 @@ public class FileService extends IFileService.Stub {
         }
     }
 
+    @Override
     public boolean fsync(ParcelFileDescriptor pfd) {
         try (pfd) {
             try {
@@ -240,7 +193,7 @@ public class FileService extends IFileService.Stub {
     }
 
     @Override
-    public ParcelFileDescriptor read(String path) throws RemoteException {
+    public ParcelFileDescriptor inputStreamPfd(String path) {
         try {
             return ParcelFileDescriptor.open(f(path), ParcelFileDescriptor.MODE_READ_ONLY);
         } catch (FileNotFoundException e) {
@@ -249,9 +202,9 @@ public class FileService extends IFileService.Stub {
     }
 
     @Override
-    public void write(String path, ParcelFileDescriptor stream, IWriteCallback callback, boolean append) throws RemoteException {
+    public void outputStreamPfd(String path, ParcelFileDescriptor input, IOutputStreamCallback callback, boolean append) throws RemoteException {
         new Thread(() -> {
-            try (FileInputStream fis = new FileInputStream(stream.getFileDescriptor());
+            try (FileInputStream fis = new FileInputStream(input.getFileDescriptor());
                  FileOutputStream fos = new FileOutputStream(path, append)) {
 
                 byte[] buffer = new byte[8192];
@@ -260,51 +213,114 @@ public class FileService extends IFileService.Stub {
                     fos.write(buffer, 0, len);
                 }
                 fos.flush();
+                Os.fsync(fos.getFD());
                 fos.close();
-                fos.getFD().sync();
 
                 if (callback != null) callback.onComplete();
-            } catch (IOException | RemoteException e) {
+            } catch (IOException | RemoteException | ErrnoException e) {
                 if (callback != null) {
                     try {
-                        callback.onError(-1, e.getMessage());
+                        if (e instanceof IOException) {
+                            callback.onError(IOutputStreamCallback.IO_EXCEPTION, e.getMessage());
+                        } else if (e instanceof ErrnoException) {
+                            callback.onError(IOutputStreamCallback.ERRNO_EXCEPTION, e.getMessage());
+                        } else {
+                            callback.onError(IOutputStreamCallback.FILE_NOT_FOUND, e.getMessage());
+                        }
                     } catch (RemoteException ignored) {
                     }
                 }
             } finally {
                 try {
-                    if (stream != null) {
-                        stream.close();
-                        stream.getFileDescriptor().sync();
+                    if (input != null) {
+                        input.close();
                     }
                 } catch (IOException ignored) {}
             }
         }).start();
     }
 
-    @Override
-    public boolean copy(String from, String to, boolean overwrite) {
-        try {
-            return copyFile(f(from), f(to), overwrite);
-        } catch (IOException e) {
-            return false;
+    private void fsyncDir(File dir) {
+        if (dir == null) return;
+        try (FileInputStream fis = new FileInputStream(dir)) {
+            Os.fsync(fis.getFD());
+        } catch (Throwable ignored) {}
+    }
+
+    private void copyFileDurable(File src, File dst) throws IOException, ErrnoException {
+        final byte[] buf = new byte[64 * 1024];
+
+        try (FileInputStream in = new FileInputStream(src);
+             FileOutputStream out = new FileOutputStream(dst)) {
+
+            int r;
+            while ((r = in.read(buf)) != -1) {
+                out.write(buf, 0, r);
+            }
+            out.flush(); // flush userspace buffer
+            Os.fsync(out.getFD()); // fsync FILE tujuan
         }
+
+        // Optional: samakan timestamp (metadata)
+        dst.setLastModified(src.lastModified());
     }
 
     @Override
-    public boolean move(String from, String to, boolean overwrite) {
-        File src = f(from);
-        File dst = f(to);
-        try {
-            Files.move(
-                    src.toPath(),
-                    dst.toPath(),
-                    StandardCopyOption.ATOMIC_MOVE,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
+    public boolean renameTo(String src, String dst, boolean overwrite) {
+        File srcFile = f(src);
+        File dstFile = f(dst);
+        if (!srcFile.exists() || !srcFile.isFile()) return false;
+
+        File dstParent = dstFile.getParentFile();
+        if (dstParent != null && !dstParent.exists()) {
+            if (!dstParent.mkdirs()) return false;
+        }
+
+        // Handle overwrite
+        if (dstFile.exists()) {
+            if (!overwrite) return false;
+            if (!dstFile.delete()) return false;
+            fsyncDir(dstParent);
+        }
+
+        // 1) TRY ATOMIC RENAME (same filesystem)
+        if (srcFile.renameTo(dstFile)) {
+            // rename is atomic; fsync directory to persist metadata
+            fsyncDir(dstParent);
             return true;
-        } catch (Exception e) {
+        }
+
+        // 2) FALLBACK: CROSS-FILESYSTEM MOVE
+        // copy -> fsync(file) -> fsync(dst dir) -> delete src -> fsync(src dir)
+        try {
+            copyFileDurable(srcFile, dstFile);
+        } catch (ErrnoException | IOException e) {
             return false;
         }
+        fsyncDir(dstParent);
+
+        if (!srcFile.delete()) return false;
+        fsyncDir(srcFile.getParentFile());
+
+        return true;
     }
+
+
+//    @Override
+//    public boolean move(String from, String to, boolean overwrite) {
+//        File src = f(from);
+//        File dst = f(to);
+//        src.
+//        try {
+//            Files.move(
+//                    src.toPath(),
+//                    dst.toPath(),
+//                    StandardCopyOption.ATOMIC_MOVE,
+//                    StandardCopyOption.REPLACE_EXISTING
+//            );
+//            return true;
+//        } catch (Exception e) {
+//            return false;
+//        }
+//    }
 }

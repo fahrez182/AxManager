@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +26,7 @@ import java.util.Set;
 import frb.axeron.api.utils.Excluder;
 import frb.axeron.data.FileStat;
 import frb.axeron.server.IFileService;
-import frb.axeron.server.IWriteCallback;
+import frb.axeron.server.IOutputStreamCallback;
 
 public class AxeronFileService implements Parcelable {
 
@@ -99,9 +100,9 @@ public class AxeronFileService implements Parcelable {
         }
     }
 
-    public FileInputStream setFileInputStream(String source) throws RemoteException {
-        ParcelFileDescriptor pfd = getFS().read(source);
-//        if (pfd == null) return null;
+    public FileInputStream setFileInputStream(String source) throws RemoteException, FileNotFoundException {
+        ParcelFileDescriptor pfd = getFS().inputStreamPfd(source);
+        if (pfd == null) throw new FileNotFoundException();
         return new ParcelFileDescriptor.AutoCloseInputStream(pfd);
     }
 
@@ -127,6 +128,14 @@ public class AxeronFileService implements Parcelable {
         } catch (RemoteException e) {
             return false;
         }
+    }
+
+    public boolean delete(String pathFrom) {
+        return delete(pathFrom, true);
+    }
+
+    public boolean delete(String pathFrom, boolean removeParent) {
+        return smartDelete(pathFrom, null, removeParent) != null;
     }
 
     @Nullable
@@ -336,14 +345,6 @@ public class AxeronFileService implements Parcelable {
         return getFS().createNewFile(absolutePath);
     }
 
-    public boolean delete(String pathFrom) {
-        return delete(pathFrom, true);
-    }
-
-    public boolean delete(String pathFrom, boolean removeParent) {
-        return smartDelete(pathFrom, null, removeParent) != null;
-    }
-
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeStrongBinder(getFS().asBinder());
@@ -355,22 +356,25 @@ public class AxeronFileService implements Parcelable {
     }
 
     public static class StreamSession implements AutoCloseable {
-        private final ParcelFileDescriptor readFd;
-        private final ParcelFileDescriptor writeFd;
+        private final ParcelFileDescriptor inputFd;
+        private final ParcelFileDescriptor outputFd;
 
-        public StreamSession(IFileService fs, String destination, boolean ensureParents, boolean append) throws IOException, RemoteException {
-            FileStat file = fs.stat(destination);
+        private final IFileService fileService;
+
+        public StreamSession(IFileService fileService, String destination, boolean ensureParents, boolean append) throws IOException, RemoteException {
+            this.fileService = fileService;
+            FileStat file = fileService.stat(destination);
             if (ensureParents) {
-                FileStat p = fs.stat(file.parent);
+                FileStat p = fileService.stat(file.parent);
                 if (p != null && !p.exists) {
-                    fs.mkdirs(p.path);
+                    fileService.mkdirs(p.path);
                 }
             }
 
             ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createPipe();
-            readFd = pipe[0];
-            writeFd = pipe[1];
-            IWriteCallback callback = new IWriteCallback.Stub() {
+            inputFd = pipe[0];
+            outputFd = pipe[1];
+            IOutputStreamCallback callback = new IOutputStreamCallback.Stub() {
                 @Override
                 public void onComplete() {
                     close();
@@ -378,30 +382,29 @@ public class AxeronFileService implements Parcelable {
                 }
 
                 @Override
-                public void onError(int code, String message) {
+                public void onError(int errCode, String message) {
                     close();
                     Log.e("StreamSession", "Stream error: " + message);
                 }
             };
-            fs.write(destination, readFd, callback, append);
+            fileService.outputStreamPfd(destination, inputFd, callback, append);
         }
 
         public FileOutputStream getOutputStream() {
-            return new FileOutputStream(writeFd.getFileDescriptor());
+            return new FileOutputStream(outputFd.getFileDescriptor());
         }
 
         @Override
         public void close() {
             try {
-                if (writeFd != null) {
-                    writeFd.close();
-                    writeFd.getFileDescriptor().sync();
+                if (inputFd != null) {
+                    inputFd.close();
                 }
-                if (readFd != null) {
-                    readFd.close();
-                    readFd.getFileDescriptor().sync();
+                if (outputFd != null) {
+                    fileService.fsync(outputFd);
+                    outputFd.close();
                 }
-            } catch (IOException ignored) {
+            } catch (IOException | RemoteException ignored) {
             }
         }
     }

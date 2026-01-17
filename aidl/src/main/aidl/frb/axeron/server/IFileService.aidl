@@ -1,7 +1,7 @@
 // IFileService.aidl
 package frb.axeron.server;
 
-import frb.axeron.server.IWriteCallback;
+import frb.axeron.server.IOutputStreamCallback;
 import frb.axeron.data.FileStat;
 // Declare any non-default types here with import statements
 
@@ -20,8 +20,6 @@ interface IFileService {
     boolean mkdirs(String dirPath);
     boolean createNewFile(String path);
     boolean delete(String path);               // non-recursive
-    boolean deleteRecursive(String path);      // hati-hati: rekursif
-    boolean rename(String from, String to);
     boolean exists(String path);
     boolean fsync(in ParcelFileDescriptor pfd);
 
@@ -39,10 +37,10 @@ interface IFileService {
 
     // ---- Open file dgn flags PFD; ensureParents = auto-mkdir parent jika true
 //    ParcelFileDescriptor open(String path, int flags, boolean ensureParents);
-    ParcelFileDescriptor read(String path);
-    void write(String path, in ParcelFileDescriptor stream, in IWriteCallback callback, boolean append);
+    ParcelFileDescriptor inputStreamPfd(String path);
+    void outputStreamPfd(String path, in ParcelFileDescriptor inputStreamPfd, in IOutputStreamCallback callback, boolean append);
 
     // ---- Copy/Move (overwrite optional)
-    boolean copy(String from, String to, boolean overwrite);
-    boolean move(String from, String to, boolean overwrite);
+//    boolean copy(String from, String to, boolean overwrite);
+    boolean renameTo(String src, String dst, boolean overwrite);
 }
