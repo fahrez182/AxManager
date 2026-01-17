@@ -15,6 +15,8 @@ private const val TAG = "AdbClient"
 class AdbClient(private val host: String, private val port: Int, private val key: AdbKey) :
     Closeable {
 
+
+
     private lateinit var socket: Socket
     private lateinit var plainInputStream: DataInputStream
     private lateinit var plainOutputStream: DataOutputStream
@@ -89,10 +91,12 @@ class AdbClient(private val host: String, private val port: Int, private val key
                     }
                 }
             }
+
             AdbProtocol.A_CLSE -> {
                 val remoteId = message.arg0
                 write(AdbProtocol.A_CLSE, localId, remoteId)
             }
+
             else -> {
                 error("not A_OKAY or A_CLSE")
             }

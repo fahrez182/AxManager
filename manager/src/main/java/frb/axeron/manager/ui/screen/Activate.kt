@@ -272,6 +272,7 @@ fun WirelessDebuggingCard(
                             activateViewModel.startAdb(context)
                         } catch (e: ActivateException) {
                             Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                            Log.e("AxManagerStartAdb", e.message, e)
                             activateViewModel.setTryToActivate(false)
                             if (e !is ActivateException.TryToActivate) {
                                 activateViewModel.startPairingService(context)

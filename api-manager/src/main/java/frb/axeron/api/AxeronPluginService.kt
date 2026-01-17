@@ -4,20 +4,20 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import com.google.gson.annotations.SerializedName
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine.Companion.application
 import frb.axeron.data.AxeronConstant
-import frb.axeron.data.AxeronConstant.server.VERSION_CODE
+import frb.axeron.data.Environment
 import frb.axeron.data.PathHelper
 import frb.axeron.data.PluginInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.supervisorScope
@@ -377,170 +377,156 @@ object AxeronPluginService {
         return axFS.delete("$path/remove") && axFS.delete("$updatePath/update_remove")
     }
 
-    @Throws(IgniteException::class)
-    private suspend fun shOrThrow(cmd: String) {
-        val r = execWithIO(cmd, useBusybox = true, hideStderr = false)
-        if (!r.isSuccess()) {
-            throw IgniteException.CommandFailed(cmd, r.err)
+    //===================================
+    // IGNITER
+    //===================================
+
+    data class ExecResult(
+        val exitCode: Int,
+        val stdout: String,
+        val stderr: String
+    ) {
+        fun isSuccess() = exitCode == 0
+    }
+
+    suspend fun execProcessSafe(
+        cmd: Array<String>,
+        env: Environment? = null
+    ): ExecResult = withContext(Dispatchers.IO) {
+
+        val process = Axeron.newProcess(cmd, env, null)
+
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+
+        val outJob = launch {
+            process.inputStream.bufferedReader().useLines {
+                it.forEach { line -> stdout.appendLine(line) }
+            }
+        }
+
+        val errJob = launch {
+            process.errorStream.bufferedReader().useLines {
+                it.forEach { line -> stderr.appendLine(line) }
+            }
+        }
+
+        val exitCode = process.waitFor()
+
+        outJob.join()
+        errJob.join()
+
+        process.destroy()
+
+        ExecResult(exitCode, stdout.toString(), stderr.toString())
+    }
+
+    suspend fun fsBarrier() {
+        withContext(Dispatchers.IO) {
+            // opsi minimal & portable
+            delay(10)
         }
     }
 
+
     @JvmStatic
-    fun igniteService() = runBlocking {
-        igniteSuspendService()
+    fun igniteService(): Boolean {
+        return runBlocking(Dispatchers.IO) {
+            igniteSuspendService()
+        }
     }
 
     suspend fun igniteSuspendService(): Boolean = withContext(Dispatchers.IO) {
-        if (AxeronConstant.server.getActualVersion() > Axeron.getAxeronInfo().getActualVersion()) {
-            Log.i(
-                TAG,
-                "Updating.. ${Axeron.getAxeronInfo().getActualVersion()} < $VERSION_CODE"
-            )
+
+        val localVer = Axeron.getAxeronInfo().getActualVersion()
+        val serverVer = AxeronConstant.server.getActualVersion()
+
+        if (serverVer > localVer) {
+            Log.i(TAG, "Updating.. $localVer < $serverVer")
             return@withContext false
         }
 
         if (Axeron.isFirstInit(true)) {
             Log.i(TAG, "First Init: Removing old bin")
-            try {
-                removeScriptsOrThrow()
-                removeLibraryOrThrow()
-            } catch (e: IgniteException) {
-                Log.e(TAG, "Axeron failed", e)
-            }
+            removeScripts()
+            removeLibrary()
+            fsBarrier()
         }
 
-        try {
-            ensureLibraryOrThrow()
-            ensureScriptsOrThrow()
-        } catch (e: IgniteException) {
-            Log.e(TAG, "Axeron failed", e)
-            return@withContext false
-        }
+        if (!ensureLibrary()) return@withContext false
+        fsBarrier()
+
+        if (!ensureScripts()) return@withContext false
+        fsBarrier()
 
         val cmd =
             "CLASSPATH=$AXERONBIN/ax_reignite.dex; app_process / frb.axeron.reignite.Igniter ${AxeronSettings.getEnableDeveloperOptions()}"
-        Log.d(TAG, "Start Init Service: $cmd")
 
-        return@withContext runCatching {
-            val start = SystemClock.elapsedRealtime()
-            val process = Axeron.newProcess(
-                arrayOf(BUSYBOX, "sh", "-c", cmd),
-                Axeron.getEnvironment(),
-                null
-            )
+        Log.d(TAG, "Start Init Service")
 
-            val stdout = process.inputStream.bufferedReader().readText()
-            val stderr = process.errorStream.bufferedReader().readText()
+        val result = execProcessSafe(
+            arrayOf(BUSYBOX, "sh", "-c", cmd),
+            Axeron.getEnvironment()
+        )
 
-            val exitCode = process.waitFor()
-            process.destroy()
+        if (result.stdout.isNotBlank()) Log.i(TAG, "STDOUT:\n${result.stdout}")
+        if (result.stderr.isNotBlank()) Log.e(TAG, "STDERR:\n${result.stderr}")
 
-            if (stdout.isNotEmpty()) Log.i(TAG, "STDOUT:\n$stdout")
-            if (stderr.isNotEmpty()) Log.e(TAG, "STDERR:\n$stderr")
-            Log.i(TAG, "Service Started in ${SystemClock.elapsedRealtime() - start}ms")
-
-            exitCode == 0
-        }.getOrElse {
-            Log.e("StartService", "Error: ${it.message}", it)
-            false
-        }
+        result.isSuccess()
     }
 
-    suspend fun removeScriptsOrThrowShell() = withContext(Dispatchers.IO) {
-        val files = application.assets.list("scripts")
-            ?: throw IgniteException.AssetNotFound("assets/scripts")
 
-        for (filename in files) {
-            val path = "$AXERONBIN/$filename"
-            shOrThrow("rm -f $path")
-            Log.i(TAG, "removed $path")
-        }
-    }
-
-    @Throws(IgniteException::class)
-    suspend fun removeScriptsOrThrow() = withContext(Dispatchers.IO) {
-        val files = application.assets.list("scripts")
-            ?: throw IgniteException.AssetNotFound("assets/scripts")
+    suspend fun removeScripts() = withContext(Dispatchers.IO) {
+        val files = application.assets.list("scripts") ?: return@withContext
+        if (files.isEmpty()) return@withContext
 
         for (filename in files) {
             val dstFile = File(AXERONBIN, filename)
             if (!axFS.exists(dstFile.absolutePath)) continue
 
             if (!axFS.delete(dstFile.absolutePath)) {
-                throw IgniteException.FileDeleteFailed(dstFile.absolutePath)
+                Log.e(TAG, "failed to remove ${dstFile.absolutePath}")
+                continue
             }
 
             Log.i(TAG, "removed ${dstFile.absolutePath}")
         }
     }
 
-    suspend fun removeLibraryOrThrowShell() = withContext(Dispatchers.IO) {
-        shOrThrow("rm -f $AXERONBIN/busybox")
-        shOrThrow("rm -f $AXERONBIN/resetprop")
-        shOrThrow("find $AXERONBIN -type l -delete")
-
-        Log.i(TAG, "library removed")
-    }
-
-    @Throws(IgniteException::class)
-    suspend fun removeLibraryOrThrow() = withContext(Dispatchers.IO) {
+    suspend fun removeLibrary() = withContext(Dispatchers.IO) {
         val dstBusybox = File(AXERONBIN, "busybox")
 
         if (axFS.exists(dstBusybox.absolutePath)) {
             if (!axFS.delete(dstBusybox.absolutePath)) {
-                throw IgniteException.FileDeleteFailed(dstBusybox.absolutePath)
+                return@withContext
             }
 
             val cmd = "find $AXERONBIN -type l -delete"
             val result = execWithIO(cmd, useBusybox = false, hideStderr = false)
 
             if (!result.isSuccess()) {
-                throw IgniteException.CommandFailed(cmd, result.err)
+                Log.e(TAG, "remove symlink failed: ${result.err}")
+                return@withContext
             }
-        }
 
+            Log.i(TAG, "symlink from busybox removed")
+        }
         val dstResetprop = File(AXERONBIN, "resetprop")
-        if (axFS.exists(dstResetprop.absolutePath) &&
-            !axFS.delete(dstResetprop.absolutePath)
-        ) {
-            throw IgniteException.FileDeleteFailed(dstResetprop.absolutePath)
+        if (axFS.exists(dstResetprop.absolutePath)) {
+            axFS.delete(dstResetprop.absolutePath)
         }
     }
 
-    suspend fun ensureScriptsOrThrowShell() = withContext(Dispatchers.IO) {
-        val files = application.assets.list("scripts")
-            ?: throw IgniteException.AssetNotFound("assets/scripts")
+    private suspend fun ensureScripts(): Boolean = withContext(Dispatchers.IO) {
+        val files = application.assets.list("scripts") ?: return@withContext  false
+        if (files.isEmpty()) return@withContext false
 
-        shOrThrow("mkdir -p $AXERONBIN")
-
-        for (filename in files) {
-            val dst = "$AXERONBIN/$filename"
-
-            val cmd = """
-                [ -f "$dst" ] || (
-                  $BUSYBOX unzip -p $BASEAPK assets/scripts/$filename > "$dst" &&
-                  chmod 755 "$dst" &&
-                  chown 2000:2000 "$dst" &&
-                  dos2unix "$dst"
-                )
-            """.trimIndent()
-
-            shOrThrow(cmd)
-            Log.i(TAG, "script ensured: $dst")
-        }
-    }
-
-    @Throws(IgniteException::class)
-    private suspend fun ensureScriptsOrThrow() = withContext(Dispatchers.IO) {
-        val files = application.assets.list("scripts")
-            ?: throw IgniteException.AssetNotFound("assets/scripts")
-
-        if (!axFS.exists(AXERONBIN) && !axFS.mkdirs(AXERONBIN)) {
-            throw IgniteException.MkdirFailed(AXERONBIN)
-        }
+        if (!axFS.exists(AXERONBIN) && !axFS.mkdirs(AXERONBIN)) return@withContext false
 
         for (filename in files) {
+            val inPath = "assets/scripts/$filename"
             val dstFile = File(AXERONBIN, filename)
+
             if (axFS.exists(dstFile.absolutePath)) continue
 
             val cmd =
@@ -551,83 +537,50 @@ object AxeronPluginService {
             val result = execWithIO(cmd, hideStderr = false)
 
             if (!result.isSuccess()) {
-                throw IgniteException.CommandFailed(cmd, result.err)
+                Log.e(TAG, "$inPath failed: ${result.err}")
+                return@withContext false
             }
 
             Log.i(TAG, "$filename extracted")
         }
+        return@withContext true
     }
 
-    suspend fun ensureLibraryOrThrowShell() = withContext(Dispatchers.IO) {
-        shOrThrow("mkdir -p $AXERONBIN")
+    suspend fun ensureLibrary(): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            if (!axFS.exists(AXERONBIN) && !axFS.mkdirs(AXERONBIN)) return@withContext false
 
-        val ensureBusybox = """
-            [ -x "$AXERONBIN/busybox" ] || (
-              cp $BUSYBOX $AXERONBIN/busybox &&
-              chmod 755 $AXERONBIN/busybox &&
-              chown 2000:2000 $AXERONBIN/busybox &&
-              $AXERONBIN/busybox --install -s $AXERONBIN
-            )
-        """.trimIndent()
+            val dstBusyBox = File(AXERONBIN, "busybox")
+            val dstResetProp = File(AXERONBIN, "resetprop")
 
-        shOrThrow(ensureBusybox)
-        Log.i(TAG, "busybox ensured")
+            if (axFS.exists(dstBusyBox.absolutePath) && axFS.exists(dstResetProp.absolutePath)) return@withContext true
 
-        val ensureResetprop = """
-            [ -x "$AXERONBIN/resetprop" ] || (
-              cp $RESETPROP $AXERONBIN/resetprop &&
-              chmod 755 $AXERONBIN/resetprop &&
-              chown 2000:2000 $AXERONBIN/resetprop
-            )
-        """.trimIndent()
-
-        shOrThrow(ensureResetprop)
-        Log.i(TAG, "resetprop ensured")
-    }
-
-    @Throws(IgniteException::class)
-    suspend fun ensureLibraryOrThrow() = withContext(Dispatchers.IO) {
-        if (!axFS.exists(AXERONBIN) && !axFS.mkdirs(AXERONBIN)) {
-            throw IgniteException.MkdirFailed(AXERONBIN)
-        }
-
-        val dstBusyBox = File(AXERONBIN, "busybox")
-        val dstResetProp = File(AXERONBIN, "resetprop")
-
-        if (!axFS.exists(dstBusyBox.absolutePath)) {
-            val cmd =
+            val cmdBB =
                 "cp $BUSYBOX ${dstBusyBox.absolutePath} && chmod 755 ${dstBusyBox.absolutePath} " +
                         "&& chown 2000:2000 ${dstBusyBox.absolutePath} " +
                         "&& ${dstBusyBox.absolutePath} --install -s $AXERONBIN"
 
-            val r = execWithIO(cmd, useBusybox = false, hideStderr = false)
-            if (!r.isSuccess()) throw IgniteException.CommandFailed(cmd, r.err)
-        }
+            val rBB = execWithIO(cmdBB, useBusybox = false, hideStderr = false)
+            if (!rBB.isSuccess()) {
+                Log.e(TAG, "Failed to ensure busybox: ${rBB.err}")
+                return@withContext false
+            }
 
-        if (!axFS.exists(dstResetProp.absolutePath)) {
-            val cmd =
+            val cmdRP =
                 "cp $RESETPROP ${dstResetProp.absolutePath} && chmod 755 ${dstResetProp.absolutePath} " +
                         "&& chown 2000:2000 ${dstResetProp.absolutePath}"
 
-            val r = execWithIO(cmd, useBusybox = false, hideStderr = false)
-            if (!r.isSuccess()) throw IgniteException.CommandFailed(cmd, r.err)
+            val rRP = execWithIO(cmdRP, useBusybox = false, hideStderr = false)
+            if (!rRP.isSuccess()) {
+                Log.e(TAG, "Failed to ensure resetprop: ${rRP.err}")
+                return@withContext false
+            }
+
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to ensure library", e)
+            false
         }
     }
 
-}
-
-sealed class IgniteException(message: String, cause: Throwable? = null) :
-    RuntimeException(message, cause) {
-
-    class AssetNotFound(path: String) :
-        IgniteException("Asset not found: $path")
-
-    class MkdirFailed(path: String) :
-        IgniteException("Failed to create directory: $path")
-
-    class FileDeleteFailed(path: String) :
-        IgniteException("Failed to delete: $path")
-
-    class CommandFailed(cmd: String, err: String?) :
-        IgniteException("Command failed: $cmd\n$err")
 }

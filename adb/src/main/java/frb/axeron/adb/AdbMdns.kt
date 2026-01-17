@@ -4,8 +4,6 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.os.ext.SdkExtensions
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -30,7 +28,7 @@ class AdbMdns(
     private val listener = DiscoveryListener(this)
     private val nsdManager: NsdManager = context.getSystemService(NsdManager::class.java)
     private val executor = Executors.newFixedThreadPool(1)
-    private val handlerTimeout = Handler(Looper.getMainLooper())
+
 
     fun start() {
         if (running) return
@@ -163,7 +161,7 @@ class AdbMdns(
         }
 
         override fun onServiceLost() {
-            TODO("Not yet implemented")
+            Log.v(TAG, "onServiceLost")
         }
 
         override fun onServiceUpdated(serviceInfo: NsdServiceInfo) {
