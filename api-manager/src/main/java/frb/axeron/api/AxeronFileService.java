@@ -100,7 +100,7 @@ public class AxeronFileService implements Parcelable {
     }
 
     public FileInputStream setFileInputStream(String source) throws RemoteException {
-        ParcelFileDescriptor pfd = fileService.read(source);
+        ParcelFileDescriptor pfd = getFS().read(source);
 //        if (pfd == null) return null;
         return new ParcelFileDescriptor.AutoCloseInputStream(pfd);
     }
@@ -116,6 +116,14 @@ public class AxeronFileService implements Parcelable {
     public boolean mkdirs(String path) {
         try {
             return getFS().mkdirs(path);
+        } catch (RemoteException e) {
+            return false;
+        }
+    }
+
+    public boolean fsync(ParcelFileDescriptor pfd) {
+        try {
+            return getFS().fsync(pfd);
         } catch (RemoteException e) {
             return false;
         }

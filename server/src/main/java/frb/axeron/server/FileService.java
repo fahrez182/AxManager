@@ -226,6 +226,19 @@ public class FileService extends IFileService.Stub {
         }
     }
 
+    public boolean fsync(ParcelFileDescriptor pfd) {
+        try (pfd) {
+            try {
+                Os.fsync(pfd.getFileDescriptor());
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     @Override
     public ParcelFileDescriptor read(String path) throws RemoteException {
         try {

@@ -23,6 +23,7 @@ interface IFileService {
     boolean deleteRecursive(String path);      // hati-hati: rekursif
     boolean rename(String from, String to);
     boolean exists(String path);
+    boolean fsync(in ParcelFileDescriptor pfd);
 
     // ---- Metadata
     FileStat stat(String path);                // metadata lengkap
