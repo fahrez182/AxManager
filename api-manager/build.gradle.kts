@@ -47,4 +47,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.gson)
     implementation(libs.rikka.parcelablelist)
+    implementation(libs.rikka.hidden.compat)
+    compileOnly(libs.rikka.hidden.stub)
+
+    implementation(libs.topjohnwu.libsu.core)
 }

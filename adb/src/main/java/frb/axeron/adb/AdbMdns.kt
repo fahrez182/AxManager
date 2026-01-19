@@ -3,32 +3,28 @@ package frb.axeron.adb
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
-import android.os.Build
-import android.os.ext.SdkExtensions
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.annotation.RequiresExtension
 import androidx.lifecycle.Observer
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
-import java.util.concurrent.Executors
 
-@RequiresApi(Build.VERSION_CODES.R)
 class AdbMdns(
     context: Context, private val serviceType: String,
-    private val observer: Observer<AdbData>
+    private val observer: Observer<Int>
 ) {
 
-    data class AdbData(val status: Int, val host: String = "", val port: Int = -1)
     private var registered = false
     private var running = false
     private var serviceName: String? = null
     private val listener = DiscoveryListener(this)
     private val nsdManager: NsdManager = context.getSystemService(NsdManager::class.java)
-    private val executor = Executors.newFixedThreadPool(1)
-
+    private val handler = Handler(Looper.getMainLooper())
+    private var restartScheduled = false
+    private var attempts = 0
 
     fun start() {
         if (running) return
@@ -41,6 +37,7 @@ class AdbMdns(
     fun stop() {
         if (!running) return
         running = false
+        handler.removeCallbacksAndMessages(null)
         if (registered) {
             nsdManager.stopServiceDiscovery(listener)
         }
@@ -55,16 +52,11 @@ class AdbMdns(
     }
 
     private fun onServiceFound(info: NsdServiceInfo) {
-        if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 7) {
-            nsdManager.registerServiceInfoCallback(info, executor, ServiceInfoCallback(this))
-        } else {
-            @Suppress("DEPRECATION")
-            nsdManager.resolveService(info, ResolveListener(this))
-        }
+        nsdManager.resolveService(info, ResolveListener(this))
     }
 
     private fun onServiceLost(info: NsdServiceInfo) {
-        if (info.serviceName == serviceName) observer.onChanged(AdbData(STATUS_LOST))
+        if (info.serviceName == serviceName) observer.onChanged(-1)
     }
 
     private fun onServiceResolved(resolvedService: NsdServiceInfo) {
@@ -73,26 +65,23 @@ class AdbMdns(
                 .any { networkInterface ->
                     networkInterface.inetAddresses
                         .asSequence()
-                        .any { inetAddress ->
-                            if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 7) {
-                                resolvedService.hostAddresses.add(inetAddress)
-                            } else {
-                                @Suppress("DEPRECATION")
-                                resolvedService.host.hostAddress == inetAddress.hostAddress
-                            }
-                        }
+                        .any { resolvedService.host.hostAddress == it.hostAddress }
                 }
             && isPortAvailable(resolvedService.port)
         ) {
             serviceName = resolvedService.serviceName
-            val host = if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.TIRAMISU) >= 7) {
-                resolvedService.hostAddresses.first().hostAddress
-            } else {
-                @Suppress("DEPRECATION")
-                resolvedService.host.hostAddress
-            }
-
-            observer.onChanged(AdbData(STATUS_RESOLVED, host!!, resolvedService.port))
+            observer.onChanged(resolvedService.port)
+        } else if (running && attempts < 5 && !restartScheduled) {
+            attempts++
+            restartScheduled = true
+            val delay = attempts * 1000L
+            handler.postDelayed({
+                if (registered) nsdManager.stopServiceDiscovery(listener)
+                handler.postDelayed({
+                    if (!registered) nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, listener)
+                    restartScheduled = false
+                }, 100L)
+            }, delay)
         }
     }
 
@@ -140,39 +129,15 @@ class AdbMdns(
     }
 
     internal class ResolveListener(private val adbMdns: AdbMdns) : NsdManager.ResolveListener {
-        override fun onResolveFailed(nsdServiceInfo: NsdServiceInfo, i: Int) {
-            Log.v(TAG, "onResolveFailed: $i")
+        override fun onResolveFailed(nsdServiceInfo: NsdServiceInfo, i: Int) {}
+
+        override fun onServiceResolved(nsdServiceInfo: NsdServiceInfo) {
+            adbMdns.onServiceResolved(nsdServiceInfo)
         }
 
-        override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-            adbMdns.onServiceResolved(serviceInfo)
-        }
-    }
-
-    @RequiresExtension(extension = Build.VERSION_CODES.TIRAMISU, version = 7)
-    internal class ServiceInfoCallback(private val adbMdns: AdbMdns) :
-        NsdManager.ServiceInfoCallback {
-        override fun onServiceInfoCallbackRegistrationFailed(errorCode: Int) {
-            Log.v(TAG, "onResolveFailed: $errorCode")
-        }
-
-        override fun onServiceInfoCallbackUnregistered() {
-            Log.v(TAG, "onServiceUnregistered")
-        }
-
-        override fun onServiceLost() {
-            Log.v(TAG, "onServiceLost")
-        }
-
-        override fun onServiceUpdated(serviceInfo: NsdServiceInfo) {
-            adbMdns.onServiceResolved(serviceInfo)
-        }
     }
 
     companion object {
-        const val STATUS_FAILED = -1
-        const val STATUS_LOST = 0
-        const val STATUS_RESOLVED = 1
         const val TLS_CONNECT = "_adb-tls-connect._tcp"
         const val TLS_PAIRING = "_adb-tls-pairing._tcp"
         const val TAG = "AdbMdns"

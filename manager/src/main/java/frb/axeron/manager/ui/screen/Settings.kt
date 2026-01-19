@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.screen
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,8 +17,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Coffee
@@ -26,6 +30,7 @@ import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -35,6 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -49,12 +56,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -68,6 +79,7 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
+import frb.axeron.api.utils.EnvironmentUtil
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.SettingsItem
@@ -128,10 +140,10 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(vertical = 16.dp)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
 
             AnimatedVisibility(visible = axeronRunning) {
@@ -144,6 +156,114 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                         Axeron.enableShizukuService(it)
                     }
                 )
+            }
+
+            AnimatedVisibility(visible = EnvironmentUtil.isTlsSupported()) {
+                SettingsItem(
+                    iconVector = Icons.Filled.Adb,
+                    label = "TCP Mode",
+                    description = "Allows AxManager to restart without Wi-Fi (AxManager must have started once since reboot)",
+                    checked = settings.isTcpModeEnabled,
+                    onSwitchChange = {
+                        settings.setTcpMode(it)
+                    }
+                ) { enabled, checked ->
+                    AnimatedVisibility(checked) {
+                        SettingsItem(
+                            type = SettingsItemType.CHILD
+                        ) { _, _ ->
+                            var tcpPortText by remember {
+                                mutableStateOf(settings.tcpPortInt.toString())
+                            }
+                            val context = LocalContext.current
+
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                var isFocused by remember { mutableStateOf(false) }
+                                val focusManager = LocalFocusManager.current
+
+                                val portInt = tcpPortText.toIntOrNull()
+                                val isError = tcpPortText.isNotEmpty() &&
+                                        (portInt == null || portInt !in 1024..65535)
+
+                                TextField(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onFocusChanged { state ->
+                                            isFocused = state.isFocused
+                                        },
+                                    value = tcpPortText,
+                                    onValueChange = { newValue ->
+                                        if (newValue.all { it.isDigit() } && newValue.length <= 5) {
+                                            tcpPortText = newValue
+                                        }
+                                    },
+                                    label = {
+                                        Text("TCP Port")
+                                    },
+                                    supportingText = {
+                                        AnimatedVisibility(
+                                            visible = isError,
+                                            modifier = Modifier.padding(bottom = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Port must be between 1024 and 65535",
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    },
+                                    isError = isError,
+                                    trailingIcon = {
+                                        if (isFocused) {
+                                            IconButton(
+                                                enabled = !isError && portInt != null,
+                                                onClick = {
+                                                    portInt?.let {
+                                                        settings.setTcpPort(it)
+                                                        focusManager.clearFocus()
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Save,
+                                                    contentDescription = "Save TCP port"
+                                                )
+                                            }
+                                        } else if (settings.tcpPortInt != EnvironmentUtil.getAdbTcpPort()) {
+                                            IconButton(
+                                                onClick = {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Re-Activate to apply changes",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.RestartAlt,
+                                                    contentDescription = "Re-Activate AxManager"
+                                                )
+                                            }
+                                        }
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                        disabledIndicatorColor = Color.Transparent
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number
+                                    ),
+                                    singleLine = true
+                                )
+
+                            }
+                        }
+                    }
+                }
             }
 
             SettingsItem(
@@ -188,7 +308,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 )
             }
 
-            SettingsItem { enabled, checked ->
+            SettingsItem { _, _ ->
                 AnimatedVisibility(visible = axeronRunning) {
                     SettingsItem(
                         type = SettingsItemType.CHILD,

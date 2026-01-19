@@ -23,14 +23,19 @@ class AdbWifiGate(
 
     private fun check() {
         val enabled =
-            Settings.Global.getInt(ctx.contentResolver, "adb_wifi_enabled", 0) == 1
+            Settings.Global.getInt(
+                ctx.contentResolver,
+                "adb_wifi_enabled",
+                0
+            ) == 1
 
         if (enabled) {
             onReady()
             return
         }
 
-        val permission = ctx.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
+        val permission =
+            ctx.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
 
         if (!permission) {
             onFail()

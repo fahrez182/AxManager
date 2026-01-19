@@ -72,7 +72,6 @@ dependencies {
     compileOnly(libs.rikka.hidden.stub)
     compileOnly(project(":server:stub"))
 
-//    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
 
     implementation(libs.libcxx)
