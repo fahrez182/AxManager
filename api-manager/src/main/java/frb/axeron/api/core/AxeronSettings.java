@@ -22,8 +22,6 @@ public class AxeronSettings {
     public static final String NAME = "settings";
     public static final String APP_THEME_ID = "app_theme_id";
 
-    public static final String TCP_MODE = "tcp_mode";
-    public static final String TCP_PORT = "tcp_port";
     public static final String LAUNCH_MODE = "mode";
     public static final String ENABLE_DYNAMIC_COLOR = "enable_dynamic_color";
     public static final String ENABLE_DEVELOPER_OPTIONS = "enable_developer_options";
@@ -73,30 +71,6 @@ public class AxeronSettings {
 
     public static void setLastLaunchMode(@LaunchMethod int method) {
         getPreferences().edit().putInt(LAUNCH_MODE, method).apply();
-    }
-
-    public static boolean getTcpMode() {
-        return getPreferences().getBoolean(TCP_MODE, true);
-    }
-
-    public static void setTcpMode(boolean enable) {
-        getPreferences().edit().putBoolean(TCP_MODE, enable).apply();
-    }
-
-    public static int getTcpPort() {
-        try {
-            return Integer.parseInt(getPreferences().getString(TCP_PORT, "5555"));
-        } catch (NumberFormatException e) {
-            return 5555;
-        }
-    }
-
-    public static void setTcpPort(@Nullable Integer port) {
-        if (port != null) {
-            getPreferences().edit().putString(TCP_PORT, Integer.toString(port)).apply();
-        } else {
-            getPreferences().edit().remove(TCP_PORT).apply();
-        }
     }
 
     // IGNITE RELOG

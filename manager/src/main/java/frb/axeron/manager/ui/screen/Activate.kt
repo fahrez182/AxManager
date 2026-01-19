@@ -54,15 +54,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.adb.ActivateInfo
-import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
+import frb.axeron.manager.ui.viewmodel.ActivateException
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
-import kotlinx.coroutines.Dispatchers
+import frb.axeron.server.utils.Starter
 import kotlinx.coroutines.launch
 import rikka.compatibility.DeviceCompatibility
 
@@ -153,7 +152,6 @@ fun WirelessDebuggingCard(
     activateViewModel: ActivateViewModel
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     // Panggil sekali untuk update state dari ViewModel
     LaunchedEffect(Unit) {
@@ -169,13 +167,16 @@ fun WirelessDebuggingCard(
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        activateViewModel.startAdb(context) {
+        try {
+            activateViewModel.startAdb(context)
+        } catch (e: ActivateException) {
+            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
             activateViewModel.setTryToActivate(false)
         }
     }
 
     val dialogDeveloper = rememberConfirmDialog()
-
+    val scope = rememberCoroutineScope()
 
     val uriHandler = LocalUriHandler.current
     val stepByStepUrl =
@@ -267,14 +268,13 @@ fun WirelessDebuggingCard(
                         launcher.launch(intent)
                         return@Button
                     } else {
-                        activateViewModel.startAdb(context) { ai ->
-                            scope.launch(Dispatchers.Main) {
-                                Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
-                            }
-
-                            Log.e("AxManagerStartAdb", ai.message, ai.cause)
+                        try {
+                            activateViewModel.startAdb(context)
+                        } catch (e: ActivateException) {
+                            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                            Log.e("AxManagerStartAdb", e.message, e)
                             activateViewModel.setTryToActivate(false)
-                            if (ai is ActivateInfo.Failed) {
+                            if (e !is ActivateException.TryToActivate) {
                                 activateViewModel.startPairingService(context)
                             }
                         }
@@ -315,7 +315,7 @@ fun RootCard(
     navigator: DestinationsNavigator,
     activateViewModel: ActivateViewModel
 ) {
-    LocalContext.current
+    val context = LocalContext.current
 
 
     ElevatedCard(
@@ -366,7 +366,13 @@ fun RootCard(
 
             Button(
                 onClick = {
-                    activateViewModel.startRoot()
+                    try {
+                        activateViewModel.startRoot()
+                    } catch (e: ActivateException) {
+                        Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                        activateViewModel.setTryToActivate(false)
+                    }
+
                 }
             ) {
                 Icon(

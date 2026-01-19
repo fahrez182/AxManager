@@ -1,10 +1,13 @@
 package frb.axeron.manager.ui.viewmodel
 
+import android.Manifest.permission.WRITE_SECURE_SETTINGS
 import android.app.AppOpsManager
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -14,14 +17,19 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.topjohnwu.superuser.Shell
-import frb.axeron.adb.ActivateInfo
+import frb.axeron.adb.AdbClientSync
+import frb.axeron.adb.AdbKey
+import frb.axeron.adb.AdbMdns
+import frb.axeron.adb.AdbMdnsSync
 import frb.axeron.adb.AdbPairingService
-import frb.axeron.adb.AdbStarter
+import frb.axeron.adb.AdbWifiGateSync
+import frb.axeron.adb.PreferenceAdbKeyStore
+import frb.axeron.adb.WifiReadyGateSync
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.api.core.Starter
+import frb.axeron.server.utils.Starter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -191,14 +199,14 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
+    @Throws(ActivateException::class)
     fun startRoot() {
         if (tryActivate) return
         setTryToActivate(true)
 
         if (!Shell.getShell().isRoot) {
             Shell.getCachedShell()?.close()
-            setTryToActivate(false)
-            return
+            throw ActivateException.FailedToConnectToClient("Failed to connect to root")
         }
 
 
@@ -219,15 +227,47 @@ class ActivateViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun startAdb(
-        context: Context, result: (ActivateInfo) -> Unit = {}
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (tryActivate) return@launch result(ActivateInfo.TryToActivate("Trying to activate"))
-            setTryToActivate(true)
+    @Throws(ActivateException::class)
+    fun startAdb(context: Context) {
+        if (tryActivate) throw ActivateException.TryToActivate("Already trying to activate")
+        setTryToActivate(true)
 
-            AdbStarter.startAdb(context, result)
+        WifiReadyGateSync(context).awaitOrThrow(ActivateException.FailedToConnectToWifi("Failed to connect to Wifi"))
+
+        val cr = context.contentResolver
+
+        if (context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
+            Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+            Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+            Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
         }
+
+        AdbWifiGateSync(context).awaitOrThrow(ActivateException.FailedToAutoActivateAdb("Failed to auto activate ADB"))
+
+        val adbData = AdbMdnsSync(context, AdbMdns.TLS_CONNECT)
+            .awaitStart(ActivateException.FailedToStartAdbMdns("Failed to start ADB mDNS (Multicast DNS)"))
+
+        if (adbData.port <= 0) throw ActivateException.FailedToGetHostAndPort("Failed to get Host and Port")
+
+        Log.d(TAG, "Host: ${adbData.host}")
+        Log.d(TAG, "Port: ${adbData.port}")
+
+        AdbClientSync(
+            adbData.host, adbData.port, AdbKey(
+                PreferenceAdbKeyStore(AxeronSettings.getPreferences()),
+                "axeron"
+            )
+        ).awaitConnect(
+            Starter.internalCommand,
+            ActivateException.FailedToConnectToClient(
+                "Failed to connect to ADB Client"
+            )
+        )
+
+        Log.d(TAG, "AdbClient success")
+        context.startService(AdbPairingService.stopIntent(context))
+        AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+        setTryToActivate(false)
     }
 
 
@@ -278,3 +318,24 @@ class ActivateViewModel : ViewModel() {
     }
 }
 
+sealed class ActivateException(message: String, cause: Throwable? = null) :
+    RuntimeException(message, cause) {
+    class TryToActivate(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToAutoActivateAdb(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToConnectToWifi(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToStartAdbMdns(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToGetHostAndPort(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+    class FailedToConnectToClient(message: String, cause: Throwable? = null) :
+        ActivateException(message, cause)
+
+}

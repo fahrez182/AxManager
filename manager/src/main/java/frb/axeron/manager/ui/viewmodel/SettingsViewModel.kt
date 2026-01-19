@@ -27,16 +27,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     )
         private set
 
-    var isTcpModeEnabled by mutableStateOf(
-        AxeronSettings.getTcpMode()
-    )
-        private set
-
-    var tcpPortInt: Int? by mutableStateOf(
-        AxeronSettings.getTcpPort()
-    )
-        private set
-
     var isDynamicColorEnabled by mutableStateOf(
         AxeronSettings.getEnableDynamicColor()
     )
@@ -70,20 +60,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             isActivateOnBootEnabled = enabled
             AxeronSettings.setStartOnBoot(enabled)
-        }
-    }
-
-    fun setTcpMode(enabled: Boolean) {
-        viewModelScope.launch {
-            isTcpModeEnabled = enabled
-            AxeronSettings.setTcpMode(enabled)
-        }
-    }
-
-    fun setTcpPort(port: Int?) {
-        viewModelScope.launch {
-            tcpPortInt = port
-            AxeronSettings.setTcpPort(port)
         }
     }
 

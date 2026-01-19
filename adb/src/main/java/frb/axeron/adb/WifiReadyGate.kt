@@ -4,31 +4,20 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.wifi.SupplicantState
-import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 
 class WifiReadyGate(
-    private val context: Context,
+    context: Context,
     private val timeoutMs: Long = 15_000L,
-    private val onReady: (Network?) -> Unit,
+    private val onReady: () -> Unit,
     private val onFail: () -> Unit
 ) {
-
-    companion object {
-        private const val TAG = "WifiReadyGate"
-    }
 
     private val cm =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private val wm =
-        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-
     private val handler = Handler(Looper.getMainLooper())
-
     private var fired = false
     private var started = false
 
@@ -36,43 +25,27 @@ class WifiReadyGate(
         if (started) return
         started = true
 
-        Log.d(TAG, "start()")
-
-        if (isWifiLinkUp()) {
-            Log.d(TAG, "Wi-Fi link already up (link-layer)")
-            fire(null)
-            return
+        val current = cm.activeNetwork
+        if (current == null || !isUsable(current)) {
+            onFail()
         }
 
         cm.registerDefaultNetworkCallback(callback)
 
+        // timeout hard-stop
         handler.postDelayed({
             if (!fired) {
-                Log.e(TAG, "timeout")
                 cleanup()
                 onFail()
             }
         }, timeoutMs)
     }
 
-    private fun fire(network: Network?) {
+    private fun fire() {
         if (fired) return
         fired = true
-
-        Log.d(TAG, "fire() network=$network")
-
-        // Bind process if possible (critical for OEMs)
-        if (network != null) {
-            try {
-                cm.bindProcessToNetwork(network)
-                Log.d(TAG, "process bound to network")
-            } catch (e: Exception) {
-                Log.w(TAG, "bindProcessToNetwork failed", e)
-            }
-        }
-
         cleanup()
-        onReady(network)
+        onReady()
     }
 
     private fun cleanup() {
@@ -83,38 +56,27 @@ class WifiReadyGate(
         handler.removeCallbacksAndMessages(null)
     }
 
-    private fun isWifiLinkUp(): Boolean {
-        val info = wm.connectionInfo ?: return false
-        return info.networkId != -1 &&
-                info.supplicantState == SupplicantState.COMPLETED
-    }
-
     private fun isUsable(network: Network): Boolean {
         val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
     }
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
 
         override fun onAvailable(network: Network) {
-            Log.d(TAG, "onAvailable($network)")
-            if (isUsable(network)) {
-                fire(network)
-            }
+            if (isUsable(network)) fire()
         }
 
         override fun onCapabilitiesChanged(
             network: Network,
             caps: NetworkCapabilities
         ) {
-            Log.d(TAG, "onCapabilitiesChanged($network, $caps)")
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                fire(network)
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+            ) {
+                fire()
             }
-        }
-
-        override fun onLost(network: Network) {
-            Log.w(TAG, "onLost($network)")
         }
     }
 }
