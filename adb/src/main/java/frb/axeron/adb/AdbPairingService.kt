@@ -50,10 +50,10 @@ class AdbPairingService : Service() {
             return Intent(context, AdbPairingService::class.java).setAction(STOP_ACTION)
         }
 
-        private fun replyIntent(context: Context, host: String, port: Int): Intent {
+        private fun replyIntent(context: Context, port: Int): Intent {
             return Intent(context, AdbPairingService::class.java).apply {
                 setAction(REPLY_ACTION)
-                putExtra(HOST_KEY, host)
+//                putExtra(HOST_KEY, host)
                 putExtra(PORT_KEY, port)
             }
         }
@@ -61,13 +61,13 @@ class AdbPairingService : Service() {
 
     private var adbMdns: AdbMdns? = null
 
-    private val observerPairing = Observer<AdbMdns.AdbData> { data ->
-        Log.i(TAG, "Pairing service port: ${data.host}")
-        if (data.port <= 0) return@Observer
+    private val observerPairing = Observer<Int> { port ->
+        Log.i(TAG, "Pairing service port: $port")
+        if (port <= 0) return@Observer
 
         // Since the service could be killed before user finishing input,
         // we need to put the port into Intent
-        val notification = createInputNotification(data.host, data.port)
+        val notification = createInputNotification(port)
 
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
     }
@@ -275,7 +275,7 @@ class AdbPairingService : Service() {
         val pendingIntent = PendingIntent.getForegroundService(
             this,
             REPLY_REQUEST_CODE,
-            replyIntent(this, "", -1),
+            replyIntent(this, -1),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             else
@@ -289,14 +289,14 @@ class AdbPairingService : Service() {
         ).addRemoteInput(remoteInput).build()
     }
 
-    private fun replyNotificationAction(host: String, port: Int): Notification.Action {
+    private fun replyNotificationAction(port: Int): Notification.Action {
         // Ensure pending intent is created
         val action = replyNotificationAction
 
         PendingIntent.getForegroundService(
             this,
             REPLY_REQUEST_CODE,
-            replyIntent(this, host, port),
+            replyIntent(this,port),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             else
@@ -315,12 +315,12 @@ class AdbPairingService : Service() {
             .build()
     }
 
-    private fun createInputNotification(host: String, port: Int): Notification {
+    private fun createInputNotification(port: Int): Notification {
         return Notification.Builder(this, NOTIFICATION_CHANNEL)
             .setColor(getColor(R.color.notification))
             .setContentTitle("Pairing service found")
             .setSmallIcon(R.drawable.ic_axeron)
-            .addAction(replyNotificationAction(host, port))
+            .addAction(replyNotificationAction(port))
             .build()
     }
 
