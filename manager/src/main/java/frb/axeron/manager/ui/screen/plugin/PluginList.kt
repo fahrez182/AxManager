@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.screen.plugin
 
+import android.app.AppOpsManager
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
@@ -39,12 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.api.AxeronPluginService.checkManageExternalStorageViaShell
+import frb.axeron.api.AxeronPluginService.checkManageExternalStorage
 import frb.axeron.data.PluginInfo
 import frb.axeron.manager.axApp
 import frb.axeron.manager.ui.component.ConfirmResult
@@ -228,7 +230,7 @@ fun PluginList(
             viewModel.fetchModuleList()
         }
     ) {
-        val checkExternal = checkManageExternalStorageViaShell("com.android.externalstorage")
+        val checkExternal = checkManageExternalStorage(LocalContext.current,"com.android.externalstorage")
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -244,8 +246,8 @@ fun PluginList(
                 )
             },
         ) {
-            if (checkExternal != AxeronPluginService.AppOpState.ALLOW
-                && checkExternal != AxeronPluginService.AppOpState.DEFAULT
+            if (checkExternal != AppOpsManager.MODE_ALLOWED
+                && checkExternal != AppOpsManager.MODE_DEFAULT
             ) {
                 item {
                     ElevatedCard(

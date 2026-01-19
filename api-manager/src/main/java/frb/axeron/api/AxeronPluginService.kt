@@ -1,5 +1,6 @@
 package frb.axeron.api
 
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -46,44 +47,23 @@ object AxeronPluginService {
     val axFS
         get() = Axeron.newFileService()!!
 
-    enum class AppOpState {
-        ALLOW,
-        IGNORE,
-        DEFAULT,
-        DENY,
-        ERRORED,
-        UNKNOWN
-    }
-
-    fun parseManageExternalStorageAppOp(output: String): AppOpState {
-        val normalized = output
-            .lowercase()
-            .replace("\n", " ")
-            .trim()
-
-        return when {
-            normalized.contains("deny") -> AppOpState.DENY
-            normalized.contains("ignore") -> AppOpState.IGNORE
-            normalized.contains("errored") -> AppOpState.ERRORED
-            normalized.contains("default") -> AppOpState.DEFAULT
-            normalized.contains("allow") -> AppOpState.ALLOW
-            else -> AppOpState.UNKNOWN
-        }
-    }
-
-    fun checkManageExternalStorageViaShell(
+    fun checkManageExternalStorage(
+        context: Context,
         packageName: String
-    ): AppOpState = runBlocking {
-        val process = Axeron.newProcess(
-            arrayOf("cmd", "appops", "get", packageName, "MANAGE_EXTERNAL_STORAGE"),
-            null,
-            null
-        )
+    ): Int = runBlocking {
+        val uid = runCatching {
+            context.packageManager
+                .getApplicationInfo(packageName, 0)
+                .uid
+        }.getOrNull() ?: 0
 
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        process.waitFor()
-
-        return@runBlocking parseManageExternalStorageAppOp(output)
+        @Suppress("DEPRECATION")
+        return@runBlocking context.getSystemService(AppOpsManager::class.java)
+            .unsafeCheckOpNoThrow(
+                "android:manage_external_storage",
+                uid,
+                packageName
+            )
     }
 
     fun requestManageExternalStoragePermission(
@@ -100,7 +80,6 @@ object AxeronPluginService {
             context.startActivity(intent)
         }
     }
-
 
     data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
         constructor(result: ResultExec, showReboot: Boolean) : this(
