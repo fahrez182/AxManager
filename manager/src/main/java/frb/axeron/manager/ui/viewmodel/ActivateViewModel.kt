@@ -4,7 +4,10 @@ import android.app.AppOpsManager
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
+import android.net.wifi.WifiManager
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -22,6 +25,7 @@ import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
+import frb.axeron.api.utils.EnvironmentUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -223,12 +227,30 @@ class ActivateViewModel : ViewModel() {
         context: Context, result: (ActivateInfo) -> Unit = {}
     ) {
         viewModelScope.launch(Dispatchers.IO) {
+            if (EnvironmentUtil.isWifiRequired() && !isWifiEnabled(context)) return@launch requestEnableWifi(context)
             if (tryActivate) return@launch result(ActivateInfo.TryToActivate("Trying to activate"))
             setTryToActivate(true)
 
             AdbStarter.startAdb(context, result)
         }
     }
+
+    fun isWifiEnabled(context: Context): Boolean {
+        val wifiManager =
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        return wifiManager.isWifiEnabled
+    }
+
+    fun requestEnableWifi(context: Context) {
+        val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                    Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+        }
+        context.startActivity(intent)
+    }
+
 
 
     @RequiresApi(Build.VERSION_CODES.R)

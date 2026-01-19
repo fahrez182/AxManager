@@ -11,7 +11,7 @@ import android.os.Looper
 import android.util.Log
 
 class WifiReadyGate(
-    private val context: Context,
+    context: Context,
     private val timeoutMs: Long = 15_000L,
     private val onReady: (Network?) -> Unit,
     private val onFail: () -> Unit
@@ -43,6 +43,14 @@ class WifiReadyGate(
             fire(null)
             return
         }
+
+//        val network = cm.activeNetwork
+//        if (network == null || !isUsable(network)) {
+//            Log.d(TAG, "Fast: No Wi-Fi network available")
+//            cleanup()
+//            onFail()
+//            return
+//        }
 
         cm.registerDefaultNetworkCallback(callback)
 
@@ -113,8 +121,16 @@ class WifiReadyGate(
             }
         }
 
+        override fun onUnavailable() {
+            Log.w(TAG, "onUnavailable()")
+            cleanup()
+            onFail()
+        }
+
         override fun onLost(network: Network) {
             Log.w(TAG, "onLost($network)")
+            cleanup()
+            onFail()
         }
     }
 }

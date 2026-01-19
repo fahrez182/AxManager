@@ -1,8 +1,10 @@
 package frb.axeron.manager.ui.screen
 
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.service.quicksettings.TileService
 import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.util.Log
@@ -249,8 +251,20 @@ fun WirelessDebuggingCard(
 
             LaunchedEffect(activateViewModel.devSettings) {
                 if (activateViewModel.devSettings) {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                        putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+                    val intent = Intent(TileService.ACTION_QS_TILE_PREFERENCES).apply {
+                        val packageName = "com.android.settings"
+                        setPackage(packageName)
+                        putExtra(
+                            Intent.EXTRA_COMPONENT_NAME,
+                            ComponentName(
+                                packageName,
+                                $$"com.android.settings.development.qstile.DevelopmentTiles$WirelessDebugging"
+                            )
+                        )
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
                     }
                     launcherDeveloper.launch(intent)
                     Log.d("AxManager", "launchDevSettings")
