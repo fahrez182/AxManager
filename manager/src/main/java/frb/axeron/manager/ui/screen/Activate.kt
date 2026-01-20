@@ -251,22 +251,38 @@ fun WirelessDebuggingCard(
 
             LaunchedEffect(activateViewModel.devSettings) {
                 if (activateViewModel.devSettings) {
-                    val intent = Intent(TileService.ACTION_QS_TILE_PREFERENCES).apply {
-                        val packageName = "com.android.settings"
-                        setPackage(packageName)
-                        putExtra(
-                            Intent.EXTRA_COMPONENT_NAME,
-                            ComponentName(
-                                packageName,
-                                $$"com.android.settings.development.qstile.DevelopmentTiles$WirelessDebugging"
+                    try {
+                        val intent = Intent(TileService.ACTION_QS_TILE_PREFERENCES).apply {
+                            val packageName = "com.android.settings"
+                            setPackage(packageName)
+                            putExtra(
+                                Intent.EXTRA_COMPONENT_NAME,
+                                ComponentName(
+                                    packageName,
+                                    $$"com.android.settings.development.qstile.DevelopmentTiles$WirelessDebugging"
+                                )
                             )
-                        )
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                            addFlags(
+                                Intent.FLAG_ACTIVITY_NEW_TASK or
+                                        Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                        Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                            )
+                        }
+                        launcherDeveloper.launch(intent)
+                    } catch (_: Exception) {
+                        val intent =
+                            Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                                putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+                                addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                                )
+                            }
+                        launcherDeveloper.launch(intent)
                     }
-                    launcherDeveloper.launch(intent)
                     Log.d("AxManager", "launchDevSettings")
                     activateViewModel.setLaunchDevSettings(false)
                 }

@@ -2,6 +2,8 @@ package frb.axeron.manager.ui.screen.plugin
 
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -56,6 +58,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
+import frb.axeron.api.AxeronPluginService.ensureManageExternalStorageAllowed
 import frb.axeron.data.PluginInfo
 import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.ui.component.AxSnackBarHost
@@ -223,12 +226,21 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
 
                     FloatingActionButton(
                         onClick = {
-                            // Select the zip files to install
                             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                                 setType("application/zip")
                                 putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                             }
-                            selectZipLauncher.launch(intent)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                ensureManageExternalStorageAllowed(context) {
+                                    if (it) {
+                                        selectZipLauncher.launch(intent)
+                                    } else {
+                                        Toast.makeText(context, "Permission Denied", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } else {
+                                selectZipLauncher.launch(intent)
+                            }
                         }
                     ) {
                         Icon(Icons.Filled.Add, null)

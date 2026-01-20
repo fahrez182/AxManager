@@ -2,11 +2,12 @@ package frb.axeron.api
 
 import android.app.AppOpsManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
+import android.content.pm.PackageManager
 import android.os.Build
-import android.provider.Settings
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.google.gson.annotations.SerializedName
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine.Companion.application
@@ -47,39 +48,90 @@ object AxeronPluginService {
     val axFS
         get() = Axeron.newFileService()!!
 
-    fun checkManageExternalStorage(
-        context: Context,
-        packageName: String
-    ): Int = runBlocking {
-        val uid = runCatching {
+    fun getUid(context: Context, packageName: String): Int? =
+        try {
             context.packageManager
                 .getApplicationInfo(packageName, 0)
                 .uid
-        }.getOrNull() ?: 0
-
-        @Suppress("DEPRECATION")
-        return@runBlocking context.getSystemService(AppOpsManager::class.java)
-            .unsafeCheckOpNoThrow(
-                "android:manage_external_storage",
-                uid,
-                packageName
-            )
-    }
-
-    fun requestManageExternalStoragePermission(
-        context: Context,
-        packageName: String
-    ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                Uri.parse("package:$packageName")
-            ).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
         }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun checkManageExternalStorageUid(
+        context: Context,
+        uid: Int,
+        packageName: String
+    ): Int {
+        val appOps = context.getSystemService(AppOpsManager::class.java)
+        @Suppress("DEPRECATION")
+        return appOps.unsafeCheckOpNoThrow(
+            "android:manage_external_storage",
+            uid,
+            packageName
+        )
     }
+
+    fun allowManageExternalStorageUid(uid: Int): Int {
+        return Axeron.newProcess(
+            arrayOf(
+                "sh",
+                "-c",
+                "cmd appops set --uid $uid MANAGE_EXTERNAL_STORAGE allow"
+            )
+        ).waitFor()
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun ensureManageExternalStorageAllowed(
+        context: Context,
+        packageNames: List<String> = listOf(
+            "com.android.externalstorage",
+            "com.android.providers.downloads",
+            "com.google.android.storagemanager"
+        ),
+        onResult: (Boolean) -> Unit
+    ) {
+        Thread {
+            var allAllowed = true
+
+            packageNames.forEach { pkg ->
+                val uid = getUid(context, pkg) ?: return@forEach
+
+                val mode = checkManageExternalStorageUid(
+                    context = context,
+                    uid = uid,
+                    packageName = pkg
+                )
+
+                if (mode != AppOpsManager.MODE_DEFAULT && mode != AppOpsManager.MODE_ALLOWED) {
+                    val exitCode = allowManageExternalStorageUid(uid)
+                    if (exitCode != 0) {
+                        allAllowed = false
+                        return@forEach
+                    }
+
+                    // re-check (wajib)
+                    val recheck = checkManageExternalStorageUid(
+                        context = context,
+                        uid = uid,
+                        packageName = pkg
+                    )
+
+                    if (recheck != AppOpsManager.MODE_ALLOWED) {
+                        allAllowed = false
+                    }
+                }
+            }
+
+            // balik ke main thread
+            Handler(Looper.getMainLooper()).post {
+                onResult(allAllowed)
+            }
+        }.start()
+    }
+
 
     data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
         constructor(result: ResultExec, showReboot: Boolean) : this(
