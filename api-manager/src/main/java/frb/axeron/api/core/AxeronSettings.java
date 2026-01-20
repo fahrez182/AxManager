@@ -5,6 +5,7 @@ import static java.lang.annotation.RetentionPolicy.SOURCE;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
+import android.os.SystemProperties;
 import android.text.TextUtils;
 
 import androidx.annotation.IntDef;
@@ -85,7 +86,10 @@ public class AxeronSettings {
 
     public static int getTcpPort() {
         try {
-            return Integer.parseInt(getPreferences().getString(TCP_PORT, "5555"));
+            var port = SystemProperties.getInt("service.adb.tcp.port", -1);
+            if (port <= 0) port = SystemProperties.getInt("persist.adb.tcp.port", -1);
+            if (port <= 0) port = 5555;
+            return getPreferences().getInt(TCP_PORT, port);
         } catch (NumberFormatException e) {
             return 5555;
         }
@@ -93,7 +97,7 @@ public class AxeronSettings {
 
     public static void setTcpPort(@Nullable Integer port) {
         if (port != null) {
-            getPreferences().edit().putString(TCP_PORT, Integer.toString(port)).apply();
+            getPreferences().edit().putInt(TCP_PORT, port).apply();
         } else {
             getPreferences().edit().remove(TCP_PORT).apply();
         }

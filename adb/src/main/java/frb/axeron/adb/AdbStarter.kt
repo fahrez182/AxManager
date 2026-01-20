@@ -152,18 +152,22 @@ object AdbStarter {
         Log.d(TAG, "awaitAdbPort: SUCCESS port=$port")
 
 
-        startClient(port, result)
+        startClient(context, port, result)
     }
 
-    private fun startClient(port: Int, result: (ActivateInfo) -> Unit = {}) {
+    private fun startClient(context: Context, port: Int, result: (ActivateInfo) -> Unit = {}) {
         if (port <= 0) {
             result(ActivateInfo.Failed("Failed to get Host and Port"))
             return
         }
 
+        val keyStore = PreferenceAdbKeyStore(
+            AxeronSettings.getPreferences(),
+            Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
+        )
         val key = runCatching {
             AdbKey(
-                PreferenceAdbKeyStore(AxeronSettings.getPreferences()),
+                keyStore,
                 "axeron"
             )
         }
@@ -211,7 +215,7 @@ object AdbStarter {
                     "AdbClient running"
                 )
                 client.connect()
-                client.shellCommand(Starter.internalCommand)
+                client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64()))
             }
         }.onSuccess {
             Log.d(
@@ -241,7 +245,11 @@ object AdbStarter {
             val adbEnabled = Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0)
             if (adbEnabled == 0) throw IllegalStateException("ADB is not enabled")
 
-            val key = AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
+            val keyStore = PreferenceAdbKeyStore(
+                AxeronSettings.getPreferences(),
+                Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
+            )
+            val key = AdbKey(keyStore, "axeron")
             waitTcpReady(key, port)
             AdbClient(key, port).use { client ->
                 client.connect()

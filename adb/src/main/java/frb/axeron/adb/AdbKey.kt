@@ -56,25 +56,26 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
         private const val TAG_SIZE_IN_BYTES = 16
 
         private val PADDING = byteArrayOf(
-                0x00, 0x01, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x00,
-                0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00,
-                0x04, 0x14)
+            0x00, 0x01, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x00,
+            0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00,
+            0x04, 0x14
+        )
     }
 
     private val encryptionKey: Key
@@ -84,22 +85,29 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
     private val certificate: X509Certificate
 
     init {
-        this.encryptionKey = getOrCreateEncryptionKey() ?: error("Failed to generate encryption key with AndroidKeyManager.")
+        this.encryptionKey = getOrCreateEncryptionKey()
+            ?: error("Failed to generate encryption key with AndroidKeyManager.")
 
-        this.privateKey = getOrCreatePrivateKey()
-        this.publicKey = KeyFactory.getInstance("RSA").generatePublic(RSAPublicKeySpec(privateKey.modulus, RSAKeyGenParameterSpec.F4)) as RSAPublicKey
+        this.privateKey = getUnsafeOrCreatePrivateKey()
+        this.publicKey = KeyFactory.getInstance("RSA").generatePublic(
+            RSAPublicKeySpec(
+                privateKey.modulus,
+                RSAKeyGenParameterSpec.F4
+            )
+        ) as RSAPublicKey
 
         val signer = JcaContentSignerBuilder("SHA256withRSA").build(privateKey)
-        val x509Certificate = X509v3CertificateBuilder(X500Name("CN=00"),
-                BigInteger.ONE,
-                Date(0),
-                Date(2461449600 * 1000),
-                Locale.ROOT,
-                X500Name("CN=00"),
-                SubjectPublicKeyInfo.getInstance(publicKey.encoded)
+        val x509Certificate = X509v3CertificateBuilder(
+            X500Name("CN=00"),
+            BigInteger.ONE,
+            Date(0),
+            Date(2461449600 * 1000),
+            Locale.ROOT,
+            X500Name("CN=00"),
+            SubjectPublicKeyInfo.getInstance(publicKey.encoded)
         ).build(signer)
         this.certificate = CertificateFactory.getInstance("X.509")
-                .generateCertificate(ByteArrayInputStream(x509Certificate.encoded)) as X509Certificate
+            .generateCertificate(ByteArrayInputStream(x509Certificate.encoded)) as X509Certificate
 
         Log.d(TAG, privateKey.toString())
     }
@@ -113,12 +121,16 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
         keyStore.load(null)
 
         return keyStore.getKey(ENCRYPTION_KEY_ALIAS, null) ?: run {
-            val parameterSpec = KeyGenParameterSpec.Builder(ENCRYPTION_KEY_ALIAS, KeyProperties.PURPOSE_DECRYPT or KeyProperties.PURPOSE_ENCRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .build()
-            val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+            val parameterSpec = KeyGenParameterSpec.Builder(
+                ENCRYPTION_KEY_ALIAS,
+                KeyProperties.PURPOSE_DECRYPT or KeyProperties.PURPOSE_ENCRYPT
+            )
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .build()
+            val keyGenerator =
+                KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
             keyGenerator.init(parameterSpec)
             keyGenerator.generateKey()
         }
@@ -178,6 +190,29 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
         return privateKey
     }
 
+    private fun getUnsafeOrCreatePrivateKey(): RSAPrivateKey {
+        var privateKey: RSAPrivateKey? = null
+
+        val ciphertext = adbKeyStore.get()
+        Log.i(TAG, "getOrCreatePrivateKey: ciphertext = $ciphertext")
+        if (ciphertext != null) {
+            try {
+                val keyFactory = KeyFactory.getInstance("RSA")
+                privateKey =
+                    keyFactory.generatePrivate(PKCS8EncodedKeySpec(ciphertext)) as RSAPrivateKey
+            } catch (e: Exception) {
+            }
+        }
+        if (privateKey == null) {
+            val keyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA)
+            keyPairGenerator.initialize(RSAKeyGenParameterSpec(2048, RSAKeyGenParameterSpec.F4))
+            val keyPair = keyPairGenerator.generateKeyPair()
+            privateKey = keyPair.private as RSAPrivateKey
+            adbKeyStore.put(privateKey.encoded)
+        }
+        return privateKey
+    }
+
     fun sign(data: ByteArray?): ByteArray {
         val cipher = Cipher.getInstance("RSA/ECB/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, privateKey)
@@ -189,8 +224,15 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
         get() = object : X509ExtendedKeyManager() {
             private val alias = "key"
 
-            override fun chooseClientAlias(keyTypes: Array<out String>, issuers: Array<out Principal>?, socket: Socket?): String? {
-                Log.d(TAG, "chooseClientAlias: keyType=${keyTypes.contentToString()}, issuers=${issuers?.contentToString()}")
+            override fun chooseClientAlias(
+                keyTypes: Array<out String>,
+                issuers: Array<out Principal>?,
+                socket: Socket?
+            ): String? {
+                Log.d(
+                    TAG,
+                    "chooseClientAlias: keyType=${keyTypes.contentToString()}, issuers=${issuers?.contentToString()}"
+                )
                 for (keyType in keyTypes) {
                     if (keyType == "RSA") return alias
                 }
@@ -207,15 +249,25 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
                 return if (alias == this.alias) privateKey else null
             }
 
-            override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? {
+            override fun getClientAliases(
+                keyType: String?,
+                issuers: Array<out Principal>?
+            ): Array<String>? {
                 return null
             }
 
-            override fun getServerAliases(keyType: String, issuers: Array<out Principal>?): Array<String>? {
+            override fun getServerAliases(
+                keyType: String,
+                issuers: Array<out Principal>?
+            ): Array<String>? {
                 return null
             }
 
-            override fun chooseServerAlias(keyType: String, issuers: Array<out Principal>?, socket: Socket?): String? {
+            override fun chooseServerAlias(
+                keyType: String,
+                issuers: Array<out Principal>?,
+                socket: Socket?
+            ): String? {
                 return null
             }
         }
@@ -227,27 +279,49 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
             object : X509ExtendedTrustManager() {
 
                 @SuppressLint("TrustAllX509TrustManager")
-                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?, socket: Socket?) {
+                override fun checkClientTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?,
+                    socket: Socket?
+                ) {
                 }
 
                 @SuppressLint("TrustAllX509TrustManager")
-                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?, engine: SSLEngine?) {
+                override fun checkClientTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?,
+                    engine: SSLEngine?
+                ) {
                 }
 
                 @SuppressLint("TrustAllX509TrustManager")
-                override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                override fun checkClientTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?
+                ) {
                 }
 
                 @SuppressLint("TrustAllX509TrustManager")
-                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?, socket: Socket?) {
+                override fun checkServerTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?,
+                    socket: Socket?
+                ) {
                 }
 
                 @SuppressLint("TrustAllX509TrustManager")
-                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?, engine: SSLEngine?) {
+                override fun checkServerTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?,
+                    engine: SSLEngine?
+                ) {
                 }
 
                 @SuppressLint("TrustAllX509TrustManager")
-                override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                override fun checkServerTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?
+                ) {
                 }
 
                 override fun getAcceptedIssuers(): Array<X509Certificate> {
@@ -270,19 +344,28 @@ interface AdbKeyStore {
     fun get(): ByteArray?
 }
 
-class PreferenceAdbKeyStore(private var preference: SharedPreferences) : AdbKeyStore {
+class PreferenceAdbKeyStore(
+    private var preference: SharedPreferences,
+    private val defaultKey: String? = null
+) : AdbKeyStore {
 
     private val preferenceKey = "adbkey"
 
     override fun put(bytes: ByteArray) {
         Log.d("AxData", "put: ${String(Base64.encode(bytes, Base64.NO_WRAP))}")
-        preference.edit().putString(preferenceKey, String(Base64.encode(bytes, Base64.NO_WRAP))).apply()
+        preference.edit().putString(preferenceKey, String(Base64.encode(bytes, Base64.NO_WRAP)))
+            .apply()
     }
 
     override fun get(): ByteArray? {
-        if (!preference.contains(preferenceKey)) return null
-        Log.d("AxData", "get: ${preference.getString(preferenceKey, null)}")
-        return Base64.decode(preference.getString(preferenceKey, null), Base64.NO_WRAP)
+        Log.d("AxData", "defaultKey: $defaultKey")
+        if (!preference.contains(preferenceKey)) return defaultKey?.let { Base64.decode(it, Base64.NO_WRAP) }
+        Log.d("AxData", "get: ${preference.getString(preferenceKey, defaultKey)}")
+        return Base64.decode(preference.getString(preferenceKey, defaultKey), Base64.NO_WRAP)
+    }
+
+    fun getBase64(): String {
+        return Base64.encodeToString(get(), Base64.NO_WRAP)
     }
 }
 

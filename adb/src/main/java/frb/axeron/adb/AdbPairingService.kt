@@ -12,10 +12,12 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.api.core.Starter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -154,8 +156,12 @@ class AdbPairingService : Service() {
     private fun onInput(code: String, host: String, port: Int): Notification {
         CoroutineScope(Dispatchers.IO).launch {
 
+            val keyStore = PreferenceAdbKeyStore(
+                AxeronSettings.getPreferences(),
+                Settings.Global.getString(contentResolver, Starter.KEY_PAIR)
+            )
             val key = try {
-                AdbKey(PreferenceAdbKeyStore(AxeronSettings.getPreferences()), "axeron")
+                AdbKey(keyStore, "axeron")
             } catch (e: Throwable) {
                 e.printStackTrace()
                 return@launch
