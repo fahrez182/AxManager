@@ -41,11 +41,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.theme.AxManagerTheme
+import frb.axeron.manager.utils.getParcelableExtraCompat
 import frb.axeron.server.utils.Logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -56,7 +56,6 @@ import rikka.shizuku.ktx.workerHandler
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
-import frb.axeron.manager.utils.getParcelableExtraCompat
 
 class RequestPermissionActivity : ComponentActivity() {
 

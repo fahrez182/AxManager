@@ -1,4 +1,4 @@
-package frb.axeron.data
+package frb.axeron.shared
 
 import android.annotation.SuppressLint
 import android.os.Parcel

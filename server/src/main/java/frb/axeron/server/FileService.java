@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import frb.axeron.data.FileStat;
 import frb.axeron.server.utils.Logger;
+import frb.axeron.shared.FileStat;
 
 public class FileService extends IFileService.Stub {
     private static final String TAG = "FileService";

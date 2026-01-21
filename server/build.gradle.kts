@@ -78,7 +78,8 @@ dependencies {
     implementation(libs.libcxx)
 
     implementation(project(":aidl"))
-    implementation(project(":data-shared"))
-    implementation(project(":api-manager"))
-    implementation(project(":shizuku-server"))
+    implementation(project(":shared"))
+    implementation(project(":api"))
+    implementation(project(":provider"))
+    implementation(project(":server:shizuku"))
 }

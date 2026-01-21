@@ -4,8 +4,8 @@ import android.content.ContentResolver
 import android.provider.Settings
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.data.AxeronConstant.server.TYPE_NEW_ENV
-import frb.axeron.data.Environment
+import frb.axeron.shared.AxeronConstant.server.TYPE_NEW_ENV
+import frb.axeron.shared.Environment
 
 
 private val SettingsRepository.SettingType.alias: String

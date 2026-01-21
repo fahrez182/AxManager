@@ -2,7 +2,8 @@ package frb.axeron.manager
 
 import android.os.Bundle
 import androidx.core.os.bundleOf
-import frb.axeron.api.core.AxeronProvider
+import frb.axeron.manager.utils.getParcelableCompat
+import frb.axeron.provider.AxeronProvider
 import moe.shizuku.api.BinderContainer
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuApiConstants
@@ -11,7 +12,6 @@ import rikka.shizuku.server.util.Logger
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
-import frb.axeron.manager.utils.getParcelableCompat
 
 class AxManagerProvider : AxeronProvider() {
 

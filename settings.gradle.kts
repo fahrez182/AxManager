@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 pluginManagement {
     repositories {
         google {
@@ -23,11 +26,34 @@ dependencyResolutionManagement {
 rootProject.name = "AxManager"
 include(":manager")
 include(":server")
-include(":shizuku-server")
-
-include(":aidl")
-include(":data-shared")
-include(":api-manager")
 include(":adb")
 include(":server:stub")
+include(":server:shizuku")
 include(":reignite")
+
+var root = "api"
+
+val propFile = file("local.properties")
+val props = Properties()
+
+if (propFile.canRead()) {
+    props.load(FileInputStream(propFile))
+
+    if (props != null) {
+        if (props["api.useLocal"]?.equals("true") ?: false) {
+            root = props["api.dir"] as String
+        }
+    }
+}
+
+include(":aidl")
+project(":aidl").projectDir = file("$root${File.separator}aidl")
+
+include(":api")
+project(":api").projectDir = file("$root${File.separator}api")
+
+include(":provider")
+project(":provider").projectDir = file("$root${File.separator}provider")
+
+include(":shared")
+project(":shared").projectDir = file("$root${File.separator}shared")

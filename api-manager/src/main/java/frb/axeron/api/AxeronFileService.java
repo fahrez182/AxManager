@@ -24,7 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import frb.axeron.api.utils.Excluder;
-import frb.axeron.data.FileStat;
+import frb.axeron.shared.FileStat;
 import frb.axeron.server.IFileService;
 import frb.axeron.server.IOutputStreamCallback;
 

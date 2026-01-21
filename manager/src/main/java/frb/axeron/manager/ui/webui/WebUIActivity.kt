@@ -28,13 +28,13 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.data.AxeronConstant
-import frb.axeron.data.PathHelper
-import frb.axeron.data.PluginInfo
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
 import frb.axeron.manager.ui.webui.interfaces.AxWebInterface
 import frb.axeron.manager.ui.webui.interfaces.KsuWebInterface
 import frb.axeron.server.utils.AxWebLoader
+import frb.axeron.shared.AxeronConstant
+import frb.axeron.shared.PathHelper
+import frb.axeron.shared.PluginInfo
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine

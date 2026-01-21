@@ -1,7 +1,7 @@
 package frb.axeron.api;
 
 
-import static frb.axeron.data.AxeronConstant.server.TYPE_ENV;
+import static frb.axeron.shared.AxeronConstant.server.TYPE_ENV;
 
 import android.content.pm.PackageInfo;
 import android.os.Bundle;
@@ -21,9 +21,9 @@ import java.util.Objects;
 
 import frb.axeron.api.core.AxeronSettings;
 import frb.axeron.api.core.Engine;
-import frb.axeron.data.AxeronConstant;
-import frb.axeron.data.Environment;
-import frb.axeron.data.PluginInfo;
+import frb.axeron.shared.AxeronConstant;
+import frb.axeron.shared.Environment;
+import frb.axeron.shared.PluginInfo;
 import frb.axeron.server.IAxeronApplication;
 import frb.axeron.server.IAxeronService;
 import moe.shizuku.server.IShizukuService;

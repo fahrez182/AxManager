@@ -78,9 +78,6 @@ import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
-import frb.axeron.data.AxeronConstant
-import frb.axeron.data.PathHelper
-import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
@@ -91,6 +88,9 @@ import frb.axeron.manager.ui.theme.ORANGE
 import frb.axeron.manager.ui.theme.RED
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
+import frb.axeron.shared.AxeronConstant
+import frb.axeron.shared.PathHelper
+import frb.axeron.shared.PluginInstaller
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

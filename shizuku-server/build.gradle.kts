@@ -48,5 +48,5 @@ dependencies {
     implementation(libs.androidx.core.ktx)
 
     implementation(project(":aidl"))
-    implementation(project(":data-shared"))
+    implementation(project(":shared"))
 }

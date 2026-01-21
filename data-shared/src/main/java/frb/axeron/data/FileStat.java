@@ -1,4 +1,4 @@
-package frb.axeron.data;
+package frb.axeron.shared;
 
 import android.os.Parcel;
 import android.os.Parcelable;

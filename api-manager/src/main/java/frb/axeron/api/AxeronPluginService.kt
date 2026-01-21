@@ -11,10 +11,10 @@ import androidx.annotation.RequiresApi
 import com.google.gson.annotations.SerializedName
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine.Companion.application
-import frb.axeron.data.AxeronConstant
-import frb.axeron.data.Environment
-import frb.axeron.data.PathHelper
-import frb.axeron.data.PluginInstaller
+import frb.axeron.shared.AxeronConstant
+import frb.axeron.shared.Environment
+import frb.axeron.shared.PathHelper
+import frb.axeron.shared.PluginInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

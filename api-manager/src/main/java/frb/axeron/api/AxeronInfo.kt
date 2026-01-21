@@ -1,8 +1,8 @@
 package frb.axeron.api
 
 import android.os.Parcelable
-import frb.axeron.data.AxeronConstant
-import frb.axeron.data.ServerInfo
+import frb.axeron.shared.AxeronConstant
+import frb.axeron.shared.ServerInfo
 import kotlinx.parcelize.Parcelize
 
 @Parcelize

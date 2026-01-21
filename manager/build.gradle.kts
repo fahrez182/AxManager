@@ -97,9 +97,10 @@ dependencies {
 
     implementation(project(":aidl"))
     implementation(project(":adb"))
-    implementation(project(":data-shared"))
-    implementation(project(":api-manager"))
-    implementation(project(":shizuku-server"))
+    implementation(project(":shared"))
+    implementation(project(":api"))
+    implementation(project(":provider"))
+    implementation(project(":server:shizuku"))
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.mmrl.ui)

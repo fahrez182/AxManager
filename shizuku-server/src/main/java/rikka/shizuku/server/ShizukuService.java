@@ -44,7 +44,6 @@ import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.PermissionManagerApis;
 import rikka.hidden.compat.UserManagerApis;
 import rikka.parcelablelist.ParcelableListSlice;
-import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.manager.ServerConstants;
 import rikka.shizuku.manager.ShizukuClientManager;
 import rikka.shizuku.manager.ShizukuConfig;

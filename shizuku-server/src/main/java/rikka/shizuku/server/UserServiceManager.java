@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 
 import moe.shizuku.server.IShizukuServiceConnection;
 import rikka.hidden.compat.PackageManagerApis;
-import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.server.util.AbiUtil;
 import rikka.shizuku.server.util.Logger;
 import rikka.shizuku.server.util.UserHandleCompat;

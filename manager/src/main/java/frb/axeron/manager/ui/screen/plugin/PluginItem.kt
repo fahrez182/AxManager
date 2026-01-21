@@ -62,9 +62,6 @@ import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActi
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.data.AxeronConstant
-import frb.axeron.data.PathHelper
-import frb.axeron.data.PluginInfo
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
@@ -76,6 +73,9 @@ import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
+import frb.axeron.shared.AxeronConstant
+import frb.axeron.shared.PathHelper
+import frb.axeron.shared.PluginInfo
 import kotlinx.coroutines.launch
 import java.io.File
 

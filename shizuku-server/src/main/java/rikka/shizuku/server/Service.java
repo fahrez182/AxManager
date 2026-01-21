@@ -23,7 +23,6 @@ import moe.shizuku.server.IShizukuApplication;
 import moe.shizuku.server.IShizukuService;
 import moe.shizuku.server.IShizukuServiceConnection;
 import rikka.hidden.compat.PermissionManagerApis;
-import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.server.api.RemoteProcessHolder;
 import rikka.shizuku.server.util.Logger;
 import rikka.shizuku.server.util.OsUtils;

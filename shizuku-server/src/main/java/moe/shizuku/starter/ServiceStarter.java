@@ -12,7 +12,6 @@ import kotlin.Triple;
 import moe.shizuku.api.BinderContainer;
 import moe.shizuku.starter.util.IContentProviderCompat;
 import rikka.hidden.compat.ActivityManagerApis;
-import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.manager.ServerConstants;
 import rikka.shizuku.server.UserService;
 import rikka.shizuku.server.util.Logger;

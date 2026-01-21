@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.util.UUID;
 
 import moe.shizuku.server.IShizukuServiceConnection;
-import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.server.util.HandlerUtil;
 import rikka.shizuku.server.util.Logger;
 

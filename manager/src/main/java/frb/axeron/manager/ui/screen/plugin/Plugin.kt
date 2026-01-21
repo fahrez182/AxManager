@@ -59,8 +59,6 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.ensureManageExternalStorageAllowed
-import frb.axeron.data.PluginInfo
-import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.SettingsItem
@@ -71,6 +69,8 @@ import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.manager.ui.webui.WebUIActivity
+import frb.axeron.shared.PluginInfo
+import frb.axeron.shared.PluginInstaller
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

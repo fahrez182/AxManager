@@ -64,7 +64,6 @@ import com.ramcosta.composedestinations.navigation.dependency
 import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import frb.axeron.api.AxeronInfo
-import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.navigation.BottomBarDestination
 import frb.axeron.manager.ui.screen.FlashIt
@@ -76,6 +75,7 @@ import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
+import frb.axeron.shared.PluginInstaller
 
 class AxActivity : ComponentActivity() {
 

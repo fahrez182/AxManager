@@ -13,10 +13,10 @@ import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
-import frb.axeron.data.PluginInfo
-import frb.axeron.data.PluginInstaller
 import frb.axeron.manager.axApp
 import frb.axeron.manager.ui.util.HanziToPinyin
+import frb.axeron.shared.PluginInfo
+import frb.axeron.shared.PluginInstaller
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

@@ -1,4 +1,4 @@
-package frb.axeron.data
+package frb.axeron.shared
 
 import android.net.Uri
 import android.os.Parcel

@@ -1,4 +1,4 @@
-package frb.axeron.data;
+package frb.axeron.shared;
 
 public class AxeronConstant {
     public static class server {

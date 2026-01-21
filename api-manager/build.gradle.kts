@@ -41,7 +41,7 @@ kotlin {
 
 dependencies {
     implementation(project(":aidl"))
-    implementation(project(":data-shared"))
+    implementation(project(":shared"))
     implementation(project(":shizuku-server"))
     implementation(libs.androidx.annotation.jvm)
     implementation(libs.androidx.core.ktx)

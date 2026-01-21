@@ -60,7 +60,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":api-manager"))
+    implementation(project(":api"))
     implementation(libs.core.ktx)
     implementation(libs.bcpkix.jdk18on)
     implementation(libs.androidx.annotation.jvm)
