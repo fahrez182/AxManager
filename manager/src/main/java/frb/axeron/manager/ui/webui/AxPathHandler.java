@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 
 import frb.axeron.api.Axeron;
-import frb.axeron.server.utils.AxWebLoader;
+import frb.axeron.server.util.AxWebLoader;
 import frb.axeron.shared.PathHelper;
 
 public class AxPathHandler implements AxWebLoader.PathHandler {

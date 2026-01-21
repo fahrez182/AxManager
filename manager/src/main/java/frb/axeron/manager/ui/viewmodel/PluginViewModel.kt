@@ -15,8 +15,8 @@ import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
 import frb.axeron.manager.axApp
 import frb.axeron.manager.ui.util.HanziToPinyin
-import frb.axeron.shared.PluginInfo
-import frb.axeron.shared.PluginInstaller
+import frb.axeron.server.PluginInfo
+import frb.axeron.server.PluginInstaller
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

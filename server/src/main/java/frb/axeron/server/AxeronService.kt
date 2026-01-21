@@ -1,6 +1,9 @@
 package frb.axeron.server
 
+import android.Manifest.permission.WRITE_SECURE_SETTINGS
+import android.app.ActivityThread
 import android.content.Context
+import android.content.ContextHidden
 import android.content.IContentProvider
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -12,38 +15,41 @@ import android.os.IBinder
 import android.os.IPowerManager
 import android.os.Looper
 import android.os.PowerManager
+import android.os.RemoteException
 import android.os.SELinux
 import android.os.ServiceManager
 import android.os.SystemClock
+import android.os.UserHandle
+import android.os.UserHandleHidden
 import android.system.Os
-import frb.axeron.server.manager.EnvironmentManager
-import frb.axeron.server.utils.BinderSender
-import frb.axeron.server.utils.IContentProviderCompat
-import frb.axeron.shared.ApkChangedListener
-import frb.axeron.shared.ApkChangedObservers
-import frb.axeron.shared.AxeronConstant
-import frb.axeron.shared.AxeronConstant.server.PATCH_CODE
-import frb.axeron.shared.AxeronConstant.server.TYPE_DEFAULT_ENV
-import frb.axeron.shared.AxeronConstant.server.TYPE_ENV
-import frb.axeron.shared.AxeronConstant.server.TYPE_NEW_ENV
-import frb.axeron.shared.AxeronConstant.server.VERSION_CODE
-import frb.axeron.shared.AxeronConstant.server.VERSION_NAME
-import frb.axeron.shared.Environment
+import dev.rikka.tools.refine.Refine
+import frb.axeron.server.util.BinderSender
+import frb.axeron.server.util.IContentProviderCompat
+import frb.axeron.shared.AxeronApiConstant
+import frb.axeron.shared.AxeronApiConstant.server.PATCH_CODE
+import frb.axeron.shared.AxeronApiConstant.server.TYPE_DEFAULT_ENV
+import frb.axeron.shared.AxeronApiConstant.server.TYPE_ENV
+import frb.axeron.shared.AxeronApiConstant.server.TYPE_NEW_ENV
+import frb.axeron.shared.AxeronApiConstant.server.VERSION_CODE
+import frb.axeron.shared.AxeronApiConstant.server.VERSION_NAME
 import frb.axeron.shared.PathHelper
-import frb.axeron.shared.ServerInfo
 import moe.shizuku.api.BinderContainer
+import moe.shizuku.server.IShizukuService
 import rikka.hidden.compat.ActivityManagerApis
 import rikka.hidden.compat.DeviceIdleControllerApis
 import rikka.hidden.compat.PackageManagerApis
+import rikka.hidden.compat.PermissionManagerApis
 import rikka.hidden.compat.UserManagerApis
 import rikka.hidden.compat.util.SystemServiceBinder
-import rikka.shizuku.manager.ServerConstants
-import rikka.shizuku.manager.ServerConstants.MANAGER_APPLICATION_ID
-import rikka.shizuku.manager.ServerConstants.PERMISSION
-import rikka.shizuku.manager.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
-import rikka.shizuku.manager.ShizukuUserServiceManager
+import rikka.shizuku.server.ServerConstants
+import rikka.shizuku.server.ServerConstants.MANAGER_APPLICATION_ID
+import rikka.shizuku.server.ServerConstants.PERMISSION
+import rikka.shizuku.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
 import rikka.shizuku.server.ShizukuService
+import rikka.shizuku.server.ShizukuUserServiceManager
+import rikka.shizuku.server.util.UserHandleCompat
 import java.io.File
+import java.lang.ref.WeakReference
 import kotlin.system.exitProcess
 
 
@@ -203,21 +209,21 @@ open class AxeronService() : Service() {
                 .put("AXERON", "true")
                 .put(
                     "AXERONDIR",
-                    PathHelper.getShellPath(AxeronConstant.folder.PARENT).absolutePath
+                    PathHelper.getShellPath(AxeronApiConstant.folder.PARENT).absolutePath
                 )
                 .put(
                     "AXERONBIN",
-                    PathHelper.getShellPath(AxeronConstant.folder.PARENT_BINARY).absolutePath
+                    PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_BINARY).absolutePath
                 )
                 .put(
                     "AXERONXBIN",
-                    PathHelper.getShellPath(AxeronConstant.folder.PARENT_EXTERNAL_BINARY).absolutePath
+                    PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_EXTERNAL_BINARY).absolutePath
                 )
                 .put("AXERONLIB", getManagerApplicationInfo()?.nativeLibraryDir)
                 .put("AXERONVER", VERSION_CODE.toString())
                 .put(
                     "TMPDIR",
-                    PathHelper.getTmpPath(AxeronConstant.folder.PARENT_CACHE).absolutePath
+                    PathHelper.getTmpPath(AxeronApiConstant.folder.PARENT_CACHE).absolutePath
                 )
                 .put("PATH", $$"$AXERONXBIN:$PATH:$AXERONBIN")
                 .build()
@@ -270,8 +276,10 @@ open class AxeronService() : Service() {
         ShizukuUserServiceManager(getEnvironment(TYPE_ENV)?.getEnv())
     }
 
+    var shizuku: ShizukuService? = null
+
     private val axCompanion =
-        File(PathHelper.getShellPath(AxeronConstant.folder.PARENT), "ax_perm_companion")
+        File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT), "ax_perm_companion")
 
     init {
         waitSystemService("package")
@@ -388,6 +396,56 @@ open class AxeronService() : Service() {
 
     fun checkRuntime(): Boolean {
         return checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun bindAxeronApplication(app: IAxeronApplication) {
+        val callingUid = getCallingUid()
+        try {
+            PermissionManagerApis.grantRuntimePermission(
+                MANAGER_APPLICATION_ID,
+                WRITE_SECURE_SETTINGS, UserHandleCompat.getUserId(callingUid)
+            )
+        } catch (e: Exception) {
+            LOGGER.w(e, "grant WRITE_SECURE_SETTINGS")
+        }
+        app.bindApplication(Bundle())
+    }
+
+    @Throws(RemoteException::class)
+    override fun getShizukuService(): IShizukuService? {
+        val isActive = File(
+            PathHelper.getShellPath(AxeronApiConstant.folder.PARENT),
+            "ax_perm_companion"
+        ).exists()
+        if (!isActive) {
+            shizuku = null
+        }
+        return shizuku
+    }
+
+    private var context: WeakReference<Context>? = null
+    @Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+    fun getContext(): Context {
+        if (context == null || context!!.get() == null) {
+            val activityThread = ActivityThread.systemMain()
+            val systemContext: Context? = activityThread.systemContext
+
+            val userHandle = Refine.unsafeCast<UserHandle?>(
+                UserHandleHidden.of(0)
+            )
+            try {
+                context = WeakReference<Context>(
+                    Refine.unsafeCast<ContextHidden>(systemContext).createPackageContextAsUser(
+                        MANAGER_APPLICATION_ID,
+                        Context.CONTEXT_INCLUDE_CODE or Context.CONTEXT_IGNORE_SECURITY,
+                        userHandle
+                    )
+                )
+            } catch (e: PackageManager.NameNotFoundException) {
+                throw RuntimeException(e)
+            }
+        }
+        return context!!.get()!!
     }
 
     override fun getServerInfo(): ServerInfo? {

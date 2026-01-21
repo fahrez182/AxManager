@@ -41,7 +41,7 @@ import frb.axeron.manager.ui.util.DownloadListener
 import frb.axeron.manager.ui.util.download
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
-import frb.axeron.shared.PluginInfo
+import frb.axeron.server.PluginInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

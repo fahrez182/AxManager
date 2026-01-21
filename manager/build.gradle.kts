@@ -7,8 +7,15 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.rikka.tools.refine)
     id("kotlin-parcelize")
-    alias(libs.plugins.baselineprofile)
 }
+
+apply(from = "${rootDir}/api/manifest.gradle.kts")
+
+val gitCommitCount = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.get().trim().toInt()
+val verCode = findProperty("api_version_code") as Int
+val verName = "${findProperty("api_version_name")}.r${gitCommitCount}"
 
 android {
     namespace = "frb.axeron.manager"
@@ -18,8 +25,8 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = AppVersion.VERSION_CODE
-        versionName = AppVersion.VERSION_NAME
+        versionCode = verCode
+        versionName = verName
     }
 
     buildTypes {
@@ -96,11 +103,11 @@ dependencies {
     implementation(project(":server"))
 
     implementation(project(":aidl"))
+    implementation(project(":api"))
     implementation(project(":adb"))
     implementation(project(":shared"))
-    implementation(project(":api"))
     implementation(project(":provider"))
-    implementation(project(":server:shizuku"))
+    implementation(project(":server-shared"))
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.mmrl.ui)

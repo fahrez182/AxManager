@@ -101,7 +101,7 @@ import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.util.PrefsEnumHelper
 import frb.axeron.manager.ui.viewmodel.QuickShellViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
-import frb.axeron.shared.AxeronConstant
+import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.launch
 import java.io.File
@@ -690,7 +690,7 @@ suspend fun saveLogsToDownload(
     val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
     val date = format.format(Date())
 
-    val baseDir = PathHelper.getPath(AxeronConstant.folder.PARENT_LOG)
+    val baseDir = PathHelper.getPath(AxeronApiConstant.folder.PARENT_LOG)
     if (!baseDir.exists()) {
         baseDir.mkdirs()
     }

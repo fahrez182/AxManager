@@ -20,8 +20,8 @@ import frb.axeron.api.Axeron
 import frb.axeron.manager.axApp
 import frb.axeron.manager.ui.util.HanziToPinyin
 import frb.axeron.manager.ui.webui.AppIconUtil
-import frb.axeron.server.utils.AxWebLoader
-import frb.axeron.shared.AxeronConstant
+import frb.axeron.server.util.AxWebLoader
+import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,7 +63,7 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
             get() = packageInfo.applicationInfo!!.uid
     }
 
-    val file = File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_BINARY), "added_apps.txt")
+    val file = File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_BINARY), "added_apps.txt")
     var search by mutableStateOf("")
 
     val addedList by derivedStateOf {

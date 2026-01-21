@@ -73,9 +73,9 @@ import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
-import frb.axeron.shared.AxeronConstant
+import frb.axeron.server.PluginInfo
+import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
-import frb.axeron.shared.PluginInfo
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -197,7 +197,7 @@ fun PluginItem(
                     } else {
                         val bannerData = remember(plugin.prop.id) {
                             try {
-                                val path = File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN), plugin.prop.id)
+                                val path = File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_PLUGIN), plugin.prop.id)
                                 val bannerFile = File(path, plugin.prop.banner)
                                 val file =
                                     Axeron.newFileService()

@@ -38,7 +38,7 @@
     public <init>(...);
 }
 
--assumenosideeffects class frb.axeron.server.utils.Logger {
+-assumenosideeffects class frb.axeron.server.util.Logger {
     public *** d(...);
 }
 

@@ -69,8 +69,8 @@ import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.manager.ui.webui.WebUIActivity
-import frb.axeron.shared.PluginInfo
-import frb.axeron.shared.PluginInstaller
+import frb.axeron.server.PluginInfo
+import frb.axeron.server.PluginInstaller
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

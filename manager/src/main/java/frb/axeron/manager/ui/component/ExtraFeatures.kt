@@ -18,7 +18,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.webui.WebUIActivity
-import frb.axeron.shared.PluginInfo
+import frb.axeron.server.PluginInfo
 import java.util.Locale
 
 @get:Composable

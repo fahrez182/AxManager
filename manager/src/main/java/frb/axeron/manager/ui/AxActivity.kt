@@ -75,7 +75,7 @@ import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
-import frb.axeron.shared.PluginInstaller
+import frb.axeron.server.PluginInstaller
 
 class AxActivity : ComponentActivity() {
 

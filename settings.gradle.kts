@@ -28,7 +28,6 @@ include(":manager")
 include(":server")
 include(":adb")
 include(":server:stub")
-include(":server:shizuku")
 include(":reignite")
 
 var root = "api"
@@ -57,3 +56,6 @@ project(":provider").projectDir = file("$root${File.separator}provider")
 
 include(":shared")
 project(":shared").projectDir = file("$root${File.separator}shared")
+
+include(":server-shared")
+project(":server-shared").projectDir = file("$root${File.separator}server-shared")

@@ -33,8 +33,6 @@ markdown = "4.6.2"
 annotationJvm = "1.9.1"
 lifecycleLivedataCoreKtx = "2.10.0"
 uiautomator = "2.3.0"
-benchmarkMacroJunit4 = "1.4.1"
-baselineprofile = "1.4.1"
 profileinstaller = "1.4.1"
 libsu = "6.0.0"
 appcompat = "1.7.1"
@@ -91,7 +89,6 @@ markdown = { group = "io.noties.markwon", name = "core", version.ref = "markdown
 androidx-annotation-jvm = { group = "androidx.annotation", name = "annotation-jvm", version.ref = "annotationJvm" }
 androidx-lifecycle-livedata-core-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-core-ktx", version.ref = "lifecycleLivedataCoreKtx" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
-androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -107,5 +104,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 rikka-tools-refine = { id = "dev.rikka.tools.refine", version.ref = "refine" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 android-test = { id = "com.android.test", version.ref = "agp" }
-baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 

@@ -47,9 +47,9 @@ import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.util.LocalSnackbarHost
-import frb.axeron.shared.AxeronConstant
+import frb.axeron.server.PluginInfo
+import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
-import frb.axeron.shared.PluginInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
@@ -89,7 +89,7 @@ fun ExecutePluginActionScreen(
         }
         launch(Dispatchers.IO) {
             val pluginPath =
-                File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN), plugin.dirId)
+                File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_PLUGIN), plugin.dirId)
             val pluginBin = "${pluginPath.absolutePath}/system/bin"
             val cmd =
                 $$"export PATH=$$pluginBin:$PATH; cd \"$$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit $RES"
@@ -132,7 +132,7 @@ fun ExecutePluginActionScreen(
                                 SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
                             val date = format.format(Date())
 
-                            val baseDir = PathHelper.getPath(AxeronConstant.folder.PARENT_LOG)
+                            val baseDir = PathHelper.getPath(AxeronApiConstant.folder.PARENT_LOG)
                             if (!baseDir.exists()) {
                                 baseDir.mkdirs()
                             }

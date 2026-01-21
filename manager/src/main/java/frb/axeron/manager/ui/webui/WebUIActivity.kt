@@ -31,10 +31,10 @@ import frb.axeron.api.core.AxeronSettings
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
 import frb.axeron.manager.ui.webui.interfaces.AxWebInterface
 import frb.axeron.manager.ui.webui.interfaces.KsuWebInterface
-import frb.axeron.server.utils.AxWebLoader
-import frb.axeron.shared.AxeronConstant
+import frb.axeron.server.PluginInfo
+import frb.axeron.server.util.AxWebLoader
+import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
-import frb.axeron.shared.PluginInfo
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -145,7 +145,7 @@ class WebUIActivity : ComponentActivity() {
         WebView.setWebContentsDebuggingEnabled(developerOptionsEnabled && enableWebDebugging)
 
         val pluginDir =
-            File(PathHelper.getShellPath(AxeronConstant.folder.PARENT_PLUGIN), plugin.dirId)
+            File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_PLUGIN), plugin.dirId)
         val webRoot = File(pluginDir, "webroot")
 
         insets = Insets(0, 0, 0, 0)

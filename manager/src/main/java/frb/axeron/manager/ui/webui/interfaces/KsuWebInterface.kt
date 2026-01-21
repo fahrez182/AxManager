@@ -23,7 +23,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.ToNumberPolicy
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.server.utils.flattenOneLevel
+import frb.axeron.server.util.flattenOneLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray

@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import rikka.parcelablelist.ParcelableListSlice
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuApiConstants
-import rikka.shizuku.manager.ServerConstants
+import rikka.shizuku.server.ServerConstants
 
 class PrivilegeViewModel(application: Application) : AndroidViewModel(application) {
 

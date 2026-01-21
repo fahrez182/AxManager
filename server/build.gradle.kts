@@ -70,7 +70,7 @@ dependencies {
     implementation(libs.rikka.refine.annotation)
     implementation(libs.rikka.hidden.compat)
     compileOnly(libs.rikka.hidden.stub)
-    compileOnly(project(":server:stub"))
+
 
 //    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
@@ -81,5 +81,6 @@ dependencies {
     implementation(project(":shared"))
     implementation(project(":api"))
     implementation(project(":provider"))
-    implementation(project(":server:shizuku"))
+    implementation(project(":server-shared"))
+    compileOnly(project(":server:stub"))
 }

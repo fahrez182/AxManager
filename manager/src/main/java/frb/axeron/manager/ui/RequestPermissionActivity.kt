@@ -46,7 +46,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.theme.AxManagerTheme
 import frb.axeron.manager.utils.getParcelableExtraCompat
-import frb.axeron.server.utils.Logger
+import frb.axeron.server.util.Logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
