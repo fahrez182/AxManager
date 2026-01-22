@@ -25,7 +25,7 @@ public class ServiceStarter {
     private static final Logger LOGGER = new Logger(TAG);
     private static final String USER_SERVICE_CMD_FORMAT = "(CLASSPATH='%s' %s%s /system/bin " +
             "--nice-name='%s' rikka.shizuku.starter.ServiceStarter " +
-            "--token='%s' --package='%s' --class='%s' --uid=%d%s)&";
+            "--token='%s' --package='%s' --class='%s' --uid=%d%s --pgid=$$)&";
     // DeathRecipient will automatically be unlinked when all references to the
     // binder is dropped, so we hold the reference here.
     @SuppressWarnings("FieldCanBeLocal")
@@ -62,7 +62,7 @@ public class ServiceStarter {
 
         IBinder service;
         String token;
-        int pid;
+        int pgid;
 
         UserService.setTag(TAG);
         Triple<IBinder, String, Integer> result = UserService.create(args);
@@ -74,9 +74,9 @@ public class ServiceStarter {
 
         service = result.getFirst();
         token = result.getSecond();
-        pid = result.getThird();
+        pgid = result.getThird();
 
-        if (!sendBinder(service, token, pid)) {
+        if (!sendBinder(service, token, pgid)) {
             System.exit(1);
         }
 
@@ -86,11 +86,11 @@ public class ServiceStarter {
         LOGGER.i("service exited");
     }
 
-    private static boolean sendBinder(IBinder binder, String token, int pid) {
-        return sendBinder(binder, token, pid, true);
+    private static boolean sendBinder(IBinder binder, String token, int pgid) {
+        return sendBinder(binder, token, pgid, true);
     }
 
-    private static boolean sendBinder(IBinder binder, String token, int pid, boolean retry) {
+    private static boolean sendBinder(IBinder binder, String token, int pgid, boolean retry) {
         String packageName = ServerConstants.MANAGER_APPLICATION_ID;
         String name = packageName + ".server";
         int userId = 0;
@@ -111,7 +111,7 @@ public class ServiceStarter {
                     ActivityManagerApis.forceStopPackageNoThrow(packageName, userId);
                     LOGGER.e("kill %s in user %d and try again", packageName, userId);
                     Thread.sleep(1000);
-                    return sendBinder(binder, token, pid, false);
+                    return sendBinder(binder, token, pgid, false);
                 }
                 return false;
             }
@@ -123,7 +123,7 @@ public class ServiceStarter {
             Bundle extra = new Bundle();
             extra.putParcelable(EXTRA_BINDER, new BinderContainer(binder));
             extra.putString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN, token);
-            extra.putInt(ShizukuApiConstants.USER_SERVICE_ARG_PID, pid);
+            extra.putInt(ShizukuApiConstants.USER_SERVICE_ARG_PGID, pgid);
 
             Bundle reply = IContentProviderCompat.call(provider, null, null, name, "sendUserService", null, extra);
 

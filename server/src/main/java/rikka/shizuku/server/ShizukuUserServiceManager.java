@@ -27,6 +27,12 @@ public class ShizukuUserServiceManager extends UserServiceManager {
     }
 
     @Override
+    public String[] getUserServiceCmd() {
+        String busybox = ShizukuService.getManagerApplicationInfo().nativeLibraryDir + "/libbusybox.so";
+        return new String[]{busybox, "setsid", "sh"};
+    }
+
+    @Override
     public String getUserServiceStartCmd(
             UserServiceRecord record, String key, String token, String packageName,
             String classname, String processNameSuffix, int callingUid, boolean use32Bits, boolean debug) {

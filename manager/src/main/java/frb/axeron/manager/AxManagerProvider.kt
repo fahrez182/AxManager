@@ -30,7 +30,7 @@ class AxManagerProvider : AxeronProvider() {
                 extras.classLoader = BinderContainer::class.java.classLoader
 
                 val token = extras.getString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN) ?: return null
-                val pid = extras.getInt(ShizukuApiConstants.USER_SERVICE_ARG_PID)
+                val pgid = extras.getInt(ShizukuApiConstants.USER_SERVICE_ARG_PGID)
                 val binder = extras.getParcelableCompat(EXTRA_BINDER, BinderContainer::class.java)?.binder ?: return null
 
                 val countDownLatch = CountDownLatch(1)
@@ -42,7 +42,7 @@ class AxManagerProvider : AxeronProvider() {
                         try {
                             Shizuku.attachUserService(binder, bundleOf(
                                 ShizukuApiConstants.USER_SERVICE_ARG_TOKEN to token,
-                                ShizukuApiConstants.USER_SERVICE_ARG_PID to pid
+                                ShizukuApiConstants.USER_SERVICE_ARG_PGID to pgid
                             )
                             )
                             reply!!.putParcelable(EXTRA_BINDER,
