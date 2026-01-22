@@ -1,4 +1,4 @@
-package moe.shizuku.starter.util;
+package rikka.shizuku.util;
 
 import android.content.AttributionSource;
 import android.content.IContentProvider;

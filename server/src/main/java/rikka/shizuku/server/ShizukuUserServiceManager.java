@@ -12,9 +12,9 @@ import java.util.Map;
 
 import frb.axeron.server.ApkChangedListener;
 import frb.axeron.server.ApkChangedObservers;
-import moe.shizuku.starter.ServiceStarter;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.UserManagerApis;
+import rikka.shizuku.starter.ServiceStarter;
 
 public class ShizukuUserServiceManager extends UserServiceManager {
 

@@ -1,4 +1,4 @@
-package moe.shizuku.starter;
+package rikka.shizuku.starter;
 
 import android.content.IContentProvider;
 import android.os.Build;
@@ -10,12 +10,12 @@ import java.util.Locale;
 
 import kotlin.Triple;
 import moe.shizuku.api.BinderContainer;
-import moe.shizuku.starter.util.IContentProviderCompat;
 import rikka.hidden.compat.ActivityManagerApis;
 import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.server.ServerConstants;
 import rikka.shizuku.server.UserService;
 import rikka.shizuku.server.util.Logger;
+import rikka.shizuku.util.IContentProviderCompat;
 
 public class ServiceStarter {
 
@@ -24,7 +24,7 @@ public class ServiceStarter {
     private static final String EXTRA_BINDER = "moe.shizuku.privileged.api.intent.extra.BINDER";
     private static final Logger LOGGER = new Logger(TAG);
     private static final String USER_SERVICE_CMD_FORMAT = "(CLASSPATH='%s' %s%s /system/bin " +
-            "--nice-name='%s' moe.shizuku.starter.ServiceStarter " +
+            "--nice-name='%s' rikka.shizuku.starter.ServiceStarter " +
             "--token='%s' --package='%s' --class='%s' --uid=%d%s)&";
     // DeathRecipient will automatically be unlinked when all references to the
     // binder is dropped, so we hold the reference here.
