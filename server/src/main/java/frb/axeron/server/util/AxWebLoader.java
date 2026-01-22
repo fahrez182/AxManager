@@ -14,12 +14,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-public class AxWebLoader {
-    private final Set<Route> routes;
-
-    private AxWebLoader(Set<Route> routes) {
-        this.routes = routes;
-    }
+public record AxWebLoader(Set<Route> routes) {
 
     public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         for (Route route : routes) {
@@ -32,7 +27,8 @@ public class AxWebLoader {
 
     public interface PathHandler {
         @WorkerThread
-        @Nullable WebResourceResponse handle(Context context, WebView view, WebResourceRequest request);
+        @Nullable
+        WebResourceResponse handle(Context context, WebView view, WebResourceRequest request);
     }
 
     public static class Builder {
@@ -111,32 +107,27 @@ public class AxWebLoader {
         }
     }
 
-    public static class Route {
-        private final String scheme;
-        private final String domain;
-        private final String pathPrefix;
-        private final PathHandler handler;
-
-        Route(String scheme, String domain, String pathPrefix, PathHandler handler) {
-            this.scheme = scheme;
-            this.domain = domain;
-            this.pathPrefix = pathPrefix;
-            this.handler = handler;
-            Log.d("AxWebLoader", "Route added: " + scheme + "://" + domain + (pathPrefix == null ? "" : pathPrefix));
-        }
-
-        boolean matches(WebResourceRequest request) {
-            Uri url = request.getUrl();
-            if (url == null || url.getScheme() == null || url.getHost() == null) return false;
-
-            if (!url.getScheme().equals(scheme)) return false;
-            if (!url.getHost().equals(domain)) return false;
-
-            String path = url.getPath();
-            if (pathPrefix == null || pathPrefix.isEmpty()) {
-                return true; // kalau kosong, anggap semua path valid
+    public record Route(String scheme, String domain, String pathPrefix, PathHandler handler) {
+            public Route(String scheme, String domain, String pathPrefix, PathHandler handler) {
+                this.scheme = scheme;
+                this.domain = domain;
+                this.pathPrefix = pathPrefix;
+                this.handler = handler;
+                Log.d("AxWebLoader", "Route added: " + scheme + "://" + domain + (pathPrefix == null ? "" : pathPrefix));
             }
-            return path != null && path.startsWith(pathPrefix);
+
+            boolean matches(WebResourceRequest request) {
+                Uri url = request.getUrl();
+                if (url == null || url.getScheme() == null || url.getHost() == null) return false;
+
+                if (!url.getScheme().equals(scheme)) return false;
+                if (!url.getHost().equals(domain)) return false;
+
+                String path = url.getPath();
+                if (pathPrefix == null || pathPrefix.isEmpty()) {
+                    return true; // kalau kosong, anggap semua path valid
+                }
+                return path != null && path.startsWith(pathPrefix);
+            }
         }
-    }
 }

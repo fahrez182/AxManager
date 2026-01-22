@@ -1,4 +1,4 @@
-package frb.axeron.server.util;
+package frb.axeron.server;
 
 import static android.app.ActivityManagerHidden.UID_OBSERVER_ACTIVE;
 import static android.app.ActivityManagerHidden.UID_OBSERVER_CACHED;
@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import frb.axeron.server.AxeronService;
+import frb.axeron.server.util.Logger;
 import kotlin.collections.ArraysKt;
 import moe.shizuku.server.IShizukuService;
 import rikka.hidden.compat.ActivityManagerApis;
