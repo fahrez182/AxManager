@@ -207,6 +207,7 @@ open class AxeronService() : Service() {
 
             val built = Environment.Builder(false)
                 .put("AXERON", "true")
+                .put("HOSTNAME", "axeron")
                 .put(
                     "AXERONDIR",
                     PathHelper.getShellPath(AxeronApiConstant.folder.PARENT).absolutePath
