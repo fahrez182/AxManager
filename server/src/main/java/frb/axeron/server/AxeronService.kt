@@ -40,6 +40,7 @@ import rikka.hidden.compat.PackageManagerApis
 import rikka.hidden.compat.PermissionManagerApis
 import rikka.hidden.compat.UserManagerApis
 import rikka.hidden.compat.util.SystemServiceBinder
+import rikka.rish.RishConfig
 import rikka.shizuku.server.ServerConstants
 import rikka.shizuku.server.ServerConstants.MANAGER_APPLICATION_ID
 import rikka.shizuku.server.ServerConstants.PERMISSION
@@ -292,6 +293,7 @@ open class AxeronService() : Service() {
 
         if (axCompanion.exists()) {
             // use lazy initialization via property above
+            RishConfig.setLibraryPath(ai.nativeLibraryDir)
             shizuku = ShizukuService(mainHandler, shizukuUserServiceManager, this)
         }
 
@@ -330,6 +332,7 @@ open class AxeronService() : Service() {
         if (enable) {
             if (axCompanion.createNewFile()) {
                 LOGGER.i("AX-Scope")
+                RishConfig.setLibraryPath(getManagerApplicationInfo()?.nativeLibraryDir)
                 shizuku = ShizukuService(
                     mainHandler,
                     shizukuUserServiceManager,

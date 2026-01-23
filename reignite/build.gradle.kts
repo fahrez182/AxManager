@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.rikka.tools.refine)
 }
 
 android {
@@ -15,8 +16,8 @@ android {
         applicationId = "frb.axeron.reignite"
         minSdk = 27
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = rootProject.findProperty("version_code") as Int
+        versionName = rootProject.findProperty("version_name") as String
     }
 
     buildTypes {
@@ -57,7 +58,7 @@ android.applicationVariants.all {
                     from(mappingFileProvider.get())
                     into(mappingPath)
                     rename {
-                        "cmd-v${versionName}.txt"
+                        "reignite-v${versionName}.txt"
                     }
                 }
             }

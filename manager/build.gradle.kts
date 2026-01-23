@@ -9,14 +9,6 @@ plugins {
     id("kotlin-parcelize")
 }
 
-apply(from = "${rootDir}/api/manifest.gradle.kts")
-
-val gitCommitCount = providers.exec {
-    commandLine("git", "rev-list", "--count", "HEAD")
-}.standardOutput.asText.get().trim().toInt()
-val verCode = findProperty("api_version_code") as Int
-val verName = "${findProperty("api_version_name")}.r${gitCommitCount}"
-
 android {
     namespace = "frb.axeron.manager"
     compileSdk = 36
@@ -25,8 +17,8 @@ android {
         applicationId = "frb.axeron.manager"
         minSdk = 27
         targetSdk = 36
-        versionCode = verCode
-        versionName = verName
+        versionCode = rootProject.findProperty("version_code") as Int
+        versionName = rootProject.findProperty("version_name") as String
     }
 
     buildTypes {
