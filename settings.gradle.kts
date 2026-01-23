@@ -38,10 +38,8 @@ val props = Properties()
 if (propFile.canRead()) {
     props.load(FileInputStream(propFile))
 
-    if (props != null) {
-        if (props["api.useLocal"]?.equals("true") ?: false) {
-            root = props["api.dir"] as String
-        }
+    if (props["api.useLocal"]?.equals("true") ?: false) {
+        root = props["api.dir"] as String
     }
 }
 

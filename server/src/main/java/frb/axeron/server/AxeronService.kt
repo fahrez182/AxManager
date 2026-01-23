@@ -185,7 +185,7 @@ open class AxeronService() : Service() {
                 val extra = Bundle().apply {
                     putParcelable(extraBinder, BinderContainer(binder))
                 }
-                IContentProviderCompat.callCompat(provider, null, name, "sendBinder", null, extra)
+                IContentProviderCompat.call(provider, null, null,name, "sendBinder", null, extra)
                 LOGGER.i("send binder to user app %s in user %d", packageName, userId)
             } catch (it: Throwable) {
                 LOGGER.e(it, "failed send binder to user app %s in user %d", packageName, userId)

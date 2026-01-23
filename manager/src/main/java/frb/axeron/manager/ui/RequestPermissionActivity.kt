@@ -2,6 +2,7 @@ package frb.axeron.manager.ui
 
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.ImageView
 import androidx.activity.ComponentActivity
@@ -45,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.theme.AxManagerTheme
-import frb.axeron.manager.utils.getParcelableExtraCompat
 import frb.axeron.server.util.Logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,7 +96,12 @@ class RequestPermissionActivity : ComponentActivity() {
         val uid = intent.getIntExtra("uid", -1)
         val pid = intent.getIntExtra("pid", -1)
         val requestCode = intent.getIntExtra("requestCode", -1)
-        val ai = intent.getParcelableExtraCompat("applicationInfo", ApplicationInfo::class.java)
+        val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra("applicationInfo", ApplicationInfo::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra("applicationInfo")
+        }
 
         if (uid == -1 || pid == -1 || ai == null || !waitForBinder()) {
             finish()

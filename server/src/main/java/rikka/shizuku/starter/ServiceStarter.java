@@ -8,6 +8,7 @@ import android.os.Looper;
 
 import java.util.Locale;
 
+import frb.axeron.server.util.IContentProviderCompat;
 import kotlin.Triple;
 import moe.shizuku.api.BinderContainer;
 import rikka.hidden.compat.ActivityManagerApis;
@@ -15,7 +16,6 @@ import rikka.shizuku.ShizukuApiConstants;
 import rikka.shizuku.server.ServerConstants;
 import rikka.shizuku.server.UserService;
 import rikka.shizuku.server.util.Logger;
-import rikka.shizuku.util.IContentProviderCompat;
 
 public class ServiceStarter {
 
@@ -128,10 +128,9 @@ public class ServiceStarter {
             Bundle reply = IContentProviderCompat.call(provider, null, null, name, "sendUserService", null, extra);
 
             if (reply != null) {
-                reply.setClassLoader(BinderContainer.class.getClassLoader());
-
                 LOGGER.i("send binder to %s in user %d", packageName, userId);
                 BinderContainer container;
+                reply.setClassLoader(BinderContainer.class.getClassLoader());
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     container = reply.getParcelable(EXTRA_BINDER, BinderContainer.class);
                 } else {

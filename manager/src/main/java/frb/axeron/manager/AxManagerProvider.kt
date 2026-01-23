@@ -1,8 +1,8 @@
 package frb.axeron.manager
 
+import android.os.Build
 import android.os.Bundle
 import androidx.core.os.bundleOf
-import frb.axeron.manager.utils.getParcelableCompat
 import frb.axeron.provider.AxeronProvider
 import moe.shizuku.api.BinderContainer
 import rikka.shizuku.Shizuku
@@ -31,7 +31,13 @@ class AxManagerProvider : AxeronProvider() {
 
                 val token = extras.getString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN) ?: return null
                 val pgid = extras.getInt(ShizukuApiConstants.USER_SERVICE_ARG_PGID)
-                val binder = extras.getParcelableCompat(EXTRA_BINDER, BinderContainer::class.java)?.binder ?: return null
+                val binder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    extras.getParcelable(EXTRA_BINDER,  BinderContainer::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    extras.getParcelable(EXTRA_BINDER)
+                }?.binder ?: return null
+//                val binder = extras.getParcelableCompat(EXTRA_BINDER, BinderContainer::class.java)?.binder ?: return null
 
                 val countDownLatch = CountDownLatch(1)
                 var reply: Bundle? = Bundle()

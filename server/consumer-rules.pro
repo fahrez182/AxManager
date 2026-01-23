@@ -11,9 +11,11 @@
 -dontwarn com.android.**
 -dontwarn android.ddm.**
 
--keepclassmembers class * implements android.os.Parcelable {
-    public static final ** CREATOR;
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
 }
+
+-keepnames class * implements android.os.Parcelable
 
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
