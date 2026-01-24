@@ -1,4 +1,4 @@
--keep class rikka.shizuku.shell.ShizukuShellLoader {
+-keep class frb.axeron.shell.ShellLoader {
     public static void main(java.lang.String[]);
 }
 

@@ -1,6 +1,9 @@
 package rikka.shizuku.server;
 
 import static android.Manifest.permission.WRITE_SECURE_SETTINGS;
+import static frb.axeron.server.ServerConstants.MANAGER_APPLICATION_ID;
+import static frb.axeron.server.ServerConstants.PERMISSION;
+import static frb.axeron.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID;
 import static rikka.shizuku.ShizukuApiConstants.ATTACH_APPLICATION_API_VERSION;
 import static rikka.shizuku.ShizukuApiConstants.ATTACH_APPLICATION_PACKAGE_NAME;
 import static rikka.shizuku.ShizukuApiConstants.BIND_APPLICATION_PERMISSION_GRANTED;
@@ -11,9 +14,6 @@ import static rikka.shizuku.ShizukuApiConstants.BIND_APPLICATION_SERVER_VERSION;
 import static rikka.shizuku.ShizukuApiConstants.BIND_APPLICATION_SHOULD_SHOW_REQUEST_PERMISSION_RATIONALE;
 import static rikka.shizuku.ShizukuApiConstants.REQUEST_PERMISSION_REPLY_ALLOWED;
 import static rikka.shizuku.ShizukuApiConstants.REQUEST_PERMISSION_REPLY_IS_ONETIME;
-import static rikka.shizuku.server.ServerConstants.MANAGER_APPLICATION_ID;
-import static rikka.shizuku.server.ServerConstants.PERMISSION;
-import static rikka.shizuku.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID;
 
 import android.content.Context;
 import android.content.Intent;
@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Objects;
 
 import frb.axeron.server.AxeronInterface;
+import frb.axeron.server.ServerConstants;
 import kotlin.collections.ArraysKt;
 import moe.shizuku.server.IShizukuApplication;
 import rikka.hidden.compat.ActivityManagerApis;

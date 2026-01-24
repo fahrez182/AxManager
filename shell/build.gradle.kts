@@ -72,7 +72,7 @@ android.applicationVariants.all {
                 from(dexFile)
                 into(dexPath)
                 rename {
-                    "rish_axeron.dex"
+                    "shell_axeron.dex"
                 }
             }
         }
@@ -83,4 +83,5 @@ android.applicationVariants.all {
 dependencies {
     implementation(libs.rikka.hidden.compat)
     compileOnly(libs.rikka.hidden.stub)
+    compileOnly(project(":server"))
 }

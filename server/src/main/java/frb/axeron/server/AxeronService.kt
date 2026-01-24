@@ -23,6 +23,9 @@ import android.os.UserHandle
 import android.os.UserHandleHidden
 import android.system.Os
 import dev.rikka.tools.refine.Refine
+import frb.axeron.server.ServerConstants.MANAGER_APPLICATION_ID
+import frb.axeron.server.ServerConstants.PERMISSION
+import frb.axeron.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
 import frb.axeron.server.util.IContentProviderCompat
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.AxeronApiConstant.server.PATCH_CODE
@@ -41,10 +44,6 @@ import rikka.hidden.compat.PermissionManagerApis
 import rikka.hidden.compat.UserManagerApis
 import rikka.hidden.compat.util.SystemServiceBinder
 import rikka.rish.RishConfig
-import rikka.shizuku.server.ServerConstants
-import rikka.shizuku.server.ServerConstants.MANAGER_APPLICATION_ID
-import rikka.shizuku.server.ServerConstants.PERMISSION
-import rikka.shizuku.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
 import rikka.shizuku.server.ShizukuService
 import rikka.shizuku.server.ShizukuUserServiceManager
 import rikka.shizuku.server.util.UserHandleCompat

@@ -1,6 +1,6 @@
 package rikka.shizuku.server;
 
-import static rikka.shizuku.server.ServerConstants.PERMISSION;
+import static frb.axeron.server.ServerConstants.PERMISSION;
 
 import android.annotation.SuppressLint;
 import android.content.pm.PackageInfo;

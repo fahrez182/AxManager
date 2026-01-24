@@ -2,7 +2,7 @@ package frb.axeron.manager.legacy
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import rikka.shizuku.shell.ShellBinderRequestHandler
+import frb.axeron.server.shell.ShellBinderRequestHandler
 
 class ShellRequestHandlerActivity : AppCompatActivity() {
 

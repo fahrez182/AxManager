@@ -103,8 +103,7 @@
             android:exported="true"
             android:theme="@style/GrantPermissions">
             <intent-filter>
-                <action android:name="rikka.shizuku.intent.action.REQUEST_BINDER" />
-
+                <action android:name="frb.axeron.manager.intent.action.REQUEST_BINDER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

@@ -49,7 +49,7 @@
     public <init>(...);
 }
 
--keep class rikka.shizuku.shell.Shell {
+-keep class frb.axeron.server.shell.Shell {
     public static void main(java.lang.String[], java.lang.String, android.os.IBinder, android.os.Handler);
 }
 

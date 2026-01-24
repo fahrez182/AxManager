@@ -13,13 +13,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import frb.axeron.manager.ui.util.HanziToPinyin
+import frb.axeron.server.ServerConstants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import rikka.parcelablelist.ParcelableListSlice
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuApiConstants
-import rikka.shizuku.server.ServerConstants
 
 class PrivilegeViewModel(application: Application) : AndroidViewModel(application) {
 
