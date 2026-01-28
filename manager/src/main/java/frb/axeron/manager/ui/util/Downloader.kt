@@ -11,7 +11,7 @@ import android.os.Environment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.core.content.ContextCompat
-import frb.axeron.manager.axApp
+import frb.axeron.manager.AxeronApplication.Companion.axeronApp
 import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import okhttp3.Request
 import org.json.JSONObject
@@ -70,7 +70,7 @@ fun checkNewVersion(): LatestVersionInfo {
     // default null value if failed
     val defaultValue = LatestVersionInfo()
     runCatching {
-        axApp.okhttpClient.newCall(Request.Builder().url(url).build()).execute()
+        axeronApp.okhttpClient.newCall(Request.Builder().url(url).build()).execute()
             .use { response ->
                 if (!response.isSuccessful) {
                     return defaultValue

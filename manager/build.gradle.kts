@@ -100,6 +100,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(project(":provider"))
     implementation(project(":server-shared"))
+    implementation(project(":axerish"))
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.mmrl.ui)

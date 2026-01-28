@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.manager.axApp
+import frb.axeron.manager.AxeronApplication.Companion.axeronApp
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
@@ -83,7 +83,7 @@ fun PluginList(
         val changelogResult = loadingDialog.withLoading {
             withContext(Dispatchers.IO) {
                 runCatching {
-                    axApp.okhttpClient.newCall(
+                    axeronApp.okhttpClient.newCall(
                         Request.Builder().url(changelogUrl).build()
                     ).execute().body!!.string()
                 }

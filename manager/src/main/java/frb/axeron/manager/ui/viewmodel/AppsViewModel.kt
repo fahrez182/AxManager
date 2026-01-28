@@ -17,7 +17,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import frb.axeron.api.Axeron
-import frb.axeron.manager.axApp
+import frb.axeron.manager.AxeronApplication.Companion.axeronApp
 import frb.axeron.manager.ui.util.HanziToPinyin
 import frb.axeron.manager.ui.webui.AppIconUtil
 import frb.axeron.server.util.AxWebLoader
@@ -113,7 +113,7 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }.filterNot {
                 // jangan masukin ke list kalau system app atau app lo sendiri
-                it.packageName == axApp.packageName ||
+                it.packageName == axeronApp.packageName ||
                         it.packageInfo.applicationInfo!!.flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
             }
 

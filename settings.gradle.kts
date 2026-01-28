@@ -27,7 +27,6 @@ rootProject.name = "AxManager"
 include(":manager")
 include(":server")
 include(":adb")
-include(":shell")
 include(":server:stub")
 include(":reignite")
 
@@ -61,3 +60,9 @@ project(":server-shared").projectDir = file("$root${File.separator}server-shared
 
 include(":rish")
 project(":rish").projectDir = file("$root${File.separator}rish")
+
+include(":shell")
+project(":shell").projectDir = file("$root${File.separator}shell")
+
+include(":axerish")
+project(":axerish").projectDir = file("$root${File.separator}axerish")
