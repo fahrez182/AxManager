@@ -9,6 +9,7 @@ import com.topjohnwu.superuser.Shell
 import frb.axeron.Axerish
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine
+import frb.axeron.manager.ui.util.createShellBuilder
 import me.zhanghai.android.appiconloader.coil.AppIconFetcher
 import me.zhanghai.android.appiconloader.coil.AppIconKeyer
 import okhttp3.Cache
@@ -23,6 +24,10 @@ class AxeronApplication : Engine() {
 
         init {
 //            logd("ShizukuApplication", "init")
+            Axerish.initialize(BuildConfig.APPLICATION_ID)
+            Shell.setDefaultBuilder(createShellBuilder())
+            Shell.enableLegacyStderrRedirection = true
+            Shell.enableVerboseLogging = BuildConfig.DEBUG
 
             if (Build.VERSION.SDK_INT >= 28) {
                 HiddenApiBypass.setHiddenApiExemptions("")
@@ -39,10 +44,6 @@ class AxeronApplication : Engine() {
         super.attachBaseContext(base)
         axeronApp = this
         AxeronSettings.initialize(axeronApp)
-        Axerish.initialize(axeronApp)
-        Shell.setDefaultBuilder(Shell.Builder.create())
-        Shell.enableLegacyStderrRedirection = true
-        Shell.enableVerboseLogging = BuildConfig.DEBUG
     }
 
     @SuppressLint("ResourceType")

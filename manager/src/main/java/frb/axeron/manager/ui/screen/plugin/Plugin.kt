@@ -230,7 +230,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                                 setType("application/zip")
                                 putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                             }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                 ensureManageExternalStorageAllowed(context) {
                                     if (it) {
                                         selectZipLauncher.launch(intent)
