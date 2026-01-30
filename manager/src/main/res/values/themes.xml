@@ -7,7 +7,6 @@
 
     <style name="Theme.AxManager.WebUI" parent="Theme.AxManager">
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
     <style name="GrantPermissions" parent="android:Theme.Material.Light.NoActionBar">

@@ -8,6 +8,7 @@ import static android.app.ActivityManagerHidden.UID_OBSERVER_IDLE;
 import android.app.ActivityManagerHidden;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.RemoteException;
 import android.text.TextUtils;
 
@@ -77,17 +78,18 @@ public class BinderSender {
                         return;
                     }
                 } else if (ArraysKt.contains(pi.requestedPermissions, SHIZUKU_PERMISSION_MANAGER)) {
-                        boolean granted;
-                        if (pid == -1)
-                            granted = PermissionManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, uid) == PackageManager.PERMISSION_GRANTED;
-                        else
-                            granted = ActivityManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
+                    boolean granted;
+                    if (pid == -1)
+                        granted = PermissionManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, uid) == PackageManager.PERMISSION_GRANTED;
+                    else
+                        granted = ActivityManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
 
-                        if (granted) {
-                            IShizukuService shizukuService = axeronService.getShizukuService();
-                            if (shizukuService != null) AxeronService.sendBinderToShizukuManager(shizukuService.asBinder(), userId);
-                            return;
-                        }
+                    if (granted) {
+                        IShizukuService shizukuService = axeronService.getShizukuService();
+                        if (shizukuService != null)
+                            AxeronService.sendBinderToShizukuManager(shizukuService.asBinder(), userId);
+                        return;
+                    }
                 } else if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
                     IShizukuService shizukuService = axeronService.getShizukuService();
                     if (shizukuService != null) {
@@ -110,7 +112,10 @@ public class BinderSender {
             LOGGER.e(tr, "registerProcessObserver");
         }
 
-        int flags = UID_OBSERVER_GONE | UID_OBSERVER_IDLE | UID_OBSERVER_ACTIVE | UID_OBSERVER_CACHED;
+        int flags = UID_OBSERVER_GONE | UID_OBSERVER_IDLE | UID_OBSERVER_ACTIVE;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            flags |= UID_OBSERVER_CACHED;
+        }
         try {
             ActivityManagerApis.registerUidObserver(new UidObserver(), flags,
                     ActivityManagerHidden.PROCESS_STATE_UNKNOWN,

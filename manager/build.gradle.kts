@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,14 +9,9 @@ plugins {
 
 android {
     namespace = "frb.axeron.manager"
-    compileSdk = 36
 
     defaultConfig {
         applicationId = "frb.axeron.manager"
-        minSdk = 27
-        targetSdk = 36
-        versionCode = rootProject.findProperty("version_code") as Int
-        versionName = rootProject.findProperty("version_name") as String
     }
 
     buildTypes {
@@ -51,18 +44,6 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 

@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -7,13 +5,8 @@ plugins {
 
 android {
     namespace = "frb.axeron.adb"
-    compileSdk {
-        version = release(36)
-    }
-
 
     defaultConfig {
-        minSdk = 27
         consumerProguardFiles("consumer-rules.pro")
 
         externalNativeBuild {
@@ -26,7 +19,7 @@ android {
     externalNativeBuild {
         cmake {
             path = project.file("src/main/cpp/CMakeLists.txt")
-            version = "3.31.0"
+//            version = "3.31.0"
         }
     }
 
@@ -40,19 +33,6 @@ android {
         prefab = true
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    buildToolsVersion = "36.0.0"
-    ndkVersion = "29.0.14206865"
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
-    }
 }
 
 dependencies {
