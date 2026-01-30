@@ -1,6 +1,6 @@
 package frb.axeron.server.shell
 
-import android.content.Context
+import android.app.Application
 import android.content.Intent
 import android.os.IBinder
 import android.os.Parcel
@@ -10,8 +10,8 @@ import rikka.shizuku.server.Service.LOGGER
 
 object ShellBinderRequestHandler {
 
-    fun handleRequest(context: Context, intent: Intent): Boolean {
-        if (intent.action != ServerConstants.REQUEST_BINDER_ACTION) {
+    fun handleRequest(application: Application, intent: Intent): Boolean {
+        if (intent.action != ServerConstants.REQUEST_BINDER_AXERISH) {
             return false
         }
 
@@ -24,7 +24,7 @@ object ShellBinderRequestHandler {
         val data = Parcel.obtain()
         return try {
             data.writeStrongBinder(shizukuBinder)
-            data.writeString(context.applicationInfo.sourceDir)
+            data.writeString(application.applicationInfo.sourceDir)
             binder.transact(1, data, null, IBinder.FLAG_ONEWAY)
             true
         } catch (e: Throwable) {

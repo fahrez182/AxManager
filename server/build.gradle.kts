@@ -40,7 +40,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.annotation)
     implementation(libs.toml4j)
