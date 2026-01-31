@@ -9,8 +9,8 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.topjohnwu.superuser.Shell
-import frb.axeron.adb.ActivateInfo
 import frb.axeron.adb.AdbStarter
+import frb.axeron.adb.AdbStateInfo
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
@@ -70,9 +70,9 @@ class BootCompleteReceiver : BroadcastReceiver() {
     @RequiresApi(Build.VERSION_CODES.R)
     private fun startAdb(
         context: Context,
-        finish: (ActivateInfo) -> Unit
+        finish: (AdbStateInfo) -> Unit
     ) = runBlocking(Dispatchers.IO) {
-        AdbStarter.startAdb(context, finish)
+        AdbStarter.startAdbWireless(context, finish)
     }
 
     fun safeFinish(pending: PendingResult) {

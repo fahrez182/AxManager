@@ -17,15 +17,16 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.topjohnwu.superuser.Shell
-import frb.axeron.adb.ActivateInfo
 import frb.axeron.adb.AdbPairingService
 import frb.axeron.adb.AdbStarter
+import frb.axeron.adb.AdbStarter.stopTcp
+import frb.axeron.adb.AdbStateInfo
+import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
-import frb.axeron.api.utils.EnvironmentUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -223,15 +224,42 @@ class ActivateViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun startAdb(
-        context: Context, result: (ActivateInfo) -> Unit = {}
+    fun startAdbWireless(
+        context: Context, result: (AdbStateInfo) -> Unit = {}
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (EnvironmentUtil.isWifiRequired() && !isWifiEnabled(context)) return@launch requestEnableWifi(context)
-            if (tryActivate) return@launch result(ActivateInfo.TryToActivate("Trying to activate"))
+            if (AdbEnvironment.isWifiRequired() && !isWifiEnabled(context)) return@launch requestEnableWifi(context)
+            if (tryActivate) return@launch result(AdbStateInfo.Process("Trying to activate"))
             setTryToActivate(true)
 
-            AdbStarter.startAdb(context, result)
+            AdbStarter.startAdbWireless(context, result)
+        }
+    }
+
+    fun startAdbTcp(
+        context: Context, result: (AdbStateInfo) -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (tryActivate) return@launch result(AdbStateInfo.Process("Trying to activate"))
+            setTryToActivate(true)
+
+            val tcpPort = AdbEnvironment.getAdbTcpPort()
+
+            AdbStarter.startAdbClient(context, tcpPort, result)
+        }
+    }
+
+    fun stopAdbTcp(
+        context: Context, result: (AdbStateInfo) -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (tryActivate) return@launch result(AdbStateInfo.Process("Trying to activate"))
+            setTryToActivate(true)
+
+            val tcpPort = AdbEnvironment.getAdbTcpPort()
+            if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
+                stopTcp(context, tcpPort)
+            }
         }
     }
 

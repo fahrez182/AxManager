@@ -78,8 +78,8 @@ import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDe
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.Axeron
-import frb.axeron.api.utils.EnvironmentUtil
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.SettingsItem
@@ -158,109 +158,107 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 )
             }
 
-            AnimatedVisibility(visible = EnvironmentUtil.isTlsSupported()) {
-                SettingsItem(
-                    iconVector = Icons.Filled.Adb,
-                    label = "TCP Mode",
-                    description = "Allows AxManager to restart without Wi-Fi (AxManager must have started once since reboot)",
-                    checked = settings.isTcpModeEnabled,
-                    onSwitchChange = {
-                        settings.setTcpMode(it)
-                    }
-                ) { enabled, checked ->
-                    AnimatedVisibility(checked) {
-                        SettingsItem(
-                            type = SettingsItemType.CHILD
-                        ) { _, _ ->
-                            var tcpPortText by remember {
-                                mutableStateOf(settings.tcpPortInt.toString())
-                            }
-                            val context = LocalContext.current
+            SettingsItem(
+                iconVector = Icons.Filled.Adb,
+                label = "TCP Mode",
+                description = "Allows AxManager to restart without Wi-Fi (AxManager must have started once since reboot)",
+                checked = settings.isTcpModeEnabled,
+                onSwitchChange = {
+                    settings.setTcpMode(it)
+                }
+            ) { enabled, checked ->
+                AnimatedVisibility(checked) {
+                    SettingsItem(
+                        type = SettingsItemType.CHILD
+                    ) { _, _ ->
+                        var tcpPortText by remember {
+                            mutableStateOf(settings.tcpPortInt.toString())
+                        }
+                        val context = LocalContext.current
 
-                            Column(
-                                modifier = Modifier.padding(horizontal = 12.dp)
-                            ) {
-                                var isFocused by remember { mutableStateOf(false) }
-                                val focusManager = LocalFocusManager.current
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        ) {
+                            var isFocused by remember { mutableStateOf(false) }
+                            val focusManager = LocalFocusManager.current
 
-                                val portInt = tcpPortText.toIntOrNull()
-                                val isError = tcpPortText.isNotEmpty() &&
-                                        (portInt == null || portInt !in 1024..65535)
+                            val portInt = tcpPortText.toIntOrNull()
+                            val isError = tcpPortText.isNotEmpty() &&
+                                    (portInt == null || portInt !in 1024..65535)
 
-                                TextField(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .onFocusChanged { state ->
-                                            isFocused = state.isFocused
-                                        },
-                                    value = tcpPortText,
-                                    onValueChange = { newValue ->
-                                        if (newValue.all { it.isDigit() } && newValue.length <= 5) {
-                                            tcpPortText = newValue
-                                        }
+                            TextField(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { state ->
+                                        isFocused = state.isFocused
                                     },
-                                    label = {
-                                        Text("TCP Port")
-                                    },
-                                    supportingText = {
-                                        AnimatedVisibility(
-                                            visible = isError,
-                                            modifier = Modifier.padding(bottom = 6.dp)
+                                value = tcpPortText,
+                                onValueChange = { newValue ->
+                                    if (newValue.all { it.isDigit() } && newValue.length <= 5) {
+                                        tcpPortText = newValue
+                                    }
+                                },
+                                label = {
+                                    Text("TCP Port")
+                                },
+                                supportingText = {
+                                    AnimatedVisibility(
+                                        visible = isError,
+                                        modifier = Modifier.padding(bottom = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Port must be between 1024 and 65535",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                isError = isError,
+                                trailingIcon = {
+                                    if (isFocused) {
+                                        IconButton(
+                                            enabled = !isError && portInt != null,
+                                            onClick = {
+                                                portInt?.let {
+                                                    settings.setTcpPort(it)
+                                                    focusManager.clearFocus()
+                                                }
+                                            }
                                         ) {
-                                            Text(
-                                                text = "Port must be between 1024 and 65535",
-                                                color = MaterialTheme.colorScheme.error
+                                            Icon(
+                                                imageVector = Icons.Default.Save,
+                                                contentDescription = "Save TCP port"
                                             )
                                         }
-                                    },
-                                    isError = isError,
-                                    trailingIcon = {
-                                        if (isFocused) {
-                                            IconButton(
-                                                enabled = !isError && portInt != null,
-                                                onClick = {
-                                                    portInt?.let {
-                                                        settings.setTcpPort(it)
-                                                        focusManager.clearFocus()
-                                                    }
-                                                }
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Save,
-                                                    contentDescription = "Save TCP port"
-                                                )
+                                    } else if (settings.tcpPortInt != AdbEnvironment.getAdbTcpPort()) {
+                                        IconButton(
+                                            onClick = {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Re-Activate to apply changes",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
                                             }
-                                        } else if (settings.tcpPortInt != EnvironmentUtil.getAdbTcpPort()) {
-                                            IconButton(
-                                                onClick = {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Re-Activate to apply changes",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.RestartAlt,
-                                                    contentDescription = "Re-Activate AxManager"
-                                                )
-                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.RestartAlt,
+                                                contentDescription = "Re-Activate AxManager"
+                                            )
                                         }
-                                    },
-                                    colors = TextFieldDefaults.colors(
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                                        disabledIndicatorColor = Color.Transparent
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number
-                                    ),
-                                    singleLine = true
-                                )
+                                    }
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number
+                                ),
+                                singleLine = true
+                            )
 
-                            }
                         }
                     }
                 }

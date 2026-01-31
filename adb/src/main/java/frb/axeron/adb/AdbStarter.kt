@@ -7,11 +7,14 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
+import frb.axeron.adb.util.AdbEnvironment
+import frb.axeron.adb.util.AdbWifiGate
+import frb.axeron.adb.util.WifiReadyGate
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
-import frb.axeron.api.utils.EnvironmentUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -23,14 +26,14 @@ object AdbStarter {
     private const val TAG = "AdbStarter"
 
     @RequiresApi(Build.VERSION_CODES.R)
-    suspend fun startAdb(
-        context: Context, result: (ActivateInfo) -> Unit = {}
-    ) = withContext(Dispatchers.IO) {
+    suspend fun startAdbWireless(
+        context: Context, result: (AdbStateInfo) -> Unit = {}
+    ) {
         Log.d(TAG, "startAdb")
 
-        val tcpPort = EnvironmentUtil.getAdbTcpPort()
+        val tcpPort = AdbEnvironment.getAdbTcpPort()
         if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
-            stopTcp(context, tcpPort)
+            stopTcp(context, tcpPort, result)
         }
 
         Log.d(TAG, "tcpPort: $tcpPort")
@@ -38,7 +41,7 @@ object AdbStarter {
         val port = runCatching {
             Log.d(TAG, "awaitAdbPort: enter")
 
-            if (!EnvironmentUtil.isWifiRequired()) {
+            if (!AdbEnvironment.isWifiRequired()) {
                 Log.d(TAG, "awaitAdbPort: wifi NOT required, use tcpPort=$tcpPort")
                 return@runCatching tcpPort
             }
@@ -145,19 +148,19 @@ object AdbStarter {
             }
         }.getOrElse {
             Log.e(TAG, "awaitAdbPort: FAILED", it)
-            result(ActivateInfo.Failed(it.message ?: ""))
-            return@withContext
+            result(AdbStateInfo.Failed(it.message ?: ""))
+            return
         }
 
         Log.d(TAG, "awaitAdbPort: SUCCESS port=$port")
 
 
-        startClient(context, port, result)
+        startAdbClient(context, port, result)
     }
 
-    private fun startClient(context: Context, port: Int, result: (ActivateInfo) -> Unit = {}) {
+     suspend fun startAdbClient(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
         if (port <= 0) {
-            result(ActivateInfo.Failed("Failed to get Host and Port"))
+            result(AdbStateInfo.Failed("Failed to get Host and Port"))
             return
         }
 
@@ -172,7 +175,7 @@ object AdbStarter {
             )
         }
             .getOrElse {
-                result(ActivateInfo.Failed("Failed to auto activate ADB"))
+                result(AdbStateInfo.Failed("Failed to auto activate ADB"))
                 return
             }
 
@@ -184,17 +187,19 @@ object AdbStarter {
             Log.d(TAG, "Connecting on port $activePort...")
 
             runCatching {
-                AdbClient(key, activePort).use { client ->
-                    client.connect()
-                    Log.d(TAG, "Restarting in TCP mode port: $tcpPort")
-                    client.command("tcpip:$tcpPort")
+                withContext(Dispatchers.IO) {
+                    AdbClient(key, activePort).use { client ->
+                        client.connect()
+                        Log.d(TAG, "Restarting in TCP mode port: $tcpPort")
+                        client.command("tcpip:$tcpPort")
+                    }
                 }
 
                 waitTcpReady(key, tcpPort)
                 activePort = tcpPort
             }.onFailure {
                 if (it !is EOFException && it !is SocketException) {
-                    result(ActivateInfo.Failed("Failed to switching to TCP"))
+                    result(AdbStateInfo.Failed("Failed to switching to TCP"))
                 }
                 return
             }
@@ -206,16 +211,18 @@ object AdbStarter {
         )
 
         runCatching {
-            AdbClient(
-                key,
-                activePort
-            ).use { client ->
-                Log.d(
-                    TAG,
-                    "AdbClient running"
-                )
-                client.connect()
-                client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64()))
+            withContext(Dispatchers.IO) {
+                AdbClient(
+                    key,
+                    activePort
+                ).use { client ->
+                    Log.d(
+                        TAG,
+                        "AdbClient running"
+                    )
+                    client.connect()
+                    client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64()))
+                }
             }
         }.onSuccess {
             Log.d(
@@ -223,18 +230,18 @@ object AdbStarter {
                 "AdbClient success"
             )
             AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
-            result(ActivateInfo.Success())
+            result(AdbStateInfo.Success())
         }.onFailure {
             Log.e(
                 TAG,
                 "AdbClient failed",
                 it
             )
-            result(ActivateInfo.Failed("Failed to connect to ADB Client"))
+            result(AdbStateInfo.Failed("Failed to connect to ADB Client"))
         }
     }
 
-    fun stopTcp(context: Context, port: Int) {
+    suspend fun stopTcp(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
         runCatching {
             val cr = context.contentResolver
             if (context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
@@ -251,34 +258,39 @@ object AdbStarter {
             )
             val key = AdbKey(keyStore, "axeron")
             waitTcpReady(key, port)
-            AdbClient(key, port).use { client ->
-                client.connect()
-                client.command("usb:")
+            withContext(Dispatchers.IO) {
+                AdbClient(key, port).use { client ->
+                    client.connect()
+                    client.command("usb:")
+                }
             }
+        }.onSuccess {
+            Log.d(TAG, "Stop TCP success")
+            result(AdbStateInfo.Success())
+        }.onFailure {
+            Log.e(TAG, "Stop TCP failed", it)
+            result(AdbStateInfo.Failed("Failed to stop TCP"))
         }
     }
 
-    private fun waitTcpReady(
+    suspend fun waitTcpReady(
         key: AdbKey,
         port: Int,
         timeoutMs: Long = 5_000,
         intervalMs: Long = 200
     ) {
-        Log.d(TAG, "waitTcpReady: port=$port")
-
         val start = System.currentTimeMillis()
         var lastError: Throwable? = null
 
         while (System.currentTimeMillis() - start < timeoutMs) {
             try {
-                AdbClient(key, port).use { client ->
-                    client.connect()
-                    Log.d(TAG, "waitTcpReady: SUCCESS")
-                    return // SUCCESS
+                withContext(Dispatchers.IO) {
+                    AdbClient(key, port).use { it.connect() }
                 }
+                return // SUCCESS
             } catch (e: Throwable) {
                 lastError = e
-                Thread.sleep(intervalMs)
+                delay(intervalMs) // ✅ cooperative
             }
         }
 
@@ -292,12 +304,12 @@ object AdbStarter {
 }
 
 
-sealed class ActivateInfo(val message: String, val cause: Throwable? = null) {
-    class Success() : ActivateInfo("Active Successfully")
+sealed class AdbStateInfo(val message: String, val cause: Throwable? = null) {
+    class Success() : AdbStateInfo("Active Successfully")
 
-    class TryToActivate(message: String, cause: Throwable? = null) :
-        ActivateInfo(message, cause)
+    class Process(message: String, cause: Throwable? = null) :
+        AdbStateInfo(message, cause)
 
     class Failed(message: String, cause: Throwable? = null) :
-        ActivateInfo(message, cause)
+        AdbStateInfo(message, cause)
 }

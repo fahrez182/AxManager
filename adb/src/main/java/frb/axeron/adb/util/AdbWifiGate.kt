@@ -1,4 +1,4 @@
-package frb.axeron.adb
+package frb.axeron.adb.util
 
 import android.Manifest.permission.WRITE_SECURE_SETTINGS
 import android.content.Context

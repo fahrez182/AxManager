@@ -28,6 +28,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Security
@@ -56,7 +59,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.adb.ActivateInfo
+import frb.axeron.adb.AdbStateInfo
+import frb.axeron.adb.util.AdbEnvironment
+import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
@@ -137,6 +142,9 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 }
             }
 
+            if (AdbEnvironment.getAdbTcpPort() > 0) {
+                TcpDebuggingCard(navigator, activateViewModel)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 WirelessDebuggingCard(navigator, activateViewModel)
             }
@@ -146,6 +154,113 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
     }
 }
 
+@Composable
+fun TcpDebuggingCard(
+    navigator: DestinationsNavigator,
+    activateViewModel: ActivateViewModel
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    ElevatedCard(
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Adb,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = "Start via TCP Debugging",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.size(20.dp))
+
+            Text(
+                text = stringResource(R.string.activate_by_tcp_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = "TCP Port: ${AdbEnvironment.getAdbTcpPort()}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.size(20.dp))
+
+            Button(
+                onClick = {
+                    activateViewModel.startAdbTcp(context) { ai ->
+                        scope.launch(Dispatchers.Main) {
+                            Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                        }
+
+                        Log.e("AxManagerStartAdb", ai.message, ai.cause)
+                        activateViewModel.setTryToActivate(false)
+                    }
+                }
+            ) {
+                if (AdbEnvironment.getAdbTcpPort() != AxeronSettings.getTcpPort()) {
+                    Icon(
+                        imageVector = Icons.Filled.RestartAlt,
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .size(16.dp),
+                        contentDescription = "Restart"
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .size(16.dp),
+                        contentDescription = "Start"
+                    )
+                }
+                Text("Connect to TCP")
+            }
+
+            Spacer(Modifier.size(8.dp))
+
+            Button(
+                onClick = {
+                    activateViewModel.stopAdbTcp(context) { ai ->
+                        scope.launch(Dispatchers.Main) {
+                            Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                        }
+
+                        Log.e("AxManagerStartAdb", ai.message, ai.cause)
+                        activateViewModel.setTryToActivate(false)
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Stop,
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .size(16.dp),
+                    contentDescription = "Stop"
+                )
+                Text("Stop TCP")
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.R)
@@ -171,7 +286,7 @@ fun WirelessDebuggingCard(
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        activateViewModel.startAdb(context) {
+        activateViewModel.startAdbWireless(context) {
             activateViewModel.setTryToActivate(false)
         }
     }
@@ -204,7 +319,7 @@ fun WirelessDebuggingCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Start via Wireless debugging",
+                    text = "Start via Wireless Debugging",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -297,14 +412,14 @@ fun WirelessDebuggingCard(
                         launcher.launch(intent)
                         return@Button
                     } else {
-                        activateViewModel.startAdb(context) { ai ->
+                        activateViewModel.startAdbWireless(context) { ai ->
                             scope.launch(Dispatchers.Main) {
                                 Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
                             }
 
                             Log.e("AxManagerStartAdb", ai.message, ai.cause)
                             activateViewModel.setTryToActivate(false)
-                            if (ai is ActivateInfo.Failed) {
+                            if (ai is AdbStateInfo.Failed) {
                                 activateViewModel.startPairingService(context)
                             }
                         }
