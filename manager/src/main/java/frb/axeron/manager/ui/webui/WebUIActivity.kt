@@ -145,7 +145,7 @@ class WebUIActivity : ComponentActivity() {
         WebView.setWebContentsDebuggingEnabled(developerOptionsEnabled && enableWebDebugging)
 
         val pluginDir =
-            File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_PLUGIN), plugin.dirId)
+            File(PathHelper.getWorkingPath(Axeron.getAxeronInfo().isRoot(),AxeronApiConstant.folder.PARENT_PLUGIN), plugin.dirId)
         val webRoot = File(pluginDir, "webroot")
 
         insets = Insets(0, 0, 0, 0)

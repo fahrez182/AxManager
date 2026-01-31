@@ -8,7 +8,7 @@ import java.io.File
 
 object Igniter {
 
-    private var VERSION = 10
+    private var VERSION = "v1"
 
     private val AXERONDIR = System.getenv("AXERONDIR")
     private val PLUGINS_DIR = File("$AXERONDIR/plugins")

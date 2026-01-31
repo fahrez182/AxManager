@@ -180,7 +180,10 @@ fun PluginItem(
                         .matchParentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (plugin.prop.banner.startsWith("https", true) || plugin.prop.banner.startsWith(
+                    if (plugin.prop.banner.startsWith(
+                            "https",
+                            true
+                        ) || plugin.prop.banner.startsWith(
                             "http",
                             true
                         )
@@ -197,7 +200,13 @@ fun PluginItem(
                     } else {
                         val bannerData = remember(plugin.prop.id) {
                             try {
-                                val path = File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_PLUGIN), plugin.prop.id)
+                                val path = File(
+                                    PathHelper.getWorkingPath(
+                                        Axeron.getAxeronInfo().isRoot(),
+                                        AxeronApiConstant.folder.PARENT_PLUGIN
+                                    ),
+                                    plugin.prop.id
+                                )
                                 val bannerFile = File(path, plugin.prop.banner)
                                 val file =
                                     Axeron.newFileService()

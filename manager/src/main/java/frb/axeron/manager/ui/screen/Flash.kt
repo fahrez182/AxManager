@@ -74,9 +74,11 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
+import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.api.core.Starter
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.ui.component.AxSnackBarHost
@@ -416,7 +418,6 @@ fun FlashScreen(
         floatingActionButton = {
             val reigniteLoading = rememberLoadingDialog()
             if (flashIt is FlashIt.FlashPlugins && (flashing == FlashingStatus.SUCCESS)) {
-                // Reboot button for modules flashing
                 ExtendedFloatingActionButton(
                     onClick = {
                         scope.launch {
@@ -428,11 +429,35 @@ fun FlashScreen(
                         }
                     },
                     icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                    text = { Text(text = "Re-ignite & Close") }
+                )
+            }
+
+            if (flashIt is FlashIt.FlashUninstall && (flashing == FlashingStatus.SUCCESS)) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            reigniteLoading.withLoading {
+                                Axeron.newProcess(
+                                    AxeronCommandSession.getQuickCmd(
+                                        Starter.internalCommand,
+                                        true,
+                                        false
+                                    ),
+                                    null,
+                                    null
+                                )
+                            }
+                            navigator.popBackStack()
+                            if (finishIntent) activity?.finish()
+                        }
+                    },
+                    icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
                     text = { Text(text = "Restart & Close") }
                 )
             }
 
-            if (flashIt is FlashIt.FlashPlugins && (flashing == FlashingStatus.FAILED)) {
+            if (flashing == FlashingStatus.FAILED) {
                 // Close button for modules flashing
                 ExtendedFloatingActionButton(
                     text = { Text(text = "Close") },
@@ -440,7 +465,6 @@ fun FlashScreen(
                     onClick = {
                         navigator.popBackStack()
                         if (finishIntent) activity?.finish()
-
                     }
                 )
             }
@@ -508,6 +532,18 @@ suspend fun uninstallPermanently(
     return AxeronPluginService.FlashResult(result)
 }
 
+suspend fun resetManager(
+    onStdout: (String) -> Unit,
+    onStderr: (String) -> Unit
+): AxeronPluginService.FlashResult {
+    val cmd = """
+        . functions.sh; reset_manager "${AxeronSettings.getEnableDeveloperOptions()}"; exit 0
+    """.trimIndent()
+    val result =
+        AxeronPluginService.execWithIO(cmd, onStdout, onStderr, standAlone = true, useSetsid = true)
+    return AxeronPluginService.FlashResult(result)
+}
+
 suspend fun flashIt(
     flashIt: FlashIt,
     onStdout: (String) -> Unit,
@@ -518,7 +554,7 @@ suspend fun flashIt(
             flashModulesSequentially(flashIt.installers, onStdout, onStderr)
         }
 
-        is FlashIt.FlashUninstall -> uninstallPermanently(onStdout, onStderr)
+        is FlashIt.FlashUninstall -> resetManager(onStdout, onStderr)
     }
 }
 

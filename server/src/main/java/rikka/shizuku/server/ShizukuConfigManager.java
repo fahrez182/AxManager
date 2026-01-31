@@ -2,10 +2,10 @@ package rikka.shizuku.server;
 
 import static frb.axeron.server.ServerConstants.PERMISSION;
 
-import android.annotation.SuppressLint;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.system.Os;
 import android.util.AtomicFile;
 
 import androidx.annotation.Nullable;
@@ -41,8 +41,7 @@ public class ShizukuConfigManager extends ConfigManager {
 
     private static final long WRITE_DELAY = 10 * 1000;
 
-    @SuppressLint("SdCardPath")
-    private static final File FILE = PathHelper.getShellPath(AxeronApiConstant.folder.PARENT + "ax_permission.json");
+    private static final File FILE = PathHelper.getWorkingPath(Os.getuid() == 0,AxeronApiConstant.folder.PARENT + "ax_permission.json");
     private static final AtomicFile ATOMIC_FILE = new AtomicFile(FILE);
     private final ShizukuConfig config;
     private final Runnable mWriteRunner = new Runnable() {

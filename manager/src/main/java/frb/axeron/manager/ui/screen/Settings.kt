@@ -86,6 +86,8 @@ import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.SettingsItemType
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
+import frb.axeron.shared.AxeronApiConstant
+import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -288,14 +290,17 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             AnimatedVisibility(visible = axeronRunning) {
                 SettingsItem(
                     iconVector = Icons.Filled.FolderDelete,
-                    label = "Uninstall AxManager",
-                    description = "This action will disable all of your plugins",
+                    label = "Reset AxManager",
+                    description = "This action will disable and remove all of your plugins",
                     onClick = {
                         scope.launch {
                             val confirmResult = confirmDialog.awaitConfirm(
-                                "Uninstall Now?",
-                                content = "This action will disable all of your plugins",
-                                confirm = "Uninstall",
+                                "Reset Now?",
+                                content = "This action will disable and remove all of your plugins\n\nat ${PathHelper.getWorkingPath(
+                                    Axeron.getAxeronInfo().isRoot(),
+                                    AxeronApiConstant.folder.PARENT
+                                ).absolutePath}",
+                                confirm = "Reset",
                                 dismiss = "Cancel"
                             )
                             if (confirmResult == ConfirmResult.Confirmed) {

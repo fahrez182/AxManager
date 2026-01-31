@@ -209,15 +209,15 @@ open class AxeronService() : Service() {
                 .put("HOSTNAME", "axeron")
                 .put(
                     "AXERONDIR",
-                    PathHelper.getShellPath(AxeronApiConstant.folder.PARENT).absolutePath
+                    PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT).absolutePath
                 )
                 .put(
                     "AXERONBIN",
-                    PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_BINARY).absolutePath
+                    PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT_BINARY).absolutePath
                 )
                 .put(
                     "AXERONXBIN",
-                    PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_EXTERNAL_BINARY).absolutePath
+                    PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT_EXTERNAL_BINARY).absolutePath
                 )
                 .put("AXERONLIB", getManagerApplicationInfo()?.nativeLibraryDir)
                 .put("AXERONVER", VERSION_CODE.toString())
@@ -271,7 +271,7 @@ open class AxeronService() : Service() {
     }
 
     private val starting: Long = SystemClock.elapsedRealtime()
-    private val environmentManager by lazy { EnvironmentManager() }
+    private val environmentManager by lazy { EnvironmentManager(isRoot) }
     private val shizukuUserServiceManager by lazy {
         ShizukuUserServiceManager(getEnvironment(TYPE_ENV)?.getEnv())
     }
@@ -279,7 +279,7 @@ open class AxeronService() : Service() {
     var shizuku: ShizukuService? = null
 
     private val axCompanion =
-        File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT), "ax_perm_companion")
+        File(PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT), "ax_perm_companion")
 
     init {
         waitSystemService("package")
@@ -416,7 +416,7 @@ open class AxeronService() : Service() {
     @Throws(RemoteException::class)
     override fun getShizukuService(): IShizukuService? {
         val isActive = File(
-            PathHelper.getShellPath(AxeronApiConstant.folder.PARENT),
+            PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT),
             "ax_perm_companion"
         ).exists()
         if (!isActive) {

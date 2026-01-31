@@ -86,6 +86,29 @@ set_perm_recursive() {
   done
 }
 
+reset_manager() {
+  local debug=$1
+
+  print_title "Resetting AxManager"
+  ui_print
+  ui_print "$AXERONDIR"
+  ui_print "- Removing plugins"
+
+  for plugin in "$AXERONDIR"/plugins/*; do
+      [ -d "$plugin" ] || continue
+
+      echo "- Mark to remove $plugin"
+      touch "$plugin/remove"
+  done
+
+  export CLASSPATH="${AXERONBIN}/ax_reignite.dex";
+  app_process / frb.axeron.reignite.Igniter "$debug"
+
+  rm -rf "$AXERONDIR"
+
+  ui_print "Complete"
+}
+
 uninstall_axmanager() {
   local debug=$1
   local package=$2
@@ -100,7 +123,8 @@ uninstall_axmanager() {
       touch "$plugin/remove"
   done
 
-  ignite_plugins.sh "$debug"
+  export CLASSPATH="${AXERONBIN}/ax_reignite.dex";
+  app_process / frb.axeron.reignite.Igniter "$debug"
 
   rm -rf "$AXERONDIR"
 

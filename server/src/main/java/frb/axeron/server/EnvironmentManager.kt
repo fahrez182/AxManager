@@ -10,12 +10,12 @@ import java.io.File
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class EnvironmentManager() {
+class EnvironmentManager(val isRoot: Boolean = false) {
 
     private val fileName = "axeron_env.json"
     private val file: File
         get() = File(
-            PathHelper.getShellPath(AxeronApiConstant.folder.PARENT),
+            PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT),
             fileName
         )
     private val lock = ReentrantLock()

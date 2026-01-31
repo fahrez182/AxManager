@@ -63,7 +63,12 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
             get() = packageInfo.applicationInfo!!.uid
     }
 
-    val file = File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_BINARY), "added_apps.txt")
+    val file = File(
+        PathHelper.getWorkingPath(
+            Axeron.getAxeronInfo().isRoot(),
+            AxeronApiConstant.folder.PARENT_BINARY
+        ), "added_apps.txt"
+    )
     var search by mutableStateOf("")
 
     val addedList by derivedStateOf {

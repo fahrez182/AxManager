@@ -30,7 +30,8 @@ public class AxPathHandler implements AxWebLoader.PathHandler {
     private static final String[] FORBIDDEN_DATA_DIRS =
             new String[]{"/data/data", "/data/system"};
 
-    private static final String ALLOWED_DATA_DIRS = PathHelper.getShellPath(null).getAbsolutePath();
+    private static final String ALLOWED_DATA_DIRS = PathHelper.getWorkingPath(false, null).getAbsolutePath();
+    private static final String ALLOWED_DATA_DIRS_ROOT = PathHelper.getWorkingPath(true, null).getAbsolutePath();
 
     @NonNull
     private final File mDirectory;
@@ -139,7 +140,9 @@ public class AxPathHandler implements AxWebLoader.PathHandler {
         String dir = getCanonicalDirPath(mDirectory);
 
         for (String forbiddenPath : FORBIDDEN_DATA_DIRS) {
-            if (dir.startsWith(forbiddenPath) && !dir.startsWith(ALLOWED_DATA_DIRS)) {
+            if (dir.startsWith(forbiddenPath) &&
+                    !dir.startsWith(ALLOWED_DATA_DIRS) &&
+                    !dir.startsWith(ALLOWED_DATA_DIRS_ROOT)) {
                 return false;
             }
         }

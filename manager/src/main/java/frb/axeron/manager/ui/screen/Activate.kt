@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.screen
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
@@ -242,6 +243,9 @@ fun TcpDebuggingCard(
                     activateViewModel.stopAdbTcp(context) { ai ->
                         scope.launch(Dispatchers.Main) {
                             Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                            if (ai is AdbStateInfo.Success) {
+                                navigator.popBackStack()
+                            }
                         }
 
                         Log.e("AxManagerStartAdb", ai.message, ai.cause)
@@ -286,7 +290,10 @@ fun WirelessDebuggingCard(
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        activateViewModel.startAdbWireless(context) {
+        activateViewModel.startAdbWireless(context) { ai ->
+            if (ai is AdbStateInfo.Success) {
+                navigator.popBackStack()
+            }
             activateViewModel.setTryToActivate(false)
         }
     }
@@ -415,6 +422,9 @@ fun WirelessDebuggingCard(
                         activateViewModel.startAdbWireless(context) { ai ->
                             scope.launch(Dispatchers.Main) {
                                 Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                                if (ai is AdbStateInfo.Success) {
+                                    navigator.popBackStack()
+                                }
                             }
 
                             Log.e("AxManagerStartAdb", ai.message, ai.cause)
@@ -455,13 +465,14 @@ fun WirelessDebuggingCard(
     }
 }
 
+@SuppressLint("ShowToast")
 @Composable
 fun RootCard(
     navigator: DestinationsNavigator,
     activateViewModel: ActivateViewModel
 ) {
-    LocalContext.current
-
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(
@@ -511,7 +522,25 @@ fun RootCard(
 
             Button(
                 onClick = {
-                    activateViewModel.startRoot()
+                    activateViewModel.startRoot { success ->
+                        scope.launch(Dispatchers.Main) {
+                            if (success) {
+                                Toast.makeText(
+                                    ctx,
+                                    "Activate Successfully",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                navigator.popBackStack()
+                            } else {
+                                Toast.makeText(
+                                    ctx,
+                                    "Failed to start",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                        activateViewModel.setTryToActivate(false)
+                    }
                 }
             ) {
                 Icon(

@@ -196,24 +196,31 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    fun startRoot() {
-        if (tryActivate) return
-        setTryToActivate(true)
+    fun startRoot(result: (Boolean) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                if (tryActivate) return@launch
+                setTryToActivate(true)
 
-        if (!Shell.getShell().isRoot) {
-            Shell.getCachedShell()?.close()
-            setTryToActivate(false)
-            return
-        }
+                if (!Shell.getShell().isRoot) {
+                    Shell.getCachedShell()?.close()
+                    result(false)
+                    return@launch
+                }
 
-
-        Shell.cmd(Starter.internalCommand).submit {
-            if (it.isSuccess) {
-                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ROOT)
+                Shell.cmd(Starter.internalCommand).submit {
+                    if (it.isSuccess) {
+                        AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ROOT)
+                        result(true)
+                    } else {
+                        result(false)
+                    }
+                }
+            }.onFailure {
+                it.printStackTrace()
+                result(false)
             }
         }
-
-        setTryToActivate(false)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)

@@ -89,7 +89,12 @@ fun ExecutePluginActionScreen(
         }
         launch(Dispatchers.IO) {
             val pluginPath =
-                File(PathHelper.getShellPath(AxeronApiConstant.folder.PARENT_PLUGIN), plugin.dirId)
+                File(
+                    PathHelper.getWorkingPath(
+                        Axeron.getAxeronInfo().isRoot(),
+                        AxeronApiConstant.folder.PARENT_PLUGIN
+                    ), plugin.dirId
+                )
             val pluginBin = "${pluginPath.absolutePath}/system/bin"
             val cmd =
                 $$"export PATH=$$pluginBin:$PATH; cd \"$$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit $RES"
