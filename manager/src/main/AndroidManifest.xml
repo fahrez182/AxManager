@@ -101,7 +101,7 @@
             android:directBootAware="true"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:theme="@style/ActivityNoView">
+            android:theme="@style/GrantPermissions">
             <intent-filter>
                 <action android:name="Axerish.REQUEST_BINDER" />
                 <category android:name="android.intent.category.DEFAULT" />
