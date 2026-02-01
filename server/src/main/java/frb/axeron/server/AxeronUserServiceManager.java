@@ -1,6 +1,6 @@
-package rikka.shizuku.server;
+package frb.axeron.server;
 
-import static rikka.shizuku.server.util.HandlerUtil.getMainHandler;
+import static frb.axeron.server.util.HandlerUtil.getMainHandler;
 
 import android.content.pm.PackageInfo;
 import android.util.ArrayMap;
@@ -9,26 +9,25 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import frb.axeron.server.ApkChangedListener;
-import frb.axeron.server.ApkChangedObservers;
+import frb.axeron.starter.ServiceStarter;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.UserManagerApis;
-import rikka.shizuku.starter.ServiceStarter;
 
-public class ShizukuUserServiceManager extends UserServiceManager {
+public class AxeronUserServiceManager extends UserServiceManager {
 
     private final Map<UserServiceRecord, ApkChangedListener> apkChangedListeners = new ArrayMap<>();
     private final Map<String, List<UserServiceRecord>> userServiceRecords = Collections.synchronizedMap(new ArrayMap<>());
 
 
-    public ShizukuUserServiceManager(String[] env) {
+    public AxeronUserServiceManager(String[] env) {
         super(env);
     }
 
     @Override
     public String[] getUserServiceCmd() {
-        String busybox = ShizukuService.getManagerApplicationInfo().nativeLibraryDir + "/libbusybox.so";
+        String busybox = Objects.requireNonNull(AxeronService.getManagerApplicationInfo()).nativeLibraryDir + "/libbusybox.so";
         return new String[]{busybox, "setsid", "sh"};
     }
 
@@ -46,14 +45,13 @@ public class ShizukuUserServiceManager extends UserServiceManager {
         LOGGER.i("ShizukuUserServiceManager.getUserServiceStartCmd: appProcess=%s", appProcess);
         return ServiceStarter.commandForUserService(
                 appProcess,
-                ShizukuService.getManagerApplicationInfo().sourceDir,
+                Objects.requireNonNull(AxeronService.getManagerApplicationInfo()).sourceDir,
                 token, packageName, classname, processNameSuffix, callingUid, debug);
     }
 
     @Override
     public void onUserServiceRecordCreated(UserServiceRecord record, PackageInfo packageInfo) {
-        super.onUserServiceRecordCreated(record, packageInfo);
-
+        LOGGER.i("onUserServiceRecordCreated1: %s", record);
         String packageName = packageInfo.packageName;
         ApkChangedListener listener = new ApkChangedListener() {
             @Override
@@ -79,13 +77,15 @@ public class ShizukuUserServiceManager extends UserServiceManager {
             }
         };
 
+        LOGGER.i("onUserServiceRecordCreated2: %s", record);
         ApkChangedObservers.start(packageInfo.applicationInfo.sourceDir, getMainHandler(), listener);
+        LOGGER.i("onUserServiceRecordCreated3: %s", record);
         apkChangedListeners.put(record, listener);
+        LOGGER.i("onUserServiceRecordCreated4: %s", record);
     }
 
     @Override
     public void onUserServiceRecordRemoved(UserServiceRecord record) {
-        super.onUserServiceRecordRemoved(record);
         ApkChangedListener listener = apkChangedListeners.get(record);
         if (listener != null) {
             ApkChangedObservers.stop(listener);

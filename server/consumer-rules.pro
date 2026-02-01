@@ -41,10 +41,10 @@
 }
 
 # Entrance of Shizuku service
--keep class rikka.shizuku.server.ShizukuService
+-keep class frb.axeron.server.ShizukuServiceIntercept
 
 # Entrance of user service starter
--keep class rikka.shizuku.starter.ServiceStarter {
+-keep class frb.axeron.starter.ServiceStarter {
     public static void main(java.lang.String[]);
     public <init>(...);
 }

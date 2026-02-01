@@ -12,14 +12,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import frb.axeron.api.Axeron
 import frb.axeron.manager.ui.util.HanziToPinyin
 import frb.axeron.server.ServerConstants
+import frb.axeron.shared.AxeronApiConstant.server.BINDER_DESCRIPTOR
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import rikka.parcelablelist.ParcelableListSlice
-import rikka.shizuku.Shizuku
-import rikka.shizuku.ShizukuApiConstants
 
 class PrivilegeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -53,25 +53,25 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
 
 
     fun granted(uid: Int): Boolean {
-        return (Shizuku.getFlagsForUid(uid, MASK_PERMISSION) and FLAG_ALLOWED) == FLAG_ALLOWED
+        return (Axeron.getFlagsForUid(uid, MASK_PERMISSION) and FLAG_ALLOWED) == FLAG_ALLOWED
     }
 
     fun grant(uid: Int) {
-        Shizuku.updateFlagsForUid(uid, MASK_PERMISSION, FLAG_ALLOWED)
+        Axeron.updateFlagsForUid(uid, MASK_PERMISSION, FLAG_ALLOWED)
     }
 
     fun revoke(uid: Int) {
-        Shizuku.updateFlagsForUid(uid, MASK_PERMISSION, 0)
+        Axeron.updateFlagsForUid(uid, MASK_PERMISSION, 0)
     }
 
     private fun getApplications(): List<PackageInfo> {
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
-            data.writeInterfaceToken(ShizukuApiConstants.BINDER_DESCRIPTOR)
+            data.writeInterfaceToken(BINDER_DESCRIPTOR)
             data.writeInt(-1)
             try {
-                Shizuku.getBinder()!!
+                Axeron.getBinder()!!
                     .transact(ServerConstants.BINDER_TRANSACTION_getApplications, data, reply, 0)
             } catch (e: Throwable) {
                 throw RuntimeException(e)
@@ -85,9 +85,9 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun loadInstalledApps() {
+    fun loadInstalledApps(refresh: Boolean = true) {
         viewModelScope.launch {
-            isRefreshing = true
+            isRefreshing = refresh
 
             withContext(Dispatchers.IO) {
                 val start = SystemClock.elapsedRealtime()

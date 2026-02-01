@@ -193,11 +193,8 @@ class AxActivity : ComponentActivity() {
             if (axeronInfo.isRunning()) {
                 pluginViewModel.fetchModuleList()
                 appsViewModel.loadInstalledApps()
+                privilegeViewModel.loadInstalledApps()
             }
-        }
-
-        if (activateViewModel.isShizukuActive) {
-            privilegeViewModel.loadInstalledApps()
         }
 
         val viewModelGlobal = remember {
@@ -253,7 +250,6 @@ class AxActivity : ComponentActivity() {
                     navController,
                     navigator,
                     activateViewModel.axeronInfo,
-                    activateViewModel.isShizukuActive,
                     pluginViewModel.pluginUpdateCount
                 )
             }
@@ -265,7 +261,6 @@ class AxActivity : ComponentActivity() {
         navController: NavHostController,
         navigator: DestinationsNavigator,
         axeronServerInfo: AxeronInfo,
-        isShizukuActive: Boolean,
         moduleUpdateCount: Int
     ) {
         Card(
@@ -282,7 +277,6 @@ class AxActivity : ComponentActivity() {
                 BottomBarDestination.entries
                     .forEach { destination ->
                         if (!axeronServerInfo.isRunning() && destination.needAxeron) return@forEach
-                        if (!isShizukuActive && destination.needShizuku) return@forEach
 
                         val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(
                             destination.direction

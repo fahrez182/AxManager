@@ -47,6 +47,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.rememberLifecycleOwner
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AppearanceScreenDestination
@@ -149,13 +151,25 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
         ) {
 
             AnimatedVisibility(visible = axeronRunning) {
+                val lifecycleOwner = rememberLifecycleOwner()
+                DisposableEffect(Unit) {
+                    val observer = object : androidx.lifecycle.DefaultLifecycleObserver {
+                        override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
+                            activateViewModel.checkShizukuIntercept()
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
                 SettingsItem(
                     iconPainter = painterResource(R.drawable.ic_axeron),
-                    label = "AX-Permission",
-                    description = "Permission manager built on Shizuku-API for scoping Ax-environment",
+                    label = "AX-Permission Intercept",
+                    description = "Intercept permission manager built on Shizuku-API using Ax-Environment",
                     checked = activateViewModel.isShizukuActive,
                     onSwitchChange = {
-                        Axeron.enableShizukuService(it)
+                        activateViewModel.setShizukuIntercept(it)
                     }
                 )
             }

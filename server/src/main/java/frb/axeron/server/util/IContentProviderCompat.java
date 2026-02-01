@@ -10,8 +10,6 @@ import android.system.Os;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import rikka.shizuku.server.util.OsUtils;
-
 public class IContentProviderCompat {
 
     public static Bundle callCompat(@NonNull IContentProvider provider, @Nullable String callingPkg, @Nullable String authority, @Nullable String method, @Nullable String arg, @Nullable Bundle extras) throws RemoteException {

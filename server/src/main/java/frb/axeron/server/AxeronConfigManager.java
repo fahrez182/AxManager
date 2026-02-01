@@ -1,4 +1,4 @@
-package rikka.shizuku.server;
+package frb.axeron.server;
 
 import static frb.axeron.server.ServerConstants.PERMISSION;
 
@@ -24,26 +24,26 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import frb.axeron.ktx.HandlerKt;
 import frb.axeron.shared.AxeronApiConstant;
 import frb.axeron.shared.PathHelper;
 import kotlin.collections.ArraysKt;
 import rikka.hidden.compat.PackageManagerApis;
 import rikka.hidden.compat.UserManagerApis;
-import rikka.shizuku.ktx.HandlerKt;
 
-public class ShizukuConfigManager extends ConfigManager {
+public class AxeronConfigManager extends ConfigManager {
 
     private static final Gson GSON_IN = new GsonBuilder()
             .create();
     private static final Gson GSON_OUT = new GsonBuilder()
-            .setVersion(ShizukuConfig.LATEST_VERSION)
+            .setVersion(AxeronConfig.LATEST_VERSION)
             .create();
 
     private static final long WRITE_DELAY = 10 * 1000;
 
     private static final File FILE = PathHelper.getWorkingPath(Os.getuid() == 0,AxeronApiConstant.folder.PARENT + "ax_permission.json");
     private static final AtomicFile ATOMIC_FILE = new AtomicFile(FILE);
-    private final ShizukuConfig config;
+    private final AxeronConfig config;
     private final Runnable mWriteRunner = new Runnable() {
 
         @Override
@@ -52,7 +52,7 @@ public class ShizukuConfigManager extends ConfigManager {
         }
     };
 
-    public ShizukuConfigManager() {
+    public AxeronConfigManager() {
         this.config = load();
 
         boolean changed = false;
@@ -62,7 +62,7 @@ public class ShizukuConfigManager extends ConfigManager {
             changed = true;
         }
 
-        for (ShizukuConfig.PackageEntry entry : new ArrayList<>(config.packages)) {
+        for (AxeronConfig.PackageEntry entry : new ArrayList<>(config.packages)) {
             if (entry.packages == null) {
                 entry.packages = new ArrayList<>();
             }
@@ -111,7 +111,7 @@ public class ShizukuConfigManager extends ConfigManager {
 
                 int uid = pi.applicationInfo.uid;
                 String pkg = pi.packageName;
-                ShizukuConfig.PackageEntry entry = findLocked(uid);
+                AxeronConfig.PackageEntry entry = findLocked(uid);
                 boolean allowed = false;
 
                 if (entry != null) {
@@ -131,18 +131,18 @@ public class ShizukuConfigManager extends ConfigManager {
         }
     }
 
-    public static ShizukuConfig load() {
+    public static AxeronConfig load() {
         FileInputStream stream;
         try {
             stream = ATOMIC_FILE.openRead();
         } catch (FileNotFoundException e) {
             LOGGER.i("no existing config file " + ATOMIC_FILE.getBaseFile() + "; starting empty");
-            return new ShizukuConfig();
+            return new AxeronConfig();
         }
 
-        ShizukuConfig config = null;
+        AxeronConfig config = null;
         try {
-            config = GSON_IN.fromJson(new InputStreamReader(stream), ShizukuConfig.class);
+            config = GSON_IN.fromJson(new InputStreamReader(stream), AxeronConfig.class);
         } catch (Throwable tr) {
             LOGGER.w(tr, "load config");
         } finally {
@@ -153,10 +153,10 @@ public class ShizukuConfigManager extends ConfigManager {
             }
         }
         if (config != null) return config;
-        return new ShizukuConfig();
+        return new AxeronConfig();
     }
 
-    public static void write(ShizukuConfig config) {
+    public static void write(AxeronConfig config) {
         synchronized (ATOMIC_FILE) {
             FileOutputStream stream;
             try {
@@ -190,8 +190,8 @@ public class ShizukuConfigManager extends ConfigManager {
         HandlerKt.getWorkerHandler().postDelayed(mWriteRunner, WRITE_DELAY);
     }
 
-    private ShizukuConfig.PackageEntry findLocked(int uid) {
-        for (ShizukuConfig.PackageEntry entry : config.packages) {
+    private AxeronConfig.PackageEntry findLocked(int uid) {
+        for (AxeronConfig.PackageEntry entry : config.packages) {
             if (uid == entry.uid) {
                 return entry;
             }
@@ -200,16 +200,16 @@ public class ShizukuConfigManager extends ConfigManager {
     }
 
     @Nullable
-    public ShizukuConfig.PackageEntry find(int uid) {
+    public AxeronConfig.PackageEntry find(int uid) {
         synchronized (this) {
             return findLocked(uid);
         }
     }
 
     private void updateLocked(int uid, List<String> packages, int mask, int values) {
-        ShizukuConfig.PackageEntry entry = findLocked(uid);
+        AxeronConfig.PackageEntry entry = findLocked(uid);
         if (entry == null) {
-            entry = new ShizukuConfig.PackageEntry(uid, mask & values);
+            entry = new AxeronConfig.PackageEntry(uid, mask & values);
             config.packages.add(entry);
         } else {
             int newValue = (entry.flags & ~mask) | (mask & values);
@@ -236,7 +236,7 @@ public class ShizukuConfigManager extends ConfigManager {
     }
 
     private void removeLocked(int uid) {
-        ShizukuConfig.PackageEntry entry = findLocked(uid);
+        AxeronConfig.PackageEntry entry = findLocked(uid);
         if (entry == null) {
             return;
         }

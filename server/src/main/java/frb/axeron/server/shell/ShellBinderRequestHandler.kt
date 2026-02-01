@@ -4,9 +4,8 @@ import android.app.Application
 import android.content.Intent
 import android.os.IBinder
 import android.os.Parcel
+import frb.axeron.api.Axeron
 import frb.axeron.server.ServerConstants
-import rikka.shizuku.Shizuku
-import rikka.shizuku.server.Service.LOGGER
 
 object ShellBinderRequestHandler {
 
@@ -16,14 +15,14 @@ object ShellBinderRequestHandler {
         }
 
         val binder = intent.getBundleExtra("data")?.getBinder("binder") ?: return false
-        val shizukuBinder = Shizuku.getBinder()
-        if (shizukuBinder == null) {
-            LOGGER.w("Binder not received or AxManager service not running")
-        }
+        val axeronBinder = Axeron.getBinder()
+//        if (axeronBinder == null) {
+//            LOGGER.w("Binder not received or AxManager service not running")
+//        }
 
         val data = Parcel.obtain()
         return try {
-            data.writeStrongBinder(shizukuBinder)
+            data.writeStrongBinder(axeronBinder)
             data.writeString(application.applicationInfo.sourceDir)
             binder.transact(1, data, null, IBinder.FLAG_ONEWAY)
             true

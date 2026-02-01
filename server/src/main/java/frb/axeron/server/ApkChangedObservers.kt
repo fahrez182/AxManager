@@ -37,23 +37,6 @@ object ApkChangedObservers {
         observer.addListener(listener)
     }
 
-//    @JvmStatic
-//    fun stop(listener: ApkChangedListener) {
-//        val pathToRemove = mutableListOf<String>()
-//
-//        for ((path, observer) in observers) {
-//            observer.removeListener(listener)
-//
-//            if (!observer.hasListeners()) {
-//                pathToRemove.add(path)
-//            }
-//        }
-//
-//        for (path in pathToRemove) {
-//            observers.remove(path)?.stopWatching()
-//        }
-//    }
-
     @JvmStatic
     fun stop(listener: ApkChangedListener) {
         observers.entries.removeIf { (_, observer) ->
@@ -87,8 +70,6 @@ class ApkChangedObserver : FileObserver {
         this.handler = mainHandler
         this.listeners = CopyOnWriteArraySet<ApkChangedListener>()
     }
-
-
 
     fun addListener(listener: ApkChangedListener): Boolean {
         return listeners.add(listener)

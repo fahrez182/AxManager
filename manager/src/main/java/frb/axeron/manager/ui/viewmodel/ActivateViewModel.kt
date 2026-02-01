@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import rikka.shizuku.Shizuku
 
 class ActivateViewModel : ViewModel() {
 
@@ -52,8 +51,23 @@ class ActivateViewModel : ViewModel() {
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
 
-    var isShizukuActive by mutableStateOf(false)
+    var isShizukuActive by mutableStateOf(
+        Axeron.getShizukuService() != null
+    )
         private set
+
+    fun setShizukuIntercept(enable: Boolean) {
+        viewModelScope.launch(Dispatchers.Main) {
+            isShizukuActive = enable
+            Axeron.enableShizukuService(enable)
+        }
+    }
+
+    fun checkShizukuIntercept() {
+        viewModelScope.launch(Dispatchers.Main) {
+            isShizukuActive = Axeron.pingBinder() && Axeron.getShizukuService() != null
+        }
+    }
 
     var isNotificationEnabled by mutableStateOf(false)
         private set
@@ -137,29 +151,6 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    fun shizukuObserve(): Flow<Boolean> = callbackFlow {
-        if (Shizuku.pingBinder()) {
-            Log.i("AxManagerBinder", "shizukuBinderHasReceived")
-            trySend(true)
-        }
-        val shizukuReceived = Shizuku.OnBinderReceivedListener {
-            Log.i("AxManagerBinder", "onShizukuBinderReceived")
-            trySend(true)
-        }
-
-        val shizukuDead = Shizuku.OnBinderDeadListener {
-            Log.i("AxManagerBinder", "onShizukuBinderDead")
-            trySend(false)
-        }
-        Shizuku.addBinderReceivedListener(shizukuReceived)
-        Shizuku.addBinderDeadListener(shizukuDead)
-
-        awaitClose {
-            Shizuku.removeBinderReceivedListener(shizukuReceived)
-            Shizuku.removeBinderDeadListener(shizukuDead)
-        }
-    }
-
     init {
         viewModelScope.launch {
             axeronObserve().collect { status ->
@@ -167,6 +158,7 @@ class ActivateViewModel : ViewModel() {
                     status is ActivateStatus.Disable && activateStatus is ActivateStatus.Updating
                 axeronInfo = when (status) {
                     is ActivateStatus.Running -> {
+                        checkShizukuIntercept()
                         status.axeronInfo
                     }
 
@@ -186,12 +178,6 @@ class ActivateViewModel : ViewModel() {
                 Log.i("AxManagerBinder", "status: $status")
                 activateStatus = status
                 setTryToActivate(false)
-            }
-        }
-
-        viewModelScope.launch {
-            shizukuObserve().collect {
-                isShizukuActive = it
             }
         }
     }

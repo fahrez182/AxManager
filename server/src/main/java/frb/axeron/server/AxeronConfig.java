@@ -1,4 +1,4 @@
-package rikka.shizuku.server;
+package frb.axeron.server;
 
 import androidx.annotation.NonNull;
 
@@ -7,7 +7,7 @@ import com.google.gson.annotations.SerializedName;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShizukuConfig {
+public class AxeronConfig {
 
     public static final int LATEST_VERSION = 2;
 
@@ -17,10 +17,10 @@ public class ShizukuConfig {
     @SerializedName("packages")
     public List<PackageEntry> packages = new ArrayList<>();
 
-    public ShizukuConfig() {
+    public AxeronConfig() {
     }
 
-    public ShizukuConfig(@NonNull List<PackageEntry> packages) {
+    public AxeronConfig(@NonNull List<PackageEntry> packages) {
         this.version = LATEST_VERSION;
         this.packages = packages;
     }

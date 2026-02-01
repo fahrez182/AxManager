@@ -1,4 +1,7 @@
-package rikka.shizuku.starter;
+package frb.axeron.starter;
+
+import static frb.axeron.shared.AxeronApiConstant.server.USER_SERVICE_ARG_PGID;
+import static frb.axeron.shared.AxeronApiConstant.server.USER_SERVICE_ARG_TOKEN;
 
 import android.content.IContentProvider;
 import android.os.Build;
@@ -9,13 +12,12 @@ import android.os.Looper;
 import java.util.Locale;
 
 import frb.axeron.server.ServerConstants;
+import frb.axeron.server.UserService;
 import frb.axeron.server.util.IContentProviderCompat;
+import frb.axeron.server.util.Logger;
 import kotlin.Triple;
 import moe.shizuku.api.BinderContainer;
 import rikka.hidden.compat.ActivityManagerApis;
-import rikka.shizuku.ShizukuApiConstants;
-import rikka.shizuku.server.UserService;
-import rikka.shizuku.server.util.Logger;
 
 public class ServiceStarter {
 
@@ -24,7 +26,7 @@ public class ServiceStarter {
     private static final String EXTRA_BINDER = "moe.shizuku.privileged.api.intent.extra.BINDER";
     private static final Logger LOGGER = new Logger(TAG);
     private static final String USER_SERVICE_CMD_FORMAT = "(CLASSPATH='%s' %s%s /system/bin " +
-            "--nice-name='%s' rikka.shizuku.starter.ServiceStarter " +
+            "--nice-name='%s' frb.axeron.starter.ServiceStarter " +
             "--token='%s' --package='%s' --class='%s' --uid=%d%s --pgid=$$)&";
     // DeathRecipient will automatically be unlinked when all references to the
     // binder is dropped, so we hold the reference here.
@@ -122,8 +124,8 @@ public class ServiceStarter {
 
             Bundle extra = new Bundle();
             extra.putParcelable(EXTRA_BINDER, new BinderContainer(binder));
-            extra.putString(ShizukuApiConstants.USER_SERVICE_ARG_TOKEN, token);
-            extra.putInt(ShizukuApiConstants.USER_SERVICE_ARG_PGID, pgid);
+            extra.putString(USER_SERVICE_ARG_TOKEN, token);
+            extra.putInt(USER_SERVICE_ARG_PGID, pgid);
 
             Bundle reply = IContentProviderCompat.call(provider, null, null, name, "sendUserService", null, extra);
 

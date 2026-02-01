@@ -40,7 +40,6 @@ fun Uri.resolveDisplayName(context: Context): String =
 
 @Composable
 fun UseLifecycle(
-
     onResume: () -> Unit = {},
     onPause: () -> Unit = {}
 ) {

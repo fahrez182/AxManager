@@ -44,15 +44,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import frb.axeron.api.Axeron
+import frb.axeron.ktx.workerHandler
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.theme.AxManagerTheme
 import frb.axeron.server.util.Logger
+import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_ALLOWED
+import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_IS_ONETIME
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import rikka.shizuku.Shizuku
-import rikka.shizuku.ShizukuApiConstants.REQUEST_PERMISSION_REPLY_ALLOWED
-import rikka.shizuku.ShizukuApiConstants.REQUEST_PERMISSION_REPLY_IS_ONETIME
-import rikka.shizuku.ktx.workerHandler
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -67,7 +67,7 @@ class RequestPermissionActivity : ComponentActivity() {
             putBoolean(REQUEST_PERMISSION_REPLY_IS_ONETIME, onetime)
         }
         try {
-            Shizuku.dispatchPermissionConfirmationResult(uid, pid, code, data)
+            Axeron.dispatchPermissionConfirmationResult(uid, pid, code, data)
         } catch (e: Throwable) {
             LOGGER.e("dispatchPermissionConfirmationResult")
         }
@@ -75,13 +75,13 @@ class RequestPermissionActivity : ComponentActivity() {
 
     private fun waitForBinder(): Boolean {
         val latch = CountDownLatch(1)
-        val listener = object : Shizuku.OnBinderReceivedListener {
+        val listener = object : Axeron.OnBinderReceivedListener {
             override fun onBinderReceived() {
                 latch.countDown()
-                Shizuku.removeBinderReceivedListener(this)
+                Axeron.removeBinderReceivedListener(this)
             }
         }
-        Shizuku.addBinderReceivedListenerSticky(listener, workerHandler)
+        Axeron.addBinderReceivedListenerSticky(listener, workerHandler)
         return try {
             latch.await(5, TimeUnit.SECONDS)
         } catch (e: TimeoutException) {
@@ -109,7 +109,7 @@ class RequestPermissionActivity : ComponentActivity() {
         }
 
         val permission =
-            Shizuku.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
+            Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
 
         if (!permission) {
             setResult(uid, pid, requestCode, allowed = false, onetime = true)

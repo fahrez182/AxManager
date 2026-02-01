@@ -21,8 +21,7 @@ enum class BottomBarDestination(
     val label: String,
     val iconSelected: ImageVector,
     val iconNotSelected: ImageVector,
-    val needAxeron: Boolean,
-    val needShizuku: Boolean = false
+    val needAxeron: Boolean
 ) {
     Home(HomeScreenDestination, "Home", Icons.Filled.Home, Icons.Outlined.Home, false),
 
@@ -32,7 +31,6 @@ enum class BottomBarDestination(
         "Privilege",
         Icons.Filled.AdminPanelSettings,
         Icons.Outlined.AdminPanelSettings,
-        true,
         true
     ),
     Plugin(

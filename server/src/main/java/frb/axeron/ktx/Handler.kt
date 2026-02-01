@@ -1,4 +1,4 @@
-package rikka.shizuku.ktx
+package frb.axeron.ktx
 
 import android.os.Handler
 import android.os.HandlerThread
