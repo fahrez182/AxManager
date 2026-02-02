@@ -70,6 +70,7 @@ dependencies {
     compileOnly(libs.rikka.hidden.stub)
 
     implementation(libs.topjohnwu.libsu.core)
+    implementation(libs.topjohnwu.libsu.io)
 
     implementation(libs.gson)
     implementation(libs.markdown)

@@ -243,9 +243,6 @@ fun TcpDebuggingCard(
                     activateViewModel.stopAdbTcp(context) { ai ->
                         scope.launch(Dispatchers.Main) {
                             Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
-                            if (ai is AdbStateInfo.Success) {
-                                navigator.popBackStack()
-                            }
                         }
 
                         Log.e("AxManagerStartAdb", ai.message, ai.cause)
@@ -291,9 +288,6 @@ fun WirelessDebuggingCard(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         activateViewModel.startAdbWireless(context) { ai ->
-            if (ai is AdbStateInfo.Success) {
-                navigator.popBackStack()
-            }
             activateViewModel.setTryToActivate(false)
         }
     }
@@ -422,9 +416,6 @@ fun WirelessDebuggingCard(
                         activateViewModel.startAdbWireless(context) { ai ->
                             scope.launch(Dispatchers.Main) {
                                 Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
-                                if (ai is AdbStateInfo.Success) {
-                                    navigator.popBackStack()
-                                }
                             }
 
                             Log.e("AxManagerStartAdb", ai.message, ai.cause)
@@ -530,7 +521,6 @@ fun RootCard(
                                     "Activate Successfully",
                                     Toast.LENGTH_SHORT
                                 ).show()
-                                navigator.popBackStack()
                             } else {
                                 Toast.makeText(
                                     ctx,

@@ -15,7 +15,7 @@ public class Shell extends Rish {
         RishConfig.init(binder, AxeronApiConstant.server.BINDER_DESCRIPTOR, 30000);
         Axeron.onBinderReceived(binder, packageName);
         Axeron.addBinderReceivedListenerSticky(() -> {
-            new Shell().start(args);
+            handler.post(() -> new Shell().start(args));
         });
     }
 

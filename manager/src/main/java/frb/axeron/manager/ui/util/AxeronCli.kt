@@ -9,10 +9,10 @@ private const val TAG = "AxeronCli"
 fun createShellBuilder(globalMnt: Boolean = false): Shell.Builder {
     return Shell.Builder.create().run {
         val cmd = buildString {
+            append("sh ${Axerish.axrun_path.absolutePath}")
+            append(" || ")
             append("su")
             if (globalMnt) append(" --mount-master")
-            append(" || ")
-            append("sh ${Axerish.axerish_path.absolutePath}")
         }
         setCommands("sh", "-c", cmd)
     }
