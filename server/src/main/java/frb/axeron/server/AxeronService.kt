@@ -46,7 +46,6 @@ import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_SECONT
 import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_UID
 import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_VERSION
 import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SHOULD_SHOW_REQUEST_PERMISSION_RATIONALE
-import frb.axeron.shared.AxeronApiConstant.server.PATCH_CODE
 import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_ALLOWED
 import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_IS_ONETIME
 import frb.axeron.shared.AxeronApiConstant.server.SHIZUKU_SERVER_PATCH_VERSION
@@ -533,7 +532,6 @@ open class AxeronService() :
         return ServerInfo(
             VERSION_NAME,
             VERSION_CODE,
-            PATCH_CODE,
             Os.getuid(),
             Os.getpid(),
             SELinux.getContext(),

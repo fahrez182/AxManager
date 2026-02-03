@@ -38,6 +38,10 @@ class ActivateViewModel : ViewModel() {
 
     companion object {
         const val TAG = "AdbViewModel"
+        const val ACTIVATE_FAILED = -1
+        const val ACTIVATE_PROCESS = 0
+        const val ACTIVATE_SUCCESS = 1
+
     }
 
     var activateStatus by mutableStateOf<ActivateStatus>(run {
@@ -182,29 +186,30 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    fun startRoot(result: (Boolean) -> Unit = {}) {
+    fun startRoot(result: (Int) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                if (tryActivate) return@launch
+                if (tryActivate) return@launch result(ACTIVATE_PROCESS)
                 setTryToActivate(true)
 
                 if (!Shell.getShell().isRoot) {
                     Shell.getCachedShell()?.close()
-                    result(false)
+                    result(ACTIVATE_FAILED)
                     return@launch
                 }
 
                 Shell.cmd(Starter.internalCommand).submit {
                     if (it.isSuccess) {
                         AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ROOT)
-                        result(true)
+                        result(ACTIVATE_SUCCESS)
                     } else {
-                        result(false)
+                        result(ACTIVATE_FAILED)
                     }
+                    Shell.getCachedShell()?.close()
                 }
             }.onFailure {
                 it.printStackTrace()
-                result(false)
+                result(ACTIVATE_FAILED)
             }
         }
     }

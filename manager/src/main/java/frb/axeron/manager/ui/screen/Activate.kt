@@ -513,20 +513,30 @@ fun RootCard(
 
             Button(
                 onClick = {
-                    activateViewModel.startRoot { success ->
+                    activateViewModel.startRoot { state ->
                         scope.launch(Dispatchers.Main) {
-                            if (success) {
-                                Toast.makeText(
-                                    ctx,
-                                    "Activate Successfully",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            } else {
-                                Toast.makeText(
-                                    ctx,
-                                    "Failed to start",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            when (state) {
+                                ActivateViewModel.ACTIVATE_FAILED -> {
+                                    Toast.makeText(
+                                        ctx,
+                                        "Failed to start",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                ActivateViewModel.ACTIVATE_PROCESS -> {
+                                    Toast.makeText(
+                                        ctx,
+                                        "Please wait...",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                ActivateViewModel.ACTIVATE_SUCCESS -> {
+                                    Toast.makeText(
+                                        ctx,
+                                        "Activate Successfully",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         }
                         activateViewModel.setTryToActivate(false)

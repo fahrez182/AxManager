@@ -409,7 +409,7 @@ fun StatusCard(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Version: ${axeronInfo.serverInfo.versionCode} > $VERSION_CODE",
+                            text = "Version: ${axeronInfo.getVersionCode()} > $VERSION_CODE",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -509,7 +509,7 @@ fun StatusCard(
                         }
 
                         Text(
-                            text = "Version: ${axeronInfo.serverInfo.versionCode} | Pid: ${axeronInfo.serverInfo.pid}",
+                            text = "Version: ${axeronInfo.getVersionCode()} | Pid: ${axeronInfo.serverInfo.pid}",
                             style = MaterialTheme.typography.bodySmall
                         )
 

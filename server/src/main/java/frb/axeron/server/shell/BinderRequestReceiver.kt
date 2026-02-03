@@ -14,7 +14,7 @@ import frb.axeron.server.ServerConstants
 
 class BinderRequestReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ServerConstants.REQUEST_BINDER_AXERISH) return
+        if (intent.action != ServerConstants.REQUEST_BINDER_AXRUNTIME) return
         ShellBinderRequestHandler.handleRequest(context.applicationContext, intent)
     }
 

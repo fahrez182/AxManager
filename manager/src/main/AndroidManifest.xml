@@ -104,7 +104,7 @@
             android:exported="true"
             android:theme="@style/GrantPermissions">
             <intent-filter>
-                <action android:name="Axerish.REQUEST_BINDER" />
+                <action android:name="AxRuntime.REQUEST_BINDER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -116,7 +116,7 @@
             android:exported="true"
             tools:ignore="ExportedReceiver">
             <intent-filter>
-                <action android:name="Axerish.REQUEST_BINDER" />
+                <action android:name="AxRuntime.REQUEST_BINDER" />
             </intent-filter>
         </receiver>
 
