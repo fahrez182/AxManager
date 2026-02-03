@@ -5,7 +5,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.os.SystemClock
 import android.system.Os
-import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -105,14 +104,10 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
                     privileges = getApplications().associate { packageInfo ->
                         val appInfo = packageInfo.applicationInfo!!
                         val uid = appInfo.uid
-                        Log.d(
-                            "ShizukuViewModel",
-                            "loadInstalledApps(${packageInfo.packageName}): ${granted(appInfo.uid)}"
-                        )
                         uid to AppsViewModel.AppInfo(
                             label = appInfo.loadLabel(pm).toString(),
                             packageInfo = packageInfo,
-                            isAdded = granted(appInfo.uid)
+                            isAdded = granted(uid)
                         )
                     }
                 }.onFailure {

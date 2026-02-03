@@ -7,8 +7,8 @@ import frb.axeron.api.Axeron
 import frb.axeron.ktx.workerHandler
 import frb.axeron.provider.AxeronProvider
 import frb.axeron.server.util.Logger
-import frb.axeron.shared.AxeronApiConstant.server.USER_SERVICE_ARG_PGID
-import frb.axeron.shared.AxeronApiConstant.server.USER_SERVICE_ARG_TOKEN
+import frb.axeron.shared.ShizukuApiConstant.USER_SERVICE_ARG_PGID
+import frb.axeron.shared.ShizukuApiConstant.USER_SERVICE_ARG_TOKEN
 import moe.shizuku.api.BinderContainer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

@@ -37,24 +37,24 @@ import frb.axeron.server.util.IContentProviderCompat
 import frb.axeron.server.util.OsUtils
 import frb.axeron.server.util.UserHandleCompat
 import frb.axeron.shared.AxeronApiConstant
-import frb.axeron.shared.AxeronApiConstant.server.ATTACH_APPLICATION_API_VERSION
-import frb.axeron.shared.AxeronApiConstant.server.ATTACH_APPLICATION_PACKAGE_NAME
 import frb.axeron.shared.AxeronApiConstant.server.BINDER_DESCRIPTOR
-import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_PERMISSION_GRANTED
-import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_PATCH_VERSION
-import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_SECONTEXT
-import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_UID
-import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SERVER_VERSION
-import frb.axeron.shared.AxeronApiConstant.server.BIND_APPLICATION_SHOULD_SHOW_REQUEST_PERMISSION_RATIONALE
-import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_ALLOWED
-import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_IS_ONETIME
-import frb.axeron.shared.AxeronApiConstant.server.SHIZUKU_SERVER_PATCH_VERSION
-import frb.axeron.shared.AxeronApiConstant.server.SHIZUKU_SERVER_VERSION
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_ENV
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_NEW_ENV
 import frb.axeron.shared.AxeronApiConstant.server.VERSION_CODE
 import frb.axeron.shared.AxeronApiConstant.server.VERSION_NAME
 import frb.axeron.shared.PathHelper
+import frb.axeron.shared.ShizukuApiConstant.ATTACH_APPLICATION_API_VERSION
+import frb.axeron.shared.ShizukuApiConstant.ATTACH_APPLICATION_PACKAGE_NAME
+import frb.axeron.shared.ShizukuApiConstant.BIND_APPLICATION_PERMISSION_GRANTED
+import frb.axeron.shared.ShizukuApiConstant.BIND_APPLICATION_SERVER_PATCH_VERSION
+import frb.axeron.shared.ShizukuApiConstant.BIND_APPLICATION_SERVER_SECONTEXT
+import frb.axeron.shared.ShizukuApiConstant.BIND_APPLICATION_SERVER_UID
+import frb.axeron.shared.ShizukuApiConstant.BIND_APPLICATION_SERVER_VERSION
+import frb.axeron.shared.ShizukuApiConstant.BIND_APPLICATION_SHOULD_SHOW_REQUEST_PERMISSION_RATIONALE
+import frb.axeron.shared.ShizukuApiConstant.REQUEST_PERMISSION_REPLY_ALLOWED
+import frb.axeron.shared.ShizukuApiConstant.REQUEST_PERMISSION_REPLY_IS_ONETIME
+import frb.axeron.shared.ShizukuApiConstant.SHIZUKU_SERVER_PATCH_VERSION
+import frb.axeron.shared.ShizukuApiConstant.SHIZUKU_SERVER_VERSION
 import moe.shizuku.api.BinderContainer
 import moe.shizuku.server.IRemoteProcess
 import moe.shizuku.server.IShizukuApplication
@@ -554,10 +554,18 @@ open class AxeronService() :
                 ?: return
         } else {
             val packageEntry = configManager.findOrUpdate(callingUid)
-            LOGGER.d("showPermissionConfirmation pe:%s, pkgs:%s", packageEntry, packageEntry?.packages)
+            LOGGER.d(
+                "showPermissionConfirmation pe:%s, pkgs:%s",
+                packageEntry,
+                packageEntry?.packages
+            )
             if (packageEntry != null && !packageEntry.packages.isNullOrEmpty()) {
                 if (packageEntry.packages.size > 1) throw IllegalStateException("This uid should not have multiple packages")
-                PackageManagerApis.getApplicationInfoNoThrow(packageEntry.packages.get(0), 0, userId)
+                PackageManagerApis.getApplicationInfoNoThrow(
+                    packageEntry.packages.get(0),
+                    0,
+                    userId
+                )
                     ?: return
             } else return
         }
@@ -797,7 +805,6 @@ open class AxeronService() :
 
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-        LOGGER.d("transact: code=%d, calling uid=%d", code, getCallingUid())
         if (code == ServerConstants.BINDER_TRANSACTION_getApplications) {
             data.enforceInterface(BINDER_DESCRIPTOR)
             val userId = data.readInt()

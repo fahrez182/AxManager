@@ -49,8 +49,8 @@ import frb.axeron.ktx.workerHandler
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.theme.AxManagerTheme
 import frb.axeron.server.util.Logger
-import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_ALLOWED
-import frb.axeron.shared.AxeronApiConstant.server.REQUEST_PERMISSION_REPLY_IS_ONETIME
+import frb.axeron.shared.ShizukuApiConstant.REQUEST_PERMISSION_REPLY_ALLOWED
+import frb.axeron.shared.ShizukuApiConstant.REQUEST_PERMISSION_REPLY_IS_ONETIME
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.CountDownLatch

@@ -1,7 +1,7 @@
 package frb.axeron.starter;
 
-import static frb.axeron.shared.AxeronApiConstant.server.USER_SERVICE_ARG_PGID;
-import static frb.axeron.shared.AxeronApiConstant.server.USER_SERVICE_ARG_TOKEN;
+import static frb.axeron.shared.ShizukuApiConstant.USER_SERVICE_ARG_PGID;
+import static frb.axeron.shared.ShizukuApiConstant.USER_SERVICE_ARG_TOKEN;
 
 import android.content.IContentProvider;
 import android.os.Build;
