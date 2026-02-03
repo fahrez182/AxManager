@@ -121,7 +121,7 @@ public class AxeronConfigManager extends ConfigManager {
                 List<String> packages = new ArrayList<>();
                 packages.add(pkg);
 
-                updateLocked(uid, packages, ConfigManager.MASK_PERMISSION, allowed ? ConfigManager.FLAG_ALLOWED : 0);
+                updateLocked(uid, packages, ConfigManager.MASK_PERMISSION, allowed ? ConfigManager.FLAG_ALLOWED : ConfigManager.FLAG_DENIED);
                 changed = true;
             }
         }
@@ -200,9 +200,23 @@ public class AxeronConfigManager extends ConfigManager {
     }
 
     @Nullable
+    @Override
     public AxeronConfig.PackageEntry find(int uid) {
         synchronized (this) {
             return findLocked(uid);
+        }
+    }
+
+    @Nullable
+    public AxeronConfig.PackageEntry findOrUpdate(int uid) {
+        synchronized (this) {
+            AxeronConfig.PackageEntry entry = findLocked(uid);
+            if (entry == null) {
+                entry = new AxeronConfig.PackageEntry(uid, ConfigManager.MASK_PERMISSION & ConfigManager.FLAG_DENIED);
+                entry.packages.addAll(PackageManagerApis.getPackagesForUidNoThrow(uid));
+                config.packages.add(entry);
+            }
+            return entry;
         }
     }
 

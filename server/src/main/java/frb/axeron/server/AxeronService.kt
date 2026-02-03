@@ -550,17 +550,20 @@ open class AxeronService() :
         userId: Int
     ) {
 
+        LOGGER.i("showPermissionConfirmation")
         val ai = if (clientRecord != null) {
             PackageManagerApis.getApplicationInfoNoThrow(clientRecord.packageName, 0, userId)
                 ?: return
         } else {
-            val packageEntry = configManager.find(callingUid)
+            val packageEntry = configManager.findOrUpdate(callingUid)
+            LOGGER.d("showPermissionConfirmation pe:%s, pkgs:%s", packageEntry, packageEntry?.packages)
             if (packageEntry != null && !packageEntry.packages.isNullOrEmpty()) {
                 if (packageEntry.packages.size > 1) throw IllegalStateException("This uid should not have multiple packages")
                 PackageManagerApis.getApplicationInfoNoThrow(packageEntry.packages.get(0), 0, userId)
                     ?: return
             } else return
         }
+        LOGGER.i("showPermissionConfirmation: %s", ai)
 
         val pi = PackageManagerApis.getPackageInfoNoThrow(MANAGER_APPLICATION_ID, 0, userId)
         val userInfo = UserManagerApis.getUserInfo(userId)
