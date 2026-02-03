@@ -1,25 +1,23 @@
 package frb.axeron.manager.ui.viewmodel
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
-import android.os.Parcel
 import android.os.SystemClock
+import android.system.Os
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
 import frb.axeron.manager.ui.util.HanziToPinyin
-import frb.axeron.server.ServerConstants
-import frb.axeron.shared.AxeronApiConstant.server.BINDER_DESCRIPTOR
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import rikka.parcelablelist.ParcelableListSlice
 
 class PrivilegeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -35,22 +33,35 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     var search by mutableStateOf("")
 
     val privilegeList by derivedStateOf {
-        privileges.filter {
-            it.label.contains(search, ignoreCase = true) ||
-                    it.packageName.contains(search, ignoreCase = true) ||
-                    HanziToPinyin.getInstance().toPinyinString(it.label)
-                        .contains(search, ignoreCase = true)
-        }.also {
-            isRefreshing = false
-        }
+        privileges.values
+            .asSequence()
+            .filter {
+                it.label.contains(search, true) ||
+                        it.packageName.contains(search, true) ||
+                        HanziToPinyin.getInstance()
+                            .toPinyinString(it.label)
+                            .contains(search, true)
+            }
+            .filter {
+                val isSystem =
+                    it.packageInfo.applicationInfo!!
+                        .flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
+
+                val isSelf = it.uid == Os.getuid()
+
+                !isSystem && !isSelf
+            }
+            .toList()
+            .also { isRefreshing = false }
     }
 
-    var privileges by mutableStateOf<List<AppsViewModel.AppInfo>>(ArrayList())
+
+    var privileges by mutableStateOf<Map<Int, AppsViewModel.AppInfo>>(HashMap())
         private set
 
-    var privilegedCount by mutableIntStateOf(0)
-        private set
-
+    val privilegedCount by derivedStateOf {
+        privileges.values.count { it.isAdded }
+    }
 
     fun granted(uid: Int): Boolean {
         return (Axeron.getFlagsForUid(uid, MASK_PERMISSION) and FLAG_ALLOWED) == FLAG_ALLOWED
@@ -58,31 +69,25 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun grant(uid: Int) {
         Axeron.updateFlagsForUid(uid, MASK_PERMISSION, FLAG_ALLOWED)
+        privileges = privileges.toMutableMap().apply {
+            this[uid]?.let {
+                this[uid] = it.copy(isAdded = true)
+            }
+        }
     }
 
     fun revoke(uid: Int) {
         Axeron.updateFlagsForUid(uid, MASK_PERMISSION, 0)
+        privileges = privileges.toMutableMap().apply {
+            this[uid]?.let {
+                this[uid] = it.copy(isAdded = false)
+            }
+        }
     }
 
+
     private fun getApplications(): List<PackageInfo> {
-        val data = Parcel.obtain()
-        val reply = Parcel.obtain()
-        return try {
-            data.writeInterfaceToken(BINDER_DESCRIPTOR)
-            data.writeInt(-1)
-            try {
-                Axeron.getBinder()!!
-                    .transact(ServerConstants.BINDER_TRANSACTION_getApplications, data, reply, 0)
-            } catch (e: Throwable) {
-                throw RuntimeException(e)
-            }
-            reply.readException()
-            @Suppress("UNCHECKED_CAST")
-            (ParcelableListSlice.CREATOR.createFromParcel(reply) as ParcelableListSlice<PackageInfo>).list!!
-        } finally {
-            reply.recycle()
-            data.recycle()
-        }
+        return application.packageManager.getInstalledPackages(0)
     }
 
     fun loadInstalledApps(refresh: Boolean = true) {
@@ -97,23 +102,22 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
                 // Ambil packageName yang sudah tersimpan
                 runCatching {
 
-                    privileges = getApplications().map {
-                        val appInfo = it.applicationInfo!!
+                    privileges = getApplications().associate { packageInfo ->
+                        val appInfo = packageInfo.applicationInfo!!
+                        val uid = appInfo.uid
                         Log.d(
                             "ShizukuViewModel",
-                            "loadInstalledApps(${it.packageName}): ${granted(appInfo.uid)}"
+                            "loadInstalledApps(${packageInfo.packageName}): ${granted(appInfo.uid)}"
                         )
-                        AppsViewModel.AppInfo(
+                        uid to AppsViewModel.AppInfo(
                             label = appInfo.loadLabel(pm).toString(),
-                            packageInfo = it,
+                            packageInfo = packageInfo,
                             isAdded = granted(appInfo.uid)
                         )
                     }
                 }.onFailure {
                     isRefreshing = false
                 }
-
-                privilegedCount = privileges.count { it.isAdded }
 
                 SystemClock.elapsedRealtime() - start
                 if (oldPrivileges === privileges) {

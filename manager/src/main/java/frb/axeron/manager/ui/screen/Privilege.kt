@@ -130,7 +130,7 @@ fun PrivilegeScreen(
                                     } else {
                                         privilegeViewModel.revoke(app.packageInfo.applicationInfo!!.uid)
                                     }
-                                    privilegeViewModel.loadInstalledApps()
+//                                    privilegeViewModel.loadInstalledApps()
                                 }
                             )
                         }

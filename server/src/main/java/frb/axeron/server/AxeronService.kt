@@ -544,13 +544,23 @@ open class AxeronService() :
 
     override fun showPermissionConfirmation(
         requestCode: Int,
-        clientRecord: ClientRecord,
+        clientRecord: ClientRecord?,
         callingUid: Int,
         callingPid: Int,
         userId: Int
     ) {
-        val ai = PackageManagerApis.getApplicationInfoNoThrow(clientRecord.packageName, 0, userId)
-            ?: return
+
+        val ai = if (clientRecord != null) {
+            PackageManagerApis.getApplicationInfoNoThrow(clientRecord.packageName, 0, userId)
+                ?: return
+        } else {
+            val packageEntry = configManager.find(callingUid)
+            if (packageEntry != null && !packageEntry.packages.isNullOrEmpty()) {
+                if (packageEntry.packages.size > 1) throw IllegalStateException("This uid should not have multiple packages")
+                PackageManagerApis.getApplicationInfoNoThrow(packageEntry.packages.get(0), 0, userId)
+                    ?: return
+            } else return
+        }
 
         val pi = PackageManagerApis.getPackageInfoNoThrow(MANAGER_APPLICATION_ID, 0, userId)
         val userInfo = UserManagerApis.getUserInfo(userId)
@@ -563,7 +573,7 @@ open class AxeronService() :
                 "Manager not found in non work profile user %d. Revoke permission",
                 userId
             )
-            clientRecord.dispatchRequestPermissionResult(requestCode, false)
+            clientRecord?.dispatchRequestPermissionResult(requestCode, false)
             return
         }
 
