@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">AxManager</string>
+    <string name="home_running">工作中</string>
+    <string name="activate_by_computer_description">对于没有 root 的设备，您需要使用 adb 启动 AxManager（需要计算机连接）。 每次设备重新启动时都需要重复此过程。</string>
+    <string name="view_command_message">`%1$s`\n\n还有一些其他注意事项，请确认您已阅读帮助。</string>
+    <string name="activate_by_tcp_description">您可以使用 TCP 调试来激活，而无需连接到计算机。</string>
+    <string name="activate_by_wireless_description">在 Android 11 或更高版本上，您可以直接从设备启用无线调试并启动 AxManager，而无需连接到计算机。\n\n请先查看分步指南。</string>
+    <string name="enable_wireless_debugging_message">请在“开发者选项”中启用“无线调试”。 当网络更改时，“无线调试”会自动禁用。\n\n注意，不要禁用“开发者选项”或“USB 调试”，否则AxManager将会停止。</string>
+    <string name="home_update">需要重新激活</string>
+    <string name="notification_warn_miui">MIUI用户可能需要在系统设置中将通知样式从“通知”-“通知阴影”切换到“Android”。</string>
+    <string name="notification_warn_miui_2">否则，您可能无法从通知中输入配对码。</string>
+    <string name="activate_by_root"><![CDATA[此外，AxManager 可以在启动时自动启动。 如果没有，请检查您的系统或第三方工具是否限制了 AXManager。<br>你可以参考%s.]]></string>
+</resources>
