@@ -3,9 +3,15 @@ package frb.axeron.server
 import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
+import android.os.Parcel
+import frb.axeron.server.api.ShizukuIntercept
 import frb.axeron.server.util.Logger
 import frb.axeron.server.util.UserHandleCompat
+import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_ENV
+import frb.axeron.shared.ShizukuApiConstant.ATTACH_APPLICATION_API_VERSION
+import frb.axeron.shared.ShizukuApiConstant.ATTACH_APPLICATION_PACKAGE_NAME
+import frb.axeron.shared.ShizukuApiConstant.BINDER_TRANSACTION_transact
 import moe.shizuku.server.IRemoteProcess
 import moe.shizuku.server.IShizukuApplication
 import moe.shizuku.server.IShizukuService
@@ -13,7 +19,7 @@ import moe.shizuku.server.IShizukuServiceConnection
 import rikka.hidden.compat.ActivityManagerApis
 import rikka.hidden.compat.PackageManagerApis
 
-class ShizukuServiceIntercept(val axeronService: IAxeronService) : IShizukuService.Stub() {
+class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizukuService.Stub() {
     companion object {
         val LOGGER = Logger("ShizukuServiceIntercept")
     }
@@ -23,11 +29,11 @@ class ShizukuServiceIntercept(val axeronService: IAxeronService) : IShizukuServi
     }
 
     override fun getUid(): Int {
-        return axeronService.serverInfo.uid
+        return shizukuIntercept.getServerInfo().uid
     }
 
     override fun checkPermission(permission: String?): Int {
-        return axeronService.checkPermission(permission)
+        return shizukuIntercept.checkPermission(permission)
     }
 
     override fun newProcess(
@@ -35,55 +41,55 @@ class ShizukuServiceIntercept(val axeronService: IAxeronService) : IShizukuServi
         env: Array<out String?>?,
         dir: String?
     ): IRemoteProcess {
-        return axeronService.newProcess(cmd, env ?: axeronService.getEnvironment(TYPE_ENV).env, dir)
+        return shizukuIntercept.newProcess(cmd, env ?: shizukuIntercept.getEnvironment(TYPE_ENV).env, dir)
     }
 
     override fun getSELinuxContext(): String {
-        return axeronService.serverInfo.selinuxContext
+        return shizukuIntercept.getServerInfo().selinuxContext
     }
 
     override fun getSystemProperty(
         name: String?,
         defaultValue: String?
     ): String {
-        return axeronService.getSystemProperty(name, defaultValue)
+        return shizukuIntercept.getSystemProperty(name, defaultValue)
     }
 
     override fun setSystemProperty(name: String?, value: String?) {
-        axeronService.setSystemProperty(name, value)
+        shizukuIntercept.setSystemProperty(name, value)
     }
 
     override fun addUserService(
         conn: IShizukuServiceConnection?,
         args: Bundle?
     ): Int {
-        return axeronService.addUserService(conn, args)
+        return shizukuIntercept.addUserService(conn, args)
     }
 
     override fun removeUserService(
         conn: IShizukuServiceConnection?,
         args: Bundle?
     ): Int {
-        return axeronService.removeUserService(conn, args)
+        return shizukuIntercept.removeUserService(conn, args)
     }
 
     override fun requestPermission(requestCode: Int) {
-        return axeronService.requestPermission(requestCode)
+        return shizukuIntercept.requestPermission(requestCode)
     }
 
     override fun checkSelfPermission(): Boolean {
-        return axeronService.checkSelfPermission()
+        return shizukuIntercept.checkSelfPermission()
     }
 
     override fun shouldShowRequestPermissionRationale(): Boolean {
-        return axeronService.shouldShowRequestPermissionRationale()
+        return shizukuIntercept.shouldShowRequestPermissionRationale()
     }
 
     override fun attachApplication(
         application: IShizukuApplication?,
         args: Bundle?
     ) {
-        axeronService.attachApplication(application, args)
+        shizukuIntercept.attachApplication(application, args)
     }
 
     override fun exit() {
@@ -91,7 +97,7 @@ class ShizukuServiceIntercept(val axeronService: IAxeronService) : IShizukuServi
         val userId = UserHandleCompat.getUserId(callingUid)
         LOGGER.i("exit: CallingUid:%s, UserId:%s", callingUid, userId)
         val packages = PackageManagerApis.getPackagesForUidNoThrow(callingUid)
-        axeronService.enableShizukuService(false)
+        shizukuIntercept.enableShizukuService(false)
         if (packages.size == 1) {
             LOGGER.i("exit: Force Stop %s", packages[0])
             ActivityManagerApis.forceStopPackageNoThrow(packages[0], userId)
@@ -99,11 +105,11 @@ class ShizukuServiceIntercept(val axeronService: IAxeronService) : IShizukuServi
     }
 
     override fun attachUserService(binder: IBinder?, options: Bundle) {
-        axeronService.attachUserService(binder, options)
+        shizukuIntercept.attachUserService(binder, options)
     }
 
     override fun dispatchPackageChanged(intent: Intent?) {
-        axeronService.dispatchPackageChanged(intent)
+        shizukuIntercept.dispatchPackageChanged(intent)
     }
 
     override fun isHidden(uid: Int): Boolean {
@@ -116,14 +122,33 @@ class ShizukuServiceIntercept(val axeronService: IAxeronService) : IShizukuServi
         requestCode: Int,
         data: Bundle?
     ) {
-        axeronService.dispatchPermissionConfirmationResult(requestUid, requestPid, requestCode, data)
+        shizukuIntercept.dispatchPermissionConfirmationResult(requestUid, requestPid, requestCode, data)
     }
 
     override fun getFlagsForUid(uid: Int, mask: Int): Int {
-        return axeronService.getFlagsForUid(uid, mask)
+        return shizukuIntercept.getFlagsForUid(uid, mask)
     }
 
     override fun updateFlagsForUid(uid: Int, mask: Int, value: Int) {
-        axeronService.updateFlagsForUid(uid, mask, value)
+        shizukuIntercept.updateFlagsForUid(uid, mask, value)
+    }
+
+    override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+        if (code == BINDER_TRANSACTION_transact) {
+            data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+            shizukuIntercept.transactRemote(data, reply, flags)
+            return true
+        } else if (code == 14) {
+            data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+            val binder = data.readStrongBinder()
+            val packageName = data.readString()
+            val args = Bundle()
+            args.putString(ATTACH_APPLICATION_PACKAGE_NAME, packageName)
+            args.putInt(ATTACH_APPLICATION_API_VERSION, -1)
+            attachApplication(IShizukuApplication.Stub.asInterface(binder), args)
+            reply!!.writeNoException()
+            return true
+        }
+        return super.onTransact(code, data, reply, flags)
     }
 }

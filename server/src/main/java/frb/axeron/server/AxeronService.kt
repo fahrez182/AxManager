@@ -368,7 +368,7 @@ open class AxeronService() :
         getManagerApplicationInfo() ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
 
         if (axCompanion.exists()) {
-            shizuku = ShizukuServiceIntercept(asInterface(this))
+            shizuku = ShizukuServiceIntercept(this)
         }
 
         // make ApkChangedObservers lazy or start on-demand; and keep reference to listener so you can stop it
@@ -407,7 +407,7 @@ open class AxeronService() :
         if (enable) {
             if (axCompanion.createNewFile()) {
                 LOGGER.i("AX-Scope")
-                shizuku = ShizukuServiceIntercept(asInterface(this))
+                shizuku = ShizukuServiceIntercept(this)
             }
         } else {
             if (axCompanion.delete()) {
@@ -508,11 +508,9 @@ open class AxeronService() :
         enforceCallingPermission("newProcess")
 
         LOGGER.d(
-            "newProcess: uid=%d, cmd=%s, env=%s, dir=%s",
+            "newProcess: uid=%d, cmd=%s",
             getCallingUid(),
-            cmd.contentToString(),
-            env.contentToString(),
-            dir
+            cmd.contentToString()
         )
 
         val process: Process?
