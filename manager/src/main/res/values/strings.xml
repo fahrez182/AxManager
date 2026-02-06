@@ -143,6 +143,8 @@
     <string name="privilege_manager">Privilege Manager</string>
     <string name="search_label_apps">Search Apps</string>
     <string name="quick_shell">QuickShell</string>
+    <string name="quick_shell_short">QShell</string>
+    <string name="quick_shell_not_supported">Please activate AxManager first</string>
     <string name="save">Save</string>
     <string name="exec">Exec</string>
     <string name="send">Send</string>

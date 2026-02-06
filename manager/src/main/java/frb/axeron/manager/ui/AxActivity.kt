@@ -84,13 +84,13 @@ class AxActivity : ComponentActivity() {
         const val OPEN_QUICK_SHELL = "AxManager.QUICK_SHELL"
     }
 
-    var zipUri by mutableStateOf<ArrayList<PluginInstaller>?>(null)
+    var zipUri by mutableStateOf<List<PluginInstaller>?>(emptyList())
 
     val shortcut by lazy {
         ShortcutInfoCompat.Builder(this, "quick-shell")
-            .setShortLabel("Q-Shell")
-            .setLongLabel("QuickShell")
-            .setDisabledMessage("Please activate AxManager first")
+            .setShortLabel(getString(R.string.quick_shell_short))
+            .setLongLabel(getString(R.string.quick_shell))
+            .setDisabledMessage(getString(R.string.quick_shell_not_supported))
             .setIcon(IconCompat.createWithResource(this, R.drawable.terminal))
             .setIntent(
                 Intent(this, AxActivity::class.java).apply {

@@ -60,6 +60,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import frb.axeron.adb.AdbPairingService
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
@@ -289,6 +290,10 @@ fun WirelessDebuggingCard(
     ) {
         activateViewModel.startAdbWireless(context) { ai ->
             activateViewModel.setTryToActivate(false)
+            if (ai is AdbStateInfo.Success) {
+                val intent = AdbPairingService.stopIntent(context)
+                context.startService(intent)
+            }
         }
     }
 
@@ -426,6 +431,9 @@ fun WirelessDebuggingCard(
                             activateViewModel.setTryToActivate(false)
                             if (ai is AdbStateInfo.Failed) {
                                 activateViewModel.startPairingService(context)
+                            } else if (ai is AdbStateInfo.Success) {
+                                val intent = AdbPairingService.stopIntent(context)
+                                context.startService(intent)
                             }
                         }
                     }
