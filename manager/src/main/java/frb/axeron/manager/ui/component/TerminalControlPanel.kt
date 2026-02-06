@@ -2,6 +2,7 @@ package frb.axeron.manager.ui.component
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -45,12 +46,12 @@ fun TerminalControlPanel(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TerminalKeyIcon(Icons.Default.KeyboardTab) { onKeyPress("\t") }
+            TerminalKeyIcon(Icons.AutoMirrored.Filled.KeyboardTab) { onKeyPress("\t") }
             TerminalKey("CTRL", isPressed = isCtrlPressed) { onKeyPress("CTRL") }
             TerminalKey("ALT", isPressed = isAltPressed) { onKeyPress("ALT") }
-            TerminalKeyIcon(Icons.Default.KeyboardArrowLeft) { onKeyPress("\u001b[D") }
+            TerminalKeyIcon(Icons.AutoMirrored.Filled.KeyboardArrowLeft) { onKeyPress("\u001b[D") }
             TerminalKeyIcon(Icons.Default.KeyboardArrowDown) { onKeyPress("\u001b[B") }
-            TerminalKeyIcon(Icons.Default.KeyboardArrowRight) { onKeyPress("\u001b[C") }
+            TerminalKeyIcon(Icons.AutoMirrored.Filled.KeyboardArrowRight) { onKeyPress("\u001b[C") }
             TerminalKey("PGDN") { onKeyPress("\u001b[6~") }
         }
     }
