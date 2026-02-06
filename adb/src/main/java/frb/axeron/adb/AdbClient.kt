@@ -41,6 +41,11 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     private val inputStream get() = if (useTls) tlsInputStream else plainInputStream
     private val outputStream get() = if (useTls) tlsOutputStream else plainOutputStream
 
+    private var localIdCounter = 1
+    private var shellLocalId = -1
+    private var shellRemoteId = -1
+    private var shellListener: ((ByteArray) -> Unit)? = null
+
     fun connect() {
         val socket = Socket()
         val address = InetSocketAddress(host, port)
@@ -87,8 +92,61 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         command("shell:$cmd", listener)
     }
 
+    @Synchronized
+    fun startShell(listener: (ByteArray) -> Unit) {
+        if (shellLocalId != -1) return
+        shellListener = listener
+        shellLocalId = localIdCounter++
+        write(A_OPEN, shellLocalId, 0, "shell:")
+
+        Thread {
+            try {
+                while (shellLocalId != -1) {
+                    val message = read()
+                    when (message.command) {
+                        A_OKAY -> {
+                            shellRemoteId = message.arg0
+                            Log.d(TAG, "Shell opened: local=$shellLocalId, remote=$shellRemoteId")
+                        }
+                        A_WRTE -> {
+                            if (message.data_length > 0) {
+                                shellListener?.invoke(message.data!!)
+                            }
+                            write(A_OKAY, shellLocalId, shellRemoteId)
+                        }
+                        A_CLSE -> {
+                            Log.d(TAG, "Shell closed by remote")
+                            val remoteId = message.arg0
+                            write(A_CLSE, shellLocalId, remoteId)
+                            shellLocalId = -1
+                            shellRemoteId = -1
+                            break
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Shell read error", e)
+                shellLocalId = -1
+                shellRemoteId = -1
+            }
+        }.start()
+    }
+
+    @Synchronized
+    fun sendShellCommand(cmd: String) {
+        if (shellLocalId == -1 || shellRemoteId == -1) return
+        write(A_WRTE, shellLocalId, shellRemoteId, cmd + "\n")
+    }
+
+    @Synchronized
+    fun sendShellRaw(data: ByteArray) {
+        if (shellLocalId == -1 || shellRemoteId == -1) return
+        write(A_WRTE, shellLocalId, shellRemoteId, data)
+    }
+
+    @Synchronized
     fun command(cmd: String, listener: ((ByteArray) -> Unit)? = null) {
-        val localId = 1
+        val localId = localIdCounter++
         write(A_OPEN, localId, 0, cmd)
 
         var message = read()
@@ -120,10 +178,13 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         }
     }
 
+    @Synchronized
     private fun write(command: Int, arg0: Int, arg1: Int, data: ByteArray? = null) = write(AdbMessage(command, arg0, arg1, data))
 
+    @Synchronized
     private fun write(command: Int, arg0: Int, arg1: Int, data: String) = write(AdbMessage(command, arg0, arg1, data))
 
+    @Synchronized
     private fun write(message: AdbMessage) {
         outputStream.write(message.toByteArray())
         outputStream.flush()
