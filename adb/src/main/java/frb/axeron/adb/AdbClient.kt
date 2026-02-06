@@ -22,12 +22,14 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.Executors
 import javax.net.ssl.SSLSocket
 
 private const val TAG = "AdbClient"
 
 class AdbClient(private val key: AdbKey, private val port: Int, private val host: String = "127.0.0.1") : Closeable {
 
+    private val writeExecutor = Executors.newSingleThreadExecutor()
     private lateinit var socket: Socket
     private lateinit var plainInputStream: DataInputStream
     private lateinit var plainOutputStream: DataOutputStream
@@ -45,6 +47,7 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     private var shellLocalId = -1
     private var shellRemoteId = -1
     private var shellListener: ((ByteArray) -> Unit)? = null
+    var onConnectionChanged: ((String) -> Unit)? = null
 
     fun connect() {
         val socket = Socket()
@@ -93,16 +96,31 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     }
 
     @Synchronized
-    fun startShell(listener: (ByteArray) -> Unit) {
+    fun startShell(autoReconnect: Boolean = true, listener: (ByteArray) -> Unit) {
         if (shellLocalId != -1) return
         shellListener = listener
+        openShell(autoReconnect)
+    }
+
+    private fun openShell(autoReconnect: Boolean) {
         shellLocalId = localIdCounter++
-        write(A_OPEN, shellLocalId, 0, "shell:")
+        try {
+            write(A_OPEN, shellLocalId, 0, "shell:")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open shell", e)
+            if (autoReconnect) retryReconnect(listener = shellListener!!)
+            return
+        }
 
         Thread {
             try {
                 while (shellLocalId != -1) {
-                    val message = read()
+                    val message = try {
+                        read()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Read error, handling disconnect", e)
+                        break
+                    }
                     when (message.command) {
                         A_OKAY -> {
                             shellRemoteId = message.arg0
@@ -125,23 +143,54 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Shell read error", e)
+                Log.e(TAG, "Shell thread error", e)
+            } finally {
                 shellLocalId = -1
                 shellRemoteId = -1
+                if (autoReconnect) {
+                    retryReconnect(listener = shellListener!!)
+                }
             }
         }.start()
     }
 
-    @Synchronized
-    fun sendShellCommand(cmd: String) {
-        if (shellLocalId == -1 || shellRemoteId == -1) return
-        write(A_WRTE, shellLocalId, shellRemoteId, cmd + "\n")
+    private fun retryReconnect(listener: (ByteArray) -> Unit) {
+        Thread {
+            onConnectionChanged?.invoke("Reconnecting...")
+            Thread.sleep(2000)
+            try {
+                connect()
+                onConnectionChanged?.invoke("Connected")
+                openShell(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Reconnect failed", e)
+                retryReconnect(listener)
+            }
+        }.start()
     }
 
-    @Synchronized
+    fun sendShellCommand(cmd: String) {
+        if (shellLocalId == -1 || shellRemoteId == -1) return
+        writeAsync(AdbMessage(A_WRTE, shellLocalId, shellRemoteId, cmd + "\n"))
+    }
+
     fun sendShellRaw(data: ByteArray) {
         if (shellLocalId == -1 || shellRemoteId == -1) return
-        write(A_WRTE, shellLocalId, shellRemoteId, data)
+        writeAsync(AdbMessage(A_WRTE, shellLocalId, shellRemoteId, data))
+    }
+
+    private fun writeAsync(message: AdbMessage) {
+        writeExecutor.execute {
+            synchronized(this@AdbClient) {
+                try {
+                    outputStream.write(message.toByteArray())
+                    outputStream.flush()
+                    Log.d(TAG, "write async ${message.toStringShort()}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Write async failed", e)
+                }
+            }
+        }
     }
 
     @Synchronized
@@ -216,6 +265,7 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     }
 
     override fun close() {
+        writeExecutor.shutdownNow()
         try {
             plainInputStream.close()
         } catch (e: Throwable) {

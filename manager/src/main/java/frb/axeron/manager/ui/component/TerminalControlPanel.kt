@@ -1,28 +1,9 @@
 package frb.axeron.manager.ui.component
 
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Input
-import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,60 +14,71 @@ import androidx.compose.ui.unit.dp
 fun TerminalControlPanel(
     onKeyPress: (String) -> Unit,
     onHistoryNavigate: (Boolean) -> Unit,
+    isCtrlPressed: Boolean = false,
+    isAltPressed: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        TerminalKey(label = "ESC", onClick = { onKeyPress("\u001b") })
-        TerminalKey(label = "TAB", onClick = { onKeyPress("\t") })
-        TerminalKey(label = "Ctrl-C", onClick = { onKeyPress("\u0003") })
-        TerminalKeyIcon(icon = Icons.AutoMirrored.Filled.KeyboardReturn, label = "Enter", onClick = { onKeyPress("\n") })
+        // Row 1: ESC, /, -, HOME, (up), END, PGUP
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TerminalKey("ESC") { onKeyPress("\u001b") }
+            TerminalKey("/") { onKeyPress("/") }
+            TerminalKey("-") { onKeyPress("-") }
+            TerminalKey("HOME") { onKeyPress("\u001b[H") }
+            TerminalKeyIcon(Icons.Default.KeyboardArrowUp) { onKeyPress("\u001b[A") }
+            TerminalKey("END") { onKeyPress("\u001b[F") }
+            TerminalKey("PGUP") { onKeyPress("\u001b[5~") }
+        }
 
-        TerminalKeyIcon(icon = Icons.Default.KeyboardArrowUp, onClick = { onKeyPress("\u001b[A") })
-        TerminalKeyIcon(icon = Icons.Default.KeyboardArrowDown, onClick = { onKeyPress("\u001b[B") })
-        TerminalKeyIcon(icon = Icons.Default.KeyboardArrowLeft, onClick = { onKeyPress("\u001b[D") })
-        TerminalKeyIcon(icon = Icons.Default.KeyboardArrowRight, onClick = { onKeyPress("\u001b[C") })
-
-        TerminalKeyIcon(icon = Icons.Default.ArrowUpward, label = "Hist", onClick = { onHistoryNavigate(true) })
-        TerminalKeyIcon(icon = Icons.Default.ArrowDownward, label = "Hist", onClick = { onHistoryNavigate(false) })
-
-        TerminalKey(label = "HOME", onClick = { onKeyPress("\u001b[H") })
-        TerminalKey(label = "END", onClick = { onKeyPress("\u001b[F") })
+        // Row 2: TAB, CTRL, ALT, (left), (down), (right), PGDN
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TerminalKeyIcon(Icons.Default.KeyboardTab) { onKeyPress("\t") }
+            TerminalKey("CTRL", isPressed = isCtrlPressed) { onKeyPress("CTRL") }
+            TerminalKey("ALT", isPressed = isAltPressed) { onKeyPress("ALT") }
+            TerminalKeyIcon(Icons.Default.KeyboardArrowLeft) { onKeyPress("\u001b[D") }
+            TerminalKeyIcon(Icons.Default.KeyboardArrowDown) { onKeyPress("\u001b[B") }
+            TerminalKeyIcon(Icons.Default.KeyboardArrowRight) { onKeyPress("\u001b[C") }
+            TerminalKey("PGDN") { onKeyPress("\u001b[6~") }
+        }
     }
 }
 
 @Composable
-fun TerminalKey(label: String, onClick: () -> Unit) {
-    AssistChip(
+fun TerminalKey(label: String, isPressed: Boolean = false, onClick: () -> Unit) {
+    TextButton(
         onClick = onClick,
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier
+            .height(36.dp)
+            .widthIn(min = 44.dp)
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
-    )
+    }
 }
 
 @Composable
-fun TerminalKeyIcon(icon: ImageVector, label: String? = null, onClick: () -> Unit) {
-    AssistChip(
+fun TerminalKeyIcon(icon: ImageVector, onClick: () -> Unit) {
+    IconButton(
         onClick = onClick,
-        label = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
-                if (label != null) {
-                    Text(label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 4.dp))
-                }
-            }
-        },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    )
+        modifier = Modifier.size(36.dp)
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
+    }
 }

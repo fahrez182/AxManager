@@ -4,14 +4,14 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,8 +22,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -83,10 +85,14 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.ramcosta.composedestinations.annotation.Destination
@@ -385,45 +391,48 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             }
 
 
-            val hScroll = rememberScrollState()
+            if (viewModel.isAdvancedMode) {
+                TerminalView(viewModel)
+            } else {
+                val hScroll = rememberScrollState()
+                val context = LocalContext.current
 
-            val context = LocalContext.current
-
-            SelectionContainer(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-            ) {
-                Box(
+                SelectionContainer(
                     modifier = Modifier
-                        .horizontalScroll(hScroll)
+                        .padding(horizontal = 8.dp)
                 ) {
-                    LazyColumn(
-                        state = listState,
+                    Box(
+                        modifier = Modifier
+                            .horizontalScroll(hScroll)
                     ) {
-                        item {
-                            Spacer(modifier = Modifier.size(70.dp))
-                        }
-                        items(logs) { line ->
-                            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                    .loadState(context, line.type, true)
-                            ) return@items
-                            BasicText(
-                                text = line.output.parseAsAnsiAnnotatedString(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
-                                    lineHeightStyle = LineHeightStyle(
-                                        alignment = LineHeightStyle.Alignment.Center,
-                                        trim = LineHeightStyle.Trim.Both
+                        LazyColumn(
+                            state = listState,
+                        ) {
+                            item {
+                                Spacer(modifier = Modifier.size(70.dp))
+                            }
+                            items(logs) { line ->
+                                if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
+                                        .loadState(context, line.type, true)
+                                ) return@items
+                                BasicText(
+                                    text = line.output.parseAsAnsiAnnotatedString(),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
+                                        lineHeightStyle = LineHeightStyle(
+                                            alignment = LineHeightStyle.Alignment.Center,
+                                            trim = LineHeightStyle.Trim.Both
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontFamily = FontFamily.Monospace
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace
-                                ),
-                                softWrap = false,
-                            )
-                        }
+                                    softWrap = false,
+                                )
+                            }
 
-                        item {
-                            Spacer(modifier = Modifier.size(if (viewModel.isAdvancedMode) 100.dp else 22.dp))
+                            item {
+                                Spacer(modifier = Modifier.size(22.dp))
+                            }
                         }
                     }
                 }
@@ -439,7 +448,9 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 ) {
                     TerminalControlPanel(
                         onKeyPress = { viewModel.sendSpecialKey(it) },
-                        onHistoryNavigate = { viewModel.navigateHistory(it) }
+                        onHistoryNavigate = { viewModel.navigateHistory(it) },
+                        isCtrlPressed = viewModel.isCtrlPressed,
+                        isAltPressed = viewModel.isAltPressed
                     )
                 }
 
@@ -526,6 +537,89 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 
         }
     }
+}
+
+@Composable
+fun TerminalView(viewModel: QuickShellViewModel) {
+    val emulator = viewModel.terminalEmulator
+    val lines = emulator.outputLines
+    val cursorRow = emulator.cursorRow
+    val cursorCol = emulator.cursorCol
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF000000))
+            .padding(top = 60.dp) // Space for TopAppBar
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(4.dp)
+        ) {
+            lines.forEachIndexed { index, line ->
+                TerminalLine(
+                    line = line,
+                    isCursorLine = index == cursorRow,
+                    cursorCol = cursorCol
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TerminalLine(line: AnnotatedString, isCursorLine: Boolean, cursorCol: Int) {
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    Box {
+        BasicText(
+            text = line,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                color = Color(0xFFE5E5E5),
+                fontSize = 12.sp,
+                lineHeight = 14.sp
+            ),
+            onTextLayout = { textLayoutResult = it }
+        )
+        if (isCursorLine && textLayoutResult != null) {
+            val cursorOffset = if (cursorCol < line.length) {
+                textLayoutResult?.getHorizontalPosition(cursorCol, true) ?: 0f
+            } else {
+                textLayoutResult?.getLineRight(0) ?: 0f
+            }
+
+            val density = LocalDensity.current
+            BlinkingCursor(
+                offset = with(density) { cursorOffset.toDp() },
+                height = with(density) { 14.sp.toDp() }
+            )
+        }
+    }
+}
+
+@Composable
+fun BlinkingCursor(offset: Dp, height: Dp) {
+    val infiniteTransition = rememberInfiniteTransition(label = "cursor")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Box(
+        Modifier
+            .padding(start = offset)
+            .width(8.dp)
+            .height(height)
+            .background(Color.White.copy(alpha = alpha))
+    )
 }
 
 @Composable
