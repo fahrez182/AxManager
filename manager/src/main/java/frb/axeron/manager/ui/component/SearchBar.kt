@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,9 +37,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import frb.axeron.manager.R
 
 private const val TAG = "SearchBar"
 
@@ -48,7 +49,7 @@ private const val TAG = "SearchBar"
 @Composable
 fun SearchAppBar(
     title: @Composable () -> Unit,
-    searchLabel: String = "Search",
+    searchLabel: String = stringResource(R.string.search_label),
     searchText: String,
     onSearchTextChange: (String) -> Unit,
     onClearClick: () -> Unit,

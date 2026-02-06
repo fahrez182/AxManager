@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
@@ -281,6 +282,7 @@ class AxActivity : ComponentActivity() {
                         val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(
                             destination.direction
                         )
+                        val label = stringResource(id = destination.labelId)
                         NavigationBarItem(
                             selected = isCurrentDestOnBackStack,
                             onClick = {
@@ -301,27 +303,27 @@ class AxActivity : ComponentActivity() {
                                         if (isCurrentDestOnBackStack) {
                                             Icon(
                                                 destination.iconSelected,
-                                                destination.label
+                                                label
                                             )
                                         } else {
                                             Icon(
                                                 destination.iconNotSelected,
-                                                destination.label
+                                                label
                                             )
                                         }
                                     }
                                 } else {
                                     if (isCurrentDestOnBackStack) Icon(
                                         imageVector = destination.iconSelected,
-                                        contentDescription = destination.label
+                                        contentDescription = label
                                     ) else Icon(
                                         imageVector = destination.iconNotSelected,
-                                        contentDescription = destination.label
+                                        contentDescription = label
                                     )
                                 }
                             },
                             label = {
-                                Text(destination.label)
+                                Text(label)
                             },
                             alwaysShowLabel = false
                         )

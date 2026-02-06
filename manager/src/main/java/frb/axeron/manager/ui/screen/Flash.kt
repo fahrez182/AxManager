@@ -64,6 +64,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -81,6 +82,7 @@ import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.BuildConfig
+import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.component.rememberLoadingDialog
@@ -156,7 +158,7 @@ fun InstallDialog(
             ) {
 
                 Text(
-                    text = "Install Plugin?",
+                    text = stringResource(R.string.ask_install_plugin),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -164,7 +166,7 @@ fun InstallDialog(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "The following modules will be installed:",
+                    text = stringResource(R.string.ask_install_plugin_msg),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -220,9 +222,9 @@ fun InstallDialog(
                                     )
                                     Text(
                                         text = if (pluginInstaller.autoEnable)
-                                            "Auto enabled after install"
+                                            stringResource(R.string.auto_enable_plugin)
                                         else
-                                            "Will remain disabled",
+                                            stringResource(R.string.manual_enable_plugin),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -248,7 +250,7 @@ fun InstallDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
@@ -256,7 +258,7 @@ fun InstallDialog(
                             onConfirm(FlashIt.FlashPlugins(installers))
                         }
                     ) {
-                        Text("Install")
+                        Text(stringResource(R.string.install))
                     }
                 }
             }
@@ -331,6 +333,8 @@ fun FlashScreen(
     var text by rememberSaveable { mutableStateOf("") }
     var hasFlashed by rememberSaveable { mutableStateOf(false) }
 
+    val errorSaveLog = stringResource(R.string.log_error_code)
+
     LaunchedEffect(pendingFlashIt) {
         Log.d("FlashScreen", "flashing: $flashing")
         if (pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
@@ -361,7 +365,7 @@ fun FlashScreen(
             withContext(Dispatchers.Main) {
                 var finalLogText = ""
                 if (result.code != 0) {
-                    finalLogText += "Error code: ${result.code}.\n ${result.err} Please save and check the log.\n"
+                    finalLogText += errorSaveLog.format(result.code, result.err)
                 }
                 if (result.showReboot) {
                     finalLogText += "\n\n\n"
@@ -381,6 +385,8 @@ fun FlashScreen(
 
     Scaffold(
         topBar = {
+            val logSaved = stringResource(R.string.log_saved_to)
+            val logFailed = stringResource(R.string.failed_to_save_log)
             TopBar(
                 flashing,
                 onBack = dropUnlessResumed {
@@ -406,9 +412,9 @@ fun FlashScreen(
                             fos.write("$logContent\n".toByteArray())
                             fos.flush()
 
-                            snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")
+                            snackBarHost.showSnackbar(logSaved.format(file.absolutePath))
                         } catch (e: Exception) {
-                            snackBarHost.showSnackbar("Failed to save logs: ${e.message}")
+                            snackBarHost.showSnackbar(logFailed.format(e.message))
                         }
                     }
                 },
@@ -429,7 +435,7 @@ fun FlashScreen(
                         }
                     },
                     icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                    text = { Text(text = "Re-ignite & Close") }
+                    text = { Text(text = stringResource(R.string.re_ignite_and_close)) }
                 )
             }
 
@@ -453,14 +459,14 @@ fun FlashScreen(
                         }
                     },
                     icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                    text = { Text(text = "Restart & Close") }
+                    text = { Text(text = stringResource(R.string.restart_and_close)) }
                 )
             }
 
             if (flashing == FlashingStatus.FAILED) {
                 // Close button for modules flashing
                 ExtendedFloatingActionButton(
-                    text = { Text(text = "Close") },
+                    text = { Text(text = stringResource(R.string.close)) },
                     icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                     onClick = {
                         navigator.popBackStack()
@@ -570,11 +576,11 @@ private fun TopBar(
         title = {
             Text(
                 when (status) {
-                    FlashingStatus.FLASHING -> "Flashing"
-                    FlashingStatus.SUCCESS -> "Success"
-                    FlashingStatus.FAILED -> "Failed"
+                    FlashingStatus.FLASHING -> stringResource(R.string.flashing)
+                    FlashingStatus.SUCCESS -> stringResource(R.string.success)
+                    FlashingStatus.FAILED -> stringResource(R.string.failed)
                     else -> {
-                        "Idle"
+                        stringResource(R.string.idle)
                     }
                 },
                 style = MaterialTheme.typography.titleLarge,

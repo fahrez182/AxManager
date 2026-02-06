@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +63,7 @@ import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActi
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
+import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
@@ -100,7 +102,7 @@ fun PluginConfig(
                 val context = LocalContext.current
 
                 SettingsItem(
-                    label = "WebUI Configuration",
+                    label = stringResource(R.string.web_ui_configuration),
                     iconVector = Icons.Outlined.Web,
                 ) { _, _ ->
                     HorizontalDivider(
@@ -112,8 +114,8 @@ fun PluginConfig(
                         type = SettingsItemType.CHILD,
                         enabled = plugin.hasWebUi,
                         iconVector = Icons.Outlined.Home,
-                        label = "Add Shortcut",
-                        description = "Add WebUI shortcut of this plugin to your homescreen",
+                        label = stringResource(R.string.add_web_ui_shortcut),
+                        description = stringResource(R.string.add_web_ui_shortcut_msg),
                         onClick = {
                             createWebUIShortcut(
                                 context = context,
@@ -266,13 +268,13 @@ fun PluginItem(
                         val reigniteLoading = rememberLoadingDialog()
                         val scope = rememberCoroutineScope()
 
-                        val moduleVersion = "Version"
-                        val moduleAuthor = "Author"
-                        val moduleId = "ID"
-                        val moduleVersionCode = "VersionCode"
-                        val moduleAxeronPlugin = "AxeronPlugin"
-                        val moduleUpdateJson = "UpdateJson"
-                        val moduleUpdateJsonEmpty = "Empty"
+                        val pluginVersion = stringResource(R.string.plugin_version)
+                        val pluginAuthor = stringResource(R.string.plugin_author)
+                        val pluginId = stringResource(R.string.plugin_id)
+                        val pluginVersionCode = stringResource(R.string.plugin_version_code)
+                        val pluginAxeronSupport = stringResource(R.string.plugin_axeron_support)
+                        val pluginUpdateJson = stringResource(R.string.plugin_update_json)
+                        val pluginUpdateJsonEmpty = stringResource(R.string.plugin_update_json_empty)
 
                         Column(
                             modifier = Modifier.fillMaxWidth(0.8f)
@@ -293,12 +295,16 @@ fun PluginItem(
                                     }
                                 )
                                 if (plugin.update) {
+                                    val title = stringResource(R.string.what_is_ignite)
+                                    val content = stringResource(R.string.what_is_ignite_msg)
+                                    val confirm = stringResource(R.string.understand)
+                                    val neutral = stringResource(R.string.re_ignite_now)
                                     ExtraLabel(
-                                        text = "Ignite" + when {
-                                            plugin.updateInstall -> " → Install"
-                                            plugin.updateRemove -> " → Uninstall"
-                                            plugin.updateDisable -> " → Disable"
-                                            plugin.updateEnable -> " → Enable"
+                                        text = stringResource(R.string.ignite) + when {
+                                            plugin.updateInstall -> " → ${stringResource(R.string.install)}"
+                                            plugin.updateRemove -> " → ${stringResource(R.string.uninstall)}"
+                                            plugin.updateDisable -> " → ${stringResource(R.string.disable)}"
+                                            plugin.updateEnable -> " → ${stringResource(R.string.enable)}"
                                             else -> ""
                                         },
                                         style = ExtraLabelDefaults.style.copy(
@@ -308,10 +314,10 @@ fun PluginItem(
                                         onClick = {
                                             scope.launch {
                                                 val result = confirmDialog.awaitConfirm(
-                                                    "What is Ignite?",
-                                                    content = "Ignite was a replace method of reboot in AxManager, you can ignite on Home > Reignite",
-                                                    confirm = "I understand",
-                                                    neutral = "Re-ignite now"
+                                                    title,
+                                                    content = content,
+                                                    confirm = confirm,
+                                                    neutral = neutral
                                                 )
                                                 if (result == ConfirmResult.Neutral) {
                                                     val success = reigniteLoading.withLoading {
@@ -331,7 +337,7 @@ fun PluginItem(
 
                                 if (updateUrl.isNotEmpty() && !plugin.remove && !plugin.update) {
                                     ExtraLabel(
-                                        text = "Update",
+                                        text = stringResource(R.string.update),
                                         style = ExtraLabelDefaults.style.copy(
                                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -341,7 +347,7 @@ fun PluginItem(
                                 if (plugin.enabled && !plugin.remove && !plugin.update) {
                                     if (plugin.hasWebUi) {
                                         ExtraLabel(
-                                            text = "WebUI",
+                                            text = stringResource(R.string.web_ui),
                                             style = ExtraLabelDefaults.style.copy(
                                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -350,7 +356,7 @@ fun PluginItem(
                                     }
                                     if (plugin.hasActionScript) {
                                         ExtraLabel(
-                                            text = "Action",
+                                            text = stringResource(R.string.action),
                                             style = ExtraLabelDefaults.style.copy(
                                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -371,7 +377,7 @@ fun PluginItem(
                             )
 
                             Text(
-                                text = "$moduleVersion: ${plugin.prop.version}",
+                                text = "$pluginVersion: ${plugin.prop.version}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -379,7 +385,7 @@ fun PluginItem(
                             )
 
                             Text(
-                                text = "$moduleAuthor: ${plugin.prop.author}",
+                                text = "$pluginAuthor: ${plugin.prop.author}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -393,7 +399,7 @@ fun PluginItem(
                             ) {
                                 Column {
                                     Text(
-                                        text = "$moduleId: ${plugin.prop.id}",
+                                        text = "$pluginId: ${plugin.prop.id}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -401,7 +407,7 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = "$moduleVersionCode: ${plugin.prop.versionCode}",
+                                        text = "$pluginVersionCode: ${plugin.prop.versionCode}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -409,7 +415,7 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = "$moduleAxeronPlugin: ${plugin.prop.axeronPlugin}",
+                                        text = "$pluginAxeronSupport: ${plugin.prop.axeronPlugin}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -417,7 +423,7 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = if (plugin.prop.updateJson.isNotEmpty()) "$moduleUpdateJson: ${plugin.prop.updateJson}" else "$moduleUpdateJson: $moduleUpdateJsonEmpty",
+                                        text = if (plugin.prop.updateJson.isNotEmpty()) "$pluginUpdateJson: ${plugin.prop.updateJson}" else "$pluginUpdateJson: $pluginUpdateJsonEmpty",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
@@ -492,7 +498,7 @@ fun PluginItem(
                                     if (!plugin.hasWebUi && updateUrl.isEmpty()) {
                                         Text(
                                             modifier = Modifier.padding(start = 7.dp),
-                                            text = "Action",
+                                            text = stringResource(R.string.action),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
                                             fontSize = MaterialTheme.typography.labelMedium.fontSize
                                         )
@@ -522,7 +528,7 @@ fun PluginItem(
                                             modifier = Modifier.padding(start = 7.dp),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
                                             fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                            text = "Open"
+                                            text = stringResource(R.string.open)
                                         )
                                     }
                                 }
@@ -550,7 +556,7 @@ fun PluginItem(
                                             modifier = Modifier.padding(start = 7.dp),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
                                             fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                            text = "Update"
+                                            text = stringResource(R.string.update)
                                         )
                                     }
                                 }
@@ -576,7 +582,7 @@ fun PluginItem(
                                             modifier = Modifier.padding(start = 7.dp),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
                                             fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                            text = "Restore"
+                                            text = stringResource(R.string.restore)
                                         )
                                     }
                                 }
@@ -599,7 +605,7 @@ fun PluginItem(
                                             modifier = Modifier.padding(start = 7.dp),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
                                             fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                            text = "Uninstall"
+                                            text = stringResource(R.string.uninstall)
                                         )
                                     }
                                 }

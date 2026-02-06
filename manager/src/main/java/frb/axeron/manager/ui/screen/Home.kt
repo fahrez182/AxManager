@@ -85,11 +85,11 @@ import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
+import frb.axeron.manager.ui.component.PluginCard
 import frb.axeron.manager.ui.component.PowerDialog
+import frb.axeron.manager.ui.component.PrivilegeCard
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
-import frb.axeron.manager.ui.screen.home.PluginCard
-import frb.axeron.manager.ui.screen.home.PrivilegeCard
 import frb.axeron.manager.ui.util.checkNewVersion
 import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
@@ -121,7 +121,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                         Column {
                             Text(
                                 modifier = Modifier.padding(start = 10.dp),
-                                text = "AxManager",
+                                text = stringResource(R.string.app_name),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
                             )
@@ -259,13 +259,13 @@ fun SupportCard() {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Support Me",
+                    text = stringResource(R.string.support_me),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "AxManager is completely free and open-source. If you find it useful, please follow the project and consider giving it a star on GitHub.",
+                    text = stringResource(R.string.support_me_msg),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -298,13 +298,13 @@ fun LearnCard() {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Learn AxManager",
+                    text = stringResource(R.string.learn_more),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Learn how to use AxManager and how to make a plugin",
+                    text = stringResource(R.string.learn_more_msg),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -349,12 +349,13 @@ fun StatusCard(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
     ) {
+        val updating = stringResource(R.string.updating)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
                     if (isUpdating) {
-                        Toast.makeText(context, "Updating...", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, updating, Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
                     if (isNeedExtraStep) {
@@ -403,13 +404,14 @@ fun StatusCard(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        val serverUpdatingVersion = stringResource(R.string.server_updating_version)
                         Text(
-                            text = "Updating...",
+                            text = updating,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Version: ${axeronInfo.getVersionCode()} > $VERSION_CODE",
+                            text = serverUpdatingVersion.format(axeronInfo.getVersionCode(), VERSION_CODE),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -447,12 +449,12 @@ fun StatusCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "Need extra step",
+                            text = stringResource(R.string.home_need_fix),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Click to see how to fix",
+                            text = stringResource(R.string.home_need_fix_msg),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -508,8 +510,10 @@ fun StatusCard(
                             )
                         }
 
+                        val versionPid = stringResource(R.string.version_pid)
+
                         Text(
-                            text = "Version: ${axeronInfo.getVersionCode()} | Pid: ${axeronInfo.serverInfo.pid}",
+                            text = versionPid.format(axeronInfo.getVersionCode(), axeronInfo.serverInfo.pid),
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -524,6 +528,8 @@ fun StatusCard(
                                 delay(1000)
                             }
                         }
+                        val daySingular = stringResource(R.string.day_singular)
+                        val dayPlural = stringResource(R.string.day_plural)
 
                         fun formatUptime(millis: Long): String {
                             val totalSeconds = millis / 1000
@@ -533,8 +539,8 @@ fun StatusCard(
                             val seconds = totalSeconds % 60
 
                             val dayPart = when {
-                                days == 1L -> "1 Day "
-                                days > 1 -> "$days Days "
+                                days == 1L -> "1 $daySingular "
+                                days > 1 -> "$days $dayPlural "
                                 else -> ""
                             }
 
@@ -583,12 +589,12 @@ fun StatusCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "Need to Activate",
+                            text = stringResource(R.string.home_not_running),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Click to activating AxManager",
+                            text = stringResource(R.string.home_not_running_msg),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -614,8 +620,9 @@ fun UpdateCard() {
     val changelog = newVersion.changelog
 
     val uriHandler = LocalUriHandler.current
-    val title = "Changelog"
-    val updateText = "Update"
+    val title = stringResource(R.string.changelog)
+    val updateText = stringResource(R.string.update)
+    val newVersionAvailable = stringResource(R.string.new_version_available)
 
     AnimatedVisibility(
         visible = newVersionCode > currentVersionCode,
@@ -624,7 +631,7 @@ fun UpdateCard() {
     ) {
         val updateDialog = rememberConfirmDialog(onConfirm = { uriHandler.openUri(newVersionUrl) })
         WarningCard(
-            message = "New version %s is available, click to update.".format(newVersionCode),
+            message = newVersionAvailable.format(newVersionCode),
             MaterialTheme.colorScheme.outlineVariant
         ) {
             if (changelog.isEmpty()) {
@@ -725,19 +732,19 @@ fun InfoCard(activateViewModel: ActivateViewModel) {
             }
 
             InfoCardItem(
-                label = "Android Version",
+                label = stringResource(R.string.android_version),
                 content = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
                 icon = Icons.Filled.Android,
             )
 
             InfoCardItem(
-                label = "ABI Supported",
+                label = stringResource(R.string.abi_supported),
                 content = Build.SUPPORTED_ABIS.joinToString(", "),
                 icon = Icons.Filled.Memory,
             )
 
             InfoCardItem(
-                label = "SELinux Context",
+                label = stringResource(R.string.selinux_context),
                 content = axeronInfo.serverInfo.selinuxContext,
                 icon = Icons.Filled.Security,
             )
@@ -762,20 +769,20 @@ fun IssueReportCard() {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Having Trouble?",
+                    text = stringResource(R.string.report_issue),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Encountered a bug or have feedback?",
+                    text = stringResource(R.string.report_issue_msg),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Report it as soon as possible!",
+                    text = stringResource(R.string.report_issue_msg2),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

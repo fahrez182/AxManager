@@ -28,6 +28,7 @@ appiconloader-coil = "1.5.0"
 mmrl = "v33890"
 hidden-api = "4.4.0"
 refine = "4.4.0"
+sheets-compose-dialogs = "1.3.0"
 compose-destination = "2.3.0"
 markdown = "4.6.2"
 annotationJvm = "1.9.1"
@@ -94,6 +95,10 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+sheet-compose-dialogs-core = { group = "com.maxkeppeler.sheets-compose-dialogs", name = "core", version.ref = "sheets-compose-dialogs" }
+sheet-compose-dialogs-list = { group = "com.maxkeppeler.sheets-compose-dialogs", name = "list", version.ref = "sheets-compose-dialogs" }
+sheet-compose-dialogs-input = { group = "com.maxkeppeler.sheets-compose-dialogs", name = "input", version.ref = "sheets-compose-dialogs" }
 
 
 [plugins]

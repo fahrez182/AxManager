@@ -89,4 +89,8 @@ dependencies {
     implementation(libs.hiddenapibypass)
     implementation(libs.ansi.library)
     implementation(libs.ansi.library.ktx)
+
+    implementation(libs.sheet.compose.dialogs.core)
+    implementation(libs.sheet.compose.dialogs.list)
+    implementation(libs.sheet.compose.dialogs.input)
 }

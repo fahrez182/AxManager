@@ -22,7 +22,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adb
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Edit
@@ -65,17 +64,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.rememberLifecycleOwner
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AppearanceScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.AppsScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
@@ -119,7 +117,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Settings",
+                            text = stringResource(R.string.settings),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -146,7 +144,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(vertical = 16.dp),
+                .padding(top = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
 
@@ -165,8 +163,8 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 }
                 SettingsItem(
                     iconPainter = painterResource(R.drawable.ic_axeron),
-                    label = "AX-Permission Intercept",
-                    description = "Intercept permission manager built on Shizuku-API using Ax-Environment",
+                    label = stringResource(R.string.axeron_permission),
+                    description = stringResource(R.string.axeron_permission_desc),
                     checked = activateViewModel.isShizukuActive,
                     onSwitchChange = {
                         activateViewModel.setShizukuIntercept(it)
@@ -176,8 +174,8 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 
             SettingsItem(
                 iconVector = Icons.Filled.Adb,
-                label = "TCP Mode",
-                description = "Allows AxManager to restart without Wi-Fi (AxManager must have started once since reboot)",
+                label = stringResource(R.string.tcp_mode),
+                description = stringResource(R.string.tcp_mode_desc),
                 checked = settings.isTcpModeEnabled,
                 onSwitchChange = {
                     settings.setTcpMode(it)
@@ -215,7 +213,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                                     }
                                 },
                                 label = {
-                                    Text("TCP Port")
+                                    Text(stringResource(R.string.tcp_port))
                                 },
                                 supportingText = {
                                     AnimatedVisibility(
@@ -223,7 +221,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                                         modifier = Modifier.padding(bottom = 6.dp)
                                     ) {
                                         Text(
-                                            text = "Port must be between 1024 and 65535",
+                                            text = stringResource(R.string.invalid_port),
                                             color = MaterialTheme.colorScheme.error
                                         )
                                     }
@@ -246,11 +244,12 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                                             )
                                         }
                                     } else if (settings.tcpPortInt != AdbEnvironment.getAdbTcpPort()) {
+                                        val reactiveToChange = stringResource(R.string.reactive_to_apply)
                                         IconButton(
                                             onClick = {
                                                 Toast.makeText(
                                                     context,
-                                                    "Re-Activate to apply changes",
+                                                    reactiveToChange,
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             }
@@ -282,8 +281,8 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 
             SettingsItem(
                 iconVector = Icons.Filled.RestartAlt,
-                label = "Activate on Boot",
-                description = "Auto activate AxManager on boot (Root / ADB on Android 11+ (Experimental))",
+                label = stringResource(R.string.active_on_boot),
+                description = stringResource(R.string.active_on_boot_desc),
                 checked = settings.isActivateOnBootEnabled,
                 onSwitchChange = {
                     settings.setActivateOnBoot(it)
@@ -293,8 +292,8 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 
             SettingsItem(
                 iconVector = Icons.Filled.Refresh,
-                label = "Relog to Ignite",
-                description = "When you relog AxManager will Re-Ignite",
+                label = stringResource(R.string.ignite_when_relog),
+                description = stringResource(R.string.ignite_when_relog_desc),
                 checked = settings.isIgniteWhenRelogEnabled,
                 onSwitchChange = {
                     settings.setIgniteWhenRelog(it)
@@ -302,20 +301,24 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             )
 
             AnimatedVisibility(visible = axeronRunning) {
+                val title = stringResource(R.string.ask_reset_path)
+                val content = stringResource(R.string.ask_reset_path_desc)
+                val confirm = stringResource(R.string.reset)
+                val dismiss = stringResource(R.string.cancel)
                 SettingsItem(
                     iconVector = Icons.Filled.FolderDelete,
-                    label = "Reset AxManager",
-                    description = "This action will disable and remove all of your plugins",
+                    label = stringResource(R.string.reset_path),
+                    description = stringResource(R.string.reset_path_desc),
                     onClick = {
                         scope.launch {
                             val confirmResult = confirmDialog.awaitConfirm(
-                                "Reset Now?",
-                                content = "This action will disable and remove all of your plugins\n\nat ${PathHelper.getWorkingPath(
+                                title,
+                                content = content.format(PathHelper.getWorkingPath(
                                     Axeron.getAxeronInfo().isRoot(),
                                     AxeronApiConstant.folder.PARENT
-                                ).absolutePath}",
-                                confirm = "Reset",
-                                dismiss = "Cancel"
+                                ).absolutePath),
+                                confirm = confirm,
+                                dismiss = dismiss
                             )
                             if (confirmResult == ConfirmResult.Confirmed) {
                                 navigator.navigate(FlashScreenDestination(FlashIt.FlashUninstall))
@@ -326,22 +329,22 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             }
 
             SettingsItem { _, _ ->
-                AnimatedVisibility(visible = axeronRunning) {
-                    SettingsItem(
-                        type = SettingsItemType.CHILD,
-                        iconVector = Icons.Filled.Apps,
-                        label = "AppList Manager",
-                        onClick = {
-                            navigator.navigate(AppsScreenDestination)
-                        }
-                    )
-                }
+//                AnimatedVisibility(visible = axeronRunning) {
+//                    SettingsItem(
+//                        type = SettingsItemType.CHILD,
+//                        iconVector = Icons.Filled.Apps,
+//                        label = "AppList Manager",
+//                        onClick = {
+//                            navigator.navigate(AppsScreenDestination)
+//                        }
+//                    )
+//                }
 
                 AnimatedVisibility(visible = axeronRunning) {
                     SettingsItem(
                         type = SettingsItemType.CHILD,
                         iconVector = Icons.Filled.Edit,
-                        label = "Settings Editor",
+                        label = stringResource(R.string.settings_editor),
                         onClick = {
                             navigator.navigate(SettingsEditorScreenDestination)
                         }
@@ -351,7 +354,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 SettingsItem(
                     type = SettingsItemType.CHILD,
                     iconVector = Icons.Filled.Palette,
-                    label = "Appearance",
+                    label = stringResource(R.string.appearance),
                     onClick = {
                         navigator.navigate(AppearanceScreenDestination)
                     }
@@ -360,7 +363,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 SettingsItem(
                     type = SettingsItemType.CHILD,
                     iconVector = Icons.Filled.BugReport,
-                    label = "Developer",
+                    label = stringResource(R.string.developer),
                     onClick = {
                         navigator.navigate(DeveloperScreenDestination)
                     }
@@ -423,7 +426,7 @@ fun DeveloperInfo(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Developer | Maintainer",
+                    text = stringResource(R.string.developer_and_maintainer),
                     fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -456,7 +459,7 @@ fun DeveloperInfo(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("GitHub")
+                        Text(stringResource(R.string.github))
                     }
 
                     // Tombol Telegram
@@ -470,7 +473,7 @@ fun DeveloperInfo(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Telegram")
+                        Text(stringResource(R.string.telegram))
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -485,19 +488,11 @@ fun DeveloperInfo(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Support / Donate")
+                    Text(stringResource(R.string.support_or_donate))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
-}
-
-@Preview
-@Composable
-fun SetPreview() {
-    SettingsItem(
-        label = "Uninstall AxManager"
-    )
 }

@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -44,6 +45,7 @@ import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
+import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.util.LocalSnackbarHost
@@ -123,6 +125,9 @@ fun ExecutePluginActionScreen(
     val snackBarHost = LocalSnackbarHost.current
     val scrollState = rememberScrollState()
 
+    val logSaved = stringResource(R.string.log_saved_to)
+    val logFailed = stringResource(R.string.failed_to_save_log)
+
     Scaffold(
         topBar = {
             TopBar(
@@ -150,9 +155,9 @@ fun ExecutePluginActionScreen(
                                 fos.write("$logContent\n".toByteArray())
                                 fos.flush()
 
-                                snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")
+                                snackBarHost.showSnackbar(logSaved.format(file.absolutePath))
                             } catch (e: Exception) {
-                                snackBarHost.showSnackbar("Failed to save logs: ${e.message}")
+                                snackBarHost.showSnackbar(logFailed.format(e.message))
                             }
                         }
                     }
@@ -162,7 +167,7 @@ fun ExecutePluginActionScreen(
         floatingActionButton = {
             if (!isActionRunning) {
                 ExtendedFloatingActionButton(
-                    text = { Text(text = "Close") },
+                    text = { Text(text = stringResource(R.string.close)) },
                     icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                     onClick = {
                         navigator.popBackStack()
@@ -198,7 +203,7 @@ fun ExecutePluginActionScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace
                 ),
-                softWrap = true,   // MATIIN WRAP
+                softWrap = true,
             )
         }
     }
@@ -210,7 +215,7 @@ private fun TopBar(isActionRunning: Boolean, onBack: () -> Unit = {}, onSave: ()
     TopAppBar(
         title = {
             Text(
-                text = "Action",
+                text = stringResource(R.string.action),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )

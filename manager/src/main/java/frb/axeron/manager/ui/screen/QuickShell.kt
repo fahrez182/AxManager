@@ -80,6 +80,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -169,7 +170,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "QuickShell",
+                            text = stringResource(R.string.quick_shell),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -214,7 +215,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         saveLogsToDownload(context, logs, snackBarHost)
                     }
                 }) {
-                    Icon(Icons.Default.Save, contentDescription = "Save")
+                    Icon(Icons.Default.Save, contentDescription = stringResource(R.string.save))
                 }
             }
         },
@@ -307,7 +308,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     }
 
                     val hasNewline =
-                        raw.contains('\n') || raw.contains("\r\n")
+                        raw.contains('\n')
 
                     val hasCarriageReturn =
                         raw.contains('\r') && !raw.contains('\n')
@@ -397,7 +398,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontFamily = FontFamily.Monospace
                                 ),
-                                softWrap = false,   // MATIIN WRAP
+                                softWrap = false,
                             )
                         }
 
@@ -481,7 +482,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_exec),
-                            contentDescription = "Send",
+                            contentDescription = stringResource(R.string.exec),
                             modifier = Modifier.size(38.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -550,8 +551,8 @@ fun ExtraSettings(
                     }
 
                     SettingsItemExpanded(
-                        label = "Output Filter",
-                        description = "Filter output to show",
+                        label = stringResource(R.string.output_filter),
+                        description = stringResource(R.string.filter_output_desc),
                         iconVector = Icons.Outlined.Output
                     ) { _, expanded ->
                         AnimatedVisibility(
@@ -563,7 +564,7 @@ fun ExtraSettings(
                                 outputOption.forEach { type ->
                                     val isChecked = checkedOutputStates[type] ?: false
                                     CheckBoxText(
-                                        label = "Output ${type.name}",
+                                        label = stringResource(type.labelId),
                                         checked = isChecked
                                     ) {
                                         checkedOutputStates[type] = it
@@ -590,8 +591,8 @@ fun ExtraSettings(
                     }
 
                     SettingsItemExpanded(
-                        label = "Save Log Filter",
-                        description = "Filter log to save",
+                        label = stringResource(R.string.save_log_filter),
+                        description = stringResource(R.string.filter_save_log_desc),
                         iconVector = Icons.Outlined.Save,
                     ) { _, expanded ->
                         AnimatedVisibility(
@@ -603,7 +604,7 @@ fun ExtraSettings(
                                 outputOption.forEach { type ->
                                     val isChecked = checkedSaveStates[type] ?: false
                                     CheckBoxText(
-                                        label = "Save ${type.name}",
+                                        label = stringResource(type.labelId),
                                         checked = isChecked
                                     ) {
                                         checkedSaveStates[type] = it
@@ -630,8 +631,8 @@ fun ExtraSettings(
                     }
 
                     SettingsItemExpanded(
-                        label = "Key Event Blocker",
-                        description = "Block selected key event",
+                        label = stringResource(R.string.block_key_event),
+                        description = stringResource(R.string.block_key_event_desc),
                         iconVector = Icons.Outlined.DoNotTouch,
                     ) { _, expanded ->
                         AnimatedVisibility(
@@ -643,7 +644,7 @@ fun ExtraSettings(
                                 keyEventOption.forEach { type ->
                                     val isChecked = blockedKeyEventStates[type] ?: false
                                     CheckBoxText(
-                                        label = "Block ${type.name}",
+                                        label = stringResource(type.labelId),
                                         checked = isChecked
                                     ) {
                                         blockedKeyEventStates[type] = it
@@ -659,8 +660,8 @@ fun ExtraSettings(
                 item {
                     SettingsItem(
                         iconVector = Icons.Filled.Security,
-                        label = "Shell Restriction",
-                        description = "This feature will restrict background processing",
+                        label = stringResource(R.string.shell_restriction),
+                        description = stringResource(R.string.shell_restriction_desc),
                         checked = quickShellViewModel.isShellRestrictionEnabled,
                         onSwitchChange = { quickShellViewModel.setShellRestriction(it) }
                     )
@@ -669,8 +670,8 @@ fun ExtraSettings(
                 item {
                     SettingsItem(
                         iconVector = Icons.Outlined.Bolt,
-                        label = "Compatibility Mode",
-                        description = "You will use busybox to prevent unsupported command",
+                        label = stringResource(R.string.compat_mode),
+                        description = stringResource(R.string.compat_mode_desc),
                         checked = quickShellViewModel.isCompatModeEnabled,
                         onSwitchChange = { quickShellViewModel.setCompatMode(it) }
                     )
@@ -686,6 +687,8 @@ suspend fun saveLogsToDownload(
     logs: List<QuickShellViewModel.Output>,
     snackbar: SnackbarHostState
 ) {
+    val logSaved = context.getString(R.string.log_saved_to)
+    val logFailed = context.getString(R.string.failed_to_save_log)
     if (logs.isEmpty()) return
     val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
     val date = format.format(Date())
@@ -708,9 +711,9 @@ suspend fun saveLogsToDownload(
         }
         fos.flush()
 
-        snackbar.showSnackbar("Log saved to ${file.absolutePath}")
+        snackbar.showSnackbar(logSaved.format(file.absolutePath))
     } catch (e: Exception) {
-        snackbar.showSnackbar("Failed to save logs: ${e.message}")
+        snackbar.showSnackbar(logFailed.format(e.message))
     }
 }
 

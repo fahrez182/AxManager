@@ -29,11 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.AxeronApplication.Companion.axeronApp
+import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
@@ -60,13 +62,19 @@ fun PluginList(
     snackBarHost: SnackbarHostState,
     listState: LazyListState
 ) {
-    val failedEnable = "Failed to enable plugin: %s"
-    val failedDisable = "Failed to disable plugin: %s"
+    val failedEnable = stringResource(R.string.failed_enable_plugin)
+    val failedDisable = stringResource(R.string.failed_disable_plugin)
 
     val loadingDialog = rememberLoadingDialog()
     val confirmDialog = rememberConfirmDialog()
 
     var expandedPluginId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val updateText = stringResource(R.string.update)
+    val changelogText = stringResource(R.string.changelog)
+    val downloadingText = stringResource(R.string.downloading_plugin)
+    val startDownloadingText = stringResource(R.string.start_downloading_plugin)
+    val fetchChangeLogFailed = stringResource(R.string.fetch_changelog_failed)
 
     suspend fun onModuleUpdate(
         plugin: PluginInfo,
@@ -74,12 +82,6 @@ fun PluginList(
         downloadUrl: String,
         fileName: String,
     ) {
-        val updateText = "Update"
-        val changelogText = "Changelog"
-        val downloadingText = "Downloading module: %s"
-        val startDownloadingText = "Start downloading: %s"
-        val fetchChangeLogFailed = "Fetch changelog failed: %s"
-
         val changelogResult = loadingDialog.withLoading {
             withContext(Dispatchers.IO) {
                 runCatching {
@@ -140,17 +142,17 @@ fun PluginList(
         }
     }
 
-    suspend fun onModuleUninstall(plugin: PluginInfo) {
-        val moduleStr = "Uninstall Plugin?"
-        val uninstall = "Uninstall"
-        val cancel = "Cancel"
-        val moduleUninstallConfirm = "Are you sure you want to uninstall module %s?"
-        val failedUninstall = "Failed to uninstall: %s"
-        val successUninstall = "%s uninstalled"
-        val restartService = "Restart Service"
+    val askUninstallPlugin = stringResource(R.string.ask_uninstall_plugin)
+    val uninstall = stringResource(R.string.uninstall)
+    val cancel = stringResource(R.string.cancel)
+    val moduleUninstallConfirm = stringResource(R.string.uninstall_plugin_confirmation)
+    val successUninstall = stringResource(R.string.plugin_uninstalled)
+    val failedUninstall = stringResource(R.string.failed_to_uninstall_plugin)
+    val restartService = stringResource(R.string.restart_service)
 
+    suspend fun onModuleUninstall(plugin: PluginInfo) {
         val confirmResult = confirmDialog.awaitConfirm(
-            moduleStr,
+            askUninstallPlugin,
             content = moduleUninstallConfirm.format(plugin.prop.name),
             confirm = uninstall,
             dismiss = cancel
@@ -180,16 +182,14 @@ fun PluginList(
         }
     }
 
+    val askRestorePlugin = stringResource(R.string.ask_restore_plugin)
+    val restore = stringResource(R.string.restore)
+    val moduleRestoreConfirm = stringResource(R.string.restore_plugin_confirmation)
+
     suspend fun onModuleRestore(plugin: PluginInfo) {
-        val moduleStr = "Restore Plugin?"
-        val restore = "Restore"
-        val cancel = "Cancel"
-        val moduleRestoreConfirm = "Are you sure you want to restore module %s?"
-        "Failed to restore: %s"
-        "%s restored"
 
         val confirmResult = confirmDialog.awaitConfirm(
-            moduleStr,
+            askRestorePlugin,
             content = moduleRestoreConfirm.format(plugin.prop.name),
             confirm = restore,
             dismiss = cancel
@@ -240,7 +240,7 @@ fun PluginList(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "No plugin installed",
+                                stringResource(R.string.no_plugin_installed),
                                 textAlign = TextAlign.Center
                             )
                         }

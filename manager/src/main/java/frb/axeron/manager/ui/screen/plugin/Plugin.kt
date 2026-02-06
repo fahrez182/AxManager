@@ -49,6 +49,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,6 +60,7 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.ensureManageExternalStorageAllowed
+import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.SettingsItem
@@ -132,12 +134,12 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
             SearchAppBar(
                 title = {
                     Text(
-                        text = "Plugin",
+                        text = stringResource(R.string.plugin),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                 },
-                searchLabel = "Search Plugins",
+                searchLabel = stringResource(R.string.search_label_plugin),
                 searchText = pluginViewModel.search,
                 onSearchTextChange = { pluginViewModel.search = it },
                 onClearClick = { pluginViewModel.search = "" },
@@ -224,6 +226,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
 
                     Spacer(modifier = Modifier.padding(6.dp))
 
+                    val permissionDenied = stringResource(R.string.permission_denied)
                     FloatingActionButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -235,7 +238,8 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                                     if (it) {
                                         selectZipLauncher.launch(intent)
                                     } else {
-                                        Toast.makeText(context, "Permission Denied", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, permissionDenied, Toast.LENGTH_LONG)
+                                            .show()
                                     }
                                 }
                             } else {
@@ -302,11 +306,14 @@ fun ExtraFilterSettings(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val ascOption = listOf("Ascending", "Descending")
-                val sortOption = listOf("Name", "Size", "Enable", "Action", "WebUI")
+                val ascOption = listOf(R.string.ascending, R.string.descending)
+                val sortOption = listOf(
+                    R.string.name, R.string.size,
+                    R.string.enable, R.string.action, R.string.web_ui
+                )
 
                 SettingsItem(
-                    label = "Filter Settings",
+                    label = stringResource(R.string.filter_settings),
                     iconVector = Icons.Outlined.FilterAlt
                 ) { enabled, checked ->
                     Column(
@@ -315,7 +322,7 @@ fun ExtraFilterSettings(
                             .padding(bottom = 12.dp)
                     ) {
                         SingleChoiceSegmentedButtonRow {
-                            ascOption.forEachIndexed { index, label ->
+                            ascOption.forEachIndexed { index, labelId ->
                                 SegmentedButton(
                                     colors = SegmentedButtonDefaults.colors().copy(
                                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -338,7 +345,7 @@ fun ExtraFilterSettings(
                                         Text(
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Normal,
-                                            text = label
+                                            text = stringResource(labelId)
                                         )
                                     }
                                 )
@@ -348,7 +355,7 @@ fun ExtraFilterSettings(
                         Spacer(modifier = Modifier.padding(2.dp))
 
                         SingleChoiceSegmentedButtonRow {
-                            sortOption.forEachIndexed { index, label ->
+                            sortOption.forEachIndexed { index, labelId ->
                                 SegmentedButton(
                                     colors = SegmentedButtonDefaults.colors().copy(
                                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -371,7 +378,7 @@ fun ExtraFilterSettings(
                                         Text(
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Normal,
-                                            text = label
+                                            text = stringResource(labelId)
                                         )
                                     }
                                 )
@@ -383,8 +390,8 @@ fun ExtraFilterSettings(
 
                 SettingsItem(
                     iconVector = Icons.Filled.DeveloperMode,
-                    label = "Enable developer options",
-                    description = "Show hidden settings and debug info relevant only for developers.",
+                    label = stringResource(R.string.enable_developer_mode),
+                    description = stringResource(R.string.enable_developer_mode_msg),
                     checked = settingsViewModel.isDeveloperModeEnabled,
                     onSwitchChange = {
                         settingsViewModel.setDeveloperOptions(it)

@@ -15,34 +15,35 @@ import com.ramcosta.composedestinations.generated.destinations.PluginScreenDesti
 import com.ramcosta.composedestinations.generated.destinations.PrivilegeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingsScreenDestination
 import com.ramcosta.composedestinations.spec.DirectionDestinationSpec
+import frb.axeron.manager.R
 
 enum class BottomBarDestination(
     val direction: DirectionDestinationSpec,
-    val label: String,
+    val labelId: Int,
     val iconSelected: ImageVector,
     val iconNotSelected: ImageVector,
     val needAxeron: Boolean
 ) {
-    Home(HomeScreenDestination, "Home", Icons.Filled.Home, Icons.Outlined.Home, false),
+    Home(HomeScreenDestination, R.string.home, Icons.Filled.Home, Icons.Outlined.Home, false),
 
     //    QuickShell(QuickShellScreenDestination, "QuickShell", Icons.Filled.Terminal, Icons.Outlined.Terminal, true),
     Privilege(
         PrivilegeScreenDestination,
-        "Privilege",
+        R.string.privilege,
         Icons.Filled.AdminPanelSettings,
         Icons.Outlined.AdminPanelSettings,
         true
     ),
     Plugin(
         PluginScreenDestination,
-        "Plugin",
+        R.string.plugin,
         Icons.Filled.Extension,
         Icons.Outlined.Extension,
         true
     ),
     Settings(
         SettingsScreenDestination,
-        "Settings",
+        R.string.settings,
         Icons.Filled.Settings,
         Icons.Outlined.Settings,
         false

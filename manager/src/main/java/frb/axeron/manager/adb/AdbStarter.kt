@@ -1,4 +1,4 @@
-package frb.axeron.adb
+package frb.axeron.manager.adb
 
 import android.Manifest.permission.WRITE_SECURE_SETTINGS
 import android.content.Context
@@ -7,11 +7,16 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.RequiresApi
+import frb.axeron.adb.AdbClient
+import frb.axeron.adb.AdbKey
+import frb.axeron.adb.AdbMdns
+import frb.axeron.adb.PreferenceAdbKeyStore
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.adb.util.AdbWifiGate
 import frb.axeron.adb.util.WifiReadyGate
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
+import frb.axeron.manager.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -70,7 +75,7 @@ object AdbStarter {
 
                     if (p <= 0) {
                         Log.e(TAG, "AdbMdns callback: invalid port")
-                        safeClose(IllegalStateException("Invalid ADB port"))
+                        safeClose(IllegalStateException(context.getString(R.string.adb_failed_to_get_port)))
                         return@AdbMdns
                     }
 
@@ -82,7 +87,7 @@ object AdbStarter {
 
                     if (!sendResult.isSuccess) {
                         safeClose(
-                            IllegalStateException("Failed to emit port")
+                            IllegalStateException(context.getString(R.string.failed_to_emit_port))
                         )
                         return@AdbMdns
                     }
@@ -126,7 +131,7 @@ object AdbStarter {
                             onFail = {
                                 Log.e(TAG, "AdbWifiGate: onFail")
                                 safeClose(
-                                    IllegalStateException("Failed to auto activate ADB")
+                                    IllegalStateException(context.getString(R.string.adb_wifi_failed_to_auto_active))
                                 )
                             }
                         ).start()
@@ -134,7 +139,7 @@ object AdbStarter {
                     onFail = {
                         Log.e(TAG, "WifiReadyGate: onFail")
                         safeClose(
-                            IllegalStateException("Failed to connect to Wifi")
+                            IllegalStateException(context.getString(R.string.wifi_failed_to_connect))
                         )
                     }
                 ).start()
@@ -158,9 +163,9 @@ object AdbStarter {
         startAdbClient(context, port, result)
     }
 
-     suspend fun startAdbClient(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
+    suspend fun startAdbClient(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
         if (port <= 0) {
-            result(AdbStateInfo.Failed("Failed to get Host and Port"))
+            result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_get_port)))
             return
         }
 
@@ -175,7 +180,7 @@ object AdbStarter {
             )
         }
             .getOrElse {
-                result(AdbStateInfo.Failed("Failed to auto activate ADB"))
+                result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_auto_active)))
                 return
             }
 
@@ -195,11 +200,11 @@ object AdbStarter {
                     }
                 }
 
-                waitTcpReady(key, tcpPort)
+                waitTcpReady(context, key, tcpPort)
                 activePort = tcpPort
             }.onFailure {
                 if (it !is EOFException && it !is SocketException) {
-                    result(AdbStateInfo.Failed("Failed to switching to TCP"))
+                    result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_switch_tcp)))
                 }
                 return
             }
@@ -230,14 +235,14 @@ object AdbStarter {
                 "AdbClient success"
             )
             AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
-            result(AdbStateInfo.Success())
+            result(AdbStateInfo.Success(context.getString(R.string.adb_client_connected)))
         }.onFailure {
             Log.e(
                 TAG,
                 "AdbClient failed",
                 it
             )
-            result(AdbStateInfo.Failed("Failed to connect to ADB Client"))
+            result(AdbStateInfo.Failed(context.getString(R.string.failed_to_connect_adb_client)))
         }
     }
 
@@ -250,14 +255,14 @@ object AdbStarter {
             }
 
             val adbEnabled = Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0)
-            if (adbEnabled == 0) throw IllegalStateException("ADB is not enabled")
+            if (adbEnabled == 0) throw IllegalStateException(context.getString(R.string.adb_is_not_enabled))
 
             val keyStore = PreferenceAdbKeyStore(
                 AxeronSettings.getPreferences(),
                 Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
             )
             val key = AdbKey(keyStore, "axeron")
-            waitTcpReady(key, port)
+            waitTcpReady(context, key, port)
             withContext(Dispatchers.IO) {
                 AdbClient(key, port).use { client ->
                     client.connect()
@@ -266,14 +271,15 @@ object AdbStarter {
             }
         }.onSuccess {
             Log.d(TAG, "Stop TCP success")
-            result(AdbStateInfo.Success())
+            result(AdbStateInfo.Success(context.getString(R.string.adb_tcp_stopped)))
         }.onFailure {
             Log.e(TAG, "Stop TCP failed", it)
-            result(AdbStateInfo.Failed("Failed to stop TCP"))
+            result(AdbStateInfo.Failed(context.getString(R.string.failed_to_stop_adb_tcp) + ": " + it.message))
         }
     }
 
     suspend fun waitTcpReady(
+        context: Context,
         key: AdbKey,
         port: Int,
         timeoutMs: Long = 5_000,
@@ -295,9 +301,9 @@ object AdbStarter {
         }
 
         throw IllegalStateException(
-            "ADB TCP not ready on port $port",
+            context.getString(R.string.adb_tcp_not_ready, port),
             lastError
-        )
+        ) as Throwable
     }
 
 
@@ -305,7 +311,7 @@ object AdbStarter {
 
 
 sealed class AdbStateInfo(val message: String, val cause: Throwable? = null) {
-    class Success() : AdbStateInfo("Active Successfully")
+    class Success(message: String) : AdbStateInfo(message)
 
     class Process(message: String, cause: Throwable? = null) :
         AdbStateInfo(message, cause)

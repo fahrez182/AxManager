@@ -9,11 +9,11 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.topjohnwu.superuser.Shell
-import frb.axeron.adb.AdbStarter
-import frb.axeron.adb.AdbStateInfo
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
+import frb.axeron.manager.adb.AdbStarter
+import frb.axeron.manager.adb.AdbStateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 

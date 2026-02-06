@@ -74,6 +74,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import frb.axeron.manager.R
 import frb.axeron.manager.data.SettingsRepository
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.SearchAppBar
@@ -368,7 +370,7 @@ fun RoundedTabRow(
                     .padding(horizontal = 8.dp),
                 text = {
                     Text(
-                        text = type.toString(),
+                        text = stringResource(type.stringId),
                         color = textColor,
                         style = MaterialTheme.typography.labelLarge
                     )
@@ -481,15 +483,21 @@ fun TableEditor(
                         val confirmDialog = rememberConfirmDialog()
                         val scope = rememberCoroutineScope()
 
+                        val title = stringResource(R.string.ask_remove_settings)
+                        val content = stringResource(R.string.ask_remove_settings_msg)
+                        val confirm = stringResource(R.string.remove)
+                        val dismiss = stringResource(R.string.cancel)
+                        val failed = stringResource(R.string.failed_to_remove_settings)
+
                         FilledTonalButton(
                             modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                             onClick = {
                                 scope.launch {
                                     val confirmResult = confirmDialog.awaitConfirm(
-                                        "Remove Now?",
-                                        content = "This action will remove this setting permanently",
-                                        confirm = "Remove",
-                                        dismiss = "Cancel"
+                                        title,
+                                        content = content,
+                                        confirm = confirm,
+                                        dismiss = dismiss
                                     )
                                     if (confirmResult == ConfirmResult.Confirmed) {
                                         if (settingsRepository.deleteValue(selectedType, newKey)) {
@@ -497,7 +505,7 @@ fun TableEditor(
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "Failed To Remove",
+                                                failed,
                                                 Toast.LENGTH_SHORT
                                             )
                                                 .show()
@@ -528,12 +536,14 @@ fun TableEditor(
 
                     Spacer(Modifier.weight(1f))
 
+                    val copied = stringResource(R.string.key_copied)
+
                     FilledTonalButton(
                         modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                         enabled = newKey.isNotEmpty(),
                         onClick = {
                             if (ClipboardUtil.put(context, newKey)) {
-                                Toast.makeText(context, "Key Copied", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
                             }
                         },
                         contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -565,12 +575,14 @@ fun TableEditor(
 
                     Spacer(Modifier.width(10.dp))
 
+                    val valCopied = stringResource(R.string.value_copied)
+
                     FilledTonalButton(
                         modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                         enabled = newValue.isNotEmpty(),
                         onClick = {
                             if (ClipboardUtil.put(context, newValue)) {
-                                Toast.makeText(context, "Value Copied", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, valCopied, Toast.LENGTH_SHORT).show()
                             }
                         },
                         contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -602,6 +614,8 @@ fun TableEditor(
 
                     Spacer(Modifier.width(10.dp))
 
+                    val failed = stringResource(R.string.failed_to_save_settings)
+
                     FilledTonalButton(
                         modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                         enabled = newValue != value && newKey.isNotEmpty(),
@@ -609,7 +623,7 @@ fun TableEditor(
                             if (settingsRepository.putValue(selectedType, newKey, newValue)) {
                                 onRefresh()
                             } else {
-                                Toast.makeText(context, "Failed to Save", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, failed, Toast.LENGTH_SHORT).show()
                             }
                             onDismissRequest()
                         },
@@ -622,7 +636,7 @@ fun TableEditor(
                         )
                         Text(
                             modifier = Modifier.padding(start = 7.dp),
-                            text = "Save",
+                            text = stringResource(R.string.save),
                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
                             fontSize = MaterialTheme.typography.labelMedium.fontSize
                         )
@@ -643,7 +657,7 @@ fun TableEditor(
                             newKey = it
                         },
                         label = {
-                            Text("Add Key")
+                            Text(stringResource(R.string.add_key_settings))
                         },
                         textStyle = MaterialTheme.typography.labelLarge.copy(
                             fontFamily = FontFamily.Monospace,
@@ -682,7 +696,11 @@ fun TableEditor(
                         newValue = it
                     },
                     label = {
-                        Text("Edit Value")
+                        if (addTable) {
+                            Text(stringResource(R.string.add_value_settings))
+                        } else {
+                            Text(stringResource(R.string.edit_value_settings))
+                        }
                     },
                     textStyle = MaterialTheme.typography.labelLarge.copy(
                         fontFamily = FontFamily.Monospace,

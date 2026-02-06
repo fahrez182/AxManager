@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -173,7 +174,6 @@ fun RequestPermissionDialog(
                 .padding(all = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 🔹 Info Aplikasi
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -194,7 +194,7 @@ fun RequestPermissionDialog(
                     Text(applicationInfo.packageName, style = MaterialTheme.typography.bodySmall)
                 }
                 Text(
-                    text = "UID: $uid",
+                    text = stringResource(R.string.uid_value, uid),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -208,20 +208,20 @@ fun RequestPermissionDialog(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Permission Request",
+                stringResource(R.string.permission_request),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "The app requires permission to continue operating.\nGrant permission so the feature can run properly.",
+                stringResource(R.string.permission_request_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(24.dp))
 
-            // 🔹 Tombol aksi + countdown
+            // Tombol aksi + countdown
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.SpaceEvenly
@@ -233,7 +233,7 @@ fun RequestPermissionDialog(
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Allow all the time")
+                    Text(stringResource(R.string.permission_allow_all_time))
                 }
                 Button(
                     modifier = Modifier.fillMaxWidth(),
@@ -246,7 +246,7 @@ fun RequestPermissionDialog(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
-                    Text("Allow once this time")
+                    Text(stringResource(R.string.permission_allow_one_time))
                 }
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
@@ -263,7 +263,7 @@ fun RequestPermissionDialog(
                         color = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Don't Allow (${remaining}s)")
+                    Text(stringResource(R.string.permission_dont_allow_countdown, remaining))
                 }
 
             }

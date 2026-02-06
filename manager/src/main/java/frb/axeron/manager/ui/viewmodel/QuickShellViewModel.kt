@@ -14,6 +14,7 @@ import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
+import frb.axeron.axerish.R
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -78,20 +79,20 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     private val prefs = AxeronSettings.getPreferences()
 
-    enum class OutputType {
-        TYPE_COMMAND,
-        TYPE_START,
-        TYPE_STDIN,
-        TYPE_STDOUT,
-        TYPE_STDERR,
-        TYPE_THROW,
-        TYPE_SPACE,
-        TYPE_EXIT
+    enum class OutputType(val labelId: Int) {
+        TYPE_COMMAND(R.string.type_command),
+        TYPE_START(R.string.type_start),
+        TYPE_STDIN(R.string.type_stdin),
+        TYPE_STDOUT(R.string.type_stdout),
+        TYPE_STDERR(R.string.type_stderr),
+        TYPE_THROW(R.string.type_throw),
+        TYPE_SPACE(R.string.type_space),
+        TYPE_EXIT(R.string.type_exit)
     }
 
-    enum class KeyEventType {
-        VOLUME_UP,
-        VOLUME_DOWN
+    enum class KeyEventType(val labelId: Int) {
+        VOLUME_UP(R.string.volume_up),
+        VOLUME_DOWN(R.string.volume_down)
     }
 
     data class Output(val type: OutputType, var output: String, var completed: Boolean = false)

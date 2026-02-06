@@ -2,11 +2,7 @@ package frb.axeron.manager.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,11 +23,13 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
@@ -64,8 +62,8 @@ fun DeveloperScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModel
 
             SettingsItem(
                 iconVector = Icons.Filled.DeveloperMode,
-                label = "Enable developer options",
-                description = "Show hidden settings and debug info relevant only for developers.",
+                label = stringResource(R.string.enable_developer_mode),
+                description = stringResource(R.string.enable_developer_mode_msg),
                 checked = settingsViewModel.isDeveloperModeEnabled,
                 onSwitchChange = {
                     settingsViewModel.setDeveloperOptions(it)
@@ -75,8 +73,8 @@ fun DeveloperScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModel
             SettingsItem(
                 enabled = settingsViewModel.isDeveloperModeEnabled,
                 iconVector = Icons.Filled.Web,
-                label = "Enable developer options",
-                description = "Show hidden settings and debug info relevant only for developers.",
+                label = stringResource(R.string.enable_debugging_webview),
+                description = stringResource(R.string.enable_debugging_webview_msg),
                 checked = settingsViewModel.isWebDebuggingEnabled,
                 onSwitchChange = {
                     settingsViewModel.setWebDebugging(it)
@@ -94,7 +92,7 @@ private fun TopBar(
 ) {
     TopAppBar(
         title = { Text(
-                text = "Developer",
+                text = stringResource(R.string.developer),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
             ) }, navigationIcon = {

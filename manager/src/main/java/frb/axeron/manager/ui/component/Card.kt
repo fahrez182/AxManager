@@ -1,4 +1,4 @@
-package frb.axeron.manager.ui.screen.home
+package frb.axeron.manager.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -34,8 +34,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.manager.R
-import frb.axeron.manager.ui.component.ExtraLabel
-import frb.axeron.manager.ui.component.ExtraLabelDefaults
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
 
@@ -181,9 +179,9 @@ fun PluginCard(
             ) {
                 Text(
                     text = if (countTotal <= 1) {
-                        "Plugin"
+                        stringResource(R.string.plugin)
                     } else {
-                        "Plugins"
+                        stringResource(R.string.plugin_plural)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
@@ -250,9 +248,9 @@ fun PrivilegeCard(
             ) {
                 Text(
                     text = if (countTotal <= 1) {
-                        "Privilege"
+                        stringResource(R.string.privilege)
                     } else {
-                        "Privileges"
+                        stringResource(R.string.privilege_plural)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold

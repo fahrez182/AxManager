@@ -60,11 +60,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.adb.AdbStateInfo
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
+import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
@@ -90,7 +90,7 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             TopAppBar(
                 title = {
                     Text(
-                        text = "Activate",
+                        text = stringResource(R.string.activate),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -184,7 +184,7 @@ fun TcpDebuggingCard(
                 Spacer(Modifier.width(10.dp))
 
                 Text(
-                    text = "Start via TCP Debugging",
+                    text = stringResource(R.string.activate_by_tcp),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -192,13 +192,13 @@ fun TcpDebuggingCard(
             Spacer(Modifier.size(20.dp))
 
             Text(
-                text = stringResource(R.string.activate_by_tcp_description),
+                text = stringResource(R.string.activate_by_tcp_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.size(8.dp))
             Text(
-                text = "TCP Port: ${AdbEnvironment.getAdbTcpPort()}",
+                text = stringResource(R.string.tcp_port_value, AdbEnvironment.getAdbTcpPort()),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -233,7 +233,7 @@ fun TcpDebuggingCard(
                         contentDescription = "Start"
                     )
                 }
-                Text("Connect to TCP")
+                Text(stringResource(R.string.connect_tcp_debugging))
             }
 
             Spacer(Modifier.size(8.dp))
@@ -257,7 +257,7 @@ fun TcpDebuggingCard(
                         .size(16.dp),
                     contentDescription = "Stop"
                 )
-                Text("Stop TCP")
+                Text(stringResource(R.string.stop_tcp_debugging))
             }
         }
     }
@@ -320,7 +320,7 @@ fun WirelessDebuggingCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Start via Wireless Debugging",
+                    text = stringResource(R.string.activate_by_wireless),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -328,22 +328,26 @@ fun WirelessDebuggingCard(
             Spacer(modifier = Modifier.size(20.dp))
 
             Text(
-                text = stringResource(R.string.activate_by_wireless_description),
+                text = stringResource(R.string.activate_by_wireless_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.size(20.dp))
 
-            val content = stringResource(R.string.enable_wireless_debugging_message)
+            val title = stringResource(R.string.enable_wireless_debugging)
+            val content = stringResource(R.string.enable_wireless_debugging_msg)
+            val confirm = stringResource(R.string.open_developer_opt)
+            val cancel = stringResource(R.string.cancel)
+            val neutral = stringResource(R.string.step_by_step)
             Button(
                 onClick = {
                     scope.launch {
                         val confirmResult = dialogDeveloper.awaitConfirm(
-                            title = "Enable Wireless Debugging",
+                            title = title,
                             content = content,
-                            confirm = "Developer",
-                            dismiss = "Cancel",
-                            neutral = "Step-by-Step"
+                            confirm = confirm,
+                            dismiss = cancel,
+                            neutral = neutral
                         )
                         if (confirmResult == ConfirmResult.Confirmed) {
                             activateViewModel.setLaunchDevSettings(true)
@@ -361,7 +365,7 @@ fun WirelessDebuggingCard(
                         .size(16.dp),
                     contentDescription = "Instruction"
                 )
-                Text("Instruction")
+                Text(stringResource(R.string.instruction))
             }
             Spacer(modifier = Modifier.size(8.dp))
 
@@ -436,7 +440,7 @@ fun WirelessDebuggingCard(
                                 .size(16.dp),
                             contentDescription = null
                         )
-                        Text("Enable Notification")
+                        Text(stringResource(R.string.enable_notification))
                     }
 
                     else -> {
@@ -447,7 +451,7 @@ fun WirelessDebuggingCard(
                                 .size(16.dp),
                             contentDescription = "Start"
                         )
-                        Text("Start Pairing")
+                        Text(stringResource(R.string.start_pairing))
                     }
                 }
 
@@ -486,7 +490,7 @@ fun RootCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Start (for rooted devices)",
+                    text = stringResource(R.string.activate_by_root),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -500,7 +504,7 @@ fun RootCard(
                     TextView(context).apply {
                         text = Html.fromHtml(
                             context.getString(
-                                R.string.activate_by_root,
+                                R.string.activate_by_root_msg,
                                 "<b><a href=\"https://dontkillmyapp.com/\">Don\'t kill my app!</a></b>"
                             ),
                             Html.FROM_HTML_MODE_LEGACY
@@ -510,30 +514,33 @@ fun RootCard(
                 }
             )
             Spacer(modifier = Modifier.size(20.dp))
-
+            val failed = stringResource(R.string.failed_to_start)
+            val success = stringResource(R.string.activate_success)
+            stringResource(R.string.please_wait)
             Button(
                 onClick = {
                     activateViewModel.startRoot { state ->
                         scope.launch(Dispatchers.Main) {
+
                             when (state) {
                                 ActivateViewModel.ACTIVATE_FAILED -> {
                                     Toast.makeText(
                                         ctx,
-                                        "Failed to start",
+                                        failed,
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
                                 ActivateViewModel.ACTIVATE_PROCESS -> {
                                     Toast.makeText(
                                         ctx,
-                                        "Please wait...",
+                                        "",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
                                 ActivateViewModel.ACTIVATE_SUCCESS -> {
                                     Toast.makeText(
                                         ctx,
-                                        "Activate Successfully",
+                                        success,
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -550,7 +557,7 @@ fun RootCard(
                         .size(16.dp),
                     contentDescription = "Start"
                 )
-                Text("Start")
+                Text(stringResource(R.string.start))
             }
         }
     }
@@ -588,40 +595,47 @@ fun ComputerCard() {
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Start by connecting to a computer",
+                    text = stringResource(R.string.activate_by_computer),
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium
                 )
             }
 
             Text(
-                text = stringResource(R.string.activate_by_computer_description),
+                text = stringResource(R.string.activate_by_computer_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             val dialogDeveloper = rememberConfirmDialog()
             val scope = rememberCoroutineScope()
+
+            val title = stringResource(R.string.view_command)
             val content = stringResource(
                 R.string.view_command_message,
                 Starter.adbCommand
             )
+            val confirm = stringResource(R.string.copy)
+            val dismiss = stringResource(R.string.cancel)
+            val neutral = stringResource(R.string.send)
+            val share = stringResource(R.string.share_command)
+            val copied = stringResource(R.string.copied)
 
             Button(
                 onClick = {
 
                     scope.launch {
                         val confirmResult = dialogDeveloper.awaitConfirm(
-                            title = "View Command",
+                            title = title,
                             content = content,
                             markdown = true,
-                            confirm = "Copy",
-                            dismiss = "Cancel",
-                            neutral = "Send"
+                            confirm = confirm,
+                            dismiss = dismiss,
+                            neutral = neutral
                         )
                         if (confirmResult == ConfirmResult.Confirmed) {
                             if (ClipboardUtil.put(context, Starter.adbCommand)) {
-                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
                             }
                         }
                         if (confirmResult == ConfirmResult.Neutral) {
@@ -633,7 +647,7 @@ fun ComputerCard() {
                             shareLauncher.launch(
                                 Intent.createChooser(
                                     intent,
-                                    "Share Command"
+                                    share
                                 )
                             )
                         }
@@ -645,9 +659,9 @@ fun ComputerCard() {
                     modifier = Modifier
                         .padding(end = 10.dp)
                         .size(16.dp),
-                    contentDescription = "Command"
+                    contentDescription = title
                 )
-                Text("View Command")
+                Text(title)
             }
         }
     }

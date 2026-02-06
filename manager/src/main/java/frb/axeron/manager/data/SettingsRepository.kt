@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.provider.Settings
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
+import frb.axeron.manager.R
 import frb.axeron.server.Environment
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_NEW_ENV
 
@@ -14,19 +15,17 @@ private val SettingsRepository.SettingType.alias: String
         SettingsRepository.SettingType.SECURE -> "secure"
         SettingsRepository.SettingType.SYSTEM -> "system"
         SettingsRepository.SettingType.ANDROID_PROP -> "android_properties"
-        SettingsRepository.SettingType.LINUX_ENV -> "linux_environment"
+        SettingsRepository.SettingType.AXERON_ENV -> "axeron_environment"
     }
 
 class SettingsRepository(private val contentResolver: ContentResolver) {
 
-    enum class SettingType(val label: String) {
-        GLOBAL("Global Table"),
-        SECURE("Secure Table"),
-        SYSTEM("System Table"),
-        ANDROID_PROP("Android Properties"),
-        LINUX_ENV("Axeron Environment");
-
-        override fun toString(): String = label
+    enum class SettingType(val stringId: Int) {
+        GLOBAL(R.string.global_settings),
+        SECURE(R.string.secure_settings),
+        SYSTEM(R.string.system_settings),
+        ANDROID_PROP(R.string.android_properties),
+        AXERON_ENV(R.string.axeron_environment);
     }
 
 
@@ -37,7 +36,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             SettingType.SECURE -> Settings.Secure.getString(contentResolver, key)
             SettingType.SYSTEM -> Settings.System.getString(contentResolver, key)
             SettingType.ANDROID_PROP -> getAndroidProp(key)
-            SettingType.LINUX_ENV -> getLinuxEnv(key)
+            SettingType.AXERON_ENV -> getAxeronEnv(key)
         }
     }
 
@@ -49,7 +48,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             SettingType.SYSTEM -> putSetting(type, key, value)
 
             SettingType.ANDROID_PROP -> setAndroidProp(key, value)
-            SettingType.LINUX_ENV -> setLinuxEnv(key, value)
+            SettingType.AXERON_ENV -> setAxeronEnv(key, value)
         }
     }
 
@@ -61,7 +60,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             SettingType.SYSTEM -> deleteSetting(type, key)
 
             SettingType.ANDROID_PROP -> setAndroidProp(key, "")
-            SettingType.LINUX_ENV -> unsetLinuxEnv(key)
+            SettingType.AXERON_ENV -> unsetAxeronEnv(key)
         }
     }
 
@@ -72,7 +71,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             SettingType.SECURE,
             SettingType.SYSTEM -> querySettings(type)
             SettingType.ANDROID_PROP -> getAllAndroidProps()
-            SettingType.LINUX_ENV -> getAllLinuxEnv()
+            SettingType.AXERON_ENV -> getAllLinuxEnv()
         }
     }
 
@@ -171,13 +170,13 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
 
     // ======= Linux Env =======
 
-    private fun getLinuxEnv(key: String): String? = Axeron.getEnvironment().envMap[key]
+    private fun getAxeronEnv(key: String): String? = Axeron.getEnvironment().envMap[key]
 
 
     private val envMap: Map<String, String>
         get() = Axeron.getEnvironment(TYPE_NEW_ENV).envMap
 
-    private fun setLinuxEnv(key: String, value: String): Boolean {
+    private fun setAxeronEnv(key: String, value: String): Boolean {
         val newEnvMap = HashMap(envMap) // mutable
         newEnvMap[key] = value
         return try {
@@ -189,7 +188,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
         }
     }
 
-    private fun unsetLinuxEnv(key: String): Boolean {
+    private fun unsetAxeronEnv(key: String): Boolean {
         val newEnvMap = HashMap(envMap) // mutable
         newEnvMap.remove(key)
         return try {
