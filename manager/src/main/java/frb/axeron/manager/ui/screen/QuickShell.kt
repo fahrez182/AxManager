@@ -36,11 +36,13 @@ import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.DoNotTouch
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Output
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -98,6 +100,7 @@ import frb.axeron.manager.ui.component.CheckBoxText
 import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.SettingsItemExpanded
+import frb.axeron.manager.ui.component.TerminalControlPanel
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.util.PrefsEnumHelper
 import frb.axeron.manager.ui.viewmodel.QuickShellViewModel
@@ -177,6 +180,17 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            viewModel.toggleAdvancedMode()
+                        }
+                    ) {
+                        Icon(
+                            if (viewModel.isAdvancedMode) Icons.Filled.Terminal else Icons.Outlined.Terminal,
+                            contentDescription = stringResource(R.string.advanced_mode),
+                            tint = if (viewModel.isAdvancedMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(
                         onClick = {
                             viewModel.stop()
@@ -269,6 +283,12 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             LaunchedEffect(logs.size) {
                 if (logs.isNotEmpty()) {
                     listState.animateScrollToItem(logs.lastIndex)
+                }
+            }
+
+            LaunchedEffect(viewModel.isAdvancedMode) {
+                if (viewModel.isAdvancedMode) {
+                    snackBarHost.showSnackbar("Advanced Mode: ${viewModel.adbStatus}")
                 }
             }
 
@@ -403,91 +423,105 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         }
 
                         item {
-                            Spacer(modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.size(if (viewModel.isAdvancedMode) 100.dp else 22.dp))
                         }
                     }
                 }
             }
 
-            @SuppressLint("ConfigurationScreenWidthHeight")
-            val screen = LocalConfiguration.current.screenHeightDp
-            val paddingHeight = (screen * 0.52).dp
-
-
-            ElevatedCard(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.elevatedCardColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-//                    containerColor = Color.Transparent
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .run {
-                        if (keyboardVisible) {
-                            padding(bottom = paddingHeight)
-                        } else {
-                            padding(bottom = 0.dp)
-                        }
-                    }
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Box(
+                AnimatedVisibility(
+                    visible = viewModel.isAdvancedMode,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    TerminalControlPanel(
+                        onKeyPress = { viewModel.sendSpecialKey(it) },
+                        onHistoryNavigate = { viewModel.navigateHistory(it) }
+                    )
+                }
+
+                @SuppressLint("ConfigurationScreenWidthHeight")
+                val screen = LocalConfiguration.current.screenHeightDp
+                val paddingHeight = (screen * 0.52).dp
+
+                ElevatedCard(
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.elevatedCardColors().copy(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .run {
+                            if (keyboardVisible) {
+                                padding(bottom = paddingHeight)
+                            } else {
+                                padding(bottom = 0.dp)
+                            }
+                        }
                 ) {
-                    TextField(
-                        value = viewModel.commandText,
-                        onValueChange = {
-                            viewModel.setCommand(it)
-                        },
-                        label = {
-                            Text(viewModel.execMode)
-                        },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyLarge.fontSize,
-                            lineHeightStyle = LineHeightStyle(
-                                alignment = LineHeightStyle.Alignment.Center,
-                                trim = LineHeightStyle.Trim.Both
-                            ),
-                            fontFamily = FontFamily.Monospace
-                        ),
-                        maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,   // garis saat fokus
-                            unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
-                            disabledIndicatorColor = Color.Transparent,   // garis saat disabled
-                            focusedContainerColor = Color.Transparent,   // ⬅ ini penting
-                            unfocusedContainerColor = Color.Transparent, // ⬅ ini juga
-                            disabledContainerColor = Color.Transparent
-                        ),
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 250,
-                                    easing = LinearOutSlowInEasing
-                                )
-                            )
-                    )
-
-                    IconButton(
-                        onClick = {
-                            viewModel.runShell()
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp)
-                            .padding(vertical = 4.dp)
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_exec),
-                            contentDescription = stringResource(R.string.exec),
-                            modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                        TextField(
+                            value = viewModel.commandText,
+                            onValueChange = {
+                                viewModel.setCommand(it)
+                            },
+                            label = {
+                                Text(if (viewModel.isAdvancedMode) viewModel.adbStatus else viewModel.execMode)
+                            },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                lineHeight = MaterialTheme.typography.bodyLarge.fontSize,
+                                lineHeightStyle = LineHeightStyle(
+                                    alignment = LineHeightStyle.Alignment.Center,
+                                    trim = LineHeightStyle.Trim.Both
+                                ),
+                                fontFamily = FontFamily.Monospace
+                            ),
+                            maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = Color.Transparent,   // garis saat fokus
+                                unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
+                                disabledIndicatorColor = Color.Transparent,   // garis saat disabled
+                                focusedContainerColor = Color.Transparent,   // ⬅ ini penting
+                                unfocusedContainerColor = Color.Transparent, // ⬅ ini juga
+                                disabledContainerColor = Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize(
+                                    animationSpec = tween(
+                                        durationMillis = 250,
+                                        easing = LinearOutSlowInEasing
+                                    )
+                                )
                         )
+
+                        IconButton(
+                            onClick = {
+                                viewModel.runShell()
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 12.dp)
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_exec),
+                                contentDescription = stringResource(R.string.exec),
+                                modifier = Modifier.size(38.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.size(16.dp))
             }
 
         }
