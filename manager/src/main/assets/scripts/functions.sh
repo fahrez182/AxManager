@@ -1,4 +1,4 @@
-#HELPER
+#!/system/bin/sh
 ui_print() {
   echo "$1"
 }
