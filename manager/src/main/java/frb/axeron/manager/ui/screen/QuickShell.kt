@@ -12,7 +12,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +36,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
@@ -75,9 +81,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -90,6 +101,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -226,7 +240,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = fabVisible && logs.isNotEmpty(),
+                visible = !viewModel.isAdvancedMode && fabVisible && logs.isNotEmpty(),
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
             ) {
@@ -442,42 +456,35 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                AnimatedVisibility(
-                    visible = viewModel.isAdvancedMode,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    TerminalControlPanel(
-                        onKeyPress = { viewModel.sendSpecialKey(it) },
-                        onHistoryNavigate = { viewModel.navigateHistory(it) },
-                        isCtrlPressed = viewModel.isCtrlPressed,
-                        isAltPressed = viewModel.isAltPressed
-                    )
-                }
 
                 @SuppressLint("ConfigurationScreenWidthHeight")
                 val screen = LocalConfiguration.current.screenHeightDp
                 val paddingHeight = (screen * 0.52).dp
 
-                ElevatedCard(
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.elevatedCardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .run {
-                            if (keyboardVisible) {
-                                padding(bottom = paddingHeight)
-                            } else {
-                                padding(bottom = 0.dp)
-                            }
-                        }
+                AnimatedVisibility(
+                    visible = !viewModel.isAdvancedMode,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
                 ) {
-                    Box(
+                    ElevatedCard(
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.elevatedCardColors().copy(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .run {
+                                if (keyboardVisible) {
+                                    padding(bottom = paddingHeight)
+                                } else {
+                                    padding(bottom = 0.dp)
+                                }
+                            }
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                        ) {
                         TextField(
                             value = viewModel.commandText,
                             onValueChange = {
@@ -533,7 +540,10 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         }
                     }
                 }
-                Spacer(modifier = Modifier.size(16.dp))
+                }
+                if (!viewModel.isAdvancedMode) {
+                    Spacer(modifier = Modifier.size(16.dp))
+                }
             }
 
         }
@@ -547,16 +557,105 @@ fun TerminalView(viewModel: QuickShellViewModel) {
     val cursorRow = emulator.cursorRow
     val cursorCol = emulator.cursorCol
 
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    // Auto-scroll to bottom when content changes
+    LaunchedEffect(lines.map { it.text }.hashCode(), cursorRow) {
+        scrollState.animateScrollTo(scrollState.maxValue)
+    }
+
+    // Hidden TextField for input
+    var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF000000))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.key) {
+                        Key.Enter -> {
+                            viewModel.sendInput("\n")
+                            true
+                        }
+
+                        Key.Backspace -> {
+                            viewModel.sendRaw(byteArrayOf(0x7f))
+                            true
+                        }
+
+                        Key.Tab -> {
+                            viewModel.sendInput("\t")
+                            true
+                        }
+
+                        Key.DirectionUp -> {
+                            viewModel.sendInput("\u001b[A")
+                            true
+                        }
+
+                        Key.DirectionDown -> {
+                            viewModel.sendInput("\u001b[B")
+                            true
+                        }
+
+                        Key.DirectionLeft -> {
+                            viewModel.sendInput("\u001b[D")
+                            true
+                        }
+
+                        Key.DirectionRight -> {
+                            viewModel.sendInput("\u001b[C")
+                            true
+                        }
+
+                        else -> false
+                    }
+                } else false
+            }
             .padding(top = 60.dp) // Space for TopAppBar
     ) {
+        // Hidden TextField to capture soft keyboard text
+        BasicTextField(
+            value = textFieldValue,
+            onValueChange = {
+                if (it.text.length > textFieldValue.text.length) {
+                    val newText = it.text.substring(textFieldValue.text.length)
+                    viewModel.sendInput(newText)
+                }
+                textFieldValue = TextFieldValue("")
+            },
+            modifier = Modifier
+                .size(0.dp)
+                .focusRequester(focusRequester),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.None,
+                autoCorrect = false,
+                keyboardType = KeyboardType.Ascii
+            ),
+            keyboardActions = KeyboardActions.Default
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(4.dp)
         ) {
             lines.forEachIndexed { index, line ->
