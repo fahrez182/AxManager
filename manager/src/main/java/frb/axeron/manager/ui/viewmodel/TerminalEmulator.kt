@@ -6,9 +6,16 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 
 class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
-    data class Cell(val char: Char = ' ', val fg: Int = -1, val bg: Int = -1, val bold: Boolean = false)
+    data class Cell(
+        val char: Char = ' ',
+        val fg: Int = -1,
+        val bg: Int = -1,
+        val bold: Boolean = false,
+        val underline: Boolean = false
+    )
 
     private val buffer = Array(numRows) { Array(numCols) { Cell() } }
     var cursorRow by mutableStateOf(0)
@@ -17,6 +24,7 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
     private var currentFg = -1
     private var currentBg = -1
     private var currentBold = false
+    private var currentUnderline = false
 
     private var state = State.NORMAL
     private val escapeBuffer = StringBuilder()
@@ -61,7 +69,7 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
 
     private fun putChar(c: Char) {
         if (cursorRow in 0 until numRows && cursorCol in 0 until numCols) {
-            buffer[cursorRow][cursorCol] = Cell(c, currentFg, currentBg, currentBold)
+            buffer[cursorRow][cursorCol] = Cell(c, currentFg, currentBg, currentBold, currentUnderline)
             cursorCol++
             if (cursorCol >= numCols) {
                 newLine()
@@ -122,8 +130,14 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
                 parts.forEach { p ->
                     val code = p.toIntOrNull() ?: 0
                     when (code) {
-                        0 -> { currentFg = -1; currentBg = -1; currentBold = false }
+                        0 -> {
+                            currentFg = -1; currentBg = -1; currentBold = false; currentUnderline =
+                            false
+                        }
+
                         1 -> currentBold = true
+                        4 -> currentUnderline = true
+                        24 -> currentUnderline = false
                         in 30..37 -> currentFg = code - 30
                         in 40..47 -> currentBg = code - 40
                         39 -> currentFg = -1
@@ -150,11 +164,14 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
                     val cell = buffer[i][j]
                     val start = length
                     append(cell.char)
-                    if (cell.fg != -1 || cell.bg != -1 || cell.bold) {
-                        addStyle(SpanStyle(
-                            color = if (cell.fg != -1) getAnsiColor(cell.fg) else Color.Unspecified,
-                            fontWeight = if (cell.bold) FontWeight.Bold else FontWeight.Normal
-                        ), start, length)
+                    if (cell.fg != -1 || cell.bg != -1 || cell.bold || cell.underline) {
+                        addStyle(
+                            SpanStyle(
+                                color = if (cell.fg != -1) getAnsiColor(cell.fg) else Color.Unspecified,
+                                fontWeight = if (cell.bold) FontWeight.Bold else FontWeight.Normal,
+                                textDecoration = if (cell.underline) TextDecoration.Underline else TextDecoration.None
+                            ), start, length
+                        )
                     }
                 }
             }
@@ -190,6 +207,10 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
         }
         cursorRow = 0
         cursorCol = 0
+        currentFg = -1
+        currentBg = -1
+        currentBold = false
+        currentUnderline = false
         triggerUpdate()
     }
 }

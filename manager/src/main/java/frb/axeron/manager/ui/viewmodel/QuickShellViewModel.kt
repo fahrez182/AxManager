@@ -268,35 +268,59 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun sendInput(text: String) {
+        if (isAdvancedMode && adbStatus == "Connected") {
+            try {
+                adbClient?.sendShellRaw(text.toByteArray())
+            } catch (e: Exception) {
+                Log.e("QuickShellViewModel", "Failed to send input", e)
+            }
+        }
+    }
+
+    fun sendRaw(data: ByteArray) {
+        if (isAdvancedMode && adbStatus == "Connected") {
+            try {
+                adbClient?.sendShellRaw(data)
+            } catch (e: Exception) {
+                Log.e("QuickShellViewModel", "Failed to send raw", e)
+            }
+        }
+    }
+
     fun sendSpecialKey(key: String) {
         if (isAdvancedMode && adbStatus == "Connected") {
-            if (key == "CTRL") {
-                isCtrlPressed = !isCtrlPressed
-                return
-            }
-            if (key == "ALT") {
-                isAltPressed = !isAltPressed
-                return
-            }
-
-            var data = key.toByteArray()
-            if (isCtrlPressed) {
-                if (key.length == 1) {
-                    val c = key[0].uppercaseChar()
-                    if (c in 'A'..'Z') {
-                        data = byteArrayOf((c.code - 'A'.code + 1).toByte())
-                    }
+            try {
+                if (key == "CTRL") {
+                    isCtrlPressed = !isCtrlPressed
+                    return
                 }
-                isCtrlPressed = false
+                if (key == "ALT") {
+                    isAltPressed = !isAltPressed
+                    return
+                }
+
+                var data = key.toByteArray()
+                if (isCtrlPressed) {
+                    if (key.length == 1) {
+                        val c = key[0].uppercaseChar()
+                        if (c in 'A'..'Z') {
+                            data = byteArrayOf((c.code - 'A'.code + 1).toByte())
+                        }
+                    }
+                    isCtrlPressed = false
+                }
+                if (isAltPressed) {
+                    val newData = ByteArray(data.size + 1)
+                    newData[0] = 0x1b
+                    System.arraycopy(data, 0, newData, 1, data.size)
+                    data = newData
+                    isAltPressed = false
+                }
+                adbClient?.sendShellRaw(data)
+            } catch (e: Exception) {
+                Log.e("QuickShellViewModel", "Failed to send special key", e)
             }
-            if (isAltPressed) {
-                val newData = ByteArray(data.size + 1)
-                newData[0] = 0x1b
-                System.arraycopy(data, 0, newData, 1, data.size)
-                data = newData
-                isAltPressed = false
-            }
-            adbClient?.sendShellRaw(data)
         }
     }
 
@@ -308,6 +332,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     override fun onCleared() {
         super.onCleared()
+        disconnectAdb()
         if (Axeron.pingBinder()) stop()
     }
 }
