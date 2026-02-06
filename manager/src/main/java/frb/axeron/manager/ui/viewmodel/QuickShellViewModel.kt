@@ -159,6 +159,10 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     private var adbClient: AdbClient? = null
 
+    val terminalEmulator = TerminalEmulator()
+    var isCtrlPressed by mutableStateOf(false)
+    var isAltPressed by mutableStateOf(false)
+
     fun toggleAdvancedMode() {
         isAdvancedMode = !isAdvancedMode
         if (isAdvancedMode) {
@@ -185,12 +189,19 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                 val key = AdbKey(keyStore, "axeron")
 
                 adbClient = AdbClient(key, port)
+                adbClient?.onConnectionChanged = { status ->
+                    adbStatus = status
+                }
                 adbClient?.connect()
                 adbStatus = "Connected"
 
                 adbClient?.startShell { data ->
                     viewModelScope.launch {
-                        _output.emit(Output(OutputType.TYPE_STDOUT, String(data)))
+                        if (isAdvancedMode) {
+                            terminalEmulator.append(data)
+                        } else {
+                            _output.emit(Output(OutputType.TYPE_STDOUT, String(data)))
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -259,7 +270,33 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     fun sendSpecialKey(key: String) {
         if (isAdvancedMode && adbStatus == "Connected") {
-            adbClient?.sendShellRaw(key.toByteArray())
+            if (key == "CTRL") {
+                isCtrlPressed = !isCtrlPressed
+                return
+            }
+            if (key == "ALT") {
+                isAltPressed = !isAltPressed
+                return
+            }
+
+            var data = key.toByteArray()
+            if (isCtrlPressed) {
+                if (key.length == 1) {
+                    val c = key[0].uppercaseChar()
+                    if (c in 'A'..'Z') {
+                        data = byteArrayOf((c.code - 'A'.code + 1).toByte())
+                    }
+                }
+                isCtrlPressed = false
+            }
+            if (isAltPressed) {
+                val newData = ByteArray(data.size + 1)
+                newData[0] = 0x1b
+                System.arraycopy(data, 0, newData, 1, data.size)
+                data = newData
+                isAltPressed = false
+            }
+            adbClient?.sendShellRaw(data)
         }
     }
 
