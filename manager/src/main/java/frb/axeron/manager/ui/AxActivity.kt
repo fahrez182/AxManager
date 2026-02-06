@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -70,6 +71,7 @@ import frb.axeron.manager.ui.navigation.BottomBarDestination
 import frb.axeron.manager.ui.screen.FlashIt
 import frb.axeron.manager.ui.theme.AxManagerTheme
 import frb.axeron.manager.ui.util.LocalSnackbarHost
+import frb.axeron.manager.ui.util.LocaleHelper
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
@@ -82,6 +84,10 @@ class AxActivity : ComponentActivity() {
 
     companion object {
         const val OPEN_QUICK_SHELL = "AxManager.QUICK_SHELL"
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applyLanguage(newBase))
     }
 
     var zipUri by mutableStateOf<List<PluginInstaller>?>(emptyList())
