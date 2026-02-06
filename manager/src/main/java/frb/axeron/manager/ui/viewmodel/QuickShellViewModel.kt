@@ -3,21 +3,31 @@ package frb.axeron.manager.ui.viewmodel
 import android.app.Application
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import android.provider.Settings
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import frb.axeron.adb.AdbClient
+import frb.axeron.adb.AdbKey
+import frb.axeron.adb.PreferenceAdbKeyStore
+import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.api.core.Starter
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.axerish.R
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class QuickShellViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -137,6 +147,85 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     var execMode by mutableStateOf("Commands")
         private set
 
+    var isAdvancedMode by mutableStateOf(false)
+        private set
+
+    val commandHistory = mutableStateListOf<String>()
+    var historyIndex by mutableIntStateOf(-1)
+        private set
+
+    var adbStatus by mutableStateOf("Disconnected")
+        private set
+
+    private var adbClient: AdbClient? = null
+
+    fun toggleAdvancedMode() {
+        isAdvancedMode = !isAdvancedMode
+        if (isAdvancedMode) {
+            connectAdb()
+        } else {
+            disconnectAdb()
+        }
+    }
+
+    private fun connectAdb() {
+        viewModelScope.launch(Dispatchers.IO) {
+            adbStatus = "Connecting..."
+            try {
+                val port = AdbEnvironment.getAdbTcpPort()
+                if (port <= 0) {
+                    adbStatus = "ADB Port not found"
+                    return@launch
+                }
+
+                val keyStore = PreferenceAdbKeyStore(
+                    AxeronSettings.getPreferences(),
+                    Settings.Global.getString(getApplication<Application>().contentResolver, Starter.KEY_PAIR)
+                )
+                val key = AdbKey(keyStore, "axeron")
+
+                adbClient = AdbClient(key, port)
+                adbClient?.connect()
+                adbStatus = "Connected"
+
+                adbClient?.startShell { data ->
+                    viewModelScope.launch {
+                        _output.emit(Output(OutputType.TYPE_STDOUT, String(data)))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("QuickShellViewModel", "ADB connect failed", e)
+                adbStatus = "Failed: ${e.message}"
+            }
+        }
+    }
+
+    private fun disconnectAdb() {
+        adbClient?.close()
+        adbClient = null
+        adbStatus = "Disconnected"
+    }
+
+    fun navigateHistory(up: Boolean) {
+        if (commandHistory.isEmpty()) return
+        if (up) {
+            if (historyIndex < commandHistory.size - 1) {
+                historyIndex++
+                val cmd = commandHistory[commandHistory.size - 1 - historyIndex]
+                commandText = TextFieldValue(cmd, selection = TextRange(cmd.length))
+            }
+        } else {
+            if (historyIndex > 0) {
+                historyIndex--
+                val cmd = commandHistory[commandHistory.size - 1 - historyIndex]
+                commandText = TextFieldValue(cmd, selection = TextRange(cmd.length))
+            } else if (historyIndex == 0) {
+                historyIndex = -1
+                commandText = TextFieldValue("")
+            }
+        }
+    }
+
     fun setCommand(text: TextFieldValue) {
         commandText = text
     }
@@ -154,7 +243,24 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         val cmd = commandText.text.ifBlank { return }
             .replace(Regex("[^\\p{Print}\\n]"), "") // sanitize
 
-        session.runCommand(cmd, isCompatModeEnabled)
+        if (commandHistory.lastOrNull() != cmd) {
+            commandHistory.add(cmd)
+        }
+        historyIndex = -1
+
+        if (isAdvancedMode && adbStatus == "Connected") {
+            append(OutputType.TYPE_COMMAND, "$ cmd")
+            adbClient?.sendShellCommand(cmd)
+            commandText = TextFieldValue("")
+        } else {
+            session.runCommand(cmd, isCompatModeEnabled)
+        }
+    }
+
+    fun sendSpecialKey(key: String) {
+        if (isAdvancedMode && adbStatus == "Connected") {
+            adbClient?.sendShellRaw(key.toByteArray())
+        }
     }
 
     private fun append(type: OutputType, output: String) {
