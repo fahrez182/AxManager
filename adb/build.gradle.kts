@@ -41,8 +41,6 @@ dependencies {
     implementation(libs.bcpkix.jdk18on)
     implementation(libs.androidx.annotation.jvm)
     implementation(libs.androidx.lifecycle.livedata.core.ktx)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.boringssl)
     implementation(libs.libcxx)

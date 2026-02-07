@@ -3,32 +3,21 @@ package frb.axeron.manager.ui.viewmodel
 import android.app.Application
 import android.util.Log
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import android.provider.Settings
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import frb.axeron.adb.AdbClient
-import frb.axeron.adb.AdbKey
-import frb.axeron.adb.PreferenceAdbKeyStore
-import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.api.core.Starter
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.axerish.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class QuickShellViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -148,123 +137,12 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     var execMode by mutableStateOf("Commands")
         private set
 
-    var isAdvancedMode by mutableStateOf(false)
-        private set
-
-    val commandHistory = mutableStateListOf<String>()
-    var historyIndex by mutableIntStateOf(-1)
-        private set
-
-    var adbStatus by mutableStateOf("Disconnected")
-        private set
-
-    private var isConnecting = false
-    private var adbJob: Job? = null
-    private var adbClient: AdbClient? = null
-
-    val terminalEmulator = TerminalEmulator()
-    var isCtrlPressed by mutableStateOf(false)
-    var isAltPressed by mutableStateOf(false)
-
-    fun toggleAdvancedMode() {
-        Log.i("QuickShellViewModel", "LOG: AdvancedMode button clicked")
-        isAdvancedMode = !isAdvancedMode
-        if (isAdvancedMode) {
-            connectAdb()
-        } else {
-            disconnectAdb()
-        }
-    }
-
-    private fun connectAdb() {
-        if (isConnecting) return
-        isConnecting = true
-        adbJob?.cancel()
-        adbJob = viewModelScope.launch {
-            Log.i("QuickShellViewModel", "LOG: Starting ADB connection")
-            try {
-                val port = withContext(Dispatchers.IO) { AdbEnvironment.getAdbTcpPort() }
-                if (port <= 0) {
-                    adbStatus = "ADB Port not found"
-                    isConnecting = false
-                    return@launch
-                }
-
-                val keyStore = PreferenceAdbKeyStore(
-                    AxeronSettings.getPreferences(),
-                    Settings.Global.getString(getApplication<Application>().contentResolver, Starter.KEY_PAIR)
-                )
-                val key = AdbKey(keyStore, "axeron")
-
-                adbClient = AdbClient(key, port)
-
-                // Status Collection
-                launch {
-                    adbClient?.connectionStatus?.collect { status ->
-                        adbStatus = status
-                    }
-                }
-
-                // Output Collection
-                launch {
-                    adbClient?.shellOutput?.collect { data ->
-                        if (isAdvancedMode) {
-                            terminalEmulator.append(data)
-                        } else {
-                            _output.emit(Output(OutputType.TYPE_STDOUT, String(data)))
-                        }
-                    }
-                }
-
-                withContext(Dispatchers.IO) {
-                    adbClient?.connect()
-                    adbClient?.startShell()
-                }
-            } catch (t: Throwable) {
-                Log.e("QuickShellViewModel", "LOG: ADB connect failed", t)
-                adbStatus = "Failed: ${t.message}"
-            } finally {
-                isConnecting = false
-            }
-        }
-    }
-
-    private fun disconnectAdb() {
-        adbJob?.cancel()
-        adbJob = null
-        adbClient?.close()
-        adbClient = null
-        adbStatus = "Disconnected"
-    }
-
-    fun navigateHistory(up: Boolean) {
-        if (commandHistory.isEmpty()) return
-        if (up) {
-            if (historyIndex < commandHistory.size - 1) {
-                historyIndex++
-                val cmd = commandHistory[commandHistory.size - 1 - historyIndex]
-                commandText = TextFieldValue(cmd, selection = TextRange(cmd.length))
-            }
-        } else {
-            if (historyIndex > 0) {
-                historyIndex--
-                val cmd = commandHistory[commandHistory.size - 1 - historyIndex]
-                commandText = TextFieldValue(cmd, selection = TextRange(cmd.length))
-            } else if (historyIndex == 0) {
-                historyIndex = -1
-                commandText = TextFieldValue("")
-            }
-        }
-    }
-
     fun setCommand(text: TextFieldValue) {
         commandText = text
     }
 
     fun clear() {
-        if (isAdvancedMode) {
-            terminalEmulator.clear()
-        }
+        //make a toggle state
         clear = !clear
     }
 
@@ -276,65 +154,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         val cmd = commandText.text.ifBlank { return }
             .replace(Regex("[^\\p{Print}\\n]"), "") // sanitize
 
-        if (commandHistory.lastOrNull() != cmd) {
-            commandHistory.add(cmd)
-        }
-        historyIndex = -1
-
-        if (isAdvancedMode && adbStatus == "Connected") {
-            adbClient?.sendShellCommand(cmd)
-            commandText = TextFieldValue("")
-        } else {
-            session.runCommand(cmd, isCompatModeEnabled)
-        }
-    }
-
-    fun sendInput(text: String) {
-        if (isAdvancedMode && adbStatus == "Connected") {
-            adbClient?.sendShellRaw(text.toByteArray())
-        }
-    }
-
-    fun sendRaw(data: ByteArray) {
-        if (isAdvancedMode && adbStatus == "Connected") {
-            adbClient?.sendShellRaw(data)
-        }
-    }
-
-    fun sendSpecialKey(key: String) {
-        if (isAdvancedMode && adbStatus == "Connected") {
-            try {
-                if (key == "CTRL") {
-                    isCtrlPressed = !isCtrlPressed
-                    return
-                }
-                if (key == "ALT") {
-                    isAltPressed = !isAltPressed
-                    return
-                }
-
-                var data = key.toByteArray()
-                if (isCtrlPressed) {
-                    if (key.length == 1) {
-                        val c = key[0].uppercaseChar()
-                        if (c in 'A'..'Z') {
-                            data = byteArrayOf((c.code - 'A'.code + 1).toByte())
-                        }
-                    }
-                    isCtrlPressed = false
-                }
-                if (isAltPressed) {
-                    val newData = ByteArray(data.size + 1)
-                    newData[0] = 0x1b
-                    System.arraycopy(data, 0, newData, 1, data.size)
-                    data = newData
-                    isAltPressed = false
-                }
-                adbClient?.sendShellRaw(data)
-            } catch (e: Exception) {
-                Log.e("QuickShellViewModel", "Failed to send special key", e)
-            }
-        }
+        session.runCommand(cmd, isCompatModeEnabled)
     }
 
     private fun append(type: OutputType, output: String) {
@@ -345,7 +165,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     override fun onCleared() {
         super.onCleared()
-        disconnectAdb()
         if (Axeron.pingBinder()) stop()
     }
 }
+
+
