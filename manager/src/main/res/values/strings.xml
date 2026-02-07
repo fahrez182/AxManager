@@ -112,7 +112,7 @@
     <string name="ask_install_plugin_msg">The following modules will be installed:</string>
     <string name="auto_enable_plugin">Auto enabled after install</string>
     <string name="manual_enable_plugin">Will remain disabled</string>
-    <string name="log_error_code">Error code: $d.\n %s Please save and check the log.\n</string>
+    <string name="log_error_code">Error code: %d.\n %s Please save and check the log.\n</string>
     <string name="re_ignite_and_close"><![CDATA[Re-ignite & Close]]></string>
     <string name="restart_and_close"><![CDATA[Restart & Close]]></string>
     <string name="flashing">Flashing</string>
@@ -171,7 +171,7 @@
     <string name="failed_to_start">Failed to start</string>
     <string name="activate_success">Activate Successfully</string>
     <string name="please_wait">Please wait…</string>
-    <string name="view_command_message">`%1$s`\n\nThere are some other considerations, please confirm that you have read the help first.</string>
+    <string name="view_command_message">`%s`\n\nThere are some other considerations, please confirm that you have read the help first.</string>
     <string name="activate_by_computer">Start by connecting to a computer</string>
     <string name="activate_by_computer_desc">For devices without root, you need to use adb to start AxManager (requires computer connection). This process needs to be repeated every time the device restarted.</string>
     <string name="activate_by_wireless">Start via Wireless Debugging</string>

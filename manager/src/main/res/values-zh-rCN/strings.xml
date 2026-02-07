@@ -171,7 +171,7 @@
     <string name="failed_to_start">启动失败</string>
     <string name="activate_success">激活成功</string>
     <string name="please_wait">请稍候…</string>
-    <string name="view_command_message">`%1$s`\n\n还有其他注意事项，请确认您已阅读步骤指南。</string>
+    <string name="view_command_message">`%s`\n\n还有其他注意事项，请确认您已阅读步骤指南。</string>
     <string name="activate_by_computer">通过电脑命令行激活</string>
     <string name="activate_by_computer_desc">对于没有 Root 的设备，需要使用 ADB 激活 AxManager（需要连接电脑）。每次设备重启后都需要重复此操作。</string>
     <string name="activate_by_wireless">通过无线调试激活</string>
