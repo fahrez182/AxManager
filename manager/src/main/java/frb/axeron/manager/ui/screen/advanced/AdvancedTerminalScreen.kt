@@ -1,6 +1,7 @@
 package frb.axeron.manager.ui.screen.advanced
 
 import androidx.compose.animation.core.LinearEasing
+import android.util.Log
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -101,6 +102,7 @@ fun AdvancedTerminalView(
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
+                .background(Color.Black)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -109,7 +111,8 @@ fun AdvancedTerminalView(
                 }
         ) {
             val density = LocalDensity.current
-            val charWidth = with(density) { 7.2.sp.toDp() } // Approximate for 12sp monospace
+            // Use a more precise character measurement if possible, or stick to monospace assumptions
+            val charWidth = with(density) { 7.2.sp.toDp() }
             val charHeight = with(density) { 14.sp.toDp() }
 
             val cols = (maxWidth / charWidth).toInt().coerceAtLeast(10)
@@ -123,8 +126,12 @@ fun AdvancedTerminalView(
             AndroidView(
                 factory = { ctx ->
                     TerminalInputView(ctx).apply {
-                        onTextInput = { text -> viewModel.sendInput(text) }
+                        onTextInput = { text ->
+                            Log.d("AdvancedTerminal", "LOG: Keyboard input received: $text")
+                            viewModel.sendInput(text)
+                        }
                         onActionKey = { keyCode ->
+                            Log.d("AdvancedTerminal", "LOG: Action key received: $keyCode")
                             when (keyCode) {
                                 android.view.KeyEvent.KEYCODE_ENTER -> viewModel.sendInput("\n")
                                 android.view.KeyEvent.KEYCODE_DEL -> viewModel.sendRaw(byteArrayOf(0x7f))
@@ -141,6 +148,9 @@ fun AdvancedTerminalView(
                                 android.view.KeyEvent.KEYCODE_ESCAPE -> viewModel.sendInput("\u001b")
                             }
                         }
+                        setOnFocusChangeListener { _, hasFocus ->
+                            Log.d("AdvancedTerminal", "LOG: Terminal input focus: $hasFocus")
+                        }
                         terminalInputView = this
                     }
                 },
@@ -154,7 +164,7 @@ fun AdvancedTerminalView(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(4.dp)
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 lines.forEachIndexed { index, line ->
                     TerminalLine(

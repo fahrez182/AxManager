@@ -29,20 +29,26 @@ class TerminalInputView(context: Context) : View(context) {
         return object : BaseInputConnection(this, false) {
             override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
                 text?.let {
-                    Log.i("TerminalInputView", "LOG: Input received from keyboard")
+                    Log.i("TerminalInputView", "LOG: Keyboard input received: $it")
                     onTextInput(it.toString())
                 }
                 return true
             }
 
             override fun sendKeyEvent(event: KeyEvent): Boolean {
-                Log.i("TerminalInputView", "LOG: Key event received: ${event.keyCode}")
-                return super.sendKeyEvent(event)
+                Log.i("TerminalInputView", "LOG: Physical key event: ${event.keyCode} action: ${event.action}")
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    onKeyDown(event.keyCode, event)
+                }
+                return true
             }
 
             override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+                Log.d("TerminalInputView", "LOG: deleteSurroundingText: $beforeLength, $afterLength")
                 if (beforeLength > 0 && afterLength == 0) {
-                    onActionKey(KeyEvent.KEYCODE_DEL)
+                    repeat(beforeLength) {
+                        onActionKey(KeyEvent.KEYCODE_DEL)
+                    }
                     return true
                 }
                 return super.deleteSurroundingText(beforeLength, afterLength)

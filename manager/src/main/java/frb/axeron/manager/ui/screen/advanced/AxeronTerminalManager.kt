@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronNewProcess
+import frb.axeron.server.Environment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,8 +43,14 @@ class AxeronTerminalManager(private val application: Application) {
                 }
                 Log.i("AxeronTerminalManager", "LOG: Axeron environment detected")
 
+                val currentEnv = Axeron.getEnvironment()
+                val env = Environment.Builder(false)
+                    .putAll(currentEnv.envMap)
+                    .put("TERM", "xterm-256color")
+                    .build()
+
                 val proc = withContext(Dispatchers.IO) {
-                    Axeron.newProcess(arrayOf("sh", "-i"))
+                    Axeron.newProcess(arrayOf("setsid", "sh", "-i"), env, null)
                 }
                 process = proc
                 Log.i("AxeronTerminalManager", "LOG: Axeron connected")
@@ -54,21 +61,53 @@ class AxeronTerminalManager(private val application: Application) {
                 // Output Collection
                 launch(Dispatchers.IO) {
                     Log.i("AxeronTerminalManager", "LOG: Output reader active")
-                    val inputStream = proc.inputStream
-                    val buffer = ByteArray(8192)
-                    try {
-                        while (isActive) {
-                            val read = withContext(Dispatchers.IO) { inputStream.read(buffer) }
-                            if (read == -1) break
-                            if (read > 0) {
-                                _shellOutput.emit(buffer.copyOfRange(0, read))
+
+                    val stdoutJob = launch {
+                        val inputStream = proc.inputStream
+                        val buffer = ByteArray(8192)
+                        try {
+                            while (isActive) {
+                                val read = withContext(Dispatchers.IO) { inputStream.read(buffer) }
+                                if (read == -1) break
+                                if (read > 0) {
+                                    Log.d("AxeronTerminalManager", "LOG: Output received from Axeron (stdout)")
+                                    _shellOutput.emit(buffer.copyOfRange(0, read))
+                                }
                             }
+                        } catch (e: Exception) {
+                            Log.e("AxeronTerminalManager", "Stdout read error: ${e.message}")
+                        }
+                    }
+
+                    val stderrJob = launch {
+                        val errorStream = proc.errorStream
+                        val buffer = ByteArray(8192)
+                        try {
+                            while (isActive) {
+                                val read = withContext(Dispatchers.IO) { errorStream.read(buffer) }
+                                if (read == -1) break
+                                if (read > 0) {
+                                    Log.d("AxeronTerminalManager", "LOG: Output received from Axeron (stderr)")
+                                    _shellOutput.emit(buffer.copyOfRange(0, read))
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("AxeronTerminalManager", "Stderr read error: ${e.message}")
+                        }
+                    }
+
+                    // Wait for process to exit and cleanup
+                    try {
+                        withContext(Dispatchers.IO) {
+                            proc.waitFor()
                         }
                     } catch (e: Exception) {
-                        Log.e("AxeronTerminalManager", "Read error: ${e.message}")
+                        Log.e("AxeronTerminalManager", "Process wait error: ${e.message}")
                     } finally {
+                        stdoutJob.cancel()
+                        stderrJob.cancel()
                         _terminalStatus.value = "Disconnected"
-                        Log.i("AxeronTerminalManager", "Output collection ended")
+                        Log.i("AxeronTerminalManager", "Terminal session ended")
                     }
                 }
 
