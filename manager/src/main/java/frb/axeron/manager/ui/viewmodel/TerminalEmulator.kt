@@ -20,6 +20,8 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
     private val buffer = Array(numRows) { Array(numCols) { Cell() } }
     var cursorRow by mutableStateOf(0)
     var cursorCol by mutableStateOf(0)
+    var revision by mutableStateOf(0)
+        private set
 
     private var currentFg = -1
     private var currentBg = -1
@@ -157,6 +159,7 @@ class TerminalEmulator(val numRows: Int = 40, val numCols: Int = 100) {
     }
 
     private fun triggerUpdate() {
+        revision++
         for (i in 0 until numRows) {
             _outputLines[i] = buildAnnotatedString {
                 val lastCol = getLineLength(i)

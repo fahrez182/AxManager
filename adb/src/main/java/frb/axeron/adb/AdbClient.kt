@@ -30,6 +30,7 @@ private const val TAG = "AdbClient"
 class AdbClient(private val key: AdbKey, private val port: Int, private val host: String = "127.0.0.1") : Closeable {
 
     private val writeExecutor = Executors.newSingleThreadExecutor()
+    private var isClosed = false
     private lateinit var socket: Socket
     private lateinit var plainInputStream: DataInputStream
     private lateinit var plainOutputStream: DataOutputStream
@@ -50,7 +51,8 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     var onConnectionChanged: ((String) -> Unit)? = null
 
     fun connect() {
-        val socket = Socket()
+        useTls = false
+        socket = Socket()
         val address = InetSocketAddress(host, port)
         socket.connect(address, 5000)
 
@@ -114,7 +116,7 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
 
         Thread {
             try {
-                while (shellLocalId != -1) {
+                while (shellLocalId != -1 && !isClosed) {
                     val message = try {
                         read()
                     } catch (e: Exception) {
@@ -147,7 +149,7 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
             } finally {
                 shellLocalId = -1
                 shellRemoteId = -1
-                if (autoReconnect) {
+                if (autoReconnect && !isClosed) {
                     retryReconnect(listener = shellListener!!)
                 }
             }
@@ -155,16 +157,18 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     }
 
     private fun retryReconnect(listener: (ByteArray) -> Unit) {
+        if (isClosed) return
         Thread {
             onConnectionChanged?.invoke("Reconnecting...")
             Thread.sleep(2000)
+            if (isClosed) return@Thread
             try {
                 connect()
                 onConnectionChanged?.invoke("Connected")
                 openShell(true)
             } catch (e: Exception) {
                 Log.e(TAG, "Reconnect failed", e)
-                retryReconnect(listener)
+                if (!isClosed) retryReconnect(listener)
             }
         }.start()
     }
@@ -265,17 +269,18 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     }
 
     override fun close() {
+        isClosed = true
         writeExecutor.shutdownNow()
         try {
-            plainInputStream.close()
+            if (this::plainInputStream.isInitialized) plainInputStream.close()
         } catch (e: Throwable) {
         }
         try {
-            plainOutputStream.close()
+            if (this::plainOutputStream.isInitialized) plainOutputStream.close()
         } catch (e: Throwable) {
         }
         try {
-            socket.close()
+            if (this::socket.isInitialized) socket.close()
         } catch (e: Exception) {
         }
 
