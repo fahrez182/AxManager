@@ -10,9 +10,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
 class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(application) {
-    private val adbTerminalManager = AdbTerminalManager(application)
+    private val terminalManager = AxeronTerminalManager(application)
 
-    val adbStatus = adbTerminalManager.adbStatus
+    val terminalStatus = terminalManager.terminalStatus
     val terminalEmulator = TerminalEmulator()
 
     var isCtrlPressed by mutableStateOf(false)
@@ -20,19 +20,19 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
 
     init {
         viewModelScope.launch {
-            adbTerminalManager.shellOutput.collect { data ->
+            terminalManager.shellOutput.collect { data ->
                 terminalEmulator.append(data)
             }
         }
-        adbTerminalManager.connect(viewModelScope)
+        terminalManager.connect(viewModelScope)
     }
 
     fun sendInput(text: String) {
-        adbTerminalManager.sendShellRaw(text.toByteArray())
+        terminalManager.sendShellRaw(text.toByteArray())
     }
 
     fun sendRaw(data: ByteArray) {
-        adbTerminalManager.sendShellRaw(data)
+        terminalManager.sendShellRaw(data)
     }
 
     fun sendSpecialKey(key: String) {
@@ -63,7 +63,7 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
                 data = newData
                 isAltPressed = false
             }
-            adbTerminalManager.sendShellRaw(data)
+            terminalManager.sendShellRaw(data)
         } catch (e: Exception) {
             Log.e("AdvancedTerminalViewModel", "Failed to send special key", e)
         }
@@ -71,6 +71,6 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
 
     override fun onCleared() {
         super.onCleared()
-        adbTerminalManager.disconnect()
+        terminalManager.disconnect()
     }
 }
