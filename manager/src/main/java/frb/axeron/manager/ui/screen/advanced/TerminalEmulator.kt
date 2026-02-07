@@ -100,7 +100,13 @@ class TerminalEmulator(
                     '\u001b' -> state = State.ESCAPE
                     '\n' -> newLine()
                     '\r' -> cursorCol = 0
-                    '\b', '\u007f' -> if (cursorCol > 0) cursorCol--
+                    '\b', '\u007f' -> {
+                        if (cursorCol > 0) {
+                            cursorCol--
+                            screen[cursorRow][cursorCol].reset()
+                            dirtyLines.add(cursorRow)
+                        }
+                    }
                     '\t' -> repeat(8 - (cursorCol % 8)) { putChar(' ') }
                     '\u0007' -> { /* Bell - ignore */ }
                     else -> if (c.code >= 32) putChar(c)
@@ -300,7 +306,6 @@ class TerminalEmulator(
         }
         dirtyLines.clear()
         revision++
-        android.util.Log.d("TerminalEmulator", "LOG: Terminal renderer updated (revision $revision)")
     }
 
     private fun updateOutputLines() {

@@ -34,14 +34,11 @@ class AxeronTerminalManager(private val application: Application) {
         connectionScope = scope
         connectionJob?.cancel()
         connectionJob = scope.launch {
-            Log.i("AxeronTerminalManager", "LOG: Advanced Mode started")
             try {
                 if (!Axeron.pingBinder()) {
-                    Log.w("AxeronTerminalManager", "LOG: Axeron environment not detected")
                     _terminalStatus.value = "Axeron environment not ready"
                     return@launch
                 }
-                Log.i("AxeronTerminalManager", "LOG: Axeron environment detected")
 
                 val currentEnv = Axeron.getEnvironment()
                 val env = Environment.Builder(false)
@@ -53,15 +50,11 @@ class AxeronTerminalManager(private val application: Application) {
                     Axeron.newProcess(arrayOf("setsid", "sh", "-i"), env, null)
                 }
                 process = proc
-                Log.i("AxeronTerminalManager", "LOG: Axeron connected")
-                Log.i("AxeronTerminalManager", "LOG: Terminal session started")
 
                 _terminalStatus.value = "Connected"
 
                 // Output Collection
                 launch(Dispatchers.IO) {
-                    Log.i("AxeronTerminalManager", "LOG: Output reader active")
-
                     val stdoutJob = launch {
                         val inputStream = proc.inputStream
                         val buffer = ByteArray(8192)
@@ -70,8 +63,11 @@ class AxeronTerminalManager(private val application: Application) {
                                 val read = withContext(Dispatchers.IO) { inputStream.read(buffer) }
                                 if (read == -1) break
                                 if (read > 0) {
-                                    Log.d("AxeronTerminalManager", "LOG: Output received from Axeron (stdout)")
-                                    _shellOutput.emit(buffer.copyOfRange(0, read))
+                                    val data = buffer.copyOfRange(0, read)
+                                    val filteredData = filterShellWarnings(data)
+                                    if (filteredData.isNotEmpty()) {
+                                        _shellOutput.emit(filteredData)
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -87,8 +83,11 @@ class AxeronTerminalManager(private val application: Application) {
                                 val read = withContext(Dispatchers.IO) { errorStream.read(buffer) }
                                 if (read == -1) break
                                 if (read > 0) {
-                                    Log.d("AxeronTerminalManager", "LOG: Output received from Axeron (stderr)")
-                                    _shellOutput.emit(buffer.copyOfRange(0, read))
+                                    val data = buffer.copyOfRange(0, read)
+                                    val filteredData = filterShellWarnings(data)
+                                    if (filteredData.isNotEmpty()) {
+                                        _shellOutput.emit(filteredData)
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -112,7 +111,7 @@ class AxeronTerminalManager(private val application: Application) {
                 }
 
             } catch (t: Throwable) {
-                Log.e("AxeronTerminalManager", "LOG: Error handling if failure occurs", t)
+                Log.e("AxeronTerminalManager", "Error in terminal connection", t)
                 _terminalStatus.value = "Failed: ${t.message}"
             } finally {
                 isConnecting = false
@@ -138,11 +137,22 @@ class AxeronTerminalManager(private val application: Application) {
                 process?.outputStream?.let {
                     it.write(data)
                     it.flush()
-                    Log.i("AxeronTerminalManager", "LOG: Data written to Axeron stdin")
                 }
             } catch (e: Exception) {
                 Log.e("AxeronTerminalManager", "Write error: ${e.message}")
             }
         }
+    }
+
+    private fun filterShellWarnings(data: ByteArray): ByteArray {
+        val text = String(data)
+        if (text.contains("sh: can't find tty fd") || text.contains("sh: warning: won't have full job control")) {
+            val filteredText = text.replace("sh: can't find tty fd: No such device or address\n", "")
+                .replace("sh: warning: won't have full job control\n", "")
+                .replace("sh: can't find tty fd: No such device or address", "")
+                .replace("sh: warning: won't have full job control", "")
+            return filteredText.toByteArray()
+        }
+        return data
     }
 }

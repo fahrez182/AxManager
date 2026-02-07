@@ -81,7 +81,7 @@ fun AdvancedTerminalView(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -127,11 +127,9 @@ fun AdvancedTerminalView(
                 factory = { ctx ->
                     TerminalInputView(ctx).apply {
                         onTextInput = { text ->
-                            Log.d("AdvancedTerminal", "LOG: Keyboard input received: $text")
                             viewModel.sendInput(text)
                         }
                         onActionKey = { keyCode ->
-                            Log.d("AdvancedTerminal", "LOG: Action key received: $keyCode")
                             when (keyCode) {
                                 android.view.KeyEvent.KEYCODE_ENTER -> viewModel.sendInput("\n")
                                 android.view.KeyEvent.KEYCODE_DEL -> viewModel.sendRaw(byteArrayOf(0x7f))
@@ -148,9 +146,7 @@ fun AdvancedTerminalView(
                                 android.view.KeyEvent.KEYCODE_ESCAPE -> viewModel.sendInput("\u001b")
                             }
                         }
-                        setOnFocusChangeListener { _, hasFocus ->
-                            Log.d("AdvancedTerminal", "LOG: Terminal input focus: $hasFocus")
-                        }
+                        setOnFocusChangeListener { _, _ -> }
                         terminalInputView = this
                     }
                 },
@@ -164,7 +160,7 @@ fun AdvancedTerminalView(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 lines.forEachIndexed { index, line ->
                     TerminalLine(

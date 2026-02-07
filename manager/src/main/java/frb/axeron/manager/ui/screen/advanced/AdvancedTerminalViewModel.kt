@@ -28,10 +28,12 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun sendInput(text: String) {
+        terminalEmulator.append(text.toByteArray())
         terminalManager.sendShellRaw(text.toByteArray())
     }
 
     fun sendRaw(data: ByteArray) {
+        terminalEmulator.append(data)
         terminalManager.sendShellRaw(data)
     }
 
@@ -63,6 +65,7 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
                 data = newData
                 isAltPressed = false
             }
+            terminalEmulator.append(data)
             terminalManager.sendShellRaw(data)
         } catch (e: Exception) {
             Log.e("AdvancedTerminalViewModel", "Failed to send special key", e)
