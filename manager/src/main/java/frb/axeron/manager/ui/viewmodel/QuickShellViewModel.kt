@@ -3,6 +3,8 @@ package frb.axeron.manager.ui.viewmodel
 import android.app.Application
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
@@ -15,6 +17,7 @@ import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.axerish.R
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -137,12 +140,35 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     var execMode by mutableStateOf("Commands")
         private set
 
+    val commandHistory = mutableStateListOf<String>()
+    var historyIndex by mutableIntStateOf(-1)
+        private set
+
+    fun navigateHistory(up: Boolean) {
+        if (commandHistory.isEmpty()) return
+        if (up) {
+            if (historyIndex < commandHistory.size - 1) {
+                historyIndex++
+                val cmd = commandHistory[commandHistory.size - 1 - historyIndex]
+                commandText = TextFieldValue(cmd, selection = TextRange(cmd.length))
+            }
+        } else {
+            if (historyIndex > 0) {
+                historyIndex--
+                val cmd = commandHistory[commandHistory.size - 1 - historyIndex]
+                commandText = TextFieldValue(cmd, selection = TextRange(cmd.length))
+            } else if (historyIndex == 0) {
+                historyIndex = -1
+                commandText = TextFieldValue("")
+            }
+        }
+    }
+
     fun setCommand(text: TextFieldValue) {
         commandText = text
     }
 
     fun clear() {
-        //make a toggle state
         clear = !clear
     }
 
@@ -153,6 +179,11 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     fun runShell() {
         val cmd = commandText.text.ifBlank { return }
             .replace(Regex("[^\\p{Print}\\n]"), "") // sanitize
+
+        if (commandHistory.lastOrNull() != cmd) {
+            commandHistory.add(cmd)
+        }
+        historyIndex = -1
 
         session.runCommand(cmd, isCompatModeEnabled)
     }
@@ -168,5 +199,3 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         if (Axeron.pingBinder()) stop()
     }
 }
-
-

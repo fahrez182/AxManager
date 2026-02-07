@@ -2,35 +2,16 @@ package frb.axeron.manager.ui.screen
 
 import android.annotation.SuppressLint
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
@@ -41,33 +22,9 @@ import androidx.compose.material.icons.outlined.DoNotTouch
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Output
 import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -90,6 +47,7 @@ import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.generated.destinations.AdvancedTerminalScreenDestination
 import frb.axeron.api.Axeron
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
@@ -137,7 +95,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     LaunchedEffect(listState, viewModel.isRunning) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .collect { (index, offset) ->
-                if (!viewModel.isRunning) {  // hanya update FAB kalau sedang tidak running
+                if (!viewModel.isRunning) {
                     if (index > previousIndex || (index == previousIndex && offset > previousScrollOffset)) {
                         fabVisible = false
                     } else if (index < previousIndex || offset < previousScrollOffset) {
@@ -161,43 +119,35 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         showExtraDialog = false
     }
 
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.quick_shell),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.quick_shell),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            viewModel.stop()
-                        },
-                        enabled = running,
-                    ) {
+                    IconButton(onClick = {
+                        navigator.navigate(AdvancedTerminalScreenDestination) {
+                            launchSingleTop = true
+                        }
+                    }) {
+                        Icon(
+                            Icons.Outlined.Terminal,
+                            contentDescription = stringResource(R.string.advanced_mode),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = { viewModel.stop() }, enabled = running) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                     }
-                    IconButton(
-                        onClick = {
-                            viewModel.clear()
-                        },
-                        enabled = logs.isNotEmpty()
-                    ) {
+                    IconButton(onClick = { viewModel.clear() }, enabled = logs.isNotEmpty()) {
                         Icon(Icons.Filled.ClearAll, contentDescription = null)
                     }
-                    IconButton(
-                        onClick = {
-                            showExtraDialog = true
-                        }
-                    ) {
+                    IconButton(onClick = { showExtraDialog = true }) {
                         Icon(Icons.Outlined.MoreVert, null)
                     }
                 }
@@ -224,47 +174,29 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         val context = LocalContext.current
         val focusManager = LocalFocusManager.current
         var keyboardVisible by remember { mutableStateOf(false) }
-        val keyboardController = LocalSoftwareKeyboardController.current
 
         KeyEventBlocker {
             val prefs = PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
             when (it.key) {
-                Key.VolumeUp -> prefs.loadState(
-                    context,
-                    QuickShellViewModel.KeyEventType.VOLUME_UP,
-                    true
-                )
-
-                Key.VolumeDown -> prefs.loadState(
-                    context,
-                    QuickShellViewModel.KeyEventType.VOLUME_DOWN,
-                    true
-                )
-
+                Key.VolumeUp -> prefs.loadState(context, QuickShellViewModel.KeyEventType.VOLUME_UP, true)
+                Key.VolumeDown -> prefs.loadState(context, QuickShellViewModel.KeyEventType.VOLUME_DOWN, true)
                 else -> false
             }
         }
 
-        KeyboardVisibilityListener(
-            onKeyboardState = { visible ->
-                keyboardVisible = visible
-                if (!visible) {
-                    focusManager.clearFocus()
-                }
+        KeyboardVisibilityListener { visible ->
+            keyboardVisible = visible
+            if (!visible) {
+                focusManager.clearFocus()
             }
-        )
+        }
 
         Box(
             Modifier
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
-
-
-            LaunchedEffect(viewModel.clear) {
-                logs.clear()
-            }
+            LaunchedEffect(viewModel.clear) { logs.clear() }
 
             LaunchedEffect(logs.size) {
                 if (logs.isNotEmpty()) {
@@ -272,27 +204,17 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 }
             }
 
-            // collect flow
+            // collect flow for standard logs
             LaunchedEffect(viewModel.output) {
                 viewModel.output.collect { line ->
                     val raw = line.output
-
                     if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && raw.isBlank()) return@collect
-                    // ===== DETECT SCREEN MODE =====
 
-                    // ===== SCREEN MODE (top, watch, htop, etc) =====
                     if (AnsiFilter.isScreenControl(raw)) {
                         val clean = AnsiFilter.stripAnsi(raw)
-
                         if (clean.isEmpty()) return@collect
                         if (logs.isEmpty()) {
-                            logs.add(
-                                QuickShellViewModel.Output(
-                                    type = line.type,
-                                    output = clean,
-                                    completed = false
-                                )
-                            )
+                            logs.add(QuickShellViewModel.Output(type = line.type, output = clean, completed = false))
                         } else {
                             val last = logs.last()
                             logs[logs.lastIndex] = last.copy(output = clean)
@@ -300,207 +222,139 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         return@collect
                     }
 
-
-                    // selain stdout/stderr → selalu item baru
                     if (line.type != QuickShellViewModel.OutputType.TYPE_STDOUT && line.type != QuickShellViewModel.OutputType.TYPE_STDERR) {
                         logs.add(line.copy(completed = true))
                         return@collect
                     }
 
-                    val hasNewline =
-                        raw.contains('\n')
-
-                    val hasCarriageReturn =
-                        raw.contains('\r') && !raw.contains('\n')
-
+                    val hasNewline = raw.contains('\n')
+                    val hasCarriageReturn = raw.contains('\r') && !raw.contains('\n')
                     val clean = raw.trimEnd('\n', '\r')
-
                     val last = logs.lastOrNull()
 
                     when {
-
-                        /* ===============================
-                           CASE 1: CARRIAGE RETURN (\r)
-                           overwrite baris terakhir
-                           =============================== */
-                        hasCarriageReturn && last != null &&
-                                !last.completed &&
-                                last.type == line.type -> {
-
-                            val i = logs.lastIndex
-                            logs[i] = last.copy(
-                                output = clean,
-                                completed = false
-                            )
+                        hasCarriageReturn && last != null && !last.completed && last.type == line.type -> {
+                            logs[logs.lastIndex] = last.copy(output = clean, completed = false)
                         }
-
-                        /* ===============================
-                           CASE 2: LANJUT BARIS SEBELUMNYA
-                           =============================== */
-                        last != null &&
-                                !last.completed &&
-                                last.type == line.type -> {
-
-                            val i = logs.lastIndex
-                            logs[i] = last.copy(
-                                output = last.output + clean,
-                                completed = hasNewline
-                            )
+                        last != null && !last.completed && last.type == line.type -> {
+                            logs[logs.lastIndex] = last.copy(output = last.output + clean, completed = hasNewline)
                         }
-
-                        /* ===============================
-                           CASE 3: BARIS BARU
-                           =============================== */
                         else -> {
-                            logs.add(
-                                QuickShellViewModel.Output(
-                                    type = line.type,
-                                    output = clean,
-                                    completed = hasNewline
-                                )
-                            )
+                            logs.add(QuickShellViewModel.Output(type = line.type, output = clean, completed = hasNewline))
                         }
                     }
                 }
             }
 
+            StandardLogView(logs, listState)
 
-            val hScroll = rememberScrollState()
-
-            val context = LocalContext.current
-
-            SelectionContainer(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
+            // Bottom controls for Standard Mode
+            AnimatedVisibility(
+                visible = true,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                Box(
-                    modifier = Modifier
-                        .horizontalScroll(hScroll)
-                ) {
-                    LazyColumn(
-                        state = listState,
-                    ) {
-                        item {
-                            Spacer(modifier = Modifier.size(70.dp))
-                        }
-                        items(logs) { line ->
-                            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                    .loadState(context, line.type, true)
-                            ) return@items
-                            BasicText(
-                                text = line.output.parseAsAnsiAnnotatedString(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
-                                    lineHeightStyle = LineHeightStyle(
-                                        alignment = LineHeightStyle.Alignment.Center,
-                                        trim = LineHeightStyle.Trim.Both
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace
-                                ),
-                                softWrap = false,
-                            )
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.size(22.dp))
-                        }
-                    }
-                }
+                StandardBottomControls(viewModel, keyboardVisible)
             }
-
-            @SuppressLint("ConfigurationScreenWidthHeight")
-            val screen = LocalConfiguration.current.screenHeightDp
-            val paddingHeight = (screen * 0.52).dp
-
-
-            ElevatedCard(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.elevatedCardColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-//                    containerColor = Color.Transparent
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .run {
-                        if (keyboardVisible) {
-                            padding(bottom = paddingHeight)
-                        } else {
-                            padding(bottom = 0.dp)
-                        }
-                    }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    TextField(
-                        value = viewModel.commandText,
-                        onValueChange = {
-                            viewModel.setCommand(it)
-                        },
-                        label = {
-                            Text(viewModel.execMode)
-                        },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyLarge.fontSize,
-                            lineHeightStyle = LineHeightStyle(
-                                alignment = LineHeightStyle.Alignment.Center,
-                                trim = LineHeightStyle.Trim.Both
-                            ),
-                            fontFamily = FontFamily.Monospace
-                        ),
-                        maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,   // garis saat fokus
-                            unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
-                            disabledIndicatorColor = Color.Transparent,   // garis saat disabled
-                            focusedContainerColor = Color.Transparent,   // ⬅ ini penting
-                            unfocusedContainerColor = Color.Transparent, // ⬅ ini juga
-                            disabledContainerColor = Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 250,
-                                    easing = LinearOutSlowInEasing
-                                )
-                            )
-                    )
-
-                    IconButton(
-                        onClick = {
-                            viewModel.runShell()
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp)
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_exec),
-                            contentDescription = stringResource(R.string.exec),
-                            modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-
         }
     }
 }
 
 @Composable
-fun KeyboardVisibilityListener(
-    onKeyboardState: (visible: Boolean) -> Unit
-) {
-    val insets = WindowInsets.ime
-    val imeHeight = insets.getBottom(LocalDensity.current)
+fun StandardLogView(logs: List<QuickShellViewModel.Output>, listState: androidx.compose.foundation.lazy.LazyListState) {
+    val hScroll = rememberScrollState()
+    val context = LocalContext.current
 
+    androidx.compose.foundation.text.selection.SelectionContainer(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Box(modifier = Modifier.horizontalScroll(hScroll)) {
+            LazyColumn(state = listState) {
+                item { Spacer(modifier = Modifier.size(70.dp)) }
+                items(logs) { line ->
+                    if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_").loadState(context, line.type, true)) return@items
+                    BasicText(
+                        text = line.output.parseAsAnsiAnnotatedString(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            lineHeight = MaterialTheme.typography.labelSmall.fontSize,
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        softWrap = false,
+                    )
+                }
+                item { Spacer(modifier = Modifier.size(22.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+fun StandardBottomControls(viewModel: QuickShellViewModel, keyboardVisible: Boolean) {
+    @SuppressLint("ConfigurationScreenWidthHeight")
+    val screen = LocalConfiguration.current.screenHeightDp
+    val paddingHeight = (screen * 0.52).dp
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        ElevatedCard(
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.elevatedCardColors().copy(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .run { if (keyboardVisible) padding(bottom = paddingHeight) else padding(bottom = 0.dp) }
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                TextField(
+                    value = viewModel.commandText,
+                    onValueChange = { viewModel.setCommand(it) },
+                    label = { Text(viewModel.execMode) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace
+                    ),
+                    maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize()
+                )
+                IconButton(
+                    onClick = {
+                        viewModel.runShell()
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 4.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_exec),
+                        contentDescription = stringResource(R.string.exec),
+                        modifier = Modifier.size(38.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
+fun KeyboardVisibilityListener(onKeyboardState: (visible: Boolean) -> Unit) {
+    val insets = WindowInsets.ime
+    val density = LocalDensity.current
+    val imeHeight = insets.getBottom(density)
     val imeVisible = imeHeight > 0
     val prevImeVisible = remember { mutableStateOf(imeVisible) }
 
@@ -512,14 +366,9 @@ fun KeyboardVisibilityListener(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExtraSettings(
-    showDialog: Boolean,
-    quickShellViewModel: QuickShellViewModel,
-    onDismissRequest: () -> Unit
-) {
+fun ExtraSettings(showDialog: Boolean, quickShellViewModel: QuickShellViewModel, onDismissRequest: () -> Unit) {
     if (showDialog) {
         ModalBottomSheet(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -531,9 +380,7 @@ fun ExtraSettings(
             val keyEventOption = QuickShellViewModel.KeyEventType.entries
 
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -541,122 +388,80 @@ fun ExtraSettings(
                     val checkedOutputStates = remember {
                         mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
                             outputOption.forEach {
-                                put(
-                                    it,
-                                    PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                        .loadState(context, it, true)
-                                )
+                                put(it, PrefsEnumHelper<QuickShellViewModel.OutputType>("output_").loadState(context, it, true))
                             }
                         }
                     }
-
                     SettingsItemExpanded(
                         label = stringResource(R.string.output_filter),
                         description = stringResource(R.string.filter_output_desc),
                         iconVector = Icons.Outlined.Output
                     ) { _, expanded ->
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
+                        AnimatedVisibility(visible = expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                             Column(Modifier.padding(bottom = 12.dp)) {
                                 outputOption.forEach { type ->
                                     val isChecked = checkedOutputStates[type] ?: false
-                                    CheckBoxText(
-                                        label = stringResource(type.labelId),
-                                        checked = isChecked
-                                    ) {
+                                    CheckBoxText(label = stringResource(type.labelId), checked = isChecked) {
                                         checkedOutputStates[type] = it
-                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                            .saveState(context, type, it)
+                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("output_").saveState(context, type, it)
                                     }
                                 }
                             }
                         }
                     }
                 }
-
                 item {
                     val checkedSaveStates = remember {
                         mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
                             outputOption.forEach {
-                                put(
-                                    it,
-                                    PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
-                                        .loadState(context, it, true)
-                                )
+                                put(it, PrefsEnumHelper<QuickShellViewModel.OutputType>("save_").loadState(context, it, true))
                             }
                         }
                     }
-
                     SettingsItemExpanded(
                         label = stringResource(R.string.save_log_filter),
                         description = stringResource(R.string.filter_save_log_desc),
                         iconVector = Icons.Outlined.Save,
                     ) { _, expanded ->
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
+                        AnimatedVisibility(visible = expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                             Column(Modifier.padding(bottom = 12.dp)) {
                                 outputOption.forEach { type ->
                                     val isChecked = checkedSaveStates[type] ?: false
-                                    CheckBoxText(
-                                        label = stringResource(type.labelId),
-                                        checked = isChecked
-                                    ) {
+                                    CheckBoxText(label = stringResource(type.labelId), checked = isChecked) {
                                         checkedSaveStates[type] = it
-                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
-                                            .saveState(context, type, it)
+                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("save_").saveState(context, type, it)
                                     }
                                 }
                             }
                         }
                     }
                 }
-
                 item {
                     val blockedKeyEventStates = remember {
                         mutableStateMapOf<QuickShellViewModel.KeyEventType, Boolean>().apply {
                             keyEventOption.forEach {
-                                put(
-                                    it,
-                                    PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
-                                        .loadState(context, it, true)
-                                )
+                                put(it, PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_").loadState(context, it, true))
                             }
                         }
                     }
-
                     SettingsItemExpanded(
                         label = stringResource(R.string.block_key_event),
                         description = stringResource(R.string.block_key_event_desc),
                         iconVector = Icons.Outlined.DoNotTouch,
                     ) { _, expanded ->
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
+                        AnimatedVisibility(visible = expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                             Column(Modifier.padding(bottom = 12.dp)) {
                                 keyEventOption.forEach { type ->
                                     val isChecked = blockedKeyEventStates[type] ?: false
-                                    CheckBoxText(
-                                        label = stringResource(type.labelId),
-                                        checked = isChecked
-                                    ) {
+                                    CheckBoxText(label = stringResource(type.labelId), checked = isChecked) {
                                         blockedKeyEventStates[type] = it
-                                        PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
-                                            .saveState(context, type, it)
+                                        PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_").saveState(context, type, it)
                                     }
                                 }
                             }
                         }
                     }
                 }
-
                 item {
                     SettingsItem(
                         iconVector = Icons.Filled.Security,
@@ -666,7 +471,6 @@ fun ExtraSettings(
                         onSwitchChange = { quickShellViewModel.setShellRestriction(it) }
                     )
                 }
-
                 item {
                     SettingsItem(
                         iconVector = Icons.Outlined.Bolt,
@@ -681,41 +485,24 @@ fun ExtraSettings(
     }
 }
 
-
-suspend fun saveLogsToDownload(
-    context: Context,
-    logs: List<QuickShellViewModel.Output>,
-    snackbar: SnackbarHostState
-) {
+suspend fun saveLogsToDownload(context: Context, logs: List<QuickShellViewModel.Output>, snackbar: SnackbarHostState) {
     val logSaved = context.getString(R.string.log_saved_to)
     val logFailed = context.getString(R.string.failed_to_save_log)
     if (logs.isEmpty()) return
     val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
     val date = format.format(Date())
-
     val baseDir = PathHelper.getPath(AxeronApiConstant.folder.PARENT_LOG)
-    if (!baseDir.exists()) {
-        baseDir.mkdirs()
-    }
-
+    if (!baseDir.exists()) baseDir.mkdirs()
     val file = File(baseDir, "QuickShell_log_${date}.log")
-
     try {
-        val fos =
-            Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
+        val fos = Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
         logs.forEach { line ->
-            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
-                    .loadState(context, line.type, true)
-            ) return@forEach
+            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("save_").loadState(context, line.type, true)) return@forEach
             fos.write("${line.output}\n".toByteArray())
         }
         fos.flush()
-
         snackbar.showSnackbar(logSaved.format(file.absolutePath))
     } catch (e: Exception) {
         snackbar.showSnackbar(logFailed.format(e.message))
     }
 }
-
-
-
