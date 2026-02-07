@@ -40,9 +40,9 @@ import frb.axeron.manager.ui.component.TerminalInputView
 @Composable
 fun AdvancedTerminalScreen(navigator: DestinationsNavigator) {
     val viewModel: AdvancedTerminalViewModel = viewModel()
-    val adbStatus by viewModel.adbStatus.collectAsState()
+    val terminalStatus by viewModel.terminalStatus.collectAsState()
 
-    AdvancedTerminalView(viewModel, adbStatus) {
+    AdvancedTerminalView(viewModel, terminalStatus) {
         navigator.popBackStack()
     }
 }
@@ -50,7 +50,7 @@ fun AdvancedTerminalScreen(navigator: DestinationsNavigator) {
 @Composable
 fun AdvancedTerminalView(
     viewModel: AdvancedTerminalViewModel,
-    adbStatus: String,
+    terminalStatus: String,
     onBack: () -> Unit
 ) {
     val emulator = viewModel.terminalEmulator
@@ -84,8 +84,8 @@ fun AdvancedTerminalView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "ADB: $adbStatus",
-                color = if (adbStatus == "Connected") Color.Green else Color.Red,
+                text = "Axeron: $terminalStatus",
+                color = if (terminalStatus == "Connected") Color.Green else Color.Red,
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = FontFamily.Monospace
             )
