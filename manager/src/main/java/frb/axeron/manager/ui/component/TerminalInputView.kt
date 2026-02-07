@@ -2,6 +2,7 @@ package frb.axeron.manager.ui.component
 
 import android.content.Context
 import android.text.InputType
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
@@ -19,8 +20,11 @@ class TerminalInputView(context: Context) : View(context) {
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        outAttrs.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        outAttrs.imeOptions = EditorInfo.IME_ACTION_NONE
+        Log.i("TerminalInputView", "LOG: Input connection established")
+        outAttrs.inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
+                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        outAttrs.imeOptions = EditorInfo.IME_ACTION_NONE or EditorInfo.IME_FLAG_NO_FULLSCREEN
 
         return object : BaseInputConnection(this, false) {
             override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
@@ -29,9 +33,7 @@ class TerminalInputView(context: Context) : View(context) {
             }
 
             override fun sendKeyEvent(event: KeyEvent): Boolean {
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    onActionKey(event.keyCode)
-                }
+                Log.i("TerminalInputView", "LOG: Key event received: ${event.keyCode}")
                 return super.sendKeyEvent(event)
             }
 
@@ -47,9 +49,21 @@ class TerminalInputView(context: Context) : View(context) {
 
     override fun onCheckIsTextEditor(): Boolean = true
 
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        Log.i("TerminalInputView", "LOG: Key event received: $keyCode")
+        onActionKey(keyCode)
+        return true
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        return true
+    }
+
     fun requestTerminalFocus() {
+        Log.i("TerminalInputView", "LOG: Terminal focus requested")
         requestFocus()
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        Log.i("TerminalInputView", "LOG: Keyboard requested")
         imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
     }
 }
