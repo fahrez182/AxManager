@@ -157,6 +157,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     var adbStatus by mutableStateOf("Disconnected")
         private set
 
+    private var isConnecting = false
+
     private var adbClient: AdbClient? = null
 
     val terminalEmulator = TerminalEmulator()
@@ -164,6 +166,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     var isAltPressed by mutableStateOf(false)
 
     fun toggleAdvancedMode() {
+        Log.i("QuickShellViewModel", "LOG: AdvancedMode button clicked")
         isAdvancedMode = !isAdvancedMode
         if (isAdvancedMode) {
             connectAdb()
@@ -173,27 +176,35 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun connectAdb() {
+        if (isConnecting) return
+        isConnecting = true
         viewModelScope.launch(Dispatchers.IO) {
+            Log.i("QuickShellViewModel", "LOG: Checking initialization state")
             adbStatus = "Connecting..."
             try {
                 val port = AdbEnvironment.getAdbTcpPort()
                 if (port <= 0) {
+                    Log.w("QuickShellViewModel", "LOG: ADB Port not found")
                     adbStatus = "ADB Port not found"
+                    isConnecting = false
                     return@launch
                 }
 
+                Log.i("QuickShellViewModel", "LOG: Creating terminal session")
                 val keyStore = PreferenceAdbKeyStore(
                     AxeronSettings.getPreferences(),
                     Settings.Global.getString(getApplication<Application>().contentResolver, Starter.KEY_PAIR)
                 )
                 val key = AdbKey(keyStore, "axeron")
 
+                Log.i("QuickShellViewModel", "LOG: Connecting adb shell")
                 adbClient = AdbClient(key, port)
                 adbClient?.onConnectionChanged = { status ->
                     adbStatus = status
                 }
                 adbClient?.connect()
                 adbStatus = "Connected"
+                Log.i("QuickShellViewModel", "LOG: Rendering terminal view")
 
                 adbClient?.startShell { data ->
                     viewModelScope.launch {
@@ -204,9 +215,11 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                         }
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("QuickShellViewModel", "ADB connect failed", e)
-                adbStatus = "Failed: ${e.message}"
+            } catch (t: Throwable) {
+                Log.e("QuickShellViewModel", "LOG: ADB connect failed", t)
+                adbStatus = "Failed: ${t.message}"
+            } finally {
+                isConnecting = false
             }
         }
     }

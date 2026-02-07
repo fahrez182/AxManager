@@ -567,7 +567,7 @@ fun TerminalView(viewModel: QuickShellViewModel) {
     }
 
     // Auto-scroll to bottom when content changes
-    LaunchedEffect(lines.map { it.text }.hashCode(), cursorRow) {
+    LaunchedEffect(emulator.revision, cursorRow) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
@@ -685,7 +685,7 @@ fun TerminalLine(line: AnnotatedString, isCursorLine: Boolean, cursorCol: Int) {
             onTextLayout = { textLayoutResult = it }
         )
         if (isCursorLine && textLayoutResult != null) {
-            val cursorOffset = if (cursorCol < line.length) {
+            val cursorOffset = if (cursorCol in 0 until line.length) {
                 textLayoutResult?.getHorizontalPosition(cursorCol, true) ?: 0f
             } else {
                 textLayoutResult?.getLineRight(0) ?: 0f
