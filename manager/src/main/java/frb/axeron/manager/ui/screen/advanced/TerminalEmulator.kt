@@ -1,4 +1,4 @@
-package frb.axeron.manager.ui.viewmodel
+package frb.axeron.manager.ui.screen.advanced
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
