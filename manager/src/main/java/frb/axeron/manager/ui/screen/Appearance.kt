@@ -323,10 +323,10 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 
             SettingsItem(
                 iconVector = Icons.Filled.Palette,
-                label = stringResource(R.string.color_pallete),
+                label = stringResource(R.string.color_palette),
                 description = if (settingsViewModel.isDynamicColorEnabled)
-                    stringResource(R.string.pallete_overriden_by_dynamic)
-                else stringResource(R.string.customize_color_pallete),
+                    stringResource(R.string.palette_overridden_by_dynamic)
+                else stringResource(R.string.customize_color_palette),
                 enabled = !settingsViewModel.isDynamicColorEnabled,
                 onClick = { showColorPicker = true }
             ) { _, _ ->
@@ -336,7 +336,7 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.current_color_pallete),
+                        text = stringResource(R.string.current_color_palette),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

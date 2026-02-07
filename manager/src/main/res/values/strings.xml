@@ -97,10 +97,10 @@
     <string name="auto_theme_desc">Select theme automatically</string>
     <string name="dynamic_color">Dynamic Color</string>
     <string name="dynamic_color_desc">Select colors dynamically</string>
-    <string name="color_pallete">Color Palette</string>
-    <string name="pallete_overriden_by_dynamic">Overridden by Dynamic Color</string>
-    <string name="customize_color_pallete">Customize primary color</string>
-    <string name="current_color_pallete">Current Color:</string>
+    <string name="color_palette">Color Palette</string>
+    <string name="palette_overridden_by_dynamic">Overridden by Dynamic Color</string>
+    <string name="customize_color_palette">Customize primary color</string>
+    <string name="current_color_palette">Current Color:</string>
     <string name="appearance">Appearance</string>
     <string name="enable_debugging_webview">Enable Debugging WebView</string>
     <string name="enable_debugging_webview_msg">Used to enable features for WebUI debugging, Enable when needed</string>

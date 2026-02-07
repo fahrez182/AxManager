@@ -97,10 +97,10 @@
     <string name="auto_theme_desc">跟随系统</string>
     <string name="dynamic_color">莫奈取色</string>
     <string name="dynamic_color_desc">莫奈取色是 Android12 的 Material You 新特性,它会根据系统壁纸来生成主题色</string>
-    <string name="color_pallete">调色板</string>
-    <string name="pallete_overriden_by_dynamic">莫奈取色已启用，功能不可用</string>
-    <string name="customize_color_pallete">自定义强调色</string>
-    <string name="current_color_pallete">当前: </string>
+    <string name="color_palette">调色板</string>
+    <string name="palette_overridden_by_dynamic">莫奈取色已启用，功能不可用</string>
+    <string name="customize_color_palette">自定义强调色</string>
+    <string name="current_color_palette">当前: </string>
     <string name="appearance">主题设置</string>
     <string name="enable_debugging_webview">WebView 调试功能</string>
     <string name="enable_debugging_webview_msg">用于 WebUI 调试，需要时启用</string>

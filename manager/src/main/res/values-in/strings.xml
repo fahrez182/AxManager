@@ -97,10 +97,10 @@
     <string name="auto_theme_desc">Pilih tema secara otomatis</string>
     <string name="dynamic_color">Warna Dinamis</string>
     <string name="dynamic_color_desc">Pilih warna secara dinamis</string>
-    <string name="color_pallete">Palet Warna</string>
-    <string name="pallete_overriden_by_dynamic">Diganti oleh Warna Dinamis</string>
-    <string name="customize_color_pallete">Sesuaikan warna utama</string>
-    <string name="current_color_pallete">Warna Saat Ini:</string>
+    <string name="color_palette">Palet Warna</string>
+    <string name="palette_overridden_by_dynamic">Diganti oleh Warna Dinamis</string>
+    <string name="customize_color_palette">Sesuaikan warna utama</string>
+    <string name="current_color_palette">Warna Saat Ini:</string>
     <string name="appearance">Tampilan</string>
     <string name="enable_debugging_webview">Aktifkan Debugging WebView</string>
     <string name="enable_debugging_webview_msg">Digunakan untuk mengaktifkan fitur debugging WebUI, Aktifkan saat dibutuhkan</string>
