@@ -74,6 +74,7 @@ fun AdvancedTerminalView(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF000000))
+            .imePadding()
     ) {
         // Status bar
         Row(
@@ -146,7 +147,7 @@ fun AdvancedTerminalView(
                 update = {
                     // Focus is handled by LaunchedEffect and click listener
                 },
-                modifier = Modifier.size(1.dp).alpha(0f)
+                modifier = Modifier.size(1.dp).alpha(0.01f)
             )
 
             Column(

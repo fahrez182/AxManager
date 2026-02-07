@@ -28,7 +28,10 @@ class TerminalInputView(context: Context) : View(context) {
 
         return object : BaseInputConnection(this, false) {
             override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
-                text?.let { onTextInput(it.toString()) }
+                text?.let {
+                    Log.i("TerminalInputView", "LOG: Input received from keyboard")
+                    onTextInput(it.toString())
+                }
                 return true
             }
 
@@ -50,6 +53,7 @@ class TerminalInputView(context: Context) : View(context) {
     override fun onCheckIsTextEditor(): Boolean = true
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) return false
         Log.i("TerminalInputView", "LOG: Key event received: $keyCode")
         onActionKey(keyCode)
         return true
@@ -60,10 +64,12 @@ class TerminalInputView(context: Context) : View(context) {
     }
 
     fun requestTerminalFocus() {
-        Log.i("TerminalInputView", "LOG: Terminal focus requested")
-        requestFocus()
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        Log.i("TerminalInputView", "LOG: Keyboard requested")
-        imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+        post {
+            Log.i("TerminalInputView", "LOG: Terminal focus requested")
+            requestFocus()
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            Log.i("TerminalInputView", "LOG: Keyboard requested")
+            imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+        }
     }
 }

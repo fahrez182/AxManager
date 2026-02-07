@@ -43,20 +43,22 @@ class AxeronTerminalManager(private val application: Application) {
                 Log.i("AxeronTerminalManager", "LOG: Axeron environment detected")
 
                 val proc = withContext(Dispatchers.IO) {
-                    Axeron.newProcess(arrayOf("sh"))
+                    Axeron.newProcess(arrayOf("sh", "-i"))
                 }
                 process = proc
-                Log.i("AxeronTerminalManager", "LOG: AxeronNewProcess created")
+                Log.i("AxeronTerminalManager", "LOG: Axeron connected")
+                Log.i("AxeronTerminalManager", "LOG: Terminal session started")
 
                 _terminalStatus.value = "Connected"
 
                 // Output Collection
                 launch(Dispatchers.IO) {
+                    Log.i("AxeronTerminalManager", "LOG: Output reader active")
                     val inputStream = proc.inputStream
                     val buffer = ByteArray(8192)
                     try {
                         while (isActive) {
-                            val read = inputStream.read(buffer)
+                            val read = withContext(Dispatchers.IO) { inputStream.read(buffer) }
                             if (read == -1) break
                             if (read > 0) {
                                 _shellOutput.emit(buffer.copyOfRange(0, read))
@@ -69,8 +71,6 @@ class AxeronTerminalManager(private val application: Application) {
                         Log.i("AxeronTerminalManager", "Output collection ended")
                     }
                 }
-
-                Log.i("AxeronTerminalManager", "LOG: Terminal session attached")
 
             } catch (t: Throwable) {
                 Log.e("AxeronTerminalManager", "LOG: Error handling if failure occurs", t)
@@ -99,6 +99,7 @@ class AxeronTerminalManager(private val application: Application) {
                 process?.outputStream?.let {
                     it.write(data)
                     it.flush()
+                    Log.i("AxeronTerminalManager", "LOG: Data written to Axeron stdin")
                 }
             } catch (e: Exception) {
                 Log.e("AxeronTerminalManager", "Write error: ${e.message}")
