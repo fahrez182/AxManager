@@ -37,6 +37,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -397,21 +398,17 @@ fun AdvancedTerminalView(viewModel: QuickShellViewModel) {
     val cursorRow = emulator.cursorRow
     val cursorCol = emulator.cursorCol
 
-    val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
+    var terminalInputView by remember { mutableStateOf<TerminalInputView?>(null) }
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboardController?.show()
+    LaunchedEffect(terminalInputView) {
+        terminalInputView?.requestTerminalFocus()
     }
 
     // Auto-scroll to bottom when content changes
     LaunchedEffect(emulator.revision, cursorRow) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
-
-    var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
 
     Column(
         modifier = Modifier
@@ -447,10 +444,8 @@ fun AdvancedTerminalView(viewModel: QuickShellViewModel) {
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    focusRequester.requestFocus()
+                    terminalInputView?.requestTerminalFocus()
                 }
-                .focusRequester(focusRequester)
-                .focusable()
         ) {
             val density = LocalDensity.current
             val charWidth = with(density) { 7.2.sp.toDp() } // Approximate for 12sp monospace
@@ -472,19 +467,26 @@ fun AdvancedTerminalView(viewModel: QuickShellViewModel) {
                             when (keyCode) {
                                 android.view.KeyEvent.KEYCODE_ENTER -> viewModel.sendInput("\n")
                                 android.view.KeyEvent.KEYCODE_DEL -> viewModel.sendRaw(byteArrayOf(0x7f))
+                                android.view.KeyEvent.KEYCODE_FORWARD_DEL -> viewModel.sendInput("\u001b[3~")
                                 android.view.KeyEvent.KEYCODE_TAB -> viewModel.sendInput("\t")
                                 android.view.KeyEvent.KEYCODE_DPAD_UP -> viewModel.sendInput("\u001b[A")
                                 android.view.KeyEvent.KEYCODE_DPAD_DOWN -> viewModel.sendInput("\u001b[B")
                                 android.view.KeyEvent.KEYCODE_DPAD_LEFT -> viewModel.sendInput("\u001b[D")
                                 android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> viewModel.sendInput("\u001b[C")
+                                android.view.KeyEvent.KEYCODE_MOVE_HOME -> viewModel.sendInput("\u001b[H")
+                                android.view.KeyEvent.KEYCODE_MOVE_END -> viewModel.sendInput("\u001b[F")
+                                android.view.KeyEvent.KEYCODE_PAGE_UP -> viewModel.sendInput("\u001b[5~")
+                                android.view.KeyEvent.KEYCODE_PAGE_DOWN -> viewModel.sendInput("\u001b[6~")
+                                android.view.KeyEvent.KEYCODE_ESCAPE -> viewModel.sendInput("\u001b")
                             }
                         }
+                        terminalInputView = this
                     }
                 },
-                update = { view ->
-                    if (viewModel.isAdvancedMode) view.requestTerminalFocus()
+                update = {
+                    // Focus is handled by LaunchedEffect and click listener
                 },
-                modifier = Modifier.size(0.dp)
+                modifier = Modifier.size(1.dp).alpha(0f)
             )
 
             Column(
