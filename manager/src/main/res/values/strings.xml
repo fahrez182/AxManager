@@ -208,4 +208,11 @@
     <string name="permission_dont_allow">Don\'t Allow</string>
     <string name="permission_dont_allow_countdown">Don\'t Allow (%ds)</string>
     <string name="uid_value">UID: %d</string>
+
+    <string name="advanced_mode">Advanced Mode</string>
+    <string name="terminal">Terminal</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="reconnecting">Reconnecting…</string>
+    <string name="connecting">Connecting…</string>
 </resources>
