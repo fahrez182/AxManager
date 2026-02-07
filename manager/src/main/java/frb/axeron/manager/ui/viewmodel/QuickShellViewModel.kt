@@ -24,6 +24,7 @@ import frb.axeron.api.core.Starter
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.axerish.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -158,7 +159,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         private set
 
     private var isConnecting = false
-
+    private var adbJob: Job? = null
     private var adbClient: AdbClient? = null
 
     val terminalEmulator = TerminalEmulator()
@@ -178,42 +179,46 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     private fun connectAdb() {
         if (isConnecting) return
         isConnecting = true
-        viewModelScope.launch(Dispatchers.IO) {
-            Log.i("QuickShellViewModel", "LOG: Checking initialization state")
-            adbStatus = "Connecting..."
+        adbJob?.cancel()
+        adbJob = viewModelScope.launch {
+            Log.i("QuickShellViewModel", "LOG: Starting ADB connection")
             try {
-                val port = AdbEnvironment.getAdbTcpPort()
+                val port = withContext(Dispatchers.IO) { AdbEnvironment.getAdbTcpPort() }
                 if (port <= 0) {
-                    Log.w("QuickShellViewModel", "LOG: ADB Port not found")
                     adbStatus = "ADB Port not found"
                     isConnecting = false
                     return@launch
                 }
 
-                Log.i("QuickShellViewModel", "LOG: Creating terminal session")
                 val keyStore = PreferenceAdbKeyStore(
                     AxeronSettings.getPreferences(),
                     Settings.Global.getString(getApplication<Application>().contentResolver, Starter.KEY_PAIR)
                 )
                 val key = AdbKey(keyStore, "axeron")
 
-                Log.i("QuickShellViewModel", "LOG: Connecting adb shell")
                 adbClient = AdbClient(key, port)
-                adbClient?.onConnectionChanged = { status ->
-                    adbStatus = status
-                }
-                adbClient?.connect()
-                adbStatus = "Connected"
-                Log.i("QuickShellViewModel", "LOG: Rendering terminal view")
 
-                adbClient?.startShell { data ->
-                    viewModelScope.launch {
+                // Status Collection
+                launch {
+                    adbClient?.connectionStatus?.collect { status ->
+                        adbStatus = status
+                    }
+                }
+
+                // Output Collection
+                launch {
+                    adbClient?.shellOutput?.collect { data ->
                         if (isAdvancedMode) {
                             terminalEmulator.append(data)
                         } else {
                             _output.emit(Output(OutputType.TYPE_STDOUT, String(data)))
                         }
                     }
+                }
+
+                withContext(Dispatchers.IO) {
+                    adbClient?.connect()
+                    adbClient?.startShell()
                 }
             } catch (t: Throwable) {
                 Log.e("QuickShellViewModel", "LOG: ADB connect failed", t)
@@ -225,6 +230,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun disconnectAdb() {
+        adbJob?.cancel()
+        adbJob = null
         adbClient?.close()
         adbClient = null
         adbStatus = "Disconnected"
@@ -255,7 +262,9 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun clear() {
-        //make a toggle state
+        if (isAdvancedMode) {
+            terminalEmulator.clear()
+        }
         clear = !clear
     }
 
@@ -273,7 +282,6 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         historyIndex = -1
 
         if (isAdvancedMode && adbStatus == "Connected") {
-            append(OutputType.TYPE_COMMAND, "$ cmd")
             adbClient?.sendShellCommand(cmd)
             commandText = TextFieldValue("")
         } else {
@@ -283,21 +291,13 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     fun sendInput(text: String) {
         if (isAdvancedMode && adbStatus == "Connected") {
-            try {
-                adbClient?.sendShellRaw(text.toByteArray())
-            } catch (e: Exception) {
-                Log.e("QuickShellViewModel", "Failed to send input", e)
-            }
+            adbClient?.sendShellRaw(text.toByteArray())
         }
     }
 
     fun sendRaw(data: ByteArray) {
         if (isAdvancedMode && adbStatus == "Connected") {
-            try {
-                adbClient?.sendShellRaw(data)
-            } catch (e: Exception) {
-                Log.e("QuickShellViewModel", "Failed to send raw", e)
-            }
+            adbClient?.sendShellRaw(data)
         }
     }
 
@@ -349,5 +349,3 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         if (Axeron.pingBinder()) stop()
     }
 }
-
-
