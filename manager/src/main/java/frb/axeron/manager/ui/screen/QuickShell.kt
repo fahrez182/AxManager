@@ -2,35 +2,16 @@ package frb.axeron.manager.ui.screen
 
 import android.annotation.SuppressLint
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
@@ -92,6 +73,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AdvancedTerminalScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.ramcosta.composedestinations.generated.destinations.AdvancedTerminalScreenDestination
 import frb.axeron.api.Axeron
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
@@ -139,7 +121,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     LaunchedEffect(listState, viewModel.isRunning) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .collect { (index, offset) ->
-                if (!viewModel.isRunning) {  // hanya update FAB kalau sedang tidak running
+                if (!viewModel.isRunning) {
                     if (index > previousIndex || (index == previousIndex && offset > previousScrollOffset)) {
                         fabVisible = false
                     } else if (index < previousIndex || offset < previousScrollOffset) {
@@ -167,15 +149,11 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.quick_shell),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.quick_shell),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 },
                 actions = {
                     IconButton(onClick = {
@@ -222,7 +200,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         val context = LocalContext.current
         val focusManager = LocalFocusManager.current
         var keyboardVisible by remember { mutableStateOf(false) }
-        val keyboardController = LocalSoftwareKeyboardController.current
 
         KeyEventBlocker {
             val prefs = PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
@@ -243,7 +220,6 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         Box(
             Modifier
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
             LaunchedEffect(viewModel.clear) { logs.clear() }
@@ -254,7 +230,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 }
             }
 
-            // collect flow
+            // collect flow for standard logs
             LaunchedEffect(viewModel.output) {
                 viewModel.output.collect { line ->
                     val raw = line.output
@@ -296,133 +272,107 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                 }
             }
 
+            StandardLogView(logs, listState)
 
-            val hScroll = rememberScrollState()
-
-            val context = LocalContext.current
-
-            SelectionContainer(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
+            // Bottom controls for Standard Mode
+            AnimatedVisibility(
+                visible = true,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                Box(
-                    modifier = Modifier
-                        .horizontalScroll(hScroll)
-                ) {
-                    LazyColumn(
-                        state = listState,
-                    ) {
-                        item {
-                            Spacer(modifier = Modifier.size(70.dp))
-                        }
-                        items(logs) { line ->
-                            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                    .loadState(context, line.type, true)
-                            ) return@items
-                            BasicText(
-                                text = line.output.parseAsAnsiAnnotatedString(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
-                                    lineHeightStyle = LineHeightStyle(
-                                        alignment = LineHeightStyle.Alignment.Center,
-                                        trim = LineHeightStyle.Trim.Both
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace
-                                ),
-                                softWrap = false,
-                            )
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.size(22.dp))
-                        }
-                    }
-                }
+                StandardBottomControls(viewModel, keyboardVisible)
             }
+        }
+    }
+}
 
-            @SuppressLint("ConfigurationScreenWidthHeight")
-            val screen = LocalConfiguration.current.screenHeightDp
-            val paddingHeight = (screen * 0.52).dp
+@Composable
+fun StandardLogView(logs: List<QuickShellViewModel.Output>, listState: androidx.compose.foundation.lazy.LazyListState) {
+    val hScroll = rememberScrollState()
+    val context = LocalContext.current
 
-
-            ElevatedCard(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.elevatedCardColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-//                    containerColor = Color.Transparent
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .run {
-                        if (keyboardVisible) {
-                            padding(bottom = paddingHeight)
-                        } else {
-                            padding(bottom = 0.dp)
-                        }
-                    }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    TextField(
-                        value = viewModel.commandText,
-                        onValueChange = {
-                            viewModel.setCommand(it)
-                        },
-                        label = {
-                            Text(viewModel.execMode)
-                        },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyLarge.fontSize,
+    androidx.compose.foundation.text.selection.SelectionContainer(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Box(modifier = Modifier.horizontalScroll(hScroll)) {
+            LazyColumn(state = listState) {
+                item { Spacer(modifier = Modifier.size(70.dp)) }
+                items(logs) { line ->
+                    if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_").loadState(context, line.type, true)) return@items
+                    BasicText(
+                        text = line.output.parseAsAnsiAnnotatedString(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            lineHeight = MaterialTheme.typography.labelSmall.fontSize,
                             lineHeightStyle = LineHeightStyle(
                                 alignment = LineHeightStyle.Alignment.Center,
                                 trim = LineHeightStyle.Trim.Both
                             ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = FontFamily.Monospace
                         ),
-                        maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,   // garis saat fokus
-                            unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
-                            disabledIndicatorColor = Color.Transparent,   // garis saat disabled
-                            focusedContainerColor = Color.Transparent,   // ⬅ ini penting
-                            unfocusedContainerColor = Color.Transparent, // ⬅ ini juga
-                            disabledContainerColor = Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 250,
-                                    easing = LinearOutSlowInEasing
-                                )
-                            )
+                        softWrap = false,
                     )
+                }
+                item { Spacer(modifier = Modifier.size(22.dp)) }
+            }
+        }
+    }
+}
 
-                    IconButton(
-                        onClick = {
-                            viewModel.runShell()
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp)
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_exec),
-                            contentDescription = stringResource(R.string.exec),
-                            modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+@Composable
+fun StandardBottomControls(viewModel: QuickShellViewModel, keyboardVisible: Boolean) {
+    @SuppressLint("ConfigurationScreenWidthHeight")
+    val screen = LocalConfiguration.current.screenHeightDp
+    val paddingHeight = (screen * 0.52).dp
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        ElevatedCard(
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.elevatedCardColors().copy(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .run { if (keyboardVisible) padding(bottom = paddingHeight) else padding(bottom = 0.dp) }
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                TextField(
+                    value = viewModel.commandText,
+                    onValueChange = { viewModel.setCommand(it) },
+                    label = { Text(viewModel.execMode) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace
+                    ),
+                    maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize()
+                )
+                IconButton(
+                    onClick = {
+                        viewModel.runShell()
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 4.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_exec),
+                        contentDescription = stringResource(R.string.exec),
+                        modifier = Modifier.size(38.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
-
         }
+        Spacer(modifier = Modifier.size(16.dp))
     }
 }
 
@@ -441,7 +391,6 @@ fun KeyboardVisibilityListener(onKeyboardState: (visible: Boolean) -> Unit) {
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
