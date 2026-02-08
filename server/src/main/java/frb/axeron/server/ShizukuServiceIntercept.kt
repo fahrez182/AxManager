@@ -1,9 +1,11 @@
 package frb.axeron.server
 
 import android.content.Intent
+import android.content.pm.PackageInfo
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Parcel
+import android.os.Parcelable
 import frb.axeron.server.api.ShizukuIntercept
 import frb.axeron.server.util.Logger
 import frb.axeron.server.util.UserHandleCompat
@@ -18,6 +20,7 @@ import moe.shizuku.server.IShizukuService
 import moe.shizuku.server.IShizukuServiceConnection
 import rikka.hidden.compat.ActivityManagerApis
 import rikka.hidden.compat.PackageManagerApis
+import rikka.parcelablelist.ParcelableListSlice
 
 class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizukuService.Stub() {
     companion object {
@@ -134,21 +137,32 @@ class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizuku
     }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-        if (code == BINDER_TRANSACTION_transact) {
-            data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
-            shizukuIntercept.transactRemote(data, reply, flags)
-            return true
-        } else if (code == 14) {
-            data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
-            val binder = data.readStrongBinder()
-            val packageName = data.readString()
-            val args = Bundle()
-            args.putString(ATTACH_APPLICATION_PACKAGE_NAME, packageName)
-            args.putInt(ATTACH_APPLICATION_API_VERSION, -1)
-            attachApplication(IShizukuApplication.Stub.asInterface(binder), args)
-            reply!!.writeNoException()
-            return true
+        when (code) {
+            ServerConstants.BINDER_TRANSACTION_getApplications -> {
+                data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+                val userId = data.readInt()
+                val result: ParcelableListSlice<PackageInfo?> = shizukuIntercept.getApplications(userId)
+                reply!!.writeNoException()
+                result.writeToParcel(reply, Parcelable.PARCELABLE_WRITE_RETURN_VALUE)
+                return true
+            }
+            BINDER_TRANSACTION_transact -> {
+                data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+                shizukuIntercept.transactRemote(data, reply, flags)
+                return true
+            }
+            14 -> {
+                data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+                val binder = data.readStrongBinder()
+                val packageName = data.readString()
+                val args = Bundle()
+                args.putString(ATTACH_APPLICATION_PACKAGE_NAME, packageName)
+                args.putInt(ATTACH_APPLICATION_API_VERSION, -1)
+                attachApplication(IShizukuApplication.Stub.asInterface(binder), args)
+                reply!!.writeNoException()
+                return true
+            }
+            else -> return super.onTransact(code, data, reply, flags)
         }
-        return super.onTransact(code, data, reply, flags)
     }
 }

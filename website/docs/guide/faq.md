@@ -2,7 +2,7 @@
 
 [[toc]]
 
-Many manufacturers have made modifications to the Android system that prevent Shizuku from working properly.
+Many manufacturers have made modifications to the Android system that prevent AxManager from working properly.
 
 ## Start via wireless debugging: keeps showing "Searching for pairing service"
 

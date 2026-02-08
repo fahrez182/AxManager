@@ -20,6 +20,7 @@ class TerminalInputView(context: Context) : View(context) {
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
+        Log.i("TerminalInputView", "LOG: Input connection established")
         outAttrs.inputType = InputType.TYPE_CLASS_TEXT or
                 InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
                 InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
@@ -27,24 +28,18 @@ class TerminalInputView(context: Context) : View(context) {
 
         return object : BaseInputConnection(this, false) {
             override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
-                text?.let {
-                    onTextInput(it.toString())
-                }
+                text?.let { onTextInput(it.toString()) }
                 return true
             }
 
             override fun sendKeyEvent(event: KeyEvent): Boolean {
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    onKeyDown(event.keyCode, event)
-                }
-                return true
+                Log.i("TerminalInputView", "LOG: Key event received: ${event.keyCode}")
+                return super.sendKeyEvent(event)
             }
 
             override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
                 if (beforeLength > 0 && afterLength == 0) {
-                    repeat(beforeLength) {
-                        onActionKey(KeyEvent.KEYCODE_DEL)
-                    }
+                    onActionKey(KeyEvent.KEYCODE_DEL)
                     return true
                 }
                 return super.deleteSurroundingText(beforeLength, afterLength)
@@ -55,7 +50,7 @@ class TerminalInputView(context: Context) : View(context) {
     override fun onCheckIsTextEditor(): Boolean = true
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK) return false
+        Log.i("TerminalInputView", "LOG: Key event received: $keyCode")
         onActionKey(keyCode)
         return true
     }
@@ -65,10 +60,10 @@ class TerminalInputView(context: Context) : View(context) {
     }
 
     fun requestTerminalFocus() {
-        post {
-            requestFocus()
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
-        }
+        Log.i("TerminalInputView", "LOG: Terminal focus requested")
+        requestFocus()
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        Log.i("TerminalInputView", "LOG: Keyboard requested")
+        imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
     }
 }

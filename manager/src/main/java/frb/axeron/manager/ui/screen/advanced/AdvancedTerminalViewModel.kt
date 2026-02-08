@@ -10,9 +10,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
 class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(application) {
-    private val terminalManager = AxeronTerminalManager(application)
+    private val adbTerminalManager = AdbTerminalManager(application)
 
-    val terminalStatus = terminalManager.terminalStatus
+    val adbStatus = adbTerminalManager.adbStatus
     val terminalEmulator = TerminalEmulator()
 
     var isCtrlPressed by mutableStateOf(false)
@@ -20,21 +20,19 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
 
     init {
         viewModelScope.launch {
-            terminalManager.shellOutput.collect { data ->
+            adbTerminalManager.shellOutput.collect { data ->
                 terminalEmulator.append(data)
             }
         }
-        terminalManager.connect(viewModelScope)
+        adbTerminalManager.connect(viewModelScope)
     }
 
     fun sendInput(text: String) {
-        terminalEmulator.append(text.toByteArray())
-        terminalManager.sendShellRaw(text.toByteArray())
+        adbTerminalManager.sendShellRaw(text.toByteArray())
     }
 
     fun sendRaw(data: ByteArray) {
-        terminalEmulator.append(data)
-        terminalManager.sendShellRaw(data)
+        adbTerminalManager.sendShellRaw(data)
     }
 
     fun sendSpecialKey(key: String) {
@@ -65,8 +63,7 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
                 data = newData
                 isAltPressed = false
             }
-            terminalEmulator.append(data)
-            terminalManager.sendShellRaw(data)
+            adbTerminalManager.sendShellRaw(data)
         } catch (e: Exception) {
             Log.e("AdvancedTerminalViewModel", "Failed to send special key", e)
         }
@@ -74,6 +71,6 @@ class AdvancedTerminalViewModel(application: Application) : AndroidViewModel(app
 
     override fun onCleared() {
         super.onCleared()
-        terminalManager.disconnect()
+        adbTerminalManager.disconnect()
     }
 }

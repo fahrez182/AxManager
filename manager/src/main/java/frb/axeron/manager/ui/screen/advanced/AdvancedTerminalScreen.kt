@@ -1,7 +1,6 @@
 package frb.axeron.manager.ui.screen.advanced
 
 import androidx.compose.animation.core.LinearEasing
-import android.util.Log
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -41,9 +40,9 @@ import frb.axeron.manager.ui.component.TerminalInputView
 @Composable
 fun AdvancedTerminalScreen(navigator: DestinationsNavigator) {
     val viewModel: AdvancedTerminalViewModel = viewModel()
-    val terminalStatus by viewModel.terminalStatus.collectAsState()
+    val adbStatus by viewModel.adbStatus.collectAsState()
 
-    AdvancedTerminalView(viewModel, terminalStatus) {
+    AdvancedTerminalView(viewModel, adbStatus) {
         navigator.popBackStack()
     }
 }
@@ -51,7 +50,7 @@ fun AdvancedTerminalScreen(navigator: DestinationsNavigator) {
 @Composable
 fun AdvancedTerminalView(
     viewModel: AdvancedTerminalViewModel,
-    terminalStatus: String,
+    adbStatus: String,
     onBack: () -> Unit
 ) {
     val emulator = viewModel.terminalEmulator
@@ -75,19 +74,18 @@ fun AdvancedTerminalView(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF000000))
-            .imePadding()
     ) {
         // Status bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Axeron: $terminalStatus",
-                color = if (terminalStatus == "Connected") Color.Green else Color.Red,
+                text = "ADB: $adbStatus",
+                color = if (adbStatus == "Connected") Color.Green else Color.Red,
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = FontFamily.Monospace
             )
@@ -102,7 +100,6 @@ fun AdvancedTerminalView(
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .background(Color.Black)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -111,8 +108,7 @@ fun AdvancedTerminalView(
                 }
         ) {
             val density = LocalDensity.current
-            // Use a more precise character measurement if possible, or stick to monospace assumptions
-            val charWidth = with(density) { 7.2.sp.toDp() }
+            val charWidth = with(density) { 7.2.sp.toDp() } // Approximate for 12sp monospace
             val charHeight = with(density) { 14.sp.toDp() }
 
             val cols = (maxWidth / charWidth).toInt().coerceAtLeast(10)
@@ -126,9 +122,7 @@ fun AdvancedTerminalView(
             AndroidView(
                 factory = { ctx ->
                     TerminalInputView(ctx).apply {
-                        onTextInput = { text ->
-                            viewModel.sendInput(text)
-                        }
+                        onTextInput = { text -> viewModel.sendInput(text) }
                         onActionKey = { keyCode ->
                             when (keyCode) {
                                 android.view.KeyEvent.KEYCODE_ENTER -> viewModel.sendInput("\n")
@@ -146,21 +140,20 @@ fun AdvancedTerminalView(
                                 android.view.KeyEvent.KEYCODE_ESCAPE -> viewModel.sendInput("\u001b")
                             }
                         }
-                        setOnFocusChangeListener { _, _ -> }
                         terminalInputView = this
                     }
                 },
                 update = {
                     // Focus is handled by LaunchedEffect and click listener
                 },
-                modifier = Modifier.size(1.dp).alpha(0.01f)
+                modifier = Modifier.size(1.dp).alpha(0f)
             )
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(4.dp)
             ) {
                 lines.forEachIndexed { index, line ->
                     TerminalLine(

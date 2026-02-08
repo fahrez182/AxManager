@@ -22,8 +22,8 @@ fun TerminalControlPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         // Row 1: ESC, /, -, HOME, (up), END, PGUP
         Row(

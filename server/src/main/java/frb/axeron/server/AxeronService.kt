@@ -755,7 +755,7 @@ open class AxeronService() :
         super.exit()
     }
 
-    private fun getApplications(userId: Int): ParcelableListSlice<PackageInfo?> {
+    override fun getApplications(userId: Int): ParcelableListSlice<PackageInfo?> {
         val list = ArrayList<PackageInfo?>()
 
         val users: ArrayList<Int> = ArrayList()
