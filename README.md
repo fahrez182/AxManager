@@ -1,10 +1,11 @@
+English | [简体中文](README_zh-Hans.md)
+|-|-|
+
 # Axeron Manager (AxManager) (Not-Final)
 
 
 > Hi! This project is still in early development.  I’m learning and experimenting while building it, so things may not be complete or could change later.  
 Thanks for checking it out!
-
-[Switch to Chinese translation 切换到中文翻译](Translation/CN/Readme.md)
 
 **AxManager** is an Android application designed to provide deeper control over apps and the system.  
 Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager** is dedicated to **ADB/Non-Root mode** — while still allowing execution with **Root access** if available. [Learn More](https://fahrez182.github.io/AxManager/)
@@ -54,7 +55,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## 🤝 Contribution
 Contributions are welcome!  
-Feel free to open **issues**, submit **pull requests**, or start a discussion for new ideas and improvements.
+Feel free to open **Issues**, submit **Pull requests**, or start a discussion for new ideas and improvements.
 
 
 ## 🙏 Credits
