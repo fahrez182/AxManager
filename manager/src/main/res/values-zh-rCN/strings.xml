@@ -6,7 +6,7 @@
     <string name="global_settings">全局设置</string>
     <string name="secure_settings">安全设置</string>
     <string name="system_settings">系统设置</string>
-    <string name="android_properties">安卓属性</string>
+    <string name="android_properties">Android 属性</string>
     <string name="axeron_environment">Axeron 环境</string>
     <string name="search_label">搜索</string>
     <string name="home">主页</string>
@@ -22,7 +22,7 @@
     <string name="name">名称</string>
     <string name="size">大小</string>
     <string name="enable">启用</string>
-    <string name="action">运行</string>
+    <string name="action">活动</string>
     <string name="web_ui">WebUI</string>
     <string name="filter_settings">排序设置</string>
     <string name="enable_developer_mode">开发者模式</string>
@@ -160,7 +160,7 @@
     <string name="shell_restriction">限制后台运行</string>
     <string name="shell_restriction_desc">开启后将限制命令在后台执行</string>
     <string name="compat_mode">Busybox 兼容模式</string>
-    <string name="compat_mode_desc">开启后将使用 Busybox 来拦截不支持的命令。</string>
+    <string name="compat_mode_desc">开启后将使用 Busybox 来兼容不支持的命令。</string>
     <string name="axeron_permission">AX-权限接管</string>
     <string name="axeron_permission_desc">使用基于 Shizuku-API 构建的 Ax-Environment 接管授权请求</string>
     <string name="tcp_mode">无线调试模式</string>
