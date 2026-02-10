@@ -55,7 +55,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## 🤝 Contribution
 Contributions are welcome!  
-Feel free to open **issues**, submit **pull requests**, or start a discussion for new ideas and improvements.
+Feel free to open **Issues**, submit **Pull requests**, or start a discussion for new ideas and improvements.
 
 
 ## 🙏 Credits
