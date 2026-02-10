@@ -121,7 +121,7 @@
     <string name="idle">空闲</string>
     <string name="support_me">支持作者</string>
     <string name="support_me_msg">AxManager 是完全免费且开源的。如果您觉得它有用，请关注该项目并考虑在 GitHub 上点亮 Star 。</string>
-    <string name="learn_more">关于 AxeManager</string>
+    <string name="learn_more">关于 AxManager</string>
     <string name="learn_more_msg">了解如何使用 AxManager 以及如何制作插件</string>
     <string name="updating">更新中…</string>
     <string name="server_updating_version" formatted="false"><![CDATA[更新中: %d → %d]]></string>
