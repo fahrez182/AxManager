@@ -28,7 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import frb.axeron.manager.ui.theme.AppShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -415,7 +415,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 
 
             ElevatedCard(
-                shape = RoundedCornerShape(10.dp),
+                shape = AppShape.R10,
                 colors = CardDefaults.elevatedCardColors().copy(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
 //                    containerColor = Color.Transparent

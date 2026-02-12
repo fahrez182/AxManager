@@ -87,6 +87,7 @@ import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.component.resolveDisplayName
+import frb.axeron.manager.ui.theme.AppShape
 import frb.axeron.manager.ui.theme.GREEN
 import frb.axeron.manager.ui.theme.ORANGE
 import frb.axeron.manager.ui.theme.RED
@@ -192,7 +193,8 @@ fun InstallDialog(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.elevatedCardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
+                            ),
+                            shape = AppShape.R12
                         ) {
                             Row(
                                 modifier = Modifier

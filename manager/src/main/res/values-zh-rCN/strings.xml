@@ -3,11 +3,11 @@
     <string name="home_running">运行中</string>
     <string name="notification_warn_miui">MIUI用户可能需要将通知切换为原生样式。</string>
     <string name="notification_warn_miui_2">否则您可能无法从通知中输入配对码。</string>
-    <string name="global_settings">全局设置</string>
-    <string name="secure_settings">安全设置</string>
-    <string name="system_settings">系统设置</string>
-    <string name="android_properties">安卓属性</string>
-    <string name="axeron_environment">Axeron 环境</string>
+    <string name="global_settings">Global 表</string>
+    <string name="secure_settings">Secuer 表</string>
+    <string name="system_settings">System 表</string>
+    <string name="android_properties">Android Properties</string>
+    <string name="axeron_environment">Axeron PATH</string>
     <string name="search_label">搜索</string>
     <string name="home">主页</string>
     <string name="privilege">特权</string>

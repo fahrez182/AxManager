@@ -90,6 +90,7 @@ import frb.axeron.manager.ui.component.PowerDialog
 import frb.axeron.manager.ui.component.PrivilegeCard
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.theme.AppShape
 import frb.axeron.manager.ui.util.checkNewVersion
 import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
@@ -247,6 +248,7 @@ fun SupportCard() {
     val githubFahrez182 = "https://github.com/fahrez182/AxManager"
 
     ElevatedCard(
+        shape = AppShape.R12,
         onClick = {
             uriHandler.openUri(githubFahrez182)
         }
@@ -286,6 +288,7 @@ fun LearnCard() {
     val learnAxManager = "https://fahrez182.github.io/AxManager"
 
     ElevatedCard(
+        shape = AppShape.R12,
         onClick = {
             uriHandler.openUri(learnAxManager)
         }
@@ -345,6 +348,7 @@ fun StatusCard(
                 }
             }
         ),
+        shape = AppShape.R12,
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
@@ -655,7 +659,8 @@ fun WarningCard(
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = color
-        )
+        ),
+        shape = AppShape.R12
     ) {
         Row(
             modifier = Modifier
@@ -678,6 +683,7 @@ fun InfoCard(activateViewModel: ActivateViewModel) {
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
         ),
+        shape = AppShape.R12,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -688,7 +694,7 @@ fun InfoCard(activateViewModel: ActivateViewModel) {
         ) {
             @Composable
             fun InfoCardItem(label: String, content: String, icon: Any? = null) {
-                Card {
+                Card(shape = AppShape.R12) {
                     Row(
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically

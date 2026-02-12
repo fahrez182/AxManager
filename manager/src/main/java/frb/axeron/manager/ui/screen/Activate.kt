@@ -68,6 +68,7 @@ import frb.axeron.manager.R
 import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
+import frb.axeron.manager.ui.theme.AppShape
 import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
@@ -124,6 +125,7 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                         colors = CardDefaults.cardColors().copy(
                             containerColor = MaterialTheme.colorScheme.errorContainer
                         ),
+                        shape = AppShape.R12,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -168,6 +170,7 @@ fun TcpDebuggingCard(
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
         ),
+        shape = AppShape.R12,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -308,6 +311,7 @@ fun WirelessDebuggingCard(
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
         ),
+        shape = AppShape.R12,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -481,6 +485,7 @@ fun RootCard(
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
         ),
+        shape = AppShape.R12,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -585,6 +590,7 @@ fun ComputerCard() {
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
         ),
+        shape = AppShape.R12,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(

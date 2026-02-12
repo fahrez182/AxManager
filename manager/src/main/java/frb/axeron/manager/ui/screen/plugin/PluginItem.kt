@@ -73,6 +73,7 @@ import frb.axeron.manager.ui.component.createWebUIShortcut
 import frb.axeron.manager.ui.component.formatSize
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.theme.AppShape
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.server.PluginInfo
@@ -156,9 +157,10 @@ fun PluginItem(
     }
 
     ElevatedCard(
+        shape = AppShape.R12,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            .clip(AppShape.R12)
             .combinedClickable(
                 onClick = onExpandToggle,
             )

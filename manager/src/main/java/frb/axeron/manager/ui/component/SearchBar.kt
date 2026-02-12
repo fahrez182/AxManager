@@ -7,7 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import frb.axeron.manager.ui.theme.AppShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -119,7 +119,7 @@ fun SearchAppBar(
                             unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
                             disabledIndicatorColor = Color.Transparent   // garis saat disabled
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.R12,
                         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = {
                             keyboardController?.hide()
