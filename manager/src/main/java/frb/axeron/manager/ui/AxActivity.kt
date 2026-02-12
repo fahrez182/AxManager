@@ -21,7 +21,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import frb.axeron.manager.ui.theme.AppShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -275,7 +275,7 @@ class AxActivity : ComponentActivity() {
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
             elevation = CardDefaults.cardElevation(0.dp),
-            shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp)
+            shape = AppShape.Top15
         ) {
             NavigationBar(
                 containerColor = Color.Transparent,

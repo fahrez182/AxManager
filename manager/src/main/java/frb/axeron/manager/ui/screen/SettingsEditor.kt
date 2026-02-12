@@ -27,7 +27,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import frb.axeron.manager.ui.theme.AppShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
@@ -343,7 +343,7 @@ fun RoundedTabRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp)
-            .clip(RoundedCornerShape(50)), // biar seluruh tabrow bulat
+            .clip(AppShape.R50Percent), // biar seluruh tabrow bulat
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
         indicator = { null },
         edgePadding = 0.dp,
@@ -362,7 +362,7 @@ fun RoundedTabRow(
                 selected = isSelected,
                 onClick = { onSelect(type) },
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
+                    .clip(AppShape.R50Percent)
                     .background(
                         if (isSelected) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surfaceVariant
@@ -412,7 +412,8 @@ fun TableItem(
         },
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-        )
+        ),
+        shape = AppShape.R12
     ) {
         Column(
             modifier = Modifier
@@ -673,7 +674,7 @@ fun TableEditor(
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.R12,
                         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                     )
                 } else {
@@ -717,7 +718,7 @@ fun TableEditor(
                         unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.R12,
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                 )
 
