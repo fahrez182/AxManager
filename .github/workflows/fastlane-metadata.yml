@@ -44,7 +44,18 @@ jobs:
           mkdir -p "$CHANGELOG_DIR"
           CHANGELOG_FILE="$CHANGELOG_DIR/${VERSION_CODE}.txt"
           
-          echo "$RELEASE_BODY" > "$CHANGELOG_FILE"
+          echo "$RELEASE_BODY" > full_body.txt
+          awk -v IGNORECASE=1 '
+            BEGIN { p=0 }
+            /^[# ]*(Changelog|What.s (New|Change|Changed|Next|Update))/ { p=1; next }
+            p && /^[# ]*(New Contributors|Full Changelog|Contributors|Assets|---|[0-9]+ people reacted)/ { p=0 }
+            p { print }
+          ' full_body.txt | sed '/^[[:space:]]*$/d' > "$CHANGELOG_FILE"
+          
+          if [ ! -s "$CHANGELOG_FILE" ]; then
+            echo "$RELEASE_BODY" > "$CHANGELOG_FILE"
+          fi
+          rm full_body.txt
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
