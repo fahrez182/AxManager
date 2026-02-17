@@ -1,0 +1,70 @@
+name: Generate Fastlane Changelog
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Generate Changelog
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          MANIFEST_FILE="api/manifest.gradle.kts"
+          CHANGELOG_DIR="fastlane/metadata/android/en-US/changelogs"
+          
+          if [ ! -f "$MANIFEST_FILE" ]; then
+            echo "error: $MANIFEST_FILE not found!"
+            exit 1
+          fi
+          
+          MAJOR=$(grep 'val apiVersionMajor =' "$MANIFEST_FILE" | grep -o '[0-9]*' | head -n 1)
+          MINOR=$(grep 'val apiVersionMinor =' "$MANIFEST_FILE" | grep -o '[0-9]*' | head -n 1)
+          PATCH=$(grep 'val apiVersionPatch =' "$MANIFEST_FILE" | grep -o '[0-9]*' | head -n 1)
+          
+          if [ -z "$MAJOR" ] || [ -z "$MINOR" ] || [ -z "$PATCH" ]; then
+            echo "error: could not parse version components from $MANIFEST_FILE"
+            exit 1
+          fi
+          
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 1000 + PATCH))
+          echo "detected version code: $VERSION_CODE"
+          
+          mkdir -p "$CHANGELOG_DIR"
+          CHANGELOG_FILE="$CHANGELOG_DIR/${VERSION_CODE}.txt"
+          
+          echo "$RELEASE_BODY" > full_body.txt
+          awk -v IGNORECASE=1 '
+            BEGIN { p=0 }
+            /^[# ]*(Changelog|What.s (New|Change|Changed|Next|Update))/ { p=1; next }
+            p && /^[# ]*(New Contributors|Full Changelog|Contributors|Assets|---|[0-9]+ people reacted)/ { p=0 }
+            p { print }
+          ' full_body.txt | sed '/^[[:space:]]*$/d' > "$CHANGELOG_FILE"
+          
+          if [ ! -s "$CHANGELOG_FILE" ]; then
+            echo "$RELEASE_BODY" > "$CHANGELOG_FILE"
+          fi
+          rm full_body.txt
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add "$CHANGELOG_FILE"
+          
+          if git diff --staged --quiet; then
+            echo "no changes to commit."
+          else
+            git commit -m "docs: generate fastlane changelog for version $VERSION_CODE"
+            git push
+          fi
