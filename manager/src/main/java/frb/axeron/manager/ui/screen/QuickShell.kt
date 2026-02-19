@@ -273,7 +273,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             }
 
             // collect flow
-            LaunchedEffect(viewModel.output) {
+            LaunchedEffect(Unit) {
                 viewModel.output.collect { line ->
                     val raw = line.output
 

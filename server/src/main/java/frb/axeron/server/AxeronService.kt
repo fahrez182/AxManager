@@ -73,7 +73,7 @@ import java.lang.ref.WeakReference
 import kotlin.system.exitProcess
 
 
-open class AxeronService() :
+open class AxeronService :
     Service<AxeronUserServiceManager, AxeronClientManager, AxeronConfigManager>() {
 
     companion object {
@@ -261,7 +261,7 @@ open class AxeronService() :
                 .put("AXERONVER", VERSION_CODE.toString())
                 .put(
                     "TMPDIR",
-                    PathHelper.getTmpPath(AxeronApiConstant.folder.PARENT_CACHE).absolutePath
+                    PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT_CACHE).absolutePath
                 )
                 .put("PATH", $$"$AXERONXBIN:$PATH:$AXERONBIN")
                 .build()

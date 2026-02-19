@@ -81,7 +81,6 @@ import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.api.utils.AnsiFilter
-import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.KeyEventBlocker
@@ -526,30 +525,6 @@ suspend fun flashModulesSequentially(
     return AxeronPluginService.FlashResult(0, "", true)
 }
 
-suspend fun uninstallPermanently(
-    onStdout: (String) -> Unit,
-    onStderr: (String) -> Unit
-): AxeronPluginService.FlashResult {
-    val cmd = """
-        . functions.sh; uninstall_axmanager "${AxeronSettings.getEnableDeveloperOptions()}" "${BuildConfig.APPLICATION_ID}"; exit 0
-    """.trimIndent()
-    val result =
-        AxeronPluginService.execWithIO(cmd, onStdout, onStderr, standAlone = true, useSetsid = true)
-    return AxeronPluginService.FlashResult(result)
-}
-
-suspend fun resetManager(
-    onStdout: (String) -> Unit,
-    onStderr: (String) -> Unit
-): AxeronPluginService.FlashResult {
-    val cmd = """
-        . functions.sh; reset_manager "${AxeronSettings.getEnableDeveloperOptions()}"; exit 0
-    """.trimIndent()
-    val result =
-        AxeronPluginService.execWithIO(cmd, onStdout, onStderr, standAlone = true, useSetsid = true)
-    return AxeronPluginService.FlashResult(result)
-}
-
 suspend fun flashIt(
     flashIt: FlashIt,
     onStdout: (String) -> Unit,
@@ -560,7 +535,7 @@ suspend fun flashIt(
             flashModulesSequentially(flashIt.installers, onStdout, onStderr)
         }
 
-        is FlashIt.FlashUninstall -> resetManager(onStdout, onStderr)
+        is FlashIt.FlashUninstall -> AxeronPluginService.resetManagerNative(onStdout, onStderr)
     }
 }
 
