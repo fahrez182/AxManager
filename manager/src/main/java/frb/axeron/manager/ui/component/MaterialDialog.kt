@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import frb.axeron.manager.ui.theme.AppShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
@@ -42,7 +42,7 @@ fun MaterialDialog(
         )
     ) {
         ElevatedCard(
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.R24,
             elevation = CardDefaults.cardElevation(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -112,7 +112,7 @@ fun MaterialBottomSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         onDismissRequest = { onDismissRequest() },
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = AppShape.Top24,
         tonalElevation = 8.dp,
         dragHandle = dragHandle
     ) {

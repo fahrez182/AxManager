@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.theme.AppShape
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
 
@@ -48,6 +49,7 @@ fun StatusCard() {
     }
 
     ElevatedCard(
+        shape = AppShape.R12,
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Max)
@@ -139,6 +141,7 @@ fun PluginCard(
 
     ElevatedCard(
         colors = CardDefaults.cardColors(),
+        shape = AppShape.R12,
         modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Max)
@@ -208,6 +211,7 @@ fun PrivilegeCard(
     val containerColor = colorScheme.surfaceVariant
     ElevatedCard(
         colors = CardDefaults.cardColors(),
+        shape = AppShape.R12,
         modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Max)
