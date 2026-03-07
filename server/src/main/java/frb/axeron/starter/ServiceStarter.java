@@ -130,14 +130,10 @@ public class ServiceStarter {
             Bundle reply = IContentProviderCompat.call(provider, null, null, name, "sendUserService", null, extra);
 
             if (reply != null) {
-                LOGGER.i("send binder to %s in user %d", packageName, userId);
-                BinderContainer container;
                 reply.setClassLoader(BinderContainer.class.getClassLoader());
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    container = reply.getParcelable(EXTRA_BINDER, BinderContainer.class);
-                } else {
-                    container = reply.getParcelable(EXTRA_BINDER);
-                }
+
+                LOGGER.i(TAG, String.format("send binder to %s in user %d", packageName, userId));
+                BinderContainer container = reply.getParcelable(EXTRA_BINDER);
 
                 if (container != null && container.binder != null && container.binder.pingBinder()) {
                     shizukuBinder = container.binder;

@@ -68,6 +68,7 @@ import frb.axeron.manager.R
 import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
+import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
@@ -82,8 +83,10 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
     val activateViewModel = viewModelGlobal.activateViewModel
     val axeronInfo = activateViewModel.axeronInfo
 
-    if (axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()) {
-        navigator.popBackStack()
+    LaunchedEffect(axeronInfo) {
+        if (axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()) {
+            navigator.popBackStack()
+        }
     }
 
     Scaffold(
@@ -163,6 +166,7 @@ fun TcpDebuggingCard(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val loadingDialog = rememberLoadingDialog()
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(
@@ -207,13 +211,17 @@ fun TcpDebuggingCard(
 
             Button(
                 onClick = {
-                    activateViewModel.startAdbTcp(context) { ai ->
-                        scope.launch(Dispatchers.Main) {
-                            Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
-                        }
+                    scope.launch {
+                        loadingDialog.withLoading {
+                            activateViewModel.startAdbTcp(context) { ai ->
+                                scope.launch(Dispatchers.Main) {
+                                    Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                                }
 
-                        Log.e("AxManagerStartAdb", ai.message, ai.cause)
-                        activateViewModel.setTryToActivate(false)
+                                Log.e("AxManagerStartAdb", ai.message, ai.cause)
+                                activateViewModel.setTryToActivate(false)
+                            }
+                        }
                     }
                 }
             ) {
@@ -241,14 +249,19 @@ fun TcpDebuggingCard(
 
             Button(
                 onClick = {
-                    activateViewModel.stopAdbTcp(context) { ai ->
-                        scope.launch(Dispatchers.Main) {
-                            Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
-                        }
+                    scope.launch {
+                        loadingDialog.withLoading {
+                            activateViewModel.stopAdbTcp(context) { ai ->
+                                scope.launch(Dispatchers.Main) {
+                                    Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                                }
 
-                        Log.e("AxManagerStartAdb", ai.message, ai.cause)
-                        activateViewModel.setTryToActivate(false)
+                                Log.e("AxManagerStartAdb", ai.message, ai.cause)
+                                activateViewModel.setTryToActivate(false)
+                            }
+                        }
                     }
+
                 }
             ) {
                 Icon(
@@ -273,6 +286,7 @@ fun WirelessDebuggingCard(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val loadingDialog = rememberLoadingDialog()
 
     // Panggil sekali untuk update state dari ViewModel
     LaunchedEffect(Unit) {
@@ -288,11 +302,15 @@ fun WirelessDebuggingCard(
     val launcherDeveloper = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        activateViewModel.startAdbWireless(context) { ai ->
-            activateViewModel.setTryToActivate(false)
-            if (ai is AdbStateInfo.Success) {
-                val intent = AdbPairingService.stopIntent(context)
-                context.startService(intent)
+        scope.launch {
+            loadingDialog.withLoading {
+                activateViewModel.startAdbWireless(context) { ai ->
+                    activateViewModel.setTryToActivate(false)
+                    if (ai is AdbStateInfo.Success) {
+                        val intent = AdbPairingService.stopIntent(context)
+                        context.startService(intent)
+                    }
+                }
             }
         }
     }
@@ -303,6 +321,44 @@ fun WirelessDebuggingCard(
     val uriHandler = LocalUriHandler.current
     val stepByStepUrl =
         "https://fahrez182.github.io/AxManager/guide/user-manual.html#start-with-wireless-debugging"
+
+    LaunchedEffect(activateViewModel.devSettings) {
+        if (activateViewModel.devSettings) {
+            try {
+                val intent = Intent(TileService.ACTION_QS_TILE_PREFERENCES).apply {
+                    val packageName = "com.android.settings"
+                    setPackage(packageName)
+                    putExtra(
+                        Intent.EXTRA_COMPONENT_NAME,
+                        ComponentName(
+                            packageName,
+                            $$"com.android.settings.development.qstile.DevelopmentTiles$WirelessDebugging"
+                        )
+                    )
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                    )
+                }
+                launcherDeveloper.launch(intent)
+            } catch (_: Exception) {
+                val intent =
+                    Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                        putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                    Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                        )
+                    }
+                launcherDeveloper.launch(intent)
+            }
+            activateViewModel.setLaunchDevSettings(false)
+        }
+    }
 
     ElevatedCard(
         elevation = CardDefaults.cardElevation(
@@ -374,45 +430,6 @@ fun WirelessDebuggingCard(
             }
             Spacer(modifier = Modifier.size(8.dp))
 
-            LaunchedEffect(activateViewModel.devSettings) {
-                if (activateViewModel.devSettings) {
-                    try {
-                        val intent = Intent(TileService.ACTION_QS_TILE_PREFERENCES).apply {
-                            val packageName = "com.android.settings"
-                            setPackage(packageName)
-                            putExtra(
-                                Intent.EXTRA_COMPONENT_NAME,
-                                ComponentName(
-                                    packageName,
-                                    $$"com.android.settings.development.qstile.DevelopmentTiles$WirelessDebugging"
-                                )
-                            )
-                            addFlags(
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                        Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                        Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                            )
-                        }
-                        launcherDeveloper.launch(intent)
-                    } catch (_: Exception) {
-                        val intent =
-                            Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                                putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-                                addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                                            Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                                )
-                            }
-                        launcherDeveloper.launch(intent)
-                    }
-                    Log.d("AxManager", "launchDevSettings")
-                    activateViewModel.setLaunchDevSettings(false)
-                }
-            }
-
             Button(
                 onClick = {
                     if (!activateViewModel.isNotificationEnabled) {
@@ -422,18 +439,22 @@ fun WirelessDebuggingCard(
                         launcher.launch(intent)
                         return@Button
                     } else {
-                        activateViewModel.startAdbWireless(context) { ai ->
-                            scope.launch(Dispatchers.Main) {
-                                Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
-                            }
+                        scope.launch {
+                            loadingDialog.withLoading {
+                                activateViewModel.startAdbWireless(context) { ai ->
+                                    scope.launch(Dispatchers.Main) {
+                                        Toast.makeText(context, ai.message, Toast.LENGTH_SHORT).show()
+                                    }
 
-                            Log.e("AxManagerStartAdb", ai.message, ai.cause)
-                            activateViewModel.setTryToActivate(false)
-                            if (ai is AdbStateInfo.Failed) {
-                                activateViewModel.startPairingService(context)
-                            } else if (ai is AdbStateInfo.Success) {
-                                val intent = AdbPairingService.stopIntent(context)
-                                context.startService(intent)
+                                    Log.e("AxManagerStartAdb", ai.message, ai.cause)
+                                    activateViewModel.setTryToActivate(false)
+                                    if (ai is AdbStateInfo.Failed) {
+                                        activateViewModel.startPairingService(context)
+                                    } else if (ai is AdbStateInfo.Success) {
+                                        val intent = AdbPairingService.stopIntent(context)
+                                        context.startService(intent)
+                                    }
+                                }
                             }
                         }
                     }

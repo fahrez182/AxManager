@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class ActivateViewModel : ViewModel() {
 
@@ -222,42 +223,38 @@ class ActivateViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun startAdbWireless(
+    suspend fun startAdbWireless(
         context: Context, result: (AdbStateInfo) -> Unit = {}
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (AdbEnvironment.isWifiRequired() && !isWifiEnabled(context)) return@launch requestEnableWifi(context)
-            if (tryActivate) return@launch result(AdbStateInfo.Process("Trying to activate"))
-            setTryToActivate(true)
+    ) = withContext(Dispatchers.IO) {
+        if (AdbEnvironment.isWifiRequired() && !isWifiEnabled(context)) return@withContext requestEnableWifi(
+            context
+        )
+        if (tryActivate) return@withContext result(AdbStateInfo.Process("Trying to activate"))
+        setTryToActivate(true)
 
-            AdbStarter.startAdbWireless(context, result)
-        }
+        AdbStarter.startAdbWireless(context, result)
     }
 
-    fun startAdbTcp(
+    suspend fun startAdbTcp(
         context: Context, result: (AdbStateInfo) -> Unit = {}
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (tryActivate) return@launch result(AdbStateInfo.Process("Trying to activate"))
-            setTryToActivate(true)
+    ) = withContext(Dispatchers.IO) {
+        if (tryActivate) return@withContext result(AdbStateInfo.Process("Trying to activate"))
+        setTryToActivate(true)
 
-            val tcpPort = AdbEnvironment.getAdbTcpPort()
+        val tcpPort = AdbEnvironment.getAdbTcpPort()
 
-            AdbStarter.startAdbClient(context, tcpPort, result)
-        }
+        AdbStarter.startAdbClient(context, tcpPort, result)
     }
 
-    fun stopAdbTcp(
+    suspend fun stopAdbTcp(
         context: Context, result: (AdbStateInfo) -> Unit = {}
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (tryActivate) return@launch result(AdbStateInfo.Process("Trying to activate"))
-            setTryToActivate(true)
+    ) = withContext(Dispatchers.IO) {
+        if (tryActivate) return@withContext result(AdbStateInfo.Process("Trying to activate"))
+        setTryToActivate(true)
 
-            val tcpPort = AdbEnvironment.getAdbTcpPort()
-            if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
-                stopTcp(context, tcpPort)
-            }
+        val tcpPort = AdbEnvironment.getAdbTcpPort()
+        if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
+            stopTcp(context, tcpPort)
         }
     }
 
@@ -276,7 +273,6 @@ class ActivateViewModel : ViewModel() {
         }
         context.startActivity(intent)
     }
-
 
 
     @RequiresApi(Build.VERSION_CODES.R)

@@ -769,33 +769,44 @@ open class AxeronService :
             val packages = PackageManagerApis.getInstalledPackagesNoThrow(
                 (PackageManager.GET_META_DATA or PackageManager.GET_PERMISSIONS).toLong(),
                 user
-            )
+            ).filter {
+                val isSystem =
+                    it.applicationInfo!!
+                        .flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
 
-            for (pi in packages) {
-                if (pi.packageName == MANAGER_APPLICATION_ID) continue
+                val isSelf = it.packageName == MANAGER_APPLICATION_ID
+                val isShizukuSelf = it.packageName == SHIZUKU_MANAGER_APPLICATION_ID
 
-                val appInfo = pi.applicationInfo ?: continue
-                val uid = appInfo.uid
-
-                val entry = configManager.find(uid)
-                val flags = entry?.let {
-                    if (it.packages != null && !it.packages.contains(pi.packageName)) {
-                        return@let 0 // skip by flags=0
-                    }
-                    it.flags and ConfigManager.MASK_PERMISSION
-                } ?: 0
-
-                when {
-                    flags != 0 -> {
-                        list.add(pi)
-                    }
-
-                    appInfo.metaData?.getBoolean("moe.shizuku.client.V3_SUPPORT", false) == true &&
-                            pi.requestedPermissions?.contains(PERMISSION) == true -> {
-                        list.add(pi)
-                    }
-                }
+                !isSystem && !isSelf&& !isShizukuSelf
             }
+
+            list.addAll(packages)
+
+//            for (pi in packages) {
+//                if (pi.packageName == MANAGER_APPLICATION_ID) continue
+//
+//                val appInfo = pi.applicationInfo ?: continue
+//                val uid = appInfo.uid
+//
+//                val entry = configManager.find(uid)
+//                val flags = entry?.let {
+//                    if (it.packages != null && !it.packages.contains(pi.packageName)) {
+//                        return@let 0 // skip by flags=0
+//                    }
+//                    it.flags and ConfigManager.MASK_PERMISSION
+//                } ?: 0
+//
+//                when {
+//                    flags != 0 -> {
+//                        list.add(pi)
+//                    }
+//
+//                    appInfo.metaData?.getBoolean("moe.shizuku.client.V3_SUPPORT", false) == true &&
+//                            pi.requestedPermissions?.contains(PERMISSION) == true -> {
+//                        list.add(pi)
+//                    }
+//                }
+//            }
         }
 
         return ParcelableListSlice(list)
