@@ -1,3 +1,6 @@
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -35,9 +38,11 @@ android {
     }
 
     applicationVariants.all {
+        val ts = LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
         outputs.all {
             val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputImpl.outputFileName = "AxManager_v${versionName}_${versionCode}-${buildType.name}.apk"
+            outputImpl.outputFileName = "AxManager_v${versionName}_${versionCode}-${buildType.name}_$ts.apk"
 
             val outDir = File(rootDir, "out")
             val mappingPath = File(outDir, "mapping").absolutePath
