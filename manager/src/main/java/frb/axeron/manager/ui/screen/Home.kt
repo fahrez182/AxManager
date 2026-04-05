@@ -467,9 +467,18 @@ fun StatusCard(
                             .offset(10.dp, 30.dp),
                         contentAlignment = Alignment.BottomEnd
                     ) {
+                        var debugClickCount by remember { mutableStateOf(0) }
+
                         Icon(
                             modifier = Modifier
-                                .size(145.dp),
+                                .size(145.dp)
+                                .clickable {
+                                    debugClickCount++
+                                    if (debugClickCount >= 7) {
+                                        // TEST CRASH DISINI
+                                        throw RuntimeException("AxManager Manual Crash Test")
+                                    }
+                                },
                             painter = painterResource(R.drawable.ic_axeron),
                             contentDescription = null
                         )

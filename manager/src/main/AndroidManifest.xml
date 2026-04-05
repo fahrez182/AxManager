@@ -116,6 +116,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.CrashActivity"
+            android:excludeFromRecents="true"
+            android:process=":crash"
+            android:theme="@style/Theme.AxManager" />
+
         <receiver
             android:name="frb.axeron.server.shell.BinderRequestReceiver"
             android:directBootAware="true"
