@@ -33,6 +33,11 @@ class BootCompleteReceiver : BroadcastReceiver() {
             return
         }
 
+        if (context.packageManager.isSafeMode) {
+            Log.d(TAG, "safeMode: ${context.packageManager.isSafeMode}")
+            return
+        }
+
         if (Axeron.pingBinder()) {
             Log.d(TAG, "status: ${Axeron.pingBinder()}")
             return
