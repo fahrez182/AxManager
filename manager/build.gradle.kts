@@ -38,6 +38,22 @@ android {
         outputs.all {
             val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             outputImpl.outputFileName = "AxManager_v${versionName}_${versionCode}-${buildType.name}.apk"
+
+            val outDir = File(rootDir, "out")
+            val mappingPath = File(outDir, "mapping").absolutePath
+
+            assembleProvider.get().doLast {
+                // copy mapping.txt kalau minify aktif
+                if (buildType.isMinifyEnabled) {
+                    copy {
+                        from(mappingFileProvider.get())
+                        into(mappingPath)
+                        rename {
+                            "manager-v${versionName}.txt"
+                        }
+                    }
+                }
+            }
         }
     }
 
