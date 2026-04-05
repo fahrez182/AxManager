@@ -51,6 +51,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -96,6 +97,7 @@ import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.shared.AxeronApiConstant.server.VERSION_CODE
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -349,7 +351,11 @@ fun StatusCard(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
     ) {
+        val scope = rememberCoroutineScope()
         val updating = stringResource(R.string.updating)
+        var debugClickCount by remember { mutableIntStateOf(0) }
+        var debugJob: Job? by remember { mutableStateOf(null) }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -361,6 +367,17 @@ fun StatusCard(
                     if (isNeedExtraStep) {
                         uriHandler.openUri(extraStepUrl)
                         return@clickable
+                    }
+                    if (isRunning) {
+                        debugClickCount++
+                        debugJob?.cancel()
+                        debugJob = scope.launch {
+                            delay(1000)
+                            debugClickCount = 0
+                        }
+                        if (debugClickCount >= 8) {
+                            throw RuntimeException("AxManager Manual Crash Test")
+                        }
                     }
                     onClick(isRunning)
                 }
@@ -467,18 +484,8 @@ fun StatusCard(
                             .offset(10.dp, 30.dp),
                         contentAlignment = Alignment.BottomEnd
                     ) {
-                        var debugClickCount by remember { mutableStateOf(0) }
-
                         Icon(
-                            modifier = Modifier
-                                .size(145.dp)
-                                .clickable {
-                                    debugClickCount++
-                                    if (debugClickCount >= 7) {
-                                        // TEST CRASH DISINI
-                                        throw RuntimeException("AxManager Manual Crash Test")
-                                    }
-                                },
+                            modifier = Modifier.size(145.dp),
                             painter = painterResource(R.drawable.ic_axeron),
                             contentDescription = null
                         )
