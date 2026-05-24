@@ -133,7 +133,7 @@ fun Uri.getFileName(context: Context): String {
 sealed class FlashIt : Parcelable {
     data class FlashPlugins(val installers: List<PluginInstaller>) : FlashIt()
 
-    data object FlashUninstall : FlashIt()
+    data class FlashUninstall(val rootMode: Boolean, val both: Boolean = false) : FlashIt()
 }
 
 @ExperimentalMaterial3Api
@@ -307,7 +307,6 @@ fun FlashScreen(
 
 
     if (flashIt is FlashIt.FlashUninstall) {
-        flashing == FlashingStatus.FLASHING
         pendingFlashIt = flashIt
     }
 
@@ -535,7 +534,15 @@ suspend fun flashIt(
             flashModulesSequentially(flashIt.installers, onStdout, onStderr)
         }
 
-        is FlashIt.FlashUninstall -> AxeronPluginService.resetManagerNative(onStdout, onStderr)
+        is FlashIt.FlashUninstall -> {
+            if (flashIt.both) {
+                val resultRoot = AxeronPluginService.resetManagerNative(true, onStdout, onStderr)
+                if (resultRoot.code != 0) return resultRoot
+                AxeronPluginService.resetManagerNative(false, onStdout, onStderr)
+            } else {
+                AxeronPluginService.resetManagerNative(flashIt.rootMode, onStdout, onStderr)
+            }
+        }
     }
 }
 

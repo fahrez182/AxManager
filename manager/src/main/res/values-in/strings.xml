@@ -207,5 +207,8 @@
     <string name="permission_allow_one_time">Izinkan sekali ini</string>
     <string name="permission_dont_allow">Jangan Izinkan</string>
     <string name="permission_dont_allow_countdown">Jangan Izinkan (%ds)</string>
+    <string name="reset_root">Reset Root</string>
+    <string name="reset_shell">Reset Shell</string>
+    <string name="reset_both">Reset Keduanya</string>
     <string name="uid_value">UID: %d</string>
 </resources>

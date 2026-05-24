@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -50,7 +52,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,16 +80,12 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.adb.util.AdbEnvironment
-import frb.axeron.api.Axeron
 import frb.axeron.manager.R
-import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.SettingsItemType
-import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -98,15 +95,25 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
     val settings = viewModelGlobal.settingsViewModel
 //    val privilegeViewModel = viewModelGlobal.privilegeViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    val confirmDialog = rememberConfirmDialog()
-    val scope = rememberCoroutineScope()
 
     var showDevDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     DeveloperInfo(
         showDevDialog
     ) {
         showDevDialog = false
+    }
+
+    if (showResetDialog) {
+        ResetBottomSheet(
+            onDismissRequest = { showResetDialog = false },
+            isRoot = activateViewModel.axeronInfo.isRoot(),
+            onReset = { rootMode, both ->
+                showResetDialog = false
+                navigator.navigate(FlashScreenDestination(FlashIt.FlashUninstall(rootMode, both)))
+            }
+        )
     }
 
     Scaffold(
@@ -301,29 +308,12 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             )
 
             AnimatedVisibility(visible = axeronRunning) {
-                val title = stringResource(R.string.ask_reset_path)
-                val content = stringResource(R.string.ask_reset_path_desc)
-                val confirm = stringResource(R.string.reset)
-                val dismiss = stringResource(R.string.cancel)
                 SettingsItem(
                     iconVector = Icons.Filled.FolderDelete,
                     label = stringResource(R.string.reset_path),
                     description = stringResource(R.string.reset_path_desc),
                     onClick = {
-                        scope.launch {
-                            val confirmResult = confirmDialog.awaitConfirm(
-                                title,
-                                content = content.format(PathHelper.getWorkingPath(
-                                    Axeron.getAxeronInfo().isRoot(),
-                                    AxeronApiConstant.folder.PARENT
-                                ).absolutePath),
-                                confirm = confirm,
-                                dismiss = dismiss
-                            )
-                            if (confirmResult == ConfirmResult.Confirmed) {
-                                navigator.navigate(FlashScreenDestination(FlashIt.FlashUninstall))
-                            }
-                        }
+                        showResetDialog = true
                     }
                 )
             }
@@ -492,6 +482,100 @@ fun DeveloperInfo(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ResetBottomSheet(
+    onDismissRequest: () -> Unit,
+    isRoot: Boolean,
+    onReset: (rootMode: Boolean, both: Boolean) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.reset_path),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = stringResource(R.string.reset_path_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isRoot) {
+                ResetOptionItem(
+                    title = stringResource(R.string.reset_root),
+                    path = PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath,
+                    onClick = { onReset(true, false) }
+                )
+                ResetOptionItem(
+                    title = stringResource(R.string.reset_shell),
+                    path = PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath,
+                    onClick = { onReset(false, false) }
+                )
+                ResetOptionItem(
+                    title = stringResource(R.string.reset_both),
+                    path = "${PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath}\n${PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath}",
+                    onClick = { onReset(true, true) }
+                )
+            } else {
+                FilledTonalButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onReset(false, false) }
+                ) {
+                    Text(stringResource(R.string.reset))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ResetOptionItem(
+    title: String,
+    path: String,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.FolderDelete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(text = title, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = path,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

@@ -81,6 +81,7 @@ import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.PluginInstaller
+import kotlinx.coroutines.delay
 
 class AxActivity : ComponentActivity() {
 
@@ -200,8 +201,14 @@ class AxActivity : ComponentActivity() {
 
         LaunchedEffect(axeronInfo) {
             if (axeronInfo.isRunning()) {
+                // pluginViewModel is prioritized because of BottomBar badge
                 pluginViewModel.fetchModuleList()
+
+                // Stagger other loads to avoid UI stutter during startup/navigation
+                delay(500)
                 appsViewModel.loadInstalledApps()
+
+                delay(500)
                 privilegeViewModel.loadInstalledApps()
             }
         }

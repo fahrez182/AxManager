@@ -13,6 +13,8 @@ import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
 import frb.axeron.manager.ui.util.HanziToPinyin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,24 +34,17 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     // Di PrivilegeViewModel.kt
     val privilegeList by derivedStateOf {
         val currentSearch = search
-        val allPrivileges = privileges.values
+        val allPrivileges = privileges.values.filter { it.isNotSystemOrSelf() }
 
         if (currentSearch.isEmpty()) {
-            allPrivileges.filter { it.isNotSystemOrSelf() }.toList()
+            allPrivileges
         } else {
-            allPrivileges.asSequence()
-                .filter { it.isNotSystemOrSelf() }
-                .filter { app ->
-                    app.label.contains(currentSearch, true) ||
-                            app.packageName.contains(currentSearch, true) ||
-                            //Panggil hanya jika perlu
-                            (currentSearch.any { it.code > 128 } &&
-                                    HanziToPinyin.getInstance().toPinyinString(app.label)
-                                        .contains(currentSearch, true))
-                }
-                .toList()
+            allPrivileges.filter { app ->
+                app.label.contains(currentSearch, true) ||
+                        app.packageName.contains(currentSearch, true) ||
+                        app.pinyinLabel.contains(currentSearch, true)
+            }
         }
-            .also { isRefreshing = false }
     }
 
     // Helper Extension
@@ -104,18 +99,20 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
             val result = withContext(Dispatchers.IO) {
                 val packages = getApplications()
 
-                // Gunakan chunked atau parallel map untuk mempercepat loadLabel
-                packages.associate { packageInfo ->
-                    val appInfo = packageInfo.applicationInfo!!
-                    val uid = appInfo.uid
-                    val label = appInfo.loadLabel(pm).toString()
+                packages.map { packageInfo ->
+                    async {
+                        val appInfo = packageInfo.applicationInfo!!
+                        val uid = appInfo.uid
+                        val label = appInfo.loadLabel(pm).toString()
 
-                    uid to AppsViewModel.AppInfo(
-                        label = label,
-                        packageInfo = packageInfo,
-                        isAdded = granted(uid)
-                    )
-                }
+                        uid to AppsViewModel.AppInfo(
+                            label = label,
+                            pinyinLabel = HanziToPinyin.getInstance().toPinyinString(label),
+                            packageInfo = packageInfo,
+                            isAdded = granted(uid)
+                        )
+                    }
+                }.awaitAll().toMap()
             }
 
             privileges = result

@@ -18,6 +18,8 @@ import frb.axeron.manager.ui.util.HanziToPinyin
 import frb.axeron.server.PluginInfo
 import frb.axeron.server.PluginInstaller
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -77,9 +79,7 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
                     it.prop.name.contains(search, ignoreCase = true) ||
                     HanziToPinyin.getInstance().toPinyinString(it.prop.name)
                         .contains(search, ignoreCase = true)
-        }.sortedWith(comparator).also {
-            isRefreshing = false
-        }
+        }.sortedWith(comparator)
     }
 
     var plugins by mutableStateOf<List<PluginInfo>>(ArrayList())
@@ -114,6 +114,8 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         pluginInstalers = emptyList()
     }
 
+    private val updateCache = mutableMapOf<String, Triple<String, String, String>>()
+
     fun fetchModuleList() {
         viewModelScope.launch {
             isRefreshing = true
@@ -132,29 +134,27 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
                     isNeedRefresh = false
                 }.onFailure { e ->
                     Log.e(TAG, "fetchModuleList: ", e)
-                    isRefreshing = false
                 }
 
-                withContext(Dispatchers.IO) {
-                    pluginEnabledCount = plugins.count {
-                        it.enabled
-                    }
-                    pluginUpdateCount = plugins.count {
-                        checkUpdate(it).first.isNotEmpty()
+                pluginEnabledCount = plugins.count { it.enabled }
+
+                // Parallel update check
+                val deferredUpdates = plugins.map { plugin ->
+                    async {
+                        val result = checkUpdate(plugin)
+                        if (result.first.isNotEmpty()) 1 else 0
                     }
                 }
+                pluginUpdateCount = deferredUpdates.awaitAll().sum()
 
                 val loadCost = SystemClock.elapsedRealtime() - start
                 Log.i(TAG, "load cost: $loadCost, modules: $plugins")
 
-                // when both old and new is kotlin.collections.EmptyList
-                // moduleList update will don't trigger
-                delay(if (loadCost < 100) loadCost + 80 else 0)
-                if (oldPluginList === plugins) {
-                    isRefreshing = false
+                if (oldPluginList === plugins || loadCost < 100) {
+                    delay(100)
                 }
             }
-
+            isRefreshing = false
         }
     }
 
@@ -167,6 +167,10 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         if (pluginInfo.prop.updateJson.isEmpty() || pluginInfo.remove || pluginInfo.update || !pluginInfo.enabled) {
             return empty
         }
+
+        // Check cache first
+        updateCache[pluginInfo.prop.id]?.let { return it }
+
         // download updateJson
         val result = kotlin.runCatching {
             val url = pluginInfo.prop.updateJson
@@ -200,7 +204,9 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
             return empty
         }
 
-        return Triple(zipUrl, version, changelog)
+        val triple = Triple(zipUrl, version, changelog)
+        updateCache[pluginInfo.prop.id] = triple
+        return triple
     }
 
 }
