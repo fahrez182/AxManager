@@ -211,4 +211,5 @@
     <string name="reset_shell">Reset Shell</string>
     <string name="reset_both">Reset Both</string>
     <string name="uid_value">UID: %d</string>
+    <string name="start_as_shell">Start as Shell</string>
 </resources>

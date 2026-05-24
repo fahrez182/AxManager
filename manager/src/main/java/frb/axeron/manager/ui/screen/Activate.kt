@@ -361,7 +361,11 @@ fun WirelessDebuggingCard(
                         }
                         launcherDeveloper.launch(intent)
                     } catch (e3: Exception) {
-                        Toast.makeText(context, "Tidak dapat membuka pengaturan", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Tidak dapat membuka pengaturan",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
@@ -553,6 +557,7 @@ fun RootCard(
             val failed = stringResource(R.string.failed_to_start)
             val success = stringResource(R.string.activate_success)
             stringResource(R.string.please_wait)
+
             Button(
                 onClick = {
                     scope.launch {
@@ -582,6 +587,37 @@ fun RootCard(
                 )
                 Text(stringResource(R.string.start))
             }
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        loadingDialog.withLoading {
+                            val state = activateViewModel.startRootAsShell()
+                            when (state) {
+                                ActivateViewModel.ACTIVATE_FAILED -> {
+                                    Toast.makeText(ctx, failed, Toast.LENGTH_SHORT).show()
+                                }
+
+                                ActivateViewModel.ACTIVATE_SUCCESS -> {
+                                    Toast.makeText(ctx, success, Toast.LENGTH_SHORT).show()
+                                    activateViewModel.awaitRunning()
+                                }
+                            }
+                            activateViewModel.setTryToActivate(false)
+                        }
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .size(16.dp),
+                    contentDescription = "Start as Shell"
+                )
+                Text(stringResource(R.string.start_as_shell))
+            }
+
         }
     }
 }

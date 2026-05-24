@@ -51,9 +51,11 @@ class BootCompleteReceiver : BroadcastReceiver() {
             startAdb(context) {
                 safeFinish(pending)
             }
-        } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT) {
+        } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT ||
+            AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT_AS_SHELL
+        ) {
             val pending = goAsync()
-            startRoot(pending)
+            startRoot(pending, AxeronSettings.getLastLaunchMode())
         } else {
             Log.w(TAG, "No support start on boot")
         }
@@ -61,14 +63,20 @@ class BootCompleteReceiver : BroadcastReceiver() {
         Log.d(TAG, "onReceive: ${intent.action}")
     }
 
-    private fun startRoot(pending: PendingResult) {
+    private fun startRoot(pending: PendingResult, mode: Int) {
         if (!Shell.getShell().isRoot) {
             Shell.getCachedShell()?.close()
             safeFinish(pending)
             return
         }
 
-        Shell.cmd(Starter.internalCommand).exec()
+        val command = if (mode == AxeronSettings.LaunchMethod.ROOT_AS_SHELL) {
+            "su 2000 -c \"${Starter.internalCommand}\""
+        } else {
+            Starter.internalCommand
+        }
+
+        Shell.cmd(command).exec()
         safeFinish(pending)
     }
 

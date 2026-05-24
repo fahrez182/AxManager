@@ -200,7 +200,11 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    suspend fun startRoot(): Int = withContext(Dispatchers.IO) {
+    suspend fun startRoot(): Int = startRootInternal(AxeronSettings.LaunchMethod.ROOT)
+
+    suspend fun startRootAsShell(): Int = startRootInternal(AxeronSettings.LaunchMethod.ROOT_AS_SHELL)
+
+    private suspend fun startRootInternal(mode: Int): Int = withContext(Dispatchers.IO) {
         runCatching {
             if (tryActivate) return@withContext ACTIVATE_PROCESS
             setTryToActivate(true)
@@ -210,9 +214,15 @@ class ActivateViewModel : ViewModel() {
                 return@withContext ACTIVATE_FAILED
             }
 
-            val result = Shell.cmd(Starter.internalCommand).exec()
+            val command = if (mode == AxeronSettings.LaunchMethod.ROOT_AS_SHELL) {
+                "su 2000 -c \"${Starter.internalCommand}\""
+            } else {
+                Starter.internalCommand
+            }
+
+            val result = Shell.cmd(command).exec()
             if (result.isSuccess) {
-                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ROOT)
+                AxeronSettings.setLastLaunchMode(mode)
                 ACTIVATE_SUCCESS
             } else {
                 ACTIVATE_FAILED

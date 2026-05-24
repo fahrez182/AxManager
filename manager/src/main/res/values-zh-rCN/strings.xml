@@ -208,4 +208,5 @@
     <string name="permission_dont_allow">拒绝</string>
     <string name="permission_dont_allow_countdown">拒绝 (%d秒)</string>
     <string name="uid_value">进程ID: %d</string>
+    <string name="start_as_shell">以 Shell 身份启动</string>
 </resources>

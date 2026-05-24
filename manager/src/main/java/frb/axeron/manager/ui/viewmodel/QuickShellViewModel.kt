@@ -152,6 +152,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
     fun runShell() {
         val cmd = commandText.text.ifBlank { return }
+            .replace(Regex("(?i)adb\\s+shell\\s+"), "")
             .replace(Regex("[^\\p{Print}\\n]"), "") // sanitize
 
         session.runCommand(cmd, isCompatModeEnabled)
