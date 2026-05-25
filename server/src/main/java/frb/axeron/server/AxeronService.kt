@@ -236,7 +236,8 @@ open class AxeronService :
             val cached = cachedDefaultEnv
             if (cached != null) return cached
 
-            val built = Environment.Builder(false)
+            val managerInfo = getManagerApplicationInfo()
+            val builder = Environment.Builder(false)
                 .put("AXERON", "true")
                 .put("HOSTNAME", "axeron")
                 .put(
@@ -257,14 +258,28 @@ open class AxeronService :
                         AxeronApiConstant.folder.PARENT_EXTERNAL_BINARY
                     ).absolutePath
                 )
-                .put("AXERONLIB", getManagerApplicationInfo()?.nativeLibraryDir)
                 .put("AXERONVER", VERSION_CODE.toString())
                 .put(
                     "TMPDIR",
-                    PathHelper.getWorkingPath(isRoot,AxeronApiConstant.folder.PARENT_CACHE).absolutePath
+                    PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_CACHE).absolutePath
                 )
-                .put("PATH", $$"$AXERONXBIN:$PATH:$AXERONBIN")
-                .build()
+
+            // Pastikan PATH sistem tetap ada sebagai fallback
+            val systemPath = System.getenv("PATH") ?: "/sbin:/system/bin:/system/xbin"
+            builder.put("PATH", "\$AXERONXBIN:\$AXERONBIN:$systemPath")
+
+            if (managerInfo != null) {
+                builder.put("AXERONLIB", managerInfo.nativeLibraryDir)
+                val systemLd = System.getenv("LD_LIBRARY_PATH")
+                if (systemLd.isNullOrEmpty()) {
+                    builder.put("LD_LIBRARY_PATH", "\$AXERONLIB")
+                } else {
+                    // Taruh AXERONLIB di depan agar binari kustom kita prioritas menemukan lib-nya sendiri
+                    builder.put("LD_LIBRARY_PATH", "\$AXERONLIB:\$LD_LIBRARY_PATH")
+                }
+            }
+
+            val built = builder.build()
             cachedDefaultEnv = built
             return built
         }

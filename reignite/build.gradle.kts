@@ -28,7 +28,7 @@ android {
         outputs.all {
             val outDir = File(rootDir, "out")
             val mappingPath = File(outDir, "mapping").absolutePath
-            val dexPath = "${rootProject.project(":manager").projectDir}/src/main/assets/scripts"
+            val dexPath = "${rootProject.project(":manager").projectDir}/src/main/assets/binaries"
 
 
             assembleProvider.get().doLast {
