@@ -172,8 +172,9 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     private fun saveAddedAppsToFile(packageNames: List<String>) {
         addedPackageNames = packageNames
         try {
-            val fos = Axeron.newFileService()
-                .getStreamSession(file.absolutePath, true, false).outputStream
+            val fs = Axeron.newFileService() ?: return
+            val session = fs.getStreamSession(file.absolutePath, true, false) ?: return
+            val fos = session.outputStream
             packageNames.forEach { pkg ->
                 val app = installedApps.find { it.packageName == pkg }
                 if (app != null) {
@@ -189,7 +190,7 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun getSavedPackageNames(): List<String> {
         return try {
-            val axFile = Axeron.newFileService()
+            val axFile = Axeron.newFileService() ?: return emptyList()
             if (!axFile.exists(file.absolutePath)) return emptyList()
             val fis = axFile.setFileInputStream(file.absolutePath)
             fis.use {

@@ -1,38 +1,36 @@
-# Axeron Manager (AxManager) (Not-Final)
+# Axeron Manager (Proof of Concept)
 
+> **Axeron Manager (AxManager)** is a Proof of Concept (POC) for a self-created environment on Android that leverages ADB permissions to provide system-level control. This project explores the idea of creating a persistent, independent ADB-based execution layer within the system.
 
-> Hi! This project is still in early development.  I’m learning and experimenting while building it, so things may not be complete or could change later.  
-Thanks for checking it out!
+[Switch to Chinese translation 切换到中文翻译](README_cn.md)
 
-[Switch to Chinese translation 切换到中文翻译](Translation/CN/Readme.md)
-
-**AxManager** is an Android application designed to provide deeper control over apps and the system.  
-Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager** is dedicated to **ADB/Non-Root mode** — while still allowing execution with **Root access** if available. [Learn More](https://fahrez182.github.io/AxManager/)
+## 💡 The Concept
+This project is a personal exploration into creating a dedicated **ADB Environment** on Android. Instead of just being a simple command runner, AxManager aims to establish a background infrastructure that can host plugins, manage system optimizations, and provide a unified interface for privileged operations—all without requiring full root access (though it can utilize root if available).
 
 ## ✨ Features
+- 🏗️ **Internal ADB Environment**  
+  A self-contained environment designed to maintain and utilize ADB-level privileges.
 - 🖥️ **Shell Executor**  
-  Run shell commands directly from the app.  
+  Run shell commands with persistent sessions.  
   - Supports **ADB / Non-Root execution**.  
-  - Optional **Root execution** if the device has root access.  
+  - Optional **Root execution** for enhanced capabilities.  
 
 - ⚡ **Plugin (Unrooted Module)**  
-  Manage third-party modules with unrooted access. [Learn more](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)  
+  A system to manage third-party modules within the unrooted environment. [Learn more](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)  
 
-- 🌐 **WebUI (Unrooted Version)**  
-  Execute shell commands with a web-based interactive interface. [Learn More](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html#webui)
+- 🌐 **WebUI Interface**  
+  Manage and interact with the system environment through a web-based interface.
 
-## 📱 Key Difference from Root Managers
-- 🚫 Does **not** depend on Root access.  
-- ✅ Focused on **ADB/Non-Root first**, making it usable on a wider range of devices.  
-- 🔑 Root support is **optional**, not a requirement.  
-- 🌐 Provides **WebShell UI** as a unique feature.  
+## 📱 Why this POC?
+- **Independence**: Aims to minimize reliance on external PCs for ADB tasks once set up.
+- **Environment-centric**: Focuses on creating a resident privileged layer rather than just one-off command execution.
+- **Accessibility**: Bringing "Root-like" capabilities to non-rooted devices through native system mechanisms.
 
 ## 📖 Roadmap
 - [x] Wireless Debugging Activator.
 - [x] Command-line / Root Activator.
 - [x] Shell Executor basic support (ADB/Non-Root).
 - [x] Auto active when use Wireless Debugging (Test)
-- [x] ~~WebUI with multi-session support.~~
 - [x] [Plugin](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html) system for third-party extensions.  
 - [x] Developer Mode & Advanced Debugging tools.  
 - [ ] App optimization based on profiles.
@@ -41,15 +39,15 @@ Unlike tools such as *KernelSU* or other root-based “Managers,” **AxManager*
 Clone the repository and build using Android Studio or Gradle:
 
 ```bash
-git clone https://github.com/username/AxManager.git
+git clone https://github.com/fahrez182/AxManager.git
 cd AxManager
-./gradlew assembleDebug
+./gradlew :manager:assembleDebug
 ```
 
-Install to your device via ADB:
+Install the manager app to your device via ADB:
 
 ```bash
-adb install app/build/outputs/apk/debug/app-debug.apk
+adb install manager/build/outputs/apk/debug/manager-debug.apk
 ```
 
 ## 🤝 Contribution

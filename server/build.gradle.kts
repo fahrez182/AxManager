@@ -24,15 +24,6 @@ android {
         }
     }
 
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-        resources {
-            excludes += "**"
-        }
-    }
-
     buildFeatures {
         buildConfig = true
         prefab = true

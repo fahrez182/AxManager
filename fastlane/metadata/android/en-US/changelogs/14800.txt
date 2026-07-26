@@ -1,0 +1,5 @@
+*What's new?
+
+I just want to make it fresh again lol (check full changelog below)
+
+**Full Changelog**: https://github.com/fahrez182/AxManager/compare/v1.4.7...v1.4.8

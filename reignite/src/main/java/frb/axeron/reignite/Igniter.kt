@@ -8,7 +8,7 @@ import java.io.File
 
 object Igniter {
 
-    private var VERSION = "v1"
+    private var VERSION = "v1.1"
 
     private val AXERONDIR = System.getenv("AXERONDIR")
     private val PLUGINS_DIR = File("$AXERONDIR/plugins")
@@ -126,10 +126,10 @@ object Igniter {
     // ===============================
 
     private fun logPipe(tag: String): String {
-        return if (DEBUG)
-            "2>&1 | busybox log -t $tag"
-        else
-            ">/dev/null 2>&1"
+//        return if (DEBUG)
+//            "2>&1 | busybox log -t $tag"
+//        else
+        return ">/dev/null 2>&1"
     }
 
     private fun applySetprop(name: String, sProp: File) {

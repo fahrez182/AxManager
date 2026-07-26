@@ -2,6 +2,8 @@ import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.gradle.LibraryExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
+import java.io.FileInputStream
+import java.util.Properties
 
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
@@ -20,17 +22,45 @@ val gitCommitCount = providers.exec {
 val verCode = findProperty("api_version_code") as Int
 val verName = "${findProperty("api_version_name")}.r${gitCommitCount}"
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(FileInputStream(localPropertiesFile))
+    }
+}
+
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<ApplicationExtension> {
             compileSdk = 36
             buildToolsVersion = "36.0.0"
             ndkVersion = "29.0.14206865"
+            signingConfigs {
+                create("frb-project") {
+                    storeFile =
+                        localProperties.getProperty("signing.storeFile")?.let { file(it) }
+                    storePassword = localProperties.getProperty("signing.storePassword")
+                    keyAlias = localProperties.getProperty("signing.keyAlias")
+                    keyPassword = localProperties.getProperty("signing.keyPassword")
+                }
+            }
             defaultConfig {
                 minSdk = 26
                 targetSdk = 36
                 versionCode = verCode
                 versionName = verName
+            }
+            packaging {
+                jniLibs {
+                    useLegacyPackaging = true
+//                    excludes += "**/libapplovin-native-crash-reporter.so"
+                }
+                dex {
+                    useLegacyPackaging = true
+                }
+                resources {
+                    excludes += "**"
+                }
             }
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_21

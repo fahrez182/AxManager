@@ -1,0 +1,7 @@
+* Optimizing installation temporary path
+* Fix stderr in QuickShell
+* Fix Reset AxManager and make it standalone [https://github.com/fahrez182/AxManager/issues/105](url)
+* Fix error code format in Strings.xml [https://github.com/fahrez182/AxManager/issues/103](url)
+* Fix some small mistakes at website/docs/(zh/)guide/faq.md by @Level3R in https://github.com/fahrez182/AxManager/pull/80
+* add chinese translation of readme by @Mluo2011 in https://github.com/fahrez182/AxManager/pull/94
+* automate Fastlane changelogs and reorganize docs by @hydrospherics in https://github.com/fahrez182/AxManager/pull/106

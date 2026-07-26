@@ -1,0 +1,16 @@
+## AxManager Changelog
+
+- Optimize Privilege List & UI Animation Transitions (4cf31b0)
+- Optimized app filtering with Pinyin conversion only for non-ASCII search queries
+- Improve Script Extraction & Debug Crash Trigger (69dfbb2)
+- Add Crash Report Activity & Global Exception Handling (63b68432)
+- Enhance Developer Settings Navigation & Build Process (7e8b4155)
+- Multi-stage fallback mechanism to open Wireless Debugging QS tile
+- Fixed string escaping issue in ComponentName
+- Update API Version & Refactor ADB Activation Flow (5b171c9e)
+- Fallback mechanism for Application initialization (handles MediaTek issues)
+- ADB functions converted to suspend functions with withContext(Dispatchers.IO)
+- Integrated loading dialog for visual feedback during ADB operations
+- Simplified getApplications logic with cleaner filter
+
+**Full Changelog**: https://github.com/fahrez182/AxManager/compare/v1.4.6...v1.4.7

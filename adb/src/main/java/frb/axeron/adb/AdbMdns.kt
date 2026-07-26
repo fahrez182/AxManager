@@ -25,10 +25,12 @@ class AdbMdns(
     private val handler = Handler(Looper.getMainLooper())
     private var restartScheduled = false
     private var attempts = 0
+    var indefinite: Boolean = false
 
     fun start() {
         if (running) return
         running = true
+        attempts = 0
         if (!registered) {
             nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, listener)
         }
@@ -71,14 +73,14 @@ class AdbMdns(
         ) {
             serviceName = resolvedService.serviceName
             observer.onChanged(resolvedService.port)
-        } else if (running && attempts < 5 && !restartScheduled) {
+        } else if (running && (indefinite || attempts < 5) && !restartScheduled) {
             attempts++
             restartScheduled = true
-            val delay = attempts * 1000L
+            val delay = if (indefinite) 2000L else attempts * 1000L
             handler.postDelayed({
                 if (registered) nsdManager.stopServiceDiscovery(listener)
                 handler.postDelayed({
-                    if (!registered) nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, listener)
+                    if (!registered && running) nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, listener)
                     restartScheduled = false
                 }, 100L)
             }, delay)

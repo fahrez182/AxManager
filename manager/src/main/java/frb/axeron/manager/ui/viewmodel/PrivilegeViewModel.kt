@@ -3,8 +3,6 @@ package frb.axeron.manager.ui.viewmodel
 import android.app.Application
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
-import android.os.SystemClock
-import android.system.Os
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,27 +29,34 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
 
     var search by mutableStateOf("")
 
+    // Di PrivilegeViewModel.kt
     val privilegeList by derivedStateOf {
-        privileges.values
-            .asSequence()
-            .filter {
-                it.label.contains(search, true) ||
-                        it.packageName.contains(search, true) ||
-                        HanziToPinyin.getInstance()
-                            .toPinyinString(it.label)
-                            .contains(search, true)
-            }
-            .filter {
-                val isSystem =
-                    it.packageInfo.applicationInfo!!
-                        .flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
+        val currentSearch = search
+        val allPrivileges = privileges.values
 
-                val isSelf = it.uid == Os.getuid()
-
-                !isSystem && !isSelf
-            }
-            .toList()
+        if (currentSearch.isEmpty()) {
+            allPrivileges.filter { it.isNotSystemOrSelf() }.toList()
+        } else {
+            allPrivileges.asSequence()
+                .filter { it.isNotSystemOrSelf() }
+                .filter { app ->
+                    app.label.contains(currentSearch, true) ||
+                            app.packageName.contains(currentSearch, true) ||
+                            //Panggil hanya jika perlu
+                            (currentSearch.any { it.code > 128 } &&
+                                    HanziToPinyin.getInstance().toPinyinString(app.label)
+                                        .contains(currentSearch, true))
+                }
+                .toList()
+        }
             .also { isRefreshing = false }
+    }
+
+    // Helper Extension
+    private fun AppsViewModel.AppInfo.isNotSystemOrSelf(): Boolean {
+        val isSystem = (packageInfo.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+        val isSelf = uid == android.os.Process.myUid()
+        return !isSystem && !isSelf
     }
 
 
@@ -90,35 +95,31 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun loadInstalledApps(refresh: Boolean = true) {
+        if (isRefreshing && refresh) return
+
         viewModelScope.launch {
             isRefreshing = refresh
+            val pm = application.packageManager
 
-            withContext(Dispatchers.IO) {
-                val start = SystemClock.elapsedRealtime()
-                val oldPrivileges = privileges
-                val pm = getApplication<Application>().packageManager
+            val result = withContext(Dispatchers.IO) {
+                val packages = getApplications()
 
-                // Ambil packageName yang sudah tersimpan
-                runCatching {
+                // Gunakan chunked atau parallel map untuk mempercepat loadLabel
+                packages.associate { packageInfo ->
+                    val appInfo = packageInfo.applicationInfo!!
+                    val uid = appInfo.uid
+                    val label = appInfo.loadLabel(pm).toString()
 
-                    privileges = getApplications().associate { packageInfo ->
-                        val appInfo = packageInfo.applicationInfo!!
-                        val uid = appInfo.uid
-                        uid to AppsViewModel.AppInfo(
-                            label = appInfo.loadLabel(pm).toString(),
-                            packageInfo = packageInfo,
-                            isAdded = granted(uid)
-                        )
-                    }
-                }.onFailure {
-                    isRefreshing = false
-                }
-
-                SystemClock.elapsedRealtime() - start
-                if (oldPrivileges === privileges) {
-                    isRefreshing = false
+                    uid to AppsViewModel.AppInfo(
+                        label = label,
+                        packageInfo = packageInfo,
+                        isAdded = granted(uid)
+                    )
                 }
             }
+
+            privileges = result
+            isRefreshing = false
         }
     }
 }
