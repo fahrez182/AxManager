@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeveloperMode
@@ -66,6 +65,7 @@ import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.screen.FlashIt
+import frb.axeron.manager.ui.theme.AppShape
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
@@ -332,12 +332,7 @@ fun ExtraFilterSettings(
                                     shape = SegmentedButtonDefaults.itemShape(
                                         index = index,
                                         count = ascOption.size,
-                                        baseShape = SegmentedButtonDefaults.baseShape.copy(
-                                            bottomStart = CornerSize(6.dp),
-                                            bottomEnd = CornerSize(6.dp),
-                                            topStart = CornerSize(6.dp),
-                                            topEnd = CornerSize(6.dp)
-                                        )
+                                        baseShape = AppShape.R6
                                     ),
                                     onClick = { pluginViewModel.setSelectedAsc(index) },
                                     selected = index == pluginViewModel.getSelectedAsc,
@@ -365,12 +360,7 @@ fun ExtraFilterSettings(
                                     shape = SegmentedButtonDefaults.itemShape(
                                         index = index,
                                         count = sortOption.size,
-                                        baseShape = SegmentedButtonDefaults.baseShape.copy(
-                                            bottomStart = CornerSize(6.dp),
-                                            bottomEnd = CornerSize(6.dp),
-                                            topStart = CornerSize(6.dp),
-                                            topEnd = CornerSize(6.dp)
-                                        )
+                                        baseShape = AppShape.R6
                                     ),
                                     onClick = { pluginViewModel.setSelectedSort(index) },
                                     selected = index == pluginViewModel.getSelectedSort,

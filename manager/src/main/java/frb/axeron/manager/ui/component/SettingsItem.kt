@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import frb.axeron.manager.ui.theme.AppShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
@@ -73,8 +73,8 @@ fun SettingsItem(
             contentColor = contentColor
         ),
         shape = when (type) {
-            SettingsItemType.PARENT -> CardDefaults.elevatedShape
-            SettingsItemType.CHILD -> RoundedCornerShape(0.dp)
+            SettingsItemType.PARENT -> AppShape.R12
+            SettingsItemType.CHILD -> AppShape.R0
         },
         elevation = when (type) {
             SettingsItemType.PARENT -> CardDefaults.elevatedCardElevation()
@@ -204,8 +204,8 @@ fun SettingsItemExpanded(
             contentColor = contentColor
         ),
         shape = when (type) {
-            SettingsItemType.PARENT -> CardDefaults.elevatedShape
-            SettingsItemType.CHILD -> RoundedCornerShape(0.dp)
+            SettingsItemType.PARENT -> AppShape.R12
+            SettingsItemType.CHILD -> AppShape.R0
         },
         elevation = when (type) {
             SettingsItemType.PARENT -> CardDefaults.elevatedCardElevation()
@@ -295,7 +295,7 @@ fun CheckBoxText(
             .height(36.dp)
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(5.dp),
+        shape = AppShape.R5,
         onClick = {
             onCheckedChange(!checked)
         }
