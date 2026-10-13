@@ -199,13 +199,20 @@ object AdbStarter {
                         client.command("tcpip:$tcpPort")
                     }
                 }
+            }.onFailure {
+                // adbd restarts and drops the current connection when switching to TCP mode, so
+                // EOF/SocketException here are expected; any other failure is fatal.
+                if (it !is EOFException && it !is SocketException) {
+                    result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_switch_tcp)))
+                    return
+                }
+            }
 
+            runCatching {
                 waitTcpReady(context, key, tcpPort)
                 activePort = tcpPort
             }.onFailure {
-                if (it !is EOFException && it !is SocketException) {
-                    result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_switch_tcp)))
-                }
+                result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_switch_tcp)))
                 return
             }
         }

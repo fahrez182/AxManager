@@ -232,6 +232,9 @@ open class AxeronService :
 
         var cachedDefaultEnv: Environment? = null
 
+        @Volatile
+        var preferSystemBinaries: Boolean = false
+
         fun getDefaultEnvironment(): Environment {
             val cached = cachedDefaultEnv
             if (cached != null) return cached
@@ -266,7 +269,11 @@ open class AxeronService :
 
             // Pastikan PATH sistem tetap ada sebagai fallback
             val systemPath = System.getenv("PATH") ?: "/sbin:/system/bin:/system/xbin"
-            builder.put("PATH", "\$AXERONXBIN:\$AXERONBIN:$systemPath")
+            val axeronPath = "\$AXERONXBIN:\$AXERONBIN"
+            builder.put(
+                "PATH",
+                if (preferSystemBinaries) "$systemPath:$axeronPath" else "$axeronPath:$systemPath"
+            )
 
             if (managerInfo != null) {
                 builder.put("AXERONLIB", managerInfo.nativeLibraryDir)
@@ -356,7 +363,16 @@ open class AxeronService :
         if (checkCaller(callingUid)) {
             return true
         }
-        return clientRecord == null
+        // Attached clients are validated against clientRecord.allowed by Service.enforceCallingPermission.
+        if (clientRecord != null) {
+            return false
+        }
+        // Non-attached callers (axerish/axrun, unattached Shizuku clients) are only allowed once
+        // their uid has been granted permission, mirroring Service.checkSelfPermission().
+        if (callingUid == 0 || callingUid == 2000) {
+            return true
+        }
+        return configManager.find(callingUid)?.isAllowed == true
     }
 
     private val starting: Long = SystemClock.elapsedRealtime()
@@ -430,7 +446,11 @@ open class AxeronService :
                 shizuku = null
             }
         }
-        sendBinderToManager()
+        mainHandler.post {
+            // Push the Shizuku binder to already-running client apps, not only when they (re)start.
+            sendBinderToClient()
+            sendBinderToManager()
+        }
     }
 
     @Volatile
@@ -478,6 +498,14 @@ open class AxeronService :
         cachedNewEnv = null
         userServiceManager.environment =
             getEnvironment(TYPE_ENV)?.getEnv()
+    }
+
+    override fun setPreferSystemBinaries(prefer: Boolean) {
+        preferSystemBinaries = prefer
+        // invalidate cached envs so the new PATH ordering takes effect
+        cachedDefaultEnv = null
+        cachedMergedEnv = null
+        cachedNewEnv = null
     }
 
     fun checkRuntime(): Boolean {

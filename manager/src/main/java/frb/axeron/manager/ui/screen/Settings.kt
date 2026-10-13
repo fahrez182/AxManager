@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -178,6 +179,14 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     }
                 )
             }
+
+            SettingsItem(
+                iconVector = Icons.Filled.Terminal,
+                label = stringResource(R.string.prefer_system_binaries),
+                description = stringResource(R.string.prefer_system_binaries_desc),
+                checked = settings.isPreferSystemBinariesEnabled,
+                onSwitchChange = { settings.setPreferSystemBinaries(it) }
+            )
 
             SettingsItem(
                 iconVector = Icons.Filled.Adb,

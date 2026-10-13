@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.manager.ui.theme.basePrimaryDefault
 import frb.axeron.manager.ui.theme.toHexString
@@ -24,6 +25,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     var isActivateOnBootEnabled by mutableStateOf(
         AxeronSettings.getStartOnBoot()
+    )
+        private set
+
+    var isPreferSystemBinariesEnabled by mutableStateOf(
+        AxeronSettings.getPreferSystemBinaries()
     )
         private set
 
@@ -70,6 +76,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             isActivateOnBootEnabled = enabled
             AxeronSettings.setStartOnBoot(enabled)
+        }
+    }
+
+    fun setPreferSystemBinaries(enabled: Boolean) {
+        viewModelScope.launch {
+            isPreferSystemBinariesEnabled = enabled
+            AxeronSettings.setPreferSystemBinaries(enabled)
+            if (Axeron.pingBinder()) {
+                Axeron.setPreferSystemBinaries(enabled)
+            }
         }
     }
 

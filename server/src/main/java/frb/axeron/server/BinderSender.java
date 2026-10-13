@@ -47,12 +47,6 @@ public class BinderSender {
     }
 
     private static void sendBinder(int uid, int pid) throws RemoteException {
-        String key = uid + ":" + pid;
-        if (!SENT_BINDERS.add(key)) {
-            LOGGER.v("Skip duplicate binder send for %s", key);
-            return;
-        }
-
         int userId = uid / 100000;
 
         List<String> packages = getPackagesCached(uid);
@@ -63,8 +57,19 @@ public class BinderSender {
 
         IShizukuService shizukuService = axeronService.getShizukuService();
 
+        // Non-manager uids can only be served while the Shizuku intercept is enabled. Do not mark
+        // them as sent, so they still receive the binder once the intercept is enabled later.
+        if (shizukuService == null && !isOurManager)
+            return;
+
+        String key = uid + ":" + pid;
+        if (!SENT_BINDERS.add(key)) {
+            LOGGER.v("Skip duplicate binder send for %s", key);
+            return;
+        }
+
         // 🔒 secure fast-path
-        if (shizukuService == null && isOurManager) {
+        if (shizukuService == null) {
             LOGGER.d(
                     "Shizuku unavailable, uid %d belongs to manager, send binder directly",
                     uid
@@ -72,10 +77,6 @@ public class BinderSender {
             AxeronService.sendBinderToManager(axeronService.asBinder(), userId);
             return;
         }
-
-        // Kalau bukan manager, dan shizuku null → STOP
-        if (shizukuService == null)
-            return;
 
         LOGGER.d(
                 "sendBinder to uid %d: packages=%s",

@@ -13,8 +13,6 @@ import androidx.lifecycle.viewModelScope
 import frb.axeron.api.Axeron
 import frb.axeron.manager.ui.util.HanziToPinyin
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -90,19 +88,24 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun loadInstalledApps(refresh: Boolean = true) {
-        if (isRefreshing && refresh) return
+        // Avoid stacking loads: resume triggers a non-refresh load, pull-to-refresh forces one.
+        if (isRefreshing) return
+        if (!refresh && privileges.isNotEmpty()) return
 
         viewModelScope.launch {
             isRefreshing = refresh
             val pm = application.packageManager
 
             val result = withContext(Dispatchers.IO) {
-                val packages = getApplications()
-
-                packages.map { packageInfo ->
-                    async {
-                        val appInfo = packageInfo.applicationInfo!!
+                getApplications()
+                    .mapNotNull { packageInfo ->
+                        val appInfo = packageInfo.applicationInfo ?: return@mapNotNull null
                         val uid = appInfo.uid
+
+                        // Only user apps are shown, so skip system/self before the per-uid binder call.
+                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        if (isSystem || uid == android.os.Process.myUid()) return@mapNotNull null
+
                         val label = appInfo.loadLabel(pm).toString()
 
                         uid to AppsViewModel.AppInfo(
@@ -112,7 +115,7 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
                             isAdded = granted(uid)
                         )
                     }
-                }.awaitAll().toMap()
+                    .toMap()
             }
 
             privileges = result

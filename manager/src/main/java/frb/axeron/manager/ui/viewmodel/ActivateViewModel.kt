@@ -196,6 +196,8 @@ class ActivateViewModel : ViewModel() {
                 axeronInfo = when (status) {
                     is ActivateStatus.Running -> {
                         checkShizukuIntercept()
+                        // Re-apply the PATH preference on every (re)connect.
+                        Axeron.setPreferSystemBinaries(AxeronSettings.getPreferSystemBinaries())
                         status.axeronInfo
                     }
 
@@ -297,15 +299,20 @@ class ActivateViewModel : ViewModel() {
     ): AdbStateInfo = withContext(Dispatchers.IO) {
         if (tryActivate) return@withContext AdbStateInfo.Process("Trying to activate")
         setTryToActivate(true)
-        resetStatus()
+        try {
+            resetStatus()
 
-        val tcpPort = AdbEnvironment.getAdbTcpPort()
+            val tcpPort = AdbEnvironment.getAdbTcpPort()
 
-        val resultChannel = kotlinx.coroutines.channels.Channel<AdbStateInfo>(1)
-        AdbStarter.startAdbClient(context, tcpPort) {
-            resultChannel.trySend(it)
+            val resultChannel = kotlinx.coroutines.channels.Channel<AdbStateInfo>(1)
+            AdbStarter.startAdbClient(context, tcpPort) {
+                resultChannel.trySend(it)
+            }
+            withTimeoutOrNull(15000) { resultChannel.receive() }
+                ?: AdbStateInfo.Failed("Timeout waiting for connection")
+        } finally {
+            setTryToActivate(false)
         }
-        resultChannel.receive()
     }
 
     suspend fun stopAdbTcp(
@@ -313,10 +320,13 @@ class ActivateViewModel : ViewModel() {
     ) = withContext(Dispatchers.IO) {
         if (tryActivate) return@withContext result(AdbStateInfo.Process("Trying to activate"))
         setTryToActivate(true)
-
-        val tcpPort = AdbEnvironment.getAdbTcpPort()
-        if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
-            stopTcp(context, tcpPort)
+        try {
+            val tcpPort = AdbEnvironment.getAdbTcpPort()
+            if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
+                stopTcp(context, tcpPort)
+            }
+        } finally {
+            setTryToActivate(false)
         }
     }
 

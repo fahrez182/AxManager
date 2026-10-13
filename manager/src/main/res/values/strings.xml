@@ -161,6 +161,8 @@
     <string name="shell_restriction_desc">This feature will restrict background processing.</string>
     <string name="compat_mode">Compatibility Mode</string>
     <string name="compat_mode_desc">You will use busybox to prevent unsupported command.</string>
+    <string name="prefer_system_binaries">Prefer System Binaries</string>
+    <string name="prefer_system_binaries_desc">Put Android built-in binaries before Axeron/busybox in PATH, so commands in QuickShell use the system versions.</string>
     <string name="axeron_permission">AX-Permission Intercept</string>
     <string name="axeron_permission_desc">Intercept permission manager built on Shizuku-API using Ax-Environment</string>
     <string name="tcp_mode">TCP Mode</string>
