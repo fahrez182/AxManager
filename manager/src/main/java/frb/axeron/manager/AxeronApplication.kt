@@ -32,9 +32,6 @@ class AxeronApplication : Engine() {
             if (Build.VERSION.SDK_INT >= 28) {
                 HiddenApiBypass.setHiddenApiExemptions("")
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                System.loadLibrary("adb")
-            }
         }
     }
 

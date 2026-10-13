@@ -156,11 +156,15 @@ fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
+                            val context = LocalContext.current
+                            val iconRequest = remember(app.packageInfo) {
+                                ImageRequest.Builder(context)
                                     .data(app.packageInfo)
                                     .crossfade(true)
-                                    .build(),
+                                    .build()
+                            }
+                            AsyncImage(
+                                model = iconRequest,
                                 contentDescription = app.label,
                                 modifier = Modifier
                                     .padding(4.dp)

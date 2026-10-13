@@ -97,25 +97,33 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
             val pm = application.packageManager
 
             val result = withContext(Dispatchers.IO) {
-                getApplications()
-                    .mapNotNull { packageInfo ->
-                        val appInfo = packageInfo.applicationInfo ?: return@mapNotNull null
-                        val uid = appInfo.uid
+                // Only user apps are shown, so skip system/self first.
+                val candidates = getApplications().mapNotNull { packageInfo ->
+                    val appInfo = packageInfo.applicationInfo ?: return@mapNotNull null
+                    val uid = appInfo.uid
+                    val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    if (isSystem || uid == android.os.Process.myUid()) return@mapNotNull null
+                    uid to packageInfo
+                }
 
-                        // Only user apps are shown, so skip system/self before the per-uid binder call.
-                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                        if (isSystem || uid == android.os.Process.myUid()) return@mapNotNull null
+                // Single binder call for all uids instead of one per app.
+                val flags = Axeron.getFlagsForUids(
+                    candidates.map { it.first }.toIntArray(),
+                    MASK_PERMISSION
+                )
 
-                        val label = appInfo.loadLabel(pm).toString()
+                candidates.mapIndexed { index, (uid, packageInfo) ->
+                    val appInfo = packageInfo.applicationInfo!!
+                    val label = appInfo.loadLabel(pm).toString()
+                    val isAdded = (flags.getOrElse(index) { 0 } and FLAG_ALLOWED) == FLAG_ALLOWED
 
-                        uid to AppsViewModel.AppInfo(
-                            label = label,
-                            pinyinLabel = HanziToPinyin.getInstance().toPinyinString(label),
-                            packageInfo = packageInfo,
-                            isAdded = granted(uid)
-                        )
-                    }
-                    .toMap()
+                    uid to AppsViewModel.AppInfo(
+                        label = label,
+                        pinyinLabel = HanziToPinyin.getInstance().toPinyinString(label),
+                        packageInfo = packageInfo,
+                        isAdded = isAdded
+                    )
+                }.toMap()
             }
 
             privileges = result

@@ -221,10 +221,13 @@ fun PluginItem(
                             }
                         }
                         if (bannerData != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
+                            val bannerRequest = remember(bannerData) {
+                                ImageRequest.Builder(context)
                                     .data(bannerData)
-                                    .build(),
+                                    .build()
+                            }
+                            AsyncImage(
+                                model = bannerRequest,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxWidth()

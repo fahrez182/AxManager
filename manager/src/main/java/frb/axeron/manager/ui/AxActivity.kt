@@ -22,6 +22,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
@@ -199,7 +200,9 @@ class AxActivity : ComponentActivity() {
             intentState = null
         }
 
-        LaunchedEffect(axeronInfo) {
+        // Reload only when the server process changes, not on every AxeronInfo emission.
+        val serverProcess = axeronInfo.serverInfo.uid to axeronInfo.serverInfo.pid
+        LaunchedEffect(serverProcess) {
             if (axeronInfo.isRunning()) {
                 // pluginViewModel is prioritized because of BottomBar badge
                 pluginViewModel.fetchModuleList()
@@ -240,7 +243,7 @@ class AxActivity : ComponentActivity() {
                     DestinationsNavHost(
                         modifier = Modifier
                             .padding(innerPadding)
-                            .padding(bottom = if (showBottomBar) 80.dp else 0.dp),
+                            .padding(bottom = if (showBottomBar) 100.dp else 0.dp),
                         navGraph = NavGraphs.root,
                         navController = navController,
                         dependenciesContainerBuilder = {
@@ -321,10 +324,13 @@ class AxActivity : ComponentActivity() {
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ),
-            elevation = CardDefaults.cardElevation(0.dp),
-            shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp)
+            elevation = CardDefaults.cardElevation(8.dp),
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .fillMaxWidth()
         ) {
             NavigationBar(
                 containerColor = Color.Transparent,

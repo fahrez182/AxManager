@@ -337,15 +337,20 @@ open class AxeronService :
         return AxeronConfigManager()
     }
 
+    private var cachedManagerUid: Int = -1
+    private var cachedShizukuManagerUid: Int = -1
+
     @Synchronized
     fun checkCaller(callingUid: Int): Boolean {
-        val managerAppUid: Int =
-            getManagerApplicationInfo()?.uid ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
-
-        val shizukuManagerUid: Int = getShizukuManagerApplicationInfo()?.uid ?: managerAppUid
-        return UserHandleCompat.getAppId(callingUid) == managerAppUid || UserHandleCompat.getAppId(
-            callingUid
-        ) == shizukuManagerUid
+        if (cachedManagerUid == -1) {
+            cachedManagerUid = getManagerApplicationInfo()?.uid
+                ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+        }
+        if (cachedShizukuManagerUid == -1) {
+            cachedShizukuManagerUid = getShizukuManagerApplicationInfo()?.uid ?: cachedManagerUid
+        }
+        val appId = UserHandleCompat.getAppId(callingUid)
+        return appId == cachedManagerUid || appId == cachedShizukuManagerUid
     }
 
     override fun checkCallerManagerPermission(
@@ -791,6 +796,9 @@ open class AxeronService :
 
     @Throws(RemoteException::class)
     override fun dispatchPackageChanged(intent: Intent?) {
+        // Manager / Shizuku-manager uid may have changed on (re)install.
+        cachedManagerUid = -1
+        cachedShizukuManagerUid = -1
     }
 
     override fun exit() {
@@ -883,6 +891,18 @@ open class AxeronService :
             return 0
         }
         return getFlagsForUidInternal(uid, mask)
+    }
+
+    override fun getFlagsForUids(uids: IntArray, mask: Int): IntArray {
+        if (!checkCaller(getCallingUid())) {
+            LOGGER.w("getFlagsForUids is allowed to be called only from the manager")
+            return IntArray(uids.size)
+        }
+        val result = IntArray(uids.size)
+        for (i in uids.indices) {
+            result[i] = getFlagsForUidInternal(uids[i], mask)
+        }
+        return result
     }
 
     @Throws(RemoteException::class)

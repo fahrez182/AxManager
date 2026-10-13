@@ -186,6 +186,7 @@ public class BinderSender {
             synchronized (PID_LIST) {
                 PID_LIST.remove(pid);
             }
+            SENT_BINDERS.remove(uid + ":" + pid);
         }
 
         @Override
@@ -255,6 +256,9 @@ public class BinderSender {
                 UID_LIST.remove(uid);
                 LOGGER.v("Uid %d dead", uid);
             }
+            // Drop cached packages and sent-binder marks so a restarted uid is served again.
+            UID_PACKAGE_CACHE.remove(uid);
+            SENT_BINDERS.removeIf(key -> key.startsWith(uid + ":"));
         }
     }
 }

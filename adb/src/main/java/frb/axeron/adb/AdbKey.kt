@@ -108,8 +108,6 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
         ).build(signer)
         this.certificate = CertificateFactory.getInstance("X.509")
             .generateCertificate(ByteArrayInputStream(x509Certificate.encoded)) as X509Certificate
-
-        Log.d(TAG, privateKey.toString())
     }
 
     val adbPublicKey: ByteArray by unsafeLazy {
@@ -194,7 +192,6 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
         var privateKey: RSAPrivateKey? = null
 
         val ciphertext = adbKeyStore.get()
-        Log.i(TAG, "getOrCreatePrivateKey: ciphertext = $ciphertext")
         if (ciphertext != null) {
             try {
                 val keyFactory = KeyFactory.getInstance("RSA")
@@ -352,15 +349,12 @@ class PreferenceAdbKeyStore(
     private val preferenceKey = "adbkey"
 
     override fun put(bytes: ByteArray) {
-        Log.d("AxData", "put: ${String(Base64.encode(bytes, Base64.NO_WRAP))}")
         preference.edit().putString(preferenceKey, String(Base64.encode(bytes, Base64.NO_WRAP)))
             .apply()
     }
 
     override fun get(): ByteArray? {
-        Log.d("AxData", "defaultKey: $defaultKey")
         if (!preference.contains(preferenceKey)) return defaultKey?.let { Base64.decode(it, Base64.NO_WRAP) }
-        Log.d("AxData", "get: ${preference.getString(preferenceKey, defaultKey)}")
         return Base64.decode(preference.getString(preferenceKey, defaultKey), Base64.NO_WRAP)
     }
 

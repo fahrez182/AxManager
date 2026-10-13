@@ -163,6 +163,8 @@
     <string name="compat_mode_desc">Anda akan menggunakan busybox untuk mencegah perintah yang tidak didukung.</string>
     <string name="prefer_system_binaries">Utamakan Binary Sistem</string>
     <string name="prefer_system_binaries_desc">Letakkan binary bawaan Android sebelum Axeron/busybox di PATH, sehingga perintah di QuickShell memakai versi sistem.</string>
+    <string name="privilege_empty_title">Belum ada apa-apa</string>
+    <string name="privilege_empty_desc">App pengguna yang terpasang akan muncul di sini untuk dikelola.</string>
     <string name="axeron_permission">Cegat AX-Permission</string>
     <string name="axeron_permission_desc">Cegat manajer izin yang dibangun di atas Shizuku-API menggunakan Ax-Environment</string>
     <string name="tcp_mode">Mode TCP</string>

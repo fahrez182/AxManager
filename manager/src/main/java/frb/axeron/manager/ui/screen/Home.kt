@@ -4,6 +4,8 @@ import android.os.Build
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -333,17 +336,22 @@ fun StatusCard(
     val isUpdating = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Updating
     val isNeedExtraStep = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.NeedExtraStep
 
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            isUpdating -> MaterialTheme.colorScheme.primaryContainer
+            isNeedExtraStep -> MaterialTheme.colorScheme.errorContainer
+            isRunning -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.errorContainer
+        },
+        animationSpec = tween(400),
+        label = "statusContainer"
+    )
+
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
-            containerColor = run {
-                when {
-                    isUpdating -> MaterialTheme.colorScheme.primaryContainer
-                    isNeedExtraStep -> MaterialTheme.colorScheme.errorContainer
-                    isRunning -> MaterialTheme.colorScheme.primaryContainer
-                    else -> MaterialTheme.colorScheme.errorContainer
-                }
-            }
+            containerColor = containerColor
         ),
+        shape = RoundedCornerShape(24.dp),
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)

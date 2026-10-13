@@ -31,6 +31,9 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import frb.axeron.manager.ui.component.EmptyState
 import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.UseLifecycle
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
@@ -91,6 +94,15 @@ fun PrivilegeScreen(
                     )
                 }
             ) {
+                if (privilegeViewModel.privilegeList.isEmpty() && !privilegeViewModel.isRefreshing) {
+                    item {
+                        EmptyState(
+                            icon = Icons.Outlined.Lock,
+                            title = stringResource(R.string.privilege_empty_title),
+                            subtitle = stringResource(R.string.privilege_empty_desc)
+                        )
+                    }
+                }
                 items(
                     privilegeViewModel.privilegeList,
                     key = { it.packageName + it.uid }
