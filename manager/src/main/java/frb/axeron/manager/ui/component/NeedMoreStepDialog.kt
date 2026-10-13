@@ -78,14 +78,13 @@ fun NeedMoreStepDialog(
     ModalBottomSheet(
         onDismissRequest = { onDismiss() },
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = { }
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(all = 24.dp),
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (applicationInfo != null) {
