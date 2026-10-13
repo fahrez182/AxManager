@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -29,6 +30,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
 import androidx.compose.material.icons.filled.Add
@@ -85,6 +87,8 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.util.LocalFloatingBarInset
+import frb.axeron.manager.ui.component.FloatingBarFab
 import frb.axeron.manager.data.SettingsRepository
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.SearchAppBar
@@ -200,12 +204,9 @@ fun SettingsEditorScreen(
                 onRefresh = { refresh(selectedType) }
             )
 
-            AnimatedVisibility(
-                visible = showFab,
-                enter = fadeIn() + slideInVertically { it },
-                exit = fadeOut() + slideOutVertically { it }
-            ) {
-                FloatingActionButton(onClick = { isAdding = true }) {
+            // Rendered beside the nav pill by FloatingBarFab.
+            FloatingBarFab(visible = showFab) {
+                FloatingActionButton(shape = CircleShape, onClick = { isAdding = true }) {
                     Icon(Icons.Filled.Add, null)
                 }
             }
@@ -306,7 +307,9 @@ fun SettingsEditorScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            state = listState
+                            state = listState,
+                            // Clear the floating bar (FABs sit inside it).
+                            contentPadding = PaddingValues(bottom = LocalFloatingBarInset.current + 16.dp)
                         ) {
                             items(
                                 items = filtered.entries.toList(),

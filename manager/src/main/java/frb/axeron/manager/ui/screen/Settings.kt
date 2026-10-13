@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,8 +33,6 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -44,7 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
+import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
@@ -82,8 +81,13 @@ import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScr
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.manager.R
-import frb.axeron.manager.ui.component.SettingsItem
-import frb.axeron.manager.ui.component.SettingsItemType
+import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.IconBadge
+import frb.axeron.manager.ui.component.SectionHeader
+import frb.axeron.manager.ui.component.SettingsDivider
+import frb.axeron.manager.ui.component.SettingsGroup
+import frb.axeron.manager.ui.component.SettingsRow
+import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
@@ -119,7 +123,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            AxTopAppBar(
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -149,65 +153,65 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 
         Column(
             modifier = Modifier
-                .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(top = 16.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                // Padding inside the scroll lets content pass under the fading top bar.
+                .padding(
+                    top = paddingValues.calculateTopPadding() + 8.dp,
+                    bottom = paddingValues.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
 
-            AnimatedVisibility(visible = axeronRunning) {
-                val lifecycleOwner = rememberLifecycleOwner()
-                DisposableEffect(Unit) {
-                    val observer = object : androidx.lifecycle.DefaultLifecycleObserver {
-                        override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
-                            activateViewModel.checkShizukuIntercept()
+            SettingsSectionHeader(stringResource(R.string.settings_section_environment))
+            SettingsGroup {
+                if (axeronRunning) {
+                    val lifecycleOwner = rememberLifecycleOwner()
+                    DisposableEffect(Unit) {
+                        val observer = object : androidx.lifecycle.DefaultLifecycleObserver {
+                            override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
+                                activateViewModel.checkShizukuIntercept()
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(observer)
+                        onDispose {
+                            lifecycleOwner.lifecycle.removeObserver(observer)
                         }
                     }
-                    lifecycleOwner.lifecycle.addObserver(observer)
-                    onDispose {
-                        lifecycleOwner.lifecycle.removeObserver(observer)
-                    }
+                    SettingsRow(
+                        iconPainter = painterResource(R.drawable.ic_axeron),
+                        label = stringResource(R.string.axeron_permission),
+                        description = stringResource(R.string.axeron_permission_desc),
+                        checked = activateViewModel.isShizukuActive,
+                        onSwitchChange = { activateViewModel.setShizukuIntercept(it) }
+                    )
                 }
-                SettingsItem(
-                    iconPainter = painterResource(R.drawable.ic_axeron),
-                    label = stringResource(R.string.axeron_permission),
-                    description = stringResource(R.string.axeron_permission_desc),
-                    checked = activateViewModel.isShizukuActive,
-                    onSwitchChange = {
-                        activateViewModel.setShizukuIntercept(it)
-                    }
+
+                SettingsRow(
+                    iconVector = Icons.Filled.Terminal,
+                    label = stringResource(R.string.prefer_system_binaries),
+                    description = stringResource(R.string.prefer_system_binaries_desc),
+                    checked = settings.isPreferSystemBinariesEnabled,
+                    onSwitchChange = { settings.setPreferSystemBinaries(it) },
+                    showDivider = axeronRunning
                 )
-            }
 
-            SettingsItem(
-                iconVector = Icons.Filled.Terminal,
-                label = stringResource(R.string.prefer_system_binaries),
-                description = stringResource(R.string.prefer_system_binaries_desc),
-                checked = settings.isPreferSystemBinariesEnabled,
-                onSwitchChange = { settings.setPreferSystemBinaries(it) }
-            )
-
-            SettingsItem(
-                iconVector = Icons.Filled.Adb,
-                label = stringResource(R.string.tcp_mode),
-                description = stringResource(R.string.tcp_mode_desc),
-                checked = settings.isTcpModeEnabled,
-                onSwitchChange = {
-                    settings.setTcpMode(it)
-                }
-            ) { enabled, checked ->
-                AnimatedVisibility(checked) {
-                    SettingsItem(
-                        type = SettingsItemType.CHILD
-                    ) { _, _ ->
+                SettingsRow(
+                    iconVector = Icons.Filled.Adb,
+                    label = stringResource(R.string.tcp_mode),
+                    description = stringResource(R.string.tcp_mode_desc),
+                    checked = settings.isTcpModeEnabled,
+                    onSwitchChange = { settings.setTcpMode(it) },
+                    showDivider = true
+                ) {
+                    AnimatedVisibility(settings.isTcpModeEnabled) {
                         var tcpPortText by remember {
                             mutableStateOf(settings.tcpPortInt.toString())
                         }
                         val context = LocalContext.current
 
                         Column(
-                            modifier = Modifier.padding(horizontal = 12.dp)
+                            modifier = Modifier.padding(start = 64.dp, end = 16.dp, bottom = 12.dp)
                         ) {
                             var isFocused by remember { mutableStateOf(false) }
                             val focusManager = LocalFocusManager.current
@@ -280,7 +284,8 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                                 colors = TextFieldDefaults.colors(
                                     focusedIndicatorColor = Color.Transparent,
                                     unfocusedIndicatorColor = Color.Transparent,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                     disabledIndicatorColor = Color.Transparent
                                 ),
                                 shape = RoundedCornerShape(12.dp),
@@ -289,88 +294,77 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                                 ),
                                 singleLine = true
                             )
-
                         }
                     }
                 }
             }
 
-            SettingsItem(
-                iconVector = Icons.Filled.RestartAlt,
-                label = stringResource(R.string.active_on_boot),
-                description = stringResource(R.string.active_on_boot_desc),
-                checked = settings.isActivateOnBootEnabled,
-                onSwitchChange = {
-                    settings.setActivateOnBoot(it)
-                }
-            )
+            SettingsSectionHeader(stringResource(R.string.settings_section_general))
+            SettingsGroup {
+                SettingsRow(
+                    iconVector = Icons.Filled.RestartAlt,
+                    label = stringResource(R.string.active_on_boot),
+                    description = stringResource(R.string.active_on_boot_desc),
+                    checked = settings.isActivateOnBootEnabled,
+                    onSwitchChange = { settings.setActivateOnBoot(it) }
+                )
 
-
-            SettingsItem(
-                iconVector = Icons.Filled.Refresh,
-                label = stringResource(R.string.ignite_when_relog),
-                description = stringResource(R.string.ignite_when_relog_desc),
-                checked = settings.isIgniteWhenRelogEnabled,
-                onSwitchChange = {
-                    settings.setIgniteWhenRelog(it)
-                }
-            )
-
-            AnimatedVisibility(visible = axeronRunning) {
-                SettingsItem(
-                    iconVector = Icons.Filled.FolderDelete,
-                    label = stringResource(R.string.reset_path),
-                    description = stringResource(R.string.reset_path_desc),
-                    onClick = {
-                        showResetDialog = true
-                    }
+                SettingsRow(
+                    iconVector = Icons.Filled.Refresh,
+                    label = stringResource(R.string.ignite_when_relog),
+                    description = stringResource(R.string.ignite_when_relog_desc),
+                    checked = settings.isIgniteWhenRelogEnabled,
+                    onSwitchChange = { settings.setIgniteWhenRelog(it) },
+                    showDivider = true
                 )
             }
 
-            SettingsItem { _, _ ->
-//                AnimatedVisibility(visible = axeronRunning) {
-//                    SettingsItem(
-//                        type = SettingsItemType.CHILD,
-//                        iconVector = Icons.Filled.Apps,
-//                        label = "AppList Manager",
-//                        onClick = {
-//                            navigator.navigate(AppsScreenDestination)
-//                        }
-//                    )
-//                }
+            if (axeronRunning) {
+                SettingsSectionHeader(stringResource(R.string.settings_section_maintenance))
+                SettingsGroup {
+                    SettingsRow(
+                        iconVector = Icons.Filled.FolderDelete,
+                        label = stringResource(R.string.reset_path),
+                        description = stringResource(R.string.reset_path_desc),
+                        onClick = { showResetDialog = true }
+                    )
+                }
+            }
 
-                AnimatedVisibility(visible = axeronRunning) {
-                    SettingsItem(
-                        type = SettingsItemType.CHILD,
+            SettingsSectionHeader(stringResource(R.string.settings_section_more))
+            SettingsGroup {
+                if (axeronRunning) {
+                    SettingsRow(
                         iconVector = Icons.Filled.Edit,
                         label = stringResource(R.string.settings_editor),
-                        onClick = {
-                            navigator.navigate(SettingsEditorScreenDestination)
-                        }
+                        onClick = { navigator.navigate(SettingsEditorScreenDestination) }
                     )
                 }
 
-                SettingsItem(
-                    type = SettingsItemType.CHILD,
+                SettingsRow(
                     iconVector = Icons.Filled.Palette,
                     label = stringResource(R.string.appearance),
-                    onClick = {
-                        navigator.navigate(AppearanceScreenDestination)
-                    }
+                    onClick = { navigator.navigate(AppearanceScreenDestination) },
+                    showDivider = axeronRunning
                 )
 
-                SettingsItem(
-                    type = SettingsItemType.CHILD,
+                SettingsRow(
                     iconVector = Icons.Filled.BugReport,
                     label = stringResource(R.string.developer),
-                    onClick = {
-                        navigator.navigate(DeveloperScreenDestination)
-                    }
+                    onClick = { navigator.navigate(DeveloperScreenDestination) },
+                    showDivider = true
                 )
-
             }
         }
     }
+}
+
+@Composable
+private fun SettingsSectionHeader(text: String) {
+    SectionHeader(
+        text = text,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -510,38 +504,46 @@ fun ResetBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
-                .padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = stringResource(R.string.reset_path),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = stringResource(R.string.reset_path_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(
+                modifier = Modifier.padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.reset_path),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(R.string.reset_path_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             if (isRoot) {
-                ResetOptionItem(
-                    title = stringResource(R.string.reset_root),
-                    path = PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath,
-                    onClick = { onReset(true, false) }
-                )
-                ResetOptionItem(
-                    title = stringResource(R.string.reset_shell),
-                    path = PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath,
-                    onClick = { onReset(false, false) }
-                )
-                ResetOptionItem(
-                    title = stringResource(R.string.reset_both),
-                    path = "${PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath}\n${PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath}",
-                    onClick = { onReset(true, true) }
-                )
+                AxCard {
+                    ResetOptionItem(
+                        title = stringResource(R.string.reset_root),
+                        path = PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath,
+                        onClick = { onReset(true, false) }
+                    )
+                    SettingsDivider()
+                    ResetOptionItem(
+                        title = stringResource(R.string.reset_shell),
+                        path = PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath,
+                        onClick = { onReset(false, false) }
+                    )
+                    SettingsDivider()
+                    ResetOptionItem(
+                        title = stringResource(R.string.reset_both),
+                        path = "${PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath}\n${PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath}",
+                        onClick = { onReset(true, true) }
+                    )
+                }
             } else {
                 FilledTonalButton(
                     modifier = Modifier.fillMaxWidth(),
@@ -554,38 +556,35 @@ fun ResetBottomSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResetOptionItem(
     title: String,
     path: String,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.FolderDelete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error
+        IconBadge(
+            imageVector = Icons.Default.FolderDelete,
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(text = title, fontWeight = FontWeight.SemiBold)
-                Text(
-                    text = path,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = path,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
