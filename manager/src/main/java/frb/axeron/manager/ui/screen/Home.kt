@@ -86,6 +86,7 @@ import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
+import frb.axeron.manager.ui.component.NeedMoreStepDialog
 import frb.axeron.manager.ui.component.PluginCard
 import frb.axeron.manager.ui.component.PowerDialog
 import frb.axeron.manager.ui.component.PrivilegeCard
@@ -332,10 +333,6 @@ fun StatusCard(
     val isUpdating = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Updating
     val isNeedExtraStep = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.NeedExtraStep
 
-    val uriHandler = LocalUriHandler.current
-    val extraStepUrl =
-        "https://fahrez182.github.io/AxManager/guide/faq.html#start-via-wireless-debugging-start-by-connecting-to-a-computer-the-permission-of-adb-is-limited"
-
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = run {
@@ -355,6 +352,11 @@ fun StatusCard(
         val updating = stringResource(R.string.updating)
         var debugClickCount by remember { mutableIntStateOf(0) }
         var debugJob: Job? by remember { mutableStateOf(null) }
+        var showNeedMoreStepDialog by remember { mutableStateOf(false) }
+
+        if (showNeedMoreStepDialog) {
+            NeedMoreStepDialog(onDismiss = { showNeedMoreStepDialog = false })
+        }
 
         Box(
             modifier = Modifier
@@ -365,7 +367,7 @@ fun StatusCard(
                         return@clickable
                     }
                     if (isNeedExtraStep) {
-                        uriHandler.openUri(extraStepUrl)
+                        showNeedMoreStepDialog = true
                         return@clickable
                     }
                     if (isRunning) {

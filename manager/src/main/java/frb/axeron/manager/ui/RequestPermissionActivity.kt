@@ -48,6 +48,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import frb.axeron.api.Axeron
 import frb.axeron.ktx.workerHandler
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.AppIcon
+import frb.axeron.manager.ui.component.NeedMoreStepDialog
 import frb.axeron.manager.ui.theme.AxManagerTheme
 import frb.axeron.server.util.Logger
 import frb.axeron.shared.ShizukuApiConstant.REQUEST_PERMISSION_REPLY_ALLOWED
@@ -113,7 +115,17 @@ class RequestPermissionActivity : ComponentActivity() {
             Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
 
         if (!permission) {
-            setResult(uid, pid, requestCode, allowed = false, onetime = true)
+            setContent {
+                AxManagerTheme {
+                    NeedMoreStepDialog(
+                        applicationInfo = ai,
+                        onDismiss = {
+                            setResult(uid, pid, requestCode, allowed = false, onetime = true)
+                            finish()
+                        }
+                    )
+                }
+            }
             return
         }
 
@@ -271,22 +283,4 @@ fun RequestPermissionDialog(
             Spacer(Modifier.height(8.dp))
         }
     }
-}
-
-@Composable
-fun AppIcon(
-    applicationInfo: ApplicationInfo,
-    pm: PackageManager,
-    modifier: Modifier = Modifier
-) {
-    AndroidView(
-        factory = { context ->
-            ImageView(context).apply {
-                setImageDrawable(pm.getApplicationIcon(applicationInfo))
-                clipToOutline = true
-                layoutParams = android.widget.LinearLayout.LayoutParams(120, 120)
-            }
-        },
-        modifier = modifier
-    )
 }

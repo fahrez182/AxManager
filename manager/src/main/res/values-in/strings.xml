@@ -212,4 +212,6 @@
     <string name="reset_both">Reset Keduanya</string>
     <string name="uid_value">UID: %d</string>
     <string name="start_as_shell">Mulai sebagai Shell</string>
+    <string name="permission_need_more_step">Langkah Tambahan Diperlukan</string>
+    <string name="permission_grant_runtime_not_allowed">Fitur ini memerlukan izin khusus yang belum diaktifkan. Silakan baca dokumentasi untuk mengetahui cara memberikan izin yang diperlukan.</string>
 </resources>

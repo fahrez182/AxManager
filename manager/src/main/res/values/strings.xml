@@ -212,4 +212,6 @@
     <string name="reset_both">Reset Both</string>
     <string name="uid_value">UID: %d</string>
     <string name="start_as_shell">Start as Shell</string>
+    <string name="permission_need_more_step">Additional Steps Required</string>
+    <string name="permission_grant_runtime_not_allowed">This feature requires special permissions that are not currently enabled. Please read the documentation to learn how to grant the necessary permissions.</string>
 </resources>

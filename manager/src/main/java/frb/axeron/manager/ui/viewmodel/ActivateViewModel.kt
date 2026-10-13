@@ -5,6 +5,7 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
@@ -48,12 +49,23 @@ class ActivateViewModel : ViewModel() {
     }
 
     var activateStatus by mutableStateOf<ActivateStatus>(run {
-        if (Axeron.pingBinder() && Axeron.getAxeronInfo().isNeedUpdate()) {
-            ActivateStatus.Updating(Axeron.getAxeronInfo())
+        if (Axeron.pingBinder()) {
+            val axeronInfo = Axeron.getAxeronInfo()
+            val isNeedExtraStep = axeronInfo.isNeedExtraStep() || (axeronInfo.isRunning() && Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") != PackageManager.PERMISSION_GRANTED)
+            if (axeronInfo.isNeedUpdate()) {
+                ActivateStatus.Updating(axeronInfo)
+            } else if (isNeedExtraStep) {
+                ActivateStatus.NeedExtraStep(axeronInfo)
+            } else if (axeronInfo.isRunning()) {
+                ActivateStatus.Running(axeronInfo)
+            } else {
+                ActivateStatus.Disable
+            }
+        } else {
+            ActivateStatus.Disable
         }
-        ActivateStatus.Disable
     })
-        private set
+    private set
 
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
@@ -102,60 +114,67 @@ class ActivateViewModel : ViewModel() {
     }
 
     suspend fun awaitRunning(timeout: Long = 10000) {
-        if (activateStatus is ActivateStatus.Running) return
+        if (activateStatus is ActivateStatus.Running || activateStatus is ActivateStatus.NeedExtraStep) return
         withTimeoutOrNull(timeout) {
-            snapshotFlow { activateStatus }.first { it is ActivateStatus.Running }
+            snapshotFlow { activateStatus }.first {
+                it is ActivateStatus.Running || it is ActivateStatus.NeedExtraStep
+            }
         }
     }
 
 
     sealed class ActivateStatus {
         object Disable : ActivateStatus()
-        object NeedExtraStep : ActivateStatus()
+        class NeedExtraStep(val axeronInfo: AxeronInfo) : ActivateStatus()
         class Updating(val axeronInfo: AxeronInfo) : ActivateStatus()
         class Running(val axeronInfo: AxeronInfo) : ActivateStatus()
     }
 
     fun axeronObserve(): Flow<ActivateStatus> = callbackFlow {
-        if (Axeron.pingBinder()) {
-            Log.i("AxManagerBinder", "binderHasReceived")
-            val axeronInfo = Axeron.getAxeronInfo()
-            when {
+        fun getStatus(axeronInfo: AxeronInfo): ActivateStatus {
+            val isNeedExtraStep = axeronInfo.isNeedExtraStep() || (axeronInfo.isRunning() && Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") != PackageManager.PERMISSION_GRANTED)
+            return when {
                 axeronInfo.isNeedUpdate() -> {
-                    trySend(ActivateStatus.Updating(axeronInfo))
-                    setTryToActivate(true)
-                    Axeron.newProcess(
-                        AxeronCommandSession.getQuickCmd(
-                            Starter.internalCommand,
-                            true,
-                            false
-                        ),
-                        null,
-                        null
-                    )
+                    ActivateStatus.Updating(axeronInfo)
+                }
+
+                isNeedExtraStep -> {
+                    ActivateStatus.NeedExtraStep(axeronInfo)
                 }
 
                 axeronInfo.isRunning() -> {
-                    trySend(ActivateStatus.Running(axeronInfo))
+                    ActivateStatus.Running(axeronInfo)
                 }
 
-                axeronInfo.isNeedExtraStep() -> {
-                    trySend(ActivateStatus.NeedExtraStep)
-                }
+                else -> ActivateStatus.Disable
+            }
+        }
+
+        if (Axeron.pingBinder()) {
+            val axeronInfo = Axeron.getAxeronInfo()
+            val status = getStatus(axeronInfo)
+            Log.i("AxManagerBinder", "Initial status determined: ${status::class.simpleName}")
+            trySend(status)
+            if (status is ActivateStatus.Updating) {
+                Log.i("AxManagerBinder", "Server needs update, starting update process")
+                setTryToActivate(true)
+                Axeron.newProcess(
+                    AxeronCommandSession.getQuickCmd(
+                        Starter.internalCommand,
+                        true,
+                        false
+                    ),
+                    null,
+                    null
+                )
             }
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
-            Log.i("AxManagerBinder", "onBinderReceived")
+            Log.i("AxManagerBinder", "onBinderReceived listener triggered")
             val axeronInfo = Axeron.getAxeronInfo()
-            when {
-                axeronInfo.isRunning() -> {
-                    trySend(ActivateStatus.Running(axeronInfo))
-                }
-
-                axeronInfo.isNeedExtraStep() -> {
-                    trySend(ActivateStatus.NeedExtraStep)
-                }
-            }
+            val status = getStatus(axeronInfo)
+            Log.i("AxManagerBinder", "New status after binder received: ${status::class.simpleName}")
+            trySend(status)
         }
         val deadListener = Axeron.OnBinderDeadListener {
             Log.i("AxManagerBinder", "onBinderDead")
@@ -181,6 +200,10 @@ class ActivateViewModel : ViewModel() {
                     }
 
                     is ActivateStatus.Updating -> {
+                        status.axeronInfo
+                    }
+
+                    is ActivateStatus.NeedExtraStep -> {
                         status.axeronInfo
                     }
 

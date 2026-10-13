@@ -138,64 +138,6 @@ public class BinderSender {
         }
     }
 
-
-//    private static void sendBinder(int uid, int pid) {
-//        String key = uid + ":" + pid;
-//        if (!SENT_BINDERS.add(key)) {
-//            LOGGER.v("Skip duplicate binder send for %s", key);
-//            return;
-//        }
-//
-//        List<String> packages = getPackagesCached(uid);
-//        if (packages.isEmpty())
-//            return;
-//
-//        LOGGER.d("sendBinder to uid %d: packages=%s", uid, TextUtils.join(", ", packages));
-//
-//        int userId = uid / 100000;
-//        for (String packageName : packages) {
-//            try {
-//                PackageInfo pi = PackageManagerApis.getPackageInfoNoThrow(packageName, PackageManager.GET_PERMISSIONS, userId);
-//                if (pi == null || pi.requestedPermissions == null)
-//                    continue;
-//
-//                if (ArraysKt.contains(pi.requestedPermissions, PERMISSION_MANAGER)) {
-//                    boolean granted;
-//                    if (pid == -1)
-//                        granted = PermissionManagerApis.checkPermission(PERMISSION_MANAGER, uid) == PackageManager.PERMISSION_GRANTED;
-//                    else
-//                        granted = ActivityManagerApis.checkPermission(PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
-//
-//                    if (granted) {
-//                        AxeronService.sendBinderToManager(axeronService.asBinder(), userId);
-//                        return;
-//                    }
-//                } else if (ArraysKt.contains(pi.requestedPermissions, SHIZUKU_PERMISSION_MANAGER)) {
-//                    boolean granted;
-//                    if (pid == -1)
-//                        granted = PermissionManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, uid) == PackageManager.PERMISSION_GRANTED;
-//                    else
-//                        granted = ActivityManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, pid, uid) == PackageManager.PERMISSION_GRANTED;
-//
-//                    if (granted) {
-//                        IShizukuService shizukuService = axeronService.getShizukuService();
-//                        if (shizukuService != null)
-//                            AxeronService.sendBinderToShizukuManager(shizukuService.asBinder(), userId);
-//                        return;
-//                    }
-//                } else if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
-//                    IShizukuService shizukuService = axeronService.getShizukuService();
-//                    if (shizukuService != null) {
-//                        AxeronService.sendBinderToUserApp(shizukuService.asBinder(), packageName, userId);
-//                    }
-//                    return;
-//                }
-//            } catch (Throwable e) {
-//                LOGGER.w(e, "sendBinder failed for package %s", packageName);
-//            }
-//        }
-//    }
-
     public static void register(IAxeronService service) {
         axeronService = service;
 

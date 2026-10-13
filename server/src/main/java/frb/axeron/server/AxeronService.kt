@@ -750,7 +750,7 @@ open class AxeronService :
                     MANAGER_APPLICATION_ID,
                     WRITE_SECURE_SETTINGS, UserHandleCompat.getUserId(callingUid)
                 )
-            } catch (e: RemoteException) {
+            } catch (e: Throwable) {
                 LOGGER.w(e, "grant WRITE_SECURE_SETTINGS")
             }
         }
