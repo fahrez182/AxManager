@@ -32,13 +32,13 @@ import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DividerDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,11 +64,14 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.AxCardShape
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
+import frb.axeron.manager.ui.component.SettingsGroup
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.SettingsItemType
+import frb.axeron.manager.ui.component.SettingsRow
 import frb.axeron.manager.ui.component.createWebUIShortcut
 import frb.axeron.manager.ui.component.formatSize
 import frb.axeron.manager.ui.component.rememberConfirmDialog
@@ -94,38 +97,45 @@ fun PluginConfig(
             onDismissRequest = onDismissRequest
         ) {
             Column(
+                // SettingsGroup carries its own 16dp gutter; only the title needs aligning.
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 val context = LocalContext.current
 
-                SettingsItem(
-                    label = stringResource(R.string.web_ui_configuration),
-                    iconVector = Icons.Outlined.Web,
-                ) { _, _ ->
-                    HorizontalDivider(
-                        Modifier,
-                        DividerDefaults.Thickness,
-                        MaterialTheme.colorScheme.secondaryContainer
-                    )
-                    SettingsItem(
-                        type = SettingsItemType.CHILD,
+                Text(
+                    text = stringResource(R.string.web_ui_configuration),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+
+                SettingsGroup {
+                    SettingsRow(
                         enabled = plugin.hasWebUi,
                         iconVector = Icons.Outlined.Home,
                         label = stringResource(R.string.add_web_ui_shortcut),
                         description = stringResource(R.string.add_web_ui_shortcut_msg),
                         onClick = {
-                            createWebUIShortcut(
-                                context = context,
-                                plugin = plugin
-                            )
+                            if (plugin.hasWebUi) {
+                                createWebUIShortcut(
+                                    context = context,
+                                    plugin = plugin
+                                )
+                            }
                         }
                     )
                 }
 
-
+                // Reserved for upcoming WebUI options.
+                SettingsGroup {
+                    SettingsRow(
+                        label = stringResource(R.string.web_ui_more_soon),
+                        description = stringResource(R.string.web_ui_more_soon_desc)
+                    )
+                }
             }
         }
     }
@@ -155,13 +165,16 @@ fun PluginItem(
         showExtraSetDialog = false
     }
 
-    ElevatedCard(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            .clip(AxCardShape)
             .combinedClickable(
                 onClick = onExpandToggle,
-            )
+            ),
+        shape = AxCardShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 2.dp
     ) {
         Box(
             modifier = Modifier

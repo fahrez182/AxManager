@@ -16,7 +16,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,10 +35,12 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.AxeronApplication.Companion.axeronApp
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.AxPullToRefreshBox
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.util.DownloadListener
+import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.util.download
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
@@ -56,6 +57,8 @@ fun PluginList(
     settings: SettingsViewModel,
     viewModel: PluginViewModel,
     modifier: Modifier,
+    /** Scaffold padding; applied inside the list so it can scroll under the top bar. */
+    contentPadding: PaddingValues,
     onInstallModule: (Uri) -> Unit,
     onClickModule: (plugin: PluginInfo) -> Unit,
     context: Context,
@@ -209,12 +212,13 @@ fun PluginList(
         }
     }
 
-    PullToRefreshBox(
+    AxPullToRefreshBox(
         modifier = modifier,
         isRefreshing = viewModel.isRefreshing,
         onRefresh = {
             viewModel.fetchModuleList()
-        }
+        },
+        topInset = contentPadding.calculateTopPadding()
     ) {
 
         LazyColumn(
@@ -222,15 +226,14 @@ fun PluginList(
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()).nestedScrollConnection),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = remember {
-                PaddingValues(
-                    start = 16.dp,
-                    top = 16.dp,
-                    end = 16.dp,
-                    bottom = 120.dp
-                )
-            },
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            // Scroll under the fading top bar and clear the floating bar (FABs sit inside it).
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = contentPadding.calculateTopPadding() + 12.dp,
+                end = 16.dp,
+                bottom = contentPadding.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
+            ),
         ) {
             when {
                 viewModel.pluginList.isEmpty() -> {
