@@ -30,7 +30,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
@@ -60,6 +60,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.component.PaletteDialog
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.rememberCustomDialog
@@ -92,9 +93,13 @@ fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 
         Column(
             modifier = Modifier
-                .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                // Padding inside the scroll lets content pass under the fading top bar.
+                .padding(
+                    top = paddingValues.calculateTopPadding() + 8.dp,
+                    bottom = paddingValues.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val context = LocalContext.current
@@ -374,7 +379,7 @@ private fun TopBar(
     onBack: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    TopAppBar(
+    AxTopAppBar(
         title = {
             Text(
                 text = stringResource(R.string.appearance),

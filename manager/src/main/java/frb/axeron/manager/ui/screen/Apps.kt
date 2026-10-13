@@ -21,11 +21,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,6 +52,8 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AddAppsScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.ui.component.SearchAppBar
+import frb.axeron.manager.ui.util.LocalFloatingBarInset
+import frb.axeron.manager.ui.component.FloatingBarFab
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,25 +91,16 @@ fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
 
     Scaffold(
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = showFab,
-                enter = scaleIn(
-                    animationSpec = tween(200),
-                    initialScale = 0.8f
-                ) + fadeIn(animationSpec = tween(400)),
-                exit = scaleOut(
-                    animationSpec = tween(200),
-                    targetScale = 0.8f
-                ) + fadeOut(animationSpec = tween(400))
-            ) {
-            ExtendedFloatingActionButton(
-                text = { Text(text = "Add App") },
-                icon = {
+            // Rendered beside the nav pill; a round FAB keeps the pill's row compact.
+            FloatingBarFab(visible = showFab) {
+                FloatingActionButton(
+                    shape = CircleShape,
+                    onClick = {
+                        navigator.navigate(AddAppsScreenDestination)
+                    }
+                ) {
                     Icon(Icons.Filled.Add, contentDescription = "Add App")
-                },
-                onClick = {
-                    navigator.navigate(AddAppsScreenDestination)
-                })
+                }
             }
         },
         topBar = {
@@ -138,12 +132,15 @@ fun AppsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
         } else {
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(vertical = 10.dp),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                // Scroll under the fading top bar and clear the floating bar.
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = paddingValues.calculateTopPadding() + 10.dp,
+                    end = 16.dp,
+                    bottom = paddingValues.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
+                )
             ) {
                 items(
                     appsViewModel.addedList,

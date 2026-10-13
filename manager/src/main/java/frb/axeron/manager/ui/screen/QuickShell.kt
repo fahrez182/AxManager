@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
@@ -54,7 +55,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
+import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -93,6 +94,8 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.util.LocalFloatingBarInset
+import frb.axeron.manager.ui.component.FloatingBarFab
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.CheckBoxText
 import frb.axeron.manager.ui.component.KeyEventBlocker
@@ -164,7 +167,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            AxTopAppBar(
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -204,18 +207,17 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             )
         },
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = fabVisible && logs.isNotEmpty(),
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-            ) {
+            // Rendered beside the nav pill; only registered once there is a log to save.
+            if (logs.isNotEmpty()) {
                 val context = LocalContext.current
-                FloatingActionButton(onClick = {
-                    scope.launch {
-                        saveLogsToDownload(context, logs, snackBarHost)
+                FloatingBarFab(visible = fabVisible) {
+                    FloatingActionButton(shape = CircleShape, onClick = {
+                        scope.launch {
+                            saveLogsToDownload(context, logs, snackBarHost)
+                        }
+                    }) {
+                        Icon(Icons.Default.Save, contentDescription = stringResource(R.string.save))
                     }
-                }) {
-                    Icon(Icons.Default.Save, contentDescription = stringResource(R.string.save))
                 }
             }
         },
@@ -403,7 +405,8 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         }
 
                         item {
-                            Spacer(modifier = Modifier.size(22.dp))
+                            // Keep the last lines clear of the floating bar.
+                            Spacer(modifier = Modifier.size(22.dp + LocalFloatingBarInset.current))
                         }
                     }
                 }
@@ -530,10 +533,11 @@ fun ExtraSettings(
             val outputOption = QuickShellViewModel.OutputType.entries
             val keyEventOption = QuickShellViewModel.KeyEventType.entries
 
+            // SettingsItem carries its own 16dp gutter.
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp),
+                    .padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {

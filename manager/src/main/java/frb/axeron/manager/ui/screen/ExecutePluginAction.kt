@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -18,7 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -166,7 +167,7 @@ fun ExecutePluginActionScreen(
         },
         floatingActionButton = {
             if (!isActionRunning) {
-                ExtendedFloatingActionButton(
+                ExtendedFloatingActionButton(shape = CircleShape, 
                     text = { Text(text = stringResource(R.string.close)) },
                     icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                     onClick = {
@@ -212,7 +213,7 @@ fun ExecutePluginActionScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(isActionRunning: Boolean, onBack: () -> Unit = {}, onSave: () -> Unit = {}) {
-    TopAppBar(
+    AxTopAppBar(
         title = {
             Text(
                 text = stringResource(R.string.action),

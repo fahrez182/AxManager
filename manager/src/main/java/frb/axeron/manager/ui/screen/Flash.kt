@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -42,7 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -422,7 +423,7 @@ fun FlashScreen(
         floatingActionButton = {
             val reigniteLoading = rememberLoadingDialog()
             if (flashIt is FlashIt.FlashPlugins && (flashing == FlashingStatus.SUCCESS)) {
-                ExtendedFloatingActionButton(
+                ExtendedFloatingActionButton(shape = CircleShape, 
                     onClick = {
                         scope.launch {
                             reigniteLoading.withLoading {
@@ -438,7 +439,7 @@ fun FlashScreen(
             }
 
             if (flashIt is FlashIt.FlashUninstall && (flashing == FlashingStatus.SUCCESS)) {
-                ExtendedFloatingActionButton(
+                ExtendedFloatingActionButton(shape = CircleShape, 
                     onClick = {
                         scope.launch {
                             reigniteLoading.withLoading {
@@ -463,7 +464,7 @@ fun FlashScreen(
 
             if (flashing == FlashingStatus.FAILED) {
                 // Close button for modules flashing
-                ExtendedFloatingActionButton(
+                ExtendedFloatingActionButton(shape = CircleShape, 
                     text = { Text(text = stringResource(R.string.close)) },
                     icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                     onClick = {
@@ -554,7 +555,7 @@ private fun TopBar(
     onSave: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    TopAppBar(
+    AxTopAppBar(
         title = {
             Text(
                 when (status) {

@@ -45,10 +45,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -65,6 +69,7 @@ import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.AxCard
 import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.rememberConfirmDialog
@@ -84,15 +89,23 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
     val activateViewModel = viewModelGlobal.activateViewModel
     val axeronInfo = activateViewModel.axeronInfo
 
+    // Close automatically only when an activation done here brings the server up. Opening this
+    // screen while the server already runs (from the Home status card) must not bounce back.
+    var sawInactive by remember {
+        mutableStateOf(!(axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()))
+    }
     LaunchedEffect(axeronInfo) {
-        if (axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()) {
+        val ready = axeronInfo.isRunning() && !axeronInfo.isNeedUpdate()
+        if (!ready) {
+            sawInactive = true
+        } else if (sawInactive) {
             navigator.popBackStack()
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            AxTopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.activate),
@@ -111,10 +124,13 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp)
-                .verticalScroll(scrollState),
+                .verticalScroll(scrollState)
+                // Padding inside the scroll lets content pass under the fading top bar.
+                .padding(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding() + 16.dp
+                )
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (DeviceCompatibility.isMiui()) {
@@ -169,12 +185,7 @@ fun TcpDebuggingCard(
     val scope = rememberCoroutineScope()
     val loadingDialog = rememberLoadingDialog()
 
-    ElevatedCard(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    AxCard {
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
@@ -373,12 +384,7 @@ fun WirelessDebuggingCard(
         }
     }
 
-    ElevatedCard(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    AxCard {
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
@@ -509,12 +515,7 @@ fun RootCard(
     val scope = rememberCoroutineScope()
     val loadingDialog = rememberLoadingDialog()
 
-    ElevatedCard(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    AxCard {
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
@@ -632,12 +633,7 @@ fun ComputerCard() {
         // Result kalau butuh, biasanya kirim aja kosong kalau cuma share
     }
 
-    ElevatedCard(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 1.dp
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    AxCard {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
