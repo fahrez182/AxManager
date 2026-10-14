@@ -42,8 +42,41 @@ public class BinderSender {
     private static final Map<Integer, List<String>> UID_PACKAGE_CACHE = new ConcurrentHashMap<>();
     private static final Set<String> SENT_BINDERS = ConcurrentHashMap.newKeySet();
 
+    // Runtime-permission state the manager last received the binder with.
+    private static volatile boolean managerRuntime;
+
     private static List<String> getPackagesCached(int uid) {
         return UID_PACKAGE_CACHE.computeIfAbsent(uid, PackageManagerApis::getPackagesForUidNoThrow);
+    }
+
+    private static boolean currentRuntime() {
+        try {
+            return axeronService.getServerInfo().getPermission();
+        } catch (Throwable e) {
+            return managerRuntime;
+        }
+    }
+
+    private static void sendToManager(int userId) {
+        managerRuntime = currentRuntime();
+        AxeronService.sendBinderToManager(axeronService.asBinder(), userId);
+    }
+
+    /**
+     * "Need extra step" flips in system settings without any binder event, so the manager can't
+     * see it. When the manager comes back to the foreground and the runtime-permission check has
+     * changed since its last binder, push the same binder again so it re-reads the server info.
+     */
+    private static void pushRuntimeChange(int uid) {
+        if (!getPackagesCached(uid).contains(ServerConstants.MANAGER_APPLICATION_ID))
+            return;
+
+        boolean runtime = currentRuntime();
+        if (runtime == managerRuntime)
+            return;
+
+        LOGGER.i("Runtime permission changed to %s, re-push binder to manager", Boolean.toString(runtime));
+        sendToManager(uid / 100000);
     }
 
     private static void sendBinder(int uid, int pid) throws RemoteException {
@@ -74,7 +107,7 @@ public class BinderSender {
                     "Shizuku unavailable, uid %d belongs to manager, send binder directly",
                     uid
             );
-            AxeronService.sendBinderToManager(axeronService.asBinder(), userId);
+            sendToManager(userId);
             return;
         }
 
@@ -102,10 +135,7 @@ public class BinderSender {
                             == PackageManager.PERMISSION_GRANTED;
 
                     if (granted) {
-                        AxeronService.sendBinderToManager(
-                                axeronService.asBinder(),
-                                userId
-                        );
+                        sendToManager(userId);
                         return;
                     }
 
@@ -141,6 +171,7 @@ public class BinderSender {
 
     public static void register(IAxeronService service) {
         axeronService = service;
+        managerRuntime = currentRuntime();
 
         try {
             ActivityManagerApis.registerProcessObserver(new ProcessObserver());
@@ -169,11 +200,18 @@ public class BinderSender {
         public void onForegroundActivitiesChanged(int pid, int uid, boolean foregroundActivities) throws RemoteException {
             LOGGER.d("onForegroundActivitiesChanged: pid=%d, uid=%d, foregroundActivities=%s", pid, uid, foregroundActivities ? "true" : "false");
 
+            if (!foregroundActivities) {
+                return;
+            }
+
+            boolean alreadySent;
             synchronized (PID_LIST) {
-                if (PID_LIST.contains(pid) || !foregroundActivities) {
-                    return;
-                }
-                PID_LIST.add(pid);
+                alreadySent = !PID_LIST.add(pid);
+            }
+
+            if (alreadySent) {
+                pushRuntimeChange(uid);
+                return;
             }
 
             sendBinder(uid, pid);
