@@ -55,6 +55,14 @@ class PluginViewModel(application: Application) : AndroidViewModel(application) 
         prefs.edit { putInt("selected_sort", value) }
     }
 
+    /** Default is "by name, ascending". */
+    val isFilterDefault by derivedStateOf { getSelectedSort == 0 && getSelectedAsc == 0 }
+
+    fun resetFilter() {
+        setSelectedSort(0)
+        setSelectedAsc(0)
+    }
+
     val pluginList by derivedStateOf {
         val comparator: Comparator<PluginInfo> = if (getSelectedAsc == 0) {
             when (getSelectedSort) {

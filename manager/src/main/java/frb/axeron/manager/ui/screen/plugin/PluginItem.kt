@@ -64,18 +64,19 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.AxCard
 import frb.axeron.manager.ui.component.AxCardShape
+import frb.axeron.manager.ui.component.AxOptionsSheet
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.ExtraLabel
 import frb.axeron.manager.ui.component.ExtraLabelDefaults
-import frb.axeron.manager.ui.component.SettingsGroup
 import frb.axeron.manager.ui.component.SettingsItem
 import frb.axeron.manager.ui.component.SettingsItemType
 import frb.axeron.manager.ui.component.SettingsRow
-import frb.axeron.manager.ui.component.createWebUIShortcut
 import frb.axeron.manager.ui.component.formatSize
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.util.rememberPluginBanner
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
 import frb.axeron.server.PluginInfo
@@ -91,51 +92,41 @@ fun PluginConfig(
     plugin: PluginInfo,
     onDismissRequest: () -> Unit
 ) {
+    var showShortcutSheet by remember { mutableStateOf(false) }
+    if (showShortcutSheet) {
+        WebUiShortcutSheet(
+            plugin = plugin,
+            onDismissRequest = { showShortcutSheet = false }
+        )
+    }
+
     if (showDialog) {
-        ModalBottomSheet(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        AxOptionsSheet(
+            title = stringResource(R.string.web_ui_configuration),
             onDismissRequest = onDismissRequest
         ) {
-            Column(
-                // SettingsGroup carries its own 16dp gutter; only the title needs aligning.
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val context = LocalContext.current
-
-                Text(
-                    text = stringResource(R.string.web_ui_configuration),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
-
-                SettingsGroup {
-                    SettingsRow(
-                        enabled = plugin.hasWebUi,
-                        iconVector = Icons.Outlined.Home,
-                        label = stringResource(R.string.add_web_ui_shortcut),
-                        description = stringResource(R.string.add_web_ui_shortcut_msg),
-                        onClick = {
-                            if (plugin.hasWebUi) {
-                                createWebUIShortcut(
-                                    context = context,
-                                    plugin = plugin
-                                )
-                            }
+            AxCard {
+                SettingsRow(
+                    enabled = plugin.hasWebUi,
+                    iconVector = Icons.Outlined.Home,
+                    label = stringResource(R.string.add_web_ui_shortcut),
+                    description = stringResource(R.string.add_web_ui_shortcut_msg),
+                    onClick = {
+                        if (plugin.hasWebUi) {
+                            // Swap this sheet for the shortcut editor.
+                            onDismissRequest()
+                            showShortcutSheet = true
                         }
-                    )
-                }
+                    }
+                )
+            }
 
-                // Reserved for upcoming WebUI options.
-                SettingsGroup {
-                    SettingsRow(
-                        label = stringResource(R.string.web_ui_more_soon),
-                        description = stringResource(R.string.web_ui_more_soon_desc)
-                    )
-                }
+            // Reserved for upcoming WebUI options.
+            AxCard {
+                SettingsRow(
+                    label = stringResource(R.string.web_ui_more_soon),
+                    description = stringResource(R.string.web_ui_more_soon_desc)
+                )
             }
         }
     }
@@ -183,10 +174,11 @@ fun PluginItem(
             val context = LocalContext.current
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
             val useBanner = prefs.getBoolean("use_banner", true)
+            // URL or file bytes, read off the main thread; shared with the shortcut sheet.
+            val banner = if (useBanner) rememberPluginBanner(plugin) else null
 
-            if (useBanner && plugin.prop.banner.isNotEmpty()) {
+            if (banner != null) {
                 val colorScheme = MaterialTheme.colorScheme
-                val context = LocalContext.current
                 val fadeColor = colorScheme.surfaceVariant
                 val alpha = 0.5f
 
@@ -195,61 +187,15 @@ fun PluginItem(
                         .matchParentSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (plugin.prop.banner.startsWith(
-                            "https",
-                            true
-                        ) || plugin.prop.banner.startsWith(
-                            "http",
-                            true
-                        )
-                    ) {
-                        AsyncImage(
-                            model = plugin.prop.banner,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(),
-                            contentScale = ContentScale.Crop,
-                            alpha = 0.18f
-                        )
-                    } else {
-                        val bannerData = remember(plugin.prop.id) {
-                            try {
-                                val path = File(
-                                    PathHelper.getWorkingPath(
-                                        Axeron.getAxeronInfo().isRoot(),
-                                        AxeronApiConstant.folder.PARENT_PLUGIN
-                                    ),
-                                    plugin.prop.id
-                                )
-                                val bannerFile = File(path, plugin.prop.banner)
-                                val file =
-                                    Axeron.newFileService()
-                                        .setFileInputStream(bannerFile.absolutePath)
-                                file?.use {
-                                    it.readBytes()
-                                }
-                            } catch (_: Exception) {
-                                null
-                            }
-                        }
-                        if (bannerData != null) {
-                            val bannerRequest = remember(bannerData) {
-                                ImageRequest.Builder(context)
-                                    .data(bannerData)
-                                    .build()
-                            }
-                            AsyncImage(
-                                model = bannerRequest,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(),
-                                contentScale = ContentScale.Crop,
-                                alpha = 0.18f
-                            )
-                        }
-                    }
+                    AsyncImage(
+                        model = banner,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.18f
+                    )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()

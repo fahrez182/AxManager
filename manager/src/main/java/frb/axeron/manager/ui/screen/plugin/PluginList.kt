@@ -37,6 +37,8 @@ import frb.axeron.manager.AxeronApplication.Companion.axeronApp
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxPullToRefreshBox
 import frb.axeron.manager.ui.component.ConfirmResult
+import frb.axeron.manager.ui.component.disableWebUIShortcut
+import frb.axeron.manager.ui.component.enableWebUIShortcut
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.util.DownloadListener
@@ -171,6 +173,8 @@ fun PluginList(
         }
 
         if (success) {
+            // Its WebUI shortcut would point at nothing once re-ignited; retire it now.
+            disableWebUIShortcut(context, plugin.prop.id)
             viewModel.fetchModuleList()
         }
         if (success) {
@@ -208,6 +212,7 @@ fun PluginList(
         }
 
         if (success) {
+            enableWebUIShortcut(context, plugin.prop.id)
             viewModel.fetchModuleList()
         }
     }
