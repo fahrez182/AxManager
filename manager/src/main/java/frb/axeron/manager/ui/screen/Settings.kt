@@ -1,7 +1,5 @@
 package frb.axeron.manager.ui.screen
 
-import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,11 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Edit
@@ -30,7 +25,6 @@ import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,8 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -57,17 +49,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,7 +68,6 @@ import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDe
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
 import frb.axeron.manager.ui.component.IconBadge
@@ -195,108 +183,6 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     onSwitchChange = { settings.setPreferSystemBinaries(it) },
                     showDivider = axeronRunning
                 )
-
-                SettingsRow(
-                    iconVector = Icons.Filled.Adb,
-                    label = stringResource(R.string.tcp_mode),
-                    description = stringResource(R.string.tcp_mode_desc),
-                    checked = settings.isTcpModeEnabled,
-                    onSwitchChange = { settings.setTcpMode(it) },
-                    showDivider = true
-                ) {
-                    AnimatedVisibility(settings.isTcpModeEnabled) {
-                        var tcpPortText by remember {
-                            mutableStateOf(settings.tcpPortInt.toString())
-                        }
-                        val context = LocalContext.current
-
-                        Column(
-                            modifier = Modifier.padding(start = 64.dp, end = 16.dp, bottom = 12.dp)
-                        ) {
-                            var isFocused by remember { mutableStateOf(false) }
-                            val focusManager = LocalFocusManager.current
-
-                            val portInt = tcpPortText.toIntOrNull()
-                            val isError = tcpPortText.isNotEmpty() &&
-                                    (portInt == null || portInt !in 1024..65535)
-
-                            TextField(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { state ->
-                                        isFocused = state.isFocused
-                                    },
-                                value = tcpPortText,
-                                onValueChange = { newValue ->
-                                    if (newValue.all { it.isDigit() } && newValue.length <= 5) {
-                                        tcpPortText = newValue
-                                    }
-                                },
-                                label = {
-                                    Text(stringResource(R.string.tcp_port))
-                                },
-                                supportingText = {
-                                    AnimatedVisibility(
-                                        visible = isError,
-                                        modifier = Modifier.padding(bottom = 6.dp)
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.invalid_port),
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                },
-                                isError = isError,
-                                trailingIcon = {
-                                    if (isFocused) {
-                                        IconButton(
-                                            enabled = !isError && portInt != null,
-                                            onClick = {
-                                                portInt?.let {
-                                                    settings.setTcpPort(it)
-                                                    focusManager.clearFocus()
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Save,
-                                                contentDescription = "Save TCP port"
-                                            )
-                                        }
-                                    } else if (settings.tcpPortInt != AdbEnvironment.getAdbTcpPort()) {
-                                        val reactiveToChange = stringResource(R.string.reactive_to_apply)
-                                        IconButton(
-                                            onClick = {
-                                                Toast.makeText(
-                                                    context,
-                                                    reactiveToChange,
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.RestartAlt,
-                                                contentDescription = "Re-Activate AxManager"
-                                            )
-                                        }
-                                    }
-                                },
-                                colors = TextFieldDefaults.colors(
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    disabledIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number
-                                ),
-                                singleLine = true
-                            )
-                        }
-                    }
-                }
             }
 
             SettingsSectionHeader(stringResource(R.string.settings_section_general))

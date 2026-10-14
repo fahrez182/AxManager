@@ -74,6 +74,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import frb.axeron.manager.ui.component.SettingsDivider
+import frb.axeron.api.core.AxeronSettings
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -376,10 +382,12 @@ fun StatusCard(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Header: state title (+ mode badge), power button, and a chevron into activation
+                // Header: state title (+ badge), power button, and a chevron into activation.
+                // Top-aligned so the pill stays in the top-right corner even when a subtitle
+                // sits under the title (stopped/updating).
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
@@ -399,22 +407,35 @@ fun StatusCard(
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            if (isRunning) {
-                                ModeBadge(axeronInfo.serverInfo.getMode())
+                            // Every state gets a badge, like the server mode while running.
+                            val colors = MaterialTheme.colorScheme
+                            when {
+                                isRunning -> ModeBadge(axeronInfo.serverInfo.getMode())
+                                isUpdating -> StatusBadge(
+                                    text = "v${axeronInfo.getVersionCode()} → v$VERSION_CODE",
+                                    container = colors.primary,
+                                    content = colors.onPrimary
+                                )
+
+                                isNeedExtraStep -> StatusBadge(
+                                    text = stringResource(R.string.home_badge_action),
+                                    container = colors.error,
+                                    content = colors.onError
+                                )
+
+                                else -> StatusBadge(
+                                    text = stringResource(R.string.home_badge_stopped),
+                                    container = colors.error,
+                                    content = colors.onError
+                                )
                             }
                         }
-                        when {
-                            isUpdating -> Text(
-                                text = stringResource(R.string.server_updating_version)
-                                    .format(axeronInfo.getVersionCode(), VERSION_CODE),
+                        if (!isRunning && !isNeedExtraStep) {
+                            Text(
+                                text = stringResource(
+                                    if (isUpdating) R.string.home_updating_msg else R.string.home_not_running_msg
+                                ),
                                 style = MaterialTheme.typography.bodySmall
-                            )
-
-                            isNeedExtraStep -> Unit
-                            isRunning -> Unit
-                            else -> Text(
-                                text = stringResource(R.string.home_not_running_msg),
-                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
@@ -427,37 +448,17 @@ fun StatusCard(
                     }
                 }
 
-                if (isNeedExtraStep) {
+                // The watermark sets a taller card than the content; pin the strip to the bottom.
+                Spacer(Modifier.weight(1f))
+
+                when {
+                    isUpdating -> UpdatingStrip()
                     // The fix guide gets its own tap target; the card itself opens activation.
-                    Surface(
-                        onClick = { showNeedMoreStepDialog = true },
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
-                        contentColor = MaterialTheme.colorScheme.error
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(16.dp),
-                                imageVector = Icons.Outlined.Info,
-                                contentDescription = null
-                            )
-                            Text(
-                                text = stringResource(R.string.home_need_fix_msg),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
+                    isNeedExtraStep -> FixGuideStrip(onClick = { showNeedMoreStepDialog = true })
+                    !isRunning -> StoppedStrip()
                 }
 
                 if (isRunning) {
-                    // The watermark sets a taller card than the content; pin the strip to the bottom.
-                    Spacer(Modifier.weight(1f))
-
                     var time by remember { mutableLongStateOf(0) }
 
                     LaunchedEffect(Unit) {
@@ -544,31 +545,156 @@ private fun ModeBadge(mode: Mode) {
         Mode.ROOT -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
         else -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
     }
+    StatusBadge(
+        text = mode.label,
+        container = container,
+        content = content,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) {
+            debugClickCount++
+            debugJob?.cancel()
+            debugJob = scope.launch {
+                delay(1000)
+                debugClickCount = 0
+            }
+            if (debugClickCount >= 8) {
+                throw RuntimeException("AxManager Manual Crash Test")
+            }
+        }
+    )
+}
+
+/** Filled pill next to the status title (server mode, "Stopped", version change…). */
+@Composable
+private fun StatusBadge(text: String, container: Color, content: Color, modifier: Modifier = Modifier) {
     Box(
         modifier = Modifier
             .clip(CircleShape)
             .background(container)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                debugClickCount++
-                debugJob?.cancel()
-                debugJob = scope.launch {
-                    delay(1000)
-                    debugClickCount = 0
-                }
-                if (debugClickCount >= 8) {
-                    throw RuntimeException("AxManager Manual Crash Test")
-                }
-            }
+            .then(modifier)
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
         Text(
-            text = mode.label,
+            text = text,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = content
+            color = content,
+            maxLines = 1
+        )
+    }
+}
+
+/**
+ * The sub card pinned to the bottom of the status card, in every state: server facts while
+ * running, last method/boot while stopped, the fix guide, or update progress.
+ */
+@Composable
+private fun StatusStrip(
+    onClick: (() -> Unit)? = null,
+    content: @Composable RowScope.() -> Unit
+) {
+    val color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
+    val row: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
+    }
+    // Plain clickable instead of Surface(onClick): that one pads the strip to a 48dp touch target
+    // with transparent space around the visible part, which lifted it off the card's bottom edge.
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(AxPanelShape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        shape = AxPanelShape,
+        color = color
+    ) { row() }
+}
+
+@Composable
+private fun StripIconText(icon: ImageVector, text: String, tint: Color, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(modifier = Modifier.size(14.dp), imageVector = icon, contentDescription = null, tint = tint)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = tint,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** Stopped: how AxManager was last started and whether boot will start it again. */
+@Composable
+private fun StoppedStrip() {
+    val method = when (AxeronSettings.getLastLaunchMode()) {
+        AxeronSettings.LaunchMethod.ADB -> stringResource(R.string.home_method_adb)
+        AxeronSettings.LaunchMethod.ROOT -> stringResource(R.string.home_method_root)
+        AxeronSettings.LaunchMethod.ROOT_AS_SHELL -> stringResource(R.string.home_method_root_shell)
+        else -> stringResource(R.string.home_method_never)
+    }
+    StatusStrip {
+        StripIconText(
+            icon = Icons.Outlined.History,
+            text = stringResource(R.string.home_strip_last_method, method),
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        InlineDivider(height = 12.dp)
+        StripItem(
+            label = stringResource(R.string.home_strip_boot),
+            value = stringResource(if (AxeronSettings.getStartOnBoot()) R.string.home_strip_on else R.string.home_strip_off)
+        )
+    }
+}
+
+/** Needs an extra step: the fix guide as the strip itself, tappable. */
+@Composable
+private fun FixGuideStrip(onClick: () -> Unit) {
+    StatusStrip(onClick = onClick) {
+        StripIconText(
+            icon = Icons.Outlined.Info,
+            text = stringResource(R.string.home_need_fix_msg),
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            modifier = Modifier.size(16.dp),
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error
+        )
+    }
+}
+
+/** Updating: indeterminate progress while the server is replaced. */
+@Composable
+private fun UpdatingStrip() {
+    StatusStrip {
+        StripIconText(
+            icon = Icons.Outlined.Update,
+            text = stringResource(R.string.please_wait),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        LinearProgressIndicator(
+            modifier = Modifier
+                .weight(1f)
+                .height(4.dp)
+                .clip(CircleShape),
+            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
         )
     }
 }
@@ -582,9 +708,9 @@ private fun CounterItem(
     value: Int
 ) {
     Row(
-        modifier = modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         IconBadge(imageVector = icon, size = 32.dp)
         Column {
@@ -633,43 +759,15 @@ private fun formatUptime(millis: Long, daySingular: String, dayPlural: String): 
 /** AXGC-style sub card: uptime, PID, UID and server version in one strip with dividers. */
 @Composable
 private fun ServiceInfoStrip(uptime: String, pid: String, uid: String, version: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = AxPanelShape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    modifier = Modifier.size(14.dp),
-                    imageVector = Icons.Outlined.Timer,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = uptime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-            }
-            InlineDivider(height = 12.dp)
-            StripItem(label = "PID", value = pid)
-            InlineDivider(height = 12.dp)
-            StripItem(label = "UID", value = uid)
-            InlineDivider(height = 12.dp)
-            StripItem(label = "Ver", value = version)
-        }
+    StatusStrip {
+        StripIconText(icon = Icons.Outlined.Timer, text = uptime, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.weight(1f))
+        InlineDivider(height = 12.dp)
+        StripItem(label = "PID", value = pid)
+        InlineDivider(height = 12.dp)
+        StripItem(label = "UID", value = uid)
+        InlineDivider(height = 12.dp)
+        StripItem(label = "Ver", value = version)
     }
 }
 
@@ -779,14 +877,14 @@ fun InfoCard(activateViewModel: ActivateViewModel) {
         facts.chunked(2).forEachIndexed { index, row ->
             if (index > 0) {
                 HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 14.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
                 )
             }
             Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                 DeviceFactCell(row[0], Modifier.weight(1f))
                 VerticalDivider(
-                    modifier = Modifier.padding(vertical = 10.dp),
+                    modifier = Modifier.padding(vertical = 12.dp),
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
                 )
                 row.getOrNull(1)?.let { DeviceFactCell(it, Modifier.weight(1f)) }
@@ -812,7 +910,7 @@ private fun DeviceFactCell(fact: DeviceFact, modifier: Modifier) {
                     Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
                 }
             }
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
@@ -864,7 +962,10 @@ fun LinksCard() {
             icon = Icons.Outlined.BugReport,
             title = stringResource(R.string.report_issue),
             message = "${stringResource(R.string.report_issue_msg)} ${stringResource(R.string.report_issue_msg2)}",
-            onClick = null
+            onClick = null,
+            // IconButtons carry 12dp of their own padding; trim the row's so the icons line up
+            // with the ↗ icons above (16dp from the edge).
+            endPadding = 4.dp
         ) {
             IconButton(onClick = { uriHandler.openUri(githubIssueUrl) }) {
                 Icon(
@@ -890,16 +991,18 @@ private fun LinkRow(
     title: String,
     message: String,
     onClick: (() -> Unit)?,
+    endPadding: Dp = 16.dp,
     trailing: @Composable () -> Unit
 ) {
+    // Same row metrics as Settings: 16dp gutter, 36dp badge, 12dp gap.
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = endPadding, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconBadge(imageVector = icon, size = 30.dp)
+        IconBadge(imageVector = icon)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -940,11 +1043,8 @@ private fun Chevron() {
 
 @Composable
 private fun InfoRowDivider() {
-    // Inset to line up with the row text: 14dp gutter + 30dp badge + 12dp gap.
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 56.dp, end = 14.dp),
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-    )
+    // Same inset as Settings rows: lines up with the text after the badge.
+    SettingsDivider()
 }
 
 @Composable
