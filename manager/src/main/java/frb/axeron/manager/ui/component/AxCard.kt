@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -36,6 +37,7 @@ fun AxCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
+    shape: Shape = AxCardShape,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -44,7 +46,7 @@ fun AxCard(
             modifier = modifier.fillMaxWidth(),
             onClick = onClick,
             enabled = enabled,
-            shape = AxCardShape,
+            shape = shape,
             color = color,
             tonalElevation = 2.dp
         ) {
@@ -53,7 +55,7 @@ fun AxCard(
     } else {
         Surface(
             modifier = modifier.fillMaxWidth(),
-            shape = AxCardShape,
+            shape = shape,
             color = color,
             tonalElevation = 2.dp
         ) {

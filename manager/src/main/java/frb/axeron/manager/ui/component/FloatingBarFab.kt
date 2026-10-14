@@ -1,15 +1,20 @@
 package frb.axeron.manager.ui.component
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
@@ -70,14 +75,37 @@ fun FloatingBarFab(
     }
 }
 
-/** Rendered by AxActivity to the right of the nav pill. */
+/**
+ * Rendered by AxActivity to the right of the nav pill. Switching pages (FAB appears, disappears
+ * or changes) animates the slot's width, so the centered pill glides instead of jumping; content
+ * is pinned to the bottom so a taller stack only grows upward.
+ */
 @Composable
 internal fun FloatingBarFabSlot(host: FloatingBarFabHost) {
-    val entry = host.current ?: return
+    AnimatedContent(
+        targetState = host.current,
+        transitionSpec = {
+            (fadeIn(tween(200, delayMillis = 60)) +
+                    scaleIn(tween(200, delayMillis = 60), initialScale = 0.85f))
+                .togetherWith(fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.85f))
+                .using(SizeTransform(clip = false))
+        },
+        contentAlignment = Alignment.BottomStart,
+        label = "floatingBarFab"
+    ) { entry ->
+        // No entry: emit nothing, so the slot (and its gap) collapses to zero width.
+        if (entry != null) FabStack(entry)
+    }
+}
 
-    // Reserve one FAB-sized slot so hiding the buttons never moves the pill.
+@Composable
+private fun FabStack(entry: FloatingBarFabHost.Entry) {
+    // The gap lives inside the slot so it animates away with it. One FAB-sized minimum is
+    // reserved so hiding the buttons on scroll never moves the pill.
     Box(
-        modifier = Modifier.defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
+        modifier = Modifier
+            .padding(start = 12.dp)
+            .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         AnimatedVisibility(

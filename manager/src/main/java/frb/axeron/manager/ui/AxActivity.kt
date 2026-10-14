@@ -29,6 +29,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
@@ -330,28 +333,43 @@ class AxActivity : ComponentActivity() {
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
                 CompositionLocalProvider(LocalSnackbarHost provides snackBarHostState) {
+                    val navBarInset =
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            // Soft fade behind the pill, down through the system nav bar,
-                            // mirroring the top bar's gradient.
-                            .background(bottomBarFadeBrush(MaterialTheme.colorScheme.background))
-                            .navigationBarsPadding()
-                            .onSizeChanged { bottomBarHeight = with(density) { it.height.toDp() } }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.BottomCenter
                     ) {
-                        // Pill and the page's FABs form one centered group on a shared baseline.
+                        // Soft fade behind the pill, down through the system nav bar, mirroring
+                        // the top bar's gradient. Sized from the pill row only, so FABs stacking
+                        // up (e.g. re-ignite) never resize it.
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(bottomBarHeight + navBarInset)
+                                .background(bottomBarFadeBrush(MaterialTheme.colorScheme.background))
+                        )
+
+                        // Pill and the page's FABs form one centered group on a shared bottom
+                        // baseline. No animateContentSize here: it lays content out from the top,
+                        // which made the bottom-anchored pill jump whenever the FAB stack resized.
+                        // The FAB slot animates its own width, so the pill glides to re-center.
                         Row(
-                            modifier = Modifier.animateContentSize(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier
+                                .navigationBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.Bottom
                         ) {
                             BottomBar(
                                 navController,
                                 navigator,
                                 activateViewModel.axeronInfo,
-                                pluginViewModel.pluginUpdateCount
+                                pluginViewModel.pluginUpdateCount,
+                                // Screens pad for the pill row only (+12dp above and below);
+                                // extra stacked FABs float over content like a normal FAB.
+                                modifier = Modifier.onSizeChanged {
+                                    bottomBarHeight = with(density) { it.height.toDp() } + 24.dp
+                                }
                             )
                             FloatingBarFabSlot(fabHost)
                         }
@@ -366,10 +384,12 @@ class AxActivity : ComponentActivity() {
         navController: NavHostController,
         navigator: DestinationsNavigator,
         axeronServerInfo: AxeronInfo,
-        moduleUpdateCount: Int
+        moduleUpdateCount: Int,
+        modifier: Modifier = Modifier
     ) {
         // Icon-only pill, 56dp tall to match a FAB. Labels show as a tooltip on long-press.
         Surface(
+            modifier = modifier,
             shape = CircleShape,
             // Tonal secondary so the bar stands apart from the surfaceContainerHigh cards behind it.
             color = MaterialTheme.colorScheme.secondaryContainer,

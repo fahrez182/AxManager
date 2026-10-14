@@ -1,9 +1,12 @@
 package frb.axeron.manager.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
@@ -18,6 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+private val TitleStartInset = 10.dp
+private val ActionsEndInset = 10.dp
+
+/** Where the header title text starts on screens without a back button; edge-to-edge list rows align to it. */
+val HeaderTitleStart = 16.dp + TitleStartInset
 
 /**
  * App-wide top bar: never switches to the tinted "scrolled" color. Instead it sits on a
@@ -29,13 +39,19 @@ import androidx.compose.ui.unit.Dp
 fun AxTopAppBar(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    navigationIcon: @Composable () -> Unit = {},
+    navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     val background = MaterialTheme.colorScheme.background
     TopAppBar(
-        title = title,
+        // Same horizontal insets on every screen (Home's): the title steps in when there is
+        // no back button, and actions keep matching room on the right.
+        title = {
+            Box(Modifier.padding(start = if (navigationIcon == null) TitleStartInset else 0.dp)) {
+                title()
+            }
+        },
         modifier = modifier.background(
             Brush.verticalGradient(
                 0f to background,
@@ -43,8 +59,11 @@ fun AxTopAppBar(
                 1f to background.copy(alpha = 0f)
             )
         ),
-        navigationIcon = navigationIcon,
-        actions = actions,
+        navigationIcon = navigationIcon ?: {},
+        actions = {
+            actions()
+            Spacer(Modifier.width(ActionsEndInset))
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
             scrolledContainerColor = Color.Transparent

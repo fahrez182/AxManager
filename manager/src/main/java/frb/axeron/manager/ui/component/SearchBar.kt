@@ -128,10 +128,10 @@ fun SearchAppBar(
                 }
             }
         },
-        navigationIcon = {
-            if (onBackClick != null) {
+        navigationIcon = onBackClick?.let { onBack ->
+            {
                 IconButton(
-                    onClick = onBackClick,
+                    onClick = onBack,
                     content = { Icon(Icons.AutoMirrored.Outlined.ArrowBack, null) }
                 )
             }
