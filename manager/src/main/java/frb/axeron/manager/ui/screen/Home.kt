@@ -16,6 +16,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -35,22 +36,14 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.AdminPanelSettings
-import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Cancel
-import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.PhoneAndroid
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Tag
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.CardDefaults
@@ -84,6 +77,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -117,6 +112,7 @@ import frb.axeron.manager.ui.component.NeedMoreStepDialog
 import frb.axeron.manager.ui.component.PowerDialog
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.component.FloatingBarFab
 import frb.axeron.manager.ui.util.checkNewVersion
@@ -184,13 +180,11 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                     ) {
                         Column {
                             Text(
-                                modifier = Modifier.padding(start = 10.dp),
                                 text = stringResource(R.string.app_name),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
-                                modifier = Modifier.padding(start = 10.dp),
                                 text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -228,41 +222,46 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StatusCard(
-                activateViewModel = activateViewModel,
-                onOpenActivation = { navigator.navigate(ActivateScreenDestination) },
-                onPowerClick = { showPowerDialog = true }
-            )
+            // Status and the plugin/privilege counts read as one card: square inner edges,
+            // rounded only on the outside of the group (just the status card when stopped).
+            Column(modifier = Modifier.clip(AxCardShape)) {
+                StatusCard(
+                    activateViewModel = activateViewModel,
+                    onOpenActivation = { navigator.navigate(ActivateScreenDestination) },
+                    onPowerClick = { showPowerDialog = true },
+                    shape = RectangleShape
+                )
 
-            AnimatedVisibility(visible = isRunning) {
-                val pluginCount = pluginViewModel.plugins.size
-                val privilegeCount = privilegeViewModel.privilegedCount
-                // Plugin and privilege counts share one card, split by a divider.
-                AxCard {
-                    Row(
-                        modifier = Modifier.height(IntrinsicSize.Min),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CounterItem(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Filled.Extension,
-                            label = stringResource(
-                                if (pluginCount <= 1) R.string.plugin else R.string.plugin_plural
-                            ),
-                            value = pluginCount
-                        )
-                        VerticalDivider(
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                        )
-                        CounterItem(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Filled.AdminPanelSettings,
-                            label = stringResource(
-                                if (privilegeCount <= 1) R.string.privilege else R.string.privilege_plural
-                            ),
-                            value = privilegeCount
-                        )
+                AnimatedVisibility(visible = isRunning) {
+                    val pluginCount = pluginViewModel.plugins.size
+                    val privilegeCount = privilegeViewModel.privilegedCount
+                    // Plugin and privilege counts share one section, split by a divider.
+                    AxCard(shape = RectangleShape) {
+                        Row(
+                            modifier = Modifier.height(IntrinsicSize.Min),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CounterItem(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Filled.Extension,
+                                label = stringResource(
+                                    if (pluginCount <= 1) R.string.plugin else R.string.plugin_plural
+                                ),
+                                value = pluginCount
+                            )
+                            VerticalDivider(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            )
+                            CounterItem(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Filled.AdminPanelSettings,
+                                label = stringResource(
+                                    if (privilegeCount <= 1) R.string.privilege else R.string.privilege_plural
+                                ),
+                                value = privilegeCount
+                            )
+                        }
                     }
                 }
             }
@@ -282,7 +281,8 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
 fun StatusCard(
     activateViewModel: ActivateViewModel,
     onOpenActivation: () -> Unit,
-    onPowerClick: () -> Unit
+    onPowerClick: () -> Unit,
+    shape: Shape = AxCardShape
 ) {
     val axeronInfo = activateViewModel.axeronInfo
     val context = LocalContext.current
@@ -312,7 +312,7 @@ fun StatusCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = containerColor
         ),
-        shape = AxCardShape,
+        shape = shape,
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
@@ -419,41 +419,11 @@ fun StatusCard(
                         }
                     }
 
-                    if (isRunning) {
-                        // Solid fill + tight inner padding so it reads clearly on the tinted card.
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
-                                .clickable(onClick = onPowerClick),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Default.PowerSettingsNew,
-                                contentDescription = "Power",
-                                tint = MaterialTheme.colorScheme.onError
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                    }
-
                     if (!isUpdating) {
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(LocalContentColor.current.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(22.dp),
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = LocalContentColor.current
-                            )
-                        }
+                        HeaderActionsPill(
+                            showPower = isRunning,
+                            onPowerClick = onPowerClick
+                        )
                     }
                 }
 
@@ -514,6 +484,53 @@ fun StatusCard(
 }
 
 /**
+ * Power (while running) and the "opens activation" chevron as one small pill split by a divider.
+ * Only the power half is its own tap target; taps on the chevron half fall through to the card.
+ */
+@Composable
+private fun HeaderActionsPill(showPower: Boolean, onPowerClick: () -> Unit) {
+    val content = LocalContentColor.current
+    Row(
+        modifier = Modifier
+            .height(28.dp)
+            .clip(CircleShape)
+            .background(content.copy(alpha = 0.12f)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showPower) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .clickable(onClick = onPowerClick)
+                    .padding(start = 10.dp, end = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    modifier = Modifier.size(16.dp),
+                    imageVector = Icons.Default.PowerSettingsNew,
+                    contentDescription = "Power",
+                    tint = Color.White
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(14.dp)
+                    .background(content.copy(alpha = 0.25f))
+            )
+        }
+        Icon(
+            modifier = Modifier
+                .padding(start = if (showPower) 4.dp else 6.dp, end = 6.dp)
+                .size(18.dp),
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = content
+        )
+    }
+}
+
+/**
  * Filled pill for the server mode. Also hosts the hidden crash test (tap 8x quickly),
  * since tapping the card itself now opens the activation screen.
  */
@@ -527,12 +544,7 @@ private fun ModeBadge(mode: Mode) {
         Mode.ROOT -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
         else -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
     }
-    val icon = when (mode) {
-        Mode.ROOT -> Icons.Outlined.Tag
-        else -> Icons.Outlined.Terminal
-    }
-
-    Row(
+    Box(
         modifier = Modifier
             .clip(CircleShape)
             .background(container)
@@ -550,16 +562,8 @@ private fun ModeBadge(mode: Mode) {
                     throw RuntimeException("AxManager Manual Crash Test")
                 }
             }
-            .padding(start = 8.dp, end = 10.dp, top = 3.dp, bottom = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
-        Icon(
-            modifier = Modifier.size(14.dp),
-            imageVector = icon,
-            contentDescription = null,
-            tint = content
-        )
         Text(
             text = mode.label,
             style = MaterialTheme.typography.labelMedium,
@@ -739,49 +743,92 @@ fun WarningCard(
     }
 }
 
+/** A device fact: [shown] is the short form for the grid, [full] is what a tap copies. */
+private data class DeviceFact(val label: String, val shown: String, val full: String = shown)
+
+/**
+ * Device facts as a calm 2-column grid: no icon badges, one line per value, long values
+ * shortened (kernel version number, primary ABI). Tapping a cell copies its full value.
+ * Server UID/PID/version live in the status card strip.
+ */
 @Composable
 fun InfoCard(activateViewModel: ActivateViewModel) {
     val axeronInfo = activateViewModel.axeronInfo
+    val kernel = System.getProperty("os.version").orEmpty()
+
+    val facts = listOf(
+        DeviceFact(
+            stringResource(R.string.device_model),
+            "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL}"
+        ),
+        DeviceFact(
+            stringResource(R.string.android_version),
+            "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})"
+        ),
+        DeviceFact(stringResource(R.string.security_patch), Build.VERSION.SECURITY_PATCH),
+        DeviceFact(stringResource(R.string.kernel_version), kernel.substringBefore('-'), kernel),
+        DeviceFact(
+            stringResource(R.string.abi_supported),
+            Build.SUPPORTED_ABIS.firstOrNull().orEmpty(),
+            Build.SUPPORTED_ABIS.joinToString(", ")
+        ),
+        DeviceFact(stringResource(R.string.selinux_context), axeronInfo.serverInfo.selinuxContext)
+    )
 
     AxCard {
-        // Device facts only; server UID/PID/version live in the status card strip.
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            InfoRow(
-                label = stringResource(R.string.device_model),
-                value = "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL}",
-                icon = Icons.Outlined.PhoneAndroid
-            )
-            InfoRowDivider()
-            InfoRow(
-                label = stringResource(R.string.android_version),
-                value = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
-                icon = Icons.Filled.Android
-            )
-            InfoRowDivider()
-            InfoRow(
-                label = stringResource(R.string.security_patch),
-                value = Build.VERSION.SECURITY_PATCH,
-                icon = Icons.Outlined.Shield
-            )
-            InfoRowDivider()
-            InfoRow(
-                label = stringResource(R.string.kernel_version),
-                value = System.getProperty("os.version").orEmpty(),
-                icon = Icons.Outlined.DeveloperBoard
-            )
-            InfoRowDivider()
-            InfoRow(
-                label = stringResource(R.string.abi_supported),
-                value = Build.SUPPORTED_ABIS.joinToString(", "),
-                icon = Icons.Filled.Memory
-            )
-            InfoRowDivider()
-            InfoRow(
-                label = stringResource(R.string.selinux_context),
-                value = axeronInfo.serverInfo.selinuxContext,
-                icon = Icons.Filled.Security
-            )
+        facts.chunked(2).forEachIndexed { index, row ->
+            if (index > 0) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 14.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                )
+            }
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                DeviceFactCell(row[0], Modifier.weight(1f))
+                VerticalDivider(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                )
+                row.getOrNull(1)?.let { DeviceFactCell(it, Modifier.weight(1f)) }
+                    ?: Spacer(Modifier.weight(1f))
+            }
         }
+    }
+}
+
+@Composable
+private fun DeviceFactCell(fact: DeviceFact, modifier: Modifier) {
+    val context = LocalContext.current
+    val copied = stringResource(R.string.copied)
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable {
+                // Android 13+ shows its own clipboard confirmation.
+                if (ClipboardUtil.put(context, fact.full) &&
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                ) {
+                    Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = fact.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = fact.shown.ifEmpty { "—" },
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -889,35 +936,6 @@ private fun Chevron() {
         contentDescription = null,
         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     )
-}
-
-@Composable
-private fun InfoRow(label: String, value: String, icon: ImageVector) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconBadge(imageVector = icon, size = 30.dp)
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp),
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.End,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
 }
 
 @Composable
