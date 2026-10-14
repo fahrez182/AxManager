@@ -26,9 +26,24 @@ import javax.net.ssl.SSLSocket
 
 private const val TAG = "AdbClient"
 
+/**
+ * Minimal ADB host-side client. Talks to adbd over TCP ([host]:[port], TLS when adbd asks for it)
+ * or, via the secondary constructor, over a [UsbAdbTransport] for OTG activation.
+ */
 class AdbClient(private val key: AdbKey, private val port: Int, private val host: String = "127.0.0.1") : Closeable {
 
-    private lateinit var socket: Socket
+    /** Non-null when running over USB bulk endpoints instead of a socket. */
+    private var usbTransport: UsbAdbTransport? = null
+
+    /** USB (OTG) client: same protocol, no socket and no TLS. */
+    constructor(key: AdbKey, usbTransport: UsbAdbTransport) : this(key, -1, "usb") {
+        this.usbTransport = usbTransport
+    }
+
+    /** Optional trace of the USB handshake steps, for showing progress to the user. */
+    var usbHandshakeLog: ((String) -> Unit)? = null
+
+    private var socket: Socket? = null
     private lateinit var plainInputStream: DataInputStream
     private lateinit var plainOutputStream: DataOutputStream
 
@@ -42,11 +57,18 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     private val outputStream get() = if (useTls) tlsOutputStream else plainOutputStream
 
     fun connect() {
-        val socket = Socket()
-        val address = InetSocketAddress(host, port)
-        socket.connect(address, 5000)
+        if (usbTransport != null) connectViaUsb() else connectViaTcp()
+    }
+
+    private fun connectViaTcp() {
+        // Kept on the field so close() can actually release it (it used to be a shadowing
+        // local, which leaked one socket per connect).
+        val socket = Socket().also { this.socket = it }
+        socket.connect(InetSocketAddress(host, port), 5000)
 
         socket.tcpNoDelay = true
+        // Bound handshake reads so a stalled adbd can't hang the caller forever.
+        socket.soTimeout = 5000
         plainInputStream = DataInputStream(socket.getInputStream())
         plainOutputStream = DataOutputStream(socket.getOutputStream())
 
@@ -70,7 +92,7 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
 
             message = read()
         } else if (message.command == A_AUTH) {
-            if (message.command != A_AUTH && message.arg0 != ADB_AUTH_TOKEN) error("not A_AUTH ADB_AUTH_TOKEN")
+            if (message.arg0 != ADB_AUTH_TOKEN) error("not A_AUTH ADB_AUTH_TOKEN")
             write(A_AUTH, ADB_AUTH_SIGNATURE, 0, key.sign(message.data))
 
             message = read()
@@ -81,6 +103,44 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         }
 
         if (message.command != A_CNXN) error("not A_CNXN")
+
+        // Commands (e.g. the starter) can stay quiet for longer than a handshake should;
+        // keep their reads unbounded as before.
+        socket.soTimeout = 0
+    }
+
+    /**
+     * USB handshake: RSA challenge only. If adbd doesn't trust our key yet it asks for the public
+     * key and shows "Allow USB debugging?" on the target; the next read waits for that answer.
+     */
+    private fun connectViaUsb() {
+        usbLog("Sending connect request to the target…")
+        write(A_CNXN, A_VERSION, A_MAXDATA, "host::")
+
+        var message = read()
+        if (message.command == A_STLS) error("Unexpected TLS negotiation over USB")
+
+        if (message.command == A_AUTH) {
+            if (message.arg0 != ADB_AUTH_TOKEN) error("USB auth: expected token, got ${message.arg0}")
+            write(A_AUTH, ADB_AUTH_SIGNATURE, 0, key.sign(message.data))
+
+            message = read()
+            if (message.command != A_CNXN) {
+                usbLog("Key not trusted yet — tap \"Allow\" on the target's USB debugging dialog")
+                write(A_AUTH, ADB_AUTH_RSAPUBLICKEY, 0, key.adbPublicKey)
+                message = read()
+            } else {
+                usbLog("Key already trusted by the target")
+            }
+        }
+
+        if (message.command != A_CNXN) error("USB: expected A_CNXN")
+        usbLog("Connected to the target's adbd")
+    }
+
+    private fun usbLog(line: String) {
+        Log.d(TAG, "USB: $line")
+        usbHandshakeLog?.invoke(line)
     }
 
     fun shellCommand(cmd: String, listener: ((ByteArray) -> Unit)? = null) {
@@ -125,16 +185,24 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     private fun write(command: Int, arg0: Int, arg1: Int, data: String) = write(AdbMessage(command, arg0, arg1, data))
 
     private fun write(message: AdbMessage) {
-        outputStream.write(message.toByteArray())
-        outputStream.flush()
+        val bytes = message.toByteArray()
+        val usb = usbTransport
+        if (usb != null) {
+            usb.write(bytes)
+        } else {
+            outputStream.write(bytes)
+            outputStream.flush()
+        }
         Log.d(TAG, "write ${message.toStringShort()}")
     }
 
     private fun read(): AdbMessage {
-        val buffer = ByteBuffer.allocate(AdbMessage.HEADER_LENGTH).order(ByteOrder.LITTLE_ENDIAN)
+        val usb = usbTransport
+        val header = ByteArray(AdbMessage.HEADER_LENGTH)
+        if (usb != null) usb.readFully(header, 0, header.size)
+        else inputStream.readFully(header, 0, header.size)
 
-        inputStream.readFully(buffer.array(), 0, 24)
-
+        val buffer = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN)
         val command = buffer.int
         val arg0 = buffer.int
         val arg1 = buffer.int
@@ -144,7 +212,8 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         val data: ByteArray?
         if (dataLength >= 0) {
             data = ByteArray(dataLength)
-            inputStream.readFully(data, 0, dataLength)
+            if (usb != null) usb.readFully(data, 0, dataLength)
+            else inputStream.readFully(data, 0, dataLength)
         } else {
             data = null
         }
@@ -155,6 +224,11 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     }
 
     override fun close() {
+        usbTransport?.let {
+            it.close()
+            return
+        }
+
         try {
             plainInputStream.close()
         } catch (e: Throwable) {
@@ -164,7 +238,7 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         } catch (e: Throwable) {
         }
         try {
-            socket.close()
+            socket?.close()
         } catch (e: Exception) {
         }
 

@@ -1,7 +1,10 @@
 package frb.axeron.manager
 
+import android.os.Binder
 import android.os.Build
 import android.os.Bundle
+import android.os.Process
+import frb.axeron.api.core.AxeronSettings
 import androidx.core.os.bundleOf
 import frb.axeron.api.Axeron
 import frb.axeron.ktx.workerHandler
@@ -19,10 +22,20 @@ class AxManagerProvider : AxeronProvider() {
     companion object {
         private const val EXTRA_BINDER = "moe.shizuku.privileged.api.intent.extra.BINDER"
         private const val METHOD_SEND_USER_SERVICE = "sendUserService"
+
+        /**
+         * Asked over `adb shell content call` by a phone doing OTG activation on this one, so
+         * TCP/IP follows *this* phone's TCP mode setting. Keys are parsed by OtgActivator.
+         */
+        const val METHOD_GET_TCP_CONFIG = "getTcpConfig"
+        const val KEY_TCP_MODE = "tcp_mode"
+        const val KEY_TCP_PORT = "tcp_port"
+
         private val LOGGER = Logger("AxManagerProvider")
     }
 
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
+        if (method == METHOD_GET_TCP_CONFIG) return tcpConfig()
         if (extras == null) return null
 
         return if (method == METHOD_SEND_USER_SERVICE) {
@@ -82,5 +95,15 @@ class AxManagerProvider : AxeronProvider() {
         } else {
             super.call(method, arg, extras)
         }
+    }
+
+    /** Only adb's shell (or root) gets an answer; nothing secret, but no reason to widen it. */
+    private fun tcpConfig(): Bundle? {
+        val uid = Binder.getCallingUid()
+        if (uid != Process.SHELL_UID && uid != Process.ROOT_UID) return null
+        return bundleOf(
+            KEY_TCP_MODE to AxeronSettings.getTcpMode(),
+            KEY_TCP_PORT to AxeronSettings.getTcpPort()
+        )
     }
 }
