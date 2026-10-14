@@ -30,6 +30,15 @@ import java.util.concurrent.atomic.AtomicBoolean
 object AdbStarter {
     private const val TAG = "AdbStarter"
 
+    /**
+     * This app's ADB identity: stored in its preferences, falling back to the copy a previous
+     * activation saved in Settings.Global. Shared by wireless, TCP and OTG activation.
+     */
+    fun adbKeyStore(context: Context) = PreferenceAdbKeyStore(
+        AxeronSettings.getPreferences(),
+        Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
+    )
+
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun startAdbWireless(
         context: Context, result: (AdbStateInfo) -> Unit = {}
@@ -38,7 +47,10 @@ object AdbStarter {
 
         val tcpPort = AdbEnvironment.getAdbTcpPort()
         if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
-            stopTcp(context, tcpPort, result)
+            ActivationLog.info("ADB over TCP is on (port $tcpPort) but TCP mode is off — turning it off first")
+            // Internal step only: its "TCP stopped" outcome must not reach [result], or callers
+            // take it as the activation result and cancel the activation still in progress.
+            stopTcp(context, tcpPort)
         }
 
         Log.d(TAG, "tcpPort: $tcpPort")
@@ -47,9 +59,10 @@ object AdbStarter {
             Log.d(TAG, "awaitAdbPort: enter")
 
             if (!AdbEnvironment.isWifiRequired()) {
-                Log.d(TAG, "awaitAdbPort: wifi NOT required, use tcpPort=$tcpPort")
+                ActivationLog.info("TCP mode is on and adbd listens on port $tcpPort — Wi-Fi not needed")
                 return@runCatching tcpPort
             }
+            ActivationLog.info("Waiting for Wi-Fi…")
 
             callbackFlow {
                 Log.d(TAG, "callbackFlow: start")
@@ -84,6 +97,7 @@ object AdbStarter {
                         TAG,
                         "callbackFlow: trySend($p) success=${sendResult.isSuccess}"
                     )
+                    if (sendResult.isSuccess) ActivationLog.success("Found wireless debugging port $p")
 
                     if (!sendResult.isSuccess) {
                         safeClose(
@@ -101,17 +115,18 @@ object AdbStarter {
                     context,
                     onReady = {
                         Log.d(TAG, "WifiReadyGate: onReady")
+                        ActivationLog.success("Wi-Fi is connected")
 
                         val cr = context.contentResolver
                         if (context.checkSelfPermission(WRITE_SECURE_SETTINGS)
                             == PackageManager.PERMISSION_GRANTED
                         ) {
-                            Log.d(TAG, "WRITE_SECURE_SETTINGS granted, enabling adb")
+                            ActivationLog.info("Turning on wireless debugging (WRITE_SECURE_SETTINGS granted)")
                             Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
                             Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
                             Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
                         } else {
-                            Log.w(TAG, "WRITE_SECURE_SETTINGS NOT granted")
+                            ActivationLog.warn("No WRITE_SECURE_SETTINGS — wireless debugging must already be on")
                         }
 
                         Log.d(TAG, "callbackFlow: start AdbWifiGate")
@@ -119,17 +134,17 @@ object AdbStarter {
                         AdbWifiGate(
                             context,
                             onReady = {
-                                Log.d(TAG, "AdbWifiGate: onReady")
+                                ActivationLog.success("Wireless debugging is on")
+                                ActivationLog.info("Looking up the ADB port (mDNS)…")
                                 adbMdns.runCatching {
-                                    Log.d(TAG, "AdbMdns: start()")
                                     start()
                                 }.onFailure {
-                                    Log.e(TAG, "AdbMdns: start failed", it)
+                                    ActivationLog.error("Couldn't start the mDNS lookup", it)
                                     safeClose(it)
                                 }
                             },
                             onFail = {
-                                Log.e(TAG, "AdbWifiGate: onFail")
+                                ActivationLog.error("Wireless debugging didn't turn on")
                                 safeClose(
                                     IllegalStateException(context.getString(R.string.adb_wifi_failed_to_auto_active))
                                 )
@@ -137,7 +152,7 @@ object AdbStarter {
                         ).start()
                     },
                     onFail = {
-                        Log.e(TAG, "WifiReadyGate: onFail")
+                        ActivationLog.error("Wi-Fi isn't connected")
                         safeClose(
                             IllegalStateException(context.getString(R.string.wifi_failed_to_connect))
                         )
@@ -152,7 +167,7 @@ object AdbStarter {
                 Log.d(TAG, "callbackFlow: first() received port=$it")
             }
         }.getOrElse {
-            Log.e(TAG, "awaitAdbPort: FAILED", it)
+            ActivationLog.error("Couldn't get the ADB port", it)
             result(AdbStateInfo.Failed(it.message ?: ""))
             return
         }
@@ -165,14 +180,12 @@ object AdbStarter {
 
     suspend fun startAdbClient(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
         if (port <= 0) {
+            ActivationLog.error("No valid ADB port")
             result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_get_port)))
             return
         }
 
-        val keyStore = PreferenceAdbKeyStore(
-            AxeronSettings.getPreferences(),
-            Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
-        )
+        val keyStore = adbKeyStore(context)
         val key = runCatching {
             AdbKey(
                 keyStore,
@@ -180,6 +193,7 @@ object AdbStarter {
             )
         }
             .getOrElse {
+                ActivationLog.error("Couldn't load this app's ADB key", it)
                 result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_auto_active)))
                 return
             }
@@ -188,14 +202,12 @@ object AdbStarter {
         val tcpMode = AxeronSettings.getTcpMode()
         val tcpPort = AxeronSettings.getTcpPort()
         if (tcpMode && activePort != tcpPort) {
-            Log.d(TAG, "Try to switching to TCP mode")
-            Log.d(TAG, "Connecting on port $activePort...")
+            ActivationLog.info("TCP mode is on — switching adbd to TCP port $tcpPort")
 
             runCatching {
                 withContext(Dispatchers.IO) {
                     AdbClient(key, activePort).use { client ->
                         client.connect()
-                        Log.d(TAG, "Restarting in TCP mode port: $tcpPort")
                         client.command("tcpip:$tcpPort")
                     }
                 }
@@ -203,24 +215,25 @@ object AdbStarter {
                 // adbd restarts and drops the current connection when switching to TCP mode, so
                 // EOF/SocketException here are expected; any other failure is fatal.
                 if (it !is EOFException && it !is SocketException) {
+                    ActivationLog.error("Couldn't switch adbd to TCP", it)
                     result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_switch_tcp)))
                     return
                 }
             }
 
             runCatching {
+                ActivationLog.info("Waiting for adbd on TCP port $tcpPort…")
                 waitTcpReady(context, key, tcpPort)
                 activePort = tcpPort
+                ActivationLog.success("adbd is listening on TCP port $tcpPort")
             }.onFailure {
+                ActivationLog.error("adbd didn't come back on TCP port $tcpPort", it)
                 result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_switch_tcp)))
                 return
             }
         }
 
-        Log.d(
-            TAG,
-            "Connecting on port $activePort..."
-        )
+        ActivationLog.info("Connecting to adbd on 127.0.0.1:$activePort…")
 
         runCatching {
             withContext(Dispatchers.IO) {
@@ -228,27 +241,21 @@ object AdbStarter {
                     key,
                     activePort
                 ).use { client ->
-                    Log.d(
-                        TAG,
-                        "AdbClient running"
-                    )
                     client.connect()
-                    client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64()))
+                    ActivationLog.success("Connected to adbd")
+                    ActivationLog.info("Running the AxManager starter…")
+                    // The starter's own output is what explains a failed start.
+                    client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64())) { chunk ->
+                        ActivationLog.output(String(chunk, Charsets.UTF_8))
+                    }
                 }
             }
         }.onSuccess {
-            Log.d(
-                TAG,
-                "AdbClient success"
-            )
+            ActivationLog.success("Starter finished")
             AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
             result(AdbStateInfo.Success(context.getString(R.string.adb_client_connected)))
         }.onFailure {
-            Log.e(
-                TAG,
-                "AdbClient failed",
-                it
-            )
+            ActivationLog.error("ADB connection failed", it)
             result(AdbStateInfo.Failed(context.getString(R.string.failed_to_connect_adb_client)))
         }
     }
@@ -264,23 +271,26 @@ object AdbStarter {
             val adbEnabled = Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0)
             if (adbEnabled == 0) throw IllegalStateException(context.getString(R.string.adb_is_not_enabled))
 
-            val keyStore = PreferenceAdbKeyStore(
-                AxeronSettings.getPreferences(),
-                Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
-            )
-            val key = AdbKey(keyStore, "axeron")
+            ActivationLog.info("Switching adbd from TCP port $port back to USB…")
+            val key = AdbKey(adbKeyStore(context), "axeron")
             waitTcpReady(context, key, port)
             withContext(Dispatchers.IO) {
                 AdbClient(key, port).use { client ->
                     client.connect()
-                    client.command("usb:")
+                    // adbd restarts on "usb:" and drops this connection, which is expected —
+                    // it used to surface as a failure even though TCP did stop.
+                    try {
+                        client.command("usb:")
+                    } catch (e: EOFException) {
+                    } catch (e: SocketException) {
+                    }
                 }
             }
         }.onSuccess {
-            Log.d(TAG, "Stop TCP success")
+            ActivationLog.success("ADB over TCP stopped")
             result(AdbStateInfo.Success(context.getString(R.string.adb_tcp_stopped)))
         }.onFailure {
-            Log.e(TAG, "Stop TCP failed", it)
+            ActivationLog.error("Couldn't stop ADB over TCP", it)
             result(AdbStateInfo.Failed(context.getString(R.string.failed_to_stop_adb_tcp) + ": " + it.message))
         }
     }

@@ -91,7 +91,11 @@ import frb.axeron.manager.ui.theme.GREEN
 import frb.axeron.manager.ui.theme.ORANGE
 import frb.axeron.manager.ui.theme.RED
 import frb.axeron.manager.ui.util.LocalSnackbarHost
+import frb.axeron.manager.ui.viewmodel.CommandRunViewModel
+import frb.axeron.manager.ui.component.TerminalOptionsSheet
+import androidx.compose.material.icons.outlined.FormatSize
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
+import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.server.PluginInstaller
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
@@ -282,8 +286,19 @@ fun FlashScreen(
 
     val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
 
-    var flashing by rememberSaveable {
+    // The flash job and its output live in the ViewModel so rotation neither loses the log
+    // nor leaves the screen stuck on FLASHING.
+    val runner: CommandRunViewModel = viewModel()
+
+    // Dialog outcome before the job starts (confirmed / dismissed).
+    var requested by rememberSaveable {
         mutableStateOf(FlashingStatus.IDLE)
+    }
+    val flashing = when (val state = runner.state) {
+        CommandRunViewModel.State.Idle -> requested
+        CommandRunViewModel.State.Running -> FlashingStatus.FLASHING
+        is CommandRunViewModel.State.Finished ->
+            if (state.success) FlashingStatus.SUCCESS else FlashingStatus.FAILED
     }
 
     val view = LocalView.current
@@ -316,71 +331,45 @@ fun FlashScreen(
         confirm = flashing == FlashingStatus.IDLE,
         flashIt = flashIt,
         onConfirm = {
-            flashing = FlashingStatus.FLASHING
+            requested = FlashingStatus.FLASHING
             pendingFlashIt = it
         },
         onDismiss = {
-            flashing = FlashingStatus.FAILED
+            requested = FlashingStatus.FAILED
             navigator.popBackStack()
             if (finishIntent) activity?.finish()
         }
     )
 
     val scope = rememberCoroutineScope()
-    val logContent = rememberSaveable { StringBuilder() }
-    //Is text is a log?
-    var text by rememberSaveable { mutableStateOf("") }
-    var hasFlashed by rememberSaveable { mutableStateOf(false) }
 
     val errorSaveLog = stringResource(R.string.log_error_code)
 
     LaunchedEffect(pendingFlashIt) {
         Log.d("FlashScreen", "flashing: $flashing")
-        if (pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
-        hasFlashed = true
-        // No need for an external 'scope' when inside LaunchedEffect
-        launch(Dispatchers.IO) {
+        val pending = pendingFlashIt ?: return@LaunchedEffect
+        // start() runs once per screen, so recomposition/rotation can't flash twice.
+        runner.start { terminal ->
             val result = flashIt(
-                pendingFlashIt!!,
-                onStdout = {
-                    logContent.append(it).append("\n")
-                    if (AnsiFilter.isScreenControl(it)) { // clear command
-                        // Switch to the main thread to update state
-                        launch(Dispatchers.Main) {
-                            text = AnsiFilter.stripAnsi(it) + "\n"
-                        }
-                    } else {
-                        // Switch to the main thread to update state
-                        launch(Dispatchers.Main) {
-                            text += "$it\n"
-                        }
-                    }
-                },
-                onStderr = {
-                    logContent.append(it).append("\n")
-                })
-
-            // After the background task is done, switch to the main thread to update the final state
-            withContext(Dispatchers.Main) {
-                var finalLogText = ""
-                if (result.code != 0) {
-                    finalLogText += errorSaveLog.format(result.code, result.err)
-                }
-                if (result.showReboot) {
-                    finalLogText += "\n\n\n"
-                }
-                if (finalLogText.isNotEmpty()) {
-                    text += finalLogText
-                }
-                flashing = if (result.code == 0) FlashingStatus.SUCCESS else FlashingStatus.FAILED
+                pending,
+                onStdout = terminal.sink(CommandRunViewModel.Stream.STDOUT),
+                onStderr = terminal.sink(CommandRunViewModel.Stream.STDERR)
+            )
+            if (result.code != 0) {
+                terminal.appendLine(
+                    CommandRunViewModel.Stream.NOTICE,
+                    errorSaveLog.format(result.code, result.err).trimEnd()
+                )
             }
+            result.code
         }
     }
 
 
     val snackBarHost = LocalSnackbarHost.current
-    val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    var showOptions by remember { mutableStateOf(false) }
+    if (showOptions) TerminalOptionsSheet(onDismissRequest = { showOptions = false })
 
     Scaffold(
         topBar = {
@@ -393,28 +382,12 @@ fun FlashScreen(
                     navigator.popBackStack()
                     if (finishIntent) activity?.finish()
                 },
+                onOptions = { showOptions = true },
                 onSave = {
                     scope.launch {
-                        val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
-                        val date = format.format(Date())
-
-                        val baseDir = PathHelper.getPath(AxeronApiConstant.folder.PARENT_LOG)
-                        if (!baseDir.exists()) {
-                            baseDir.mkdirs()
-                        }
-
-                        val file = File(baseDir, "AxManager_install_log_${date}.log")
-
-                        try {
-                            val fos = Axeron.newFileService()
-                                .getStreamSession(file.absolutePath, true, false).outputStream
-                            fos.write("$logContent\n".toByteArray())
-                            fos.flush()
-
-                            snackBarHost.showSnackbar(logSaved.format(file.absolutePath))
-                        } catch (e: Exception) {
-                            snackBarHost.showSnackbar(logFailed.format(e.message))
-                        }
+                        runCatching { runner.saveLog("AxManager_install_log") }
+                            .onSuccess { snackBarHost.showSnackbar(logSaved.format(it)) }
+                            .onFailure { snackBarHost.showSnackbar(logFailed.format(it.message)) }
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -480,32 +453,16 @@ fun FlashScreen(
         KeyEventBlocker {
             it.key == Key.VolumeDown || it.key == Key.VolumeUp
         }
-        Column(
+        CommandRunOutput(
+            runner = runner,
+            showStderr = developerOptionsEnabled,
+            // Room for the result FAB once the job is done.
+            bottomPadding = if (flashing == FlashingStatus.FLASHING) 12.dp else 88.dp,
             modifier = Modifier
-                .fillMaxSize(1f)
+                .fillMaxSize()
                 .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(scrollState),
-        ) {
-            LaunchedEffect(text) {
-                scrollState.animateScrollTo(scrollState.maxValue)
-            }
-            text = if (developerOptionsEnabled) logContent.toString() else text
-            BasicText(
-                modifier = Modifier.padding(8.dp),
-                text = text.parseAsAnsiAnnotatedString(),
-                style = MaterialTheme.typography.bodySmall.copy(
-                    lineHeight = MaterialTheme.typography.bodyMedium.fontSize, // samain dengan fontSize
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace
-                ),
-                softWrap = true,
-            )
-        }
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+        )
     }
 
 }
@@ -553,6 +510,7 @@ private fun TopBar(
     status: FlashingStatus,
     onBack: () -> Unit = {},
     onSave: () -> Unit = {},
+    onOptions: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     AxTopAppBar(
@@ -585,6 +543,12 @@ private fun TopBar(
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
         },
         actions = {
+            IconButton(onClick = onOptions) {
+                Icon(
+                    Icons.Outlined.FormatSize,
+                    contentDescription = stringResource(R.string.terminal_view_options)
+                )
+            }
             IconButton(
                 onClick = { if (status != FlashingStatus.FLASHING) onSave() },
                 enabled = status != FlashingStatus.FLASHING

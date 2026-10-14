@@ -15,7 +15,8 @@ import frb.axeron.api.core.Starter
 import frb.axeron.manager.adb.AdbStarter
 import frb.axeron.manager.adb.AdbStateInfo
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 class BootCompleteReceiver : BroadcastReceiver() {
 
@@ -43,19 +44,32 @@ class BootCompleteReceiver : BroadcastReceiver() {
             return
         }
 
+        // goAsync() only defers finishing the broadcast; the work itself must leave the main
+        // thread (waiting for Wi-Fi/mDNS or a su shell there risks an ANR at boot).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED &&
             AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
         ) {
             val pending = goAsync()
-            startAdb(context) {
-                safeFinish(pending)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    AdbStarter.startAdbWireless(context.applicationContext)
+                } finally {
+                    safeFinish(pending)
+                }
             }
         } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT ||
             AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT_AS_SHELL
         ) {
             val pending = goAsync()
-            startRoot(pending, AxeronSettings.getLastLaunchMode())
+            val mode = AxeronSettings.getLastLaunchMode()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    startRoot(mode)
+                } finally {
+                    safeFinish(pending)
+                }
+            }
         } else {
             Log.w(TAG, "No support start on boot")
         }
@@ -63,10 +77,9 @@ class BootCompleteReceiver : BroadcastReceiver() {
         Log.d(TAG, "onReceive: ${intent.action}")
     }
 
-    private fun startRoot(pending: PendingResult, mode: Int) {
+    private fun startRoot(mode: Int) {
         if (!Shell.getShell().isRoot) {
             Shell.getCachedShell()?.close()
-            safeFinish(pending)
             return
         }
 
@@ -77,15 +90,6 @@ class BootCompleteReceiver : BroadcastReceiver() {
         }
 
         Shell.cmd(command).exec()
-        safeFinish(pending)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    private fun startAdb(
-        context: Context,
-        finish: (AdbStateInfo) -> Unit
-    ) = runBlocking(Dispatchers.IO) {
-        AdbStarter.startAdbWireless(context, finish)
     }
 
     fun safeFinish(pending: PendingResult) {

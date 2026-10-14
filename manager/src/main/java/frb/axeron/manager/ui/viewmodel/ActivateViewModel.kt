@@ -26,6 +26,8 @@ import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
+import frb.axeron.manager.R
+import frb.axeron.manager.adb.ActivationLog
 import frb.axeron.manager.adb.AdbStarter
 import frb.axeron.manager.adb.AdbStarter.stopTcp
 import frb.axeron.manager.adb.AdbStateInfo
@@ -130,26 +132,26 @@ class ActivateViewModel : ViewModel() {
         class Running(val axeronInfo: AxeronInfo) : ActivateStatus()
     }
 
-    fun axeronObserve(): Flow<ActivateStatus> = callbackFlow {
-        fun getStatus(axeronInfo: AxeronInfo): ActivateStatus {
-            val isNeedExtraStep = axeronInfo.isNeedExtraStep() || (axeronInfo.isRunning() && Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") != PackageManager.PERMISSION_GRANTED)
-            return when {
-                axeronInfo.isNeedUpdate() -> {
-                    ActivateStatus.Updating(axeronInfo)
-                }
-
-                isNeedExtraStep -> {
-                    ActivateStatus.NeedExtraStep(axeronInfo)
-                }
-
-                axeronInfo.isRunning() -> {
-                    ActivateStatus.Running(axeronInfo)
-                }
-
-                else -> ActivateStatus.Disable
+    private fun getStatus(axeronInfo: AxeronInfo): ActivateStatus {
+        val isNeedExtraStep = axeronInfo.isNeedExtraStep() || (axeronInfo.isRunning() && Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") != PackageManager.PERMISSION_GRANTED)
+        return when {
+            axeronInfo.isNeedUpdate() -> {
+                ActivateStatus.Updating(axeronInfo)
             }
-        }
 
+            isNeedExtraStep -> {
+                ActivateStatus.NeedExtraStep(axeronInfo)
+            }
+
+            axeronInfo.isRunning() -> {
+                ActivateStatus.Running(axeronInfo)
+            }
+
+            else -> ActivateStatus.Disable
+        }
+    }
+
+    fun axeronObserve(): Flow<ActivateStatus> = callbackFlow {
         if (Axeron.pingBinder()) {
             val axeronInfo = Axeron.getAxeronInfo()
             val status = getStatus(axeronInfo)
@@ -234,10 +236,13 @@ class ActivateViewModel : ViewModel() {
             if (tryActivate) return@withContext ACTIVATE_PROCESS
             setTryToActivate(true)
 
+            ActivationLog.info("Requesting root access…")
             if (!Shell.getShell().isRoot) {
+                ActivationLog.error("Root access wasn't granted (no su, or the request was denied)")
                 Shell.getCachedShell()?.close()
                 return@withContext ACTIVATE_FAILED
             }
+            ActivationLog.success("Root access granted")
 
             val command = if (mode == AxeronSettings.LaunchMethod.ROOT_AS_SHELL) {
                 "su 2000 -c \"${Starter.internalCommand}\""
@@ -245,15 +250,23 @@ class ActivateViewModel : ViewModel() {
                 Starter.internalCommand
             }
 
+            ActivationLog.info(
+                if (mode == AxeronSettings.LaunchMethod.ROOT_AS_SHELL) "Running the starter as shell (uid 2000)…"
+                else "Running the starter as root…"
+            )
             val result = Shell.cmd(command).exec()
+            result.out.forEach(ActivationLog::output)
+            result.err.forEach(ActivationLog::output)
             if (result.isSuccess) {
+                ActivationLog.success("Starter finished")
                 AxeronSettings.setLastLaunchMode(mode)
                 ACTIVATE_SUCCESS
             } else {
+                ActivationLog.error("Starter exited with code ${result.code}")
                 ACTIVATE_FAILED
             }
         }.getOrElse {
-            it.printStackTrace()
+            ActivationLog.error("Root activation failed", it)
             ACTIVATE_FAILED
         }.also {
             Shell.getCachedShell()?.close()
@@ -272,6 +285,7 @@ class ActivateViewModel : ViewModel() {
         context: Context
     ): AdbStateInfo = withContext(Dispatchers.IO) {
         if (AdbEnvironment.isWifiRequired() && !isWifiEnabled(context)) {
+            ActivationLog.error("Wi-Fi is off — wireless debugging needs Wi-Fi (opening Wi-Fi settings)")
             requestEnableWifi(context)
             return@withContext AdbStateInfo.Failed("WiFi is required")
         }
@@ -288,7 +302,9 @@ class ActivateViewModel : ViewModel() {
 
         val result = withTimeoutOrNull(15000) {
             resultChannel.receive()
-        } ?: AdbStateInfo.Failed("Timeout waiting for connection")
+        } ?: AdbStateInfo.Failed("Timeout waiting for connection").also {
+            ActivationLog.error("Timed out after 15 s waiting for wireless debugging")
+        }
 
         job.cancel()
         result
@@ -309,7 +325,9 @@ class ActivateViewModel : ViewModel() {
                 resultChannel.trySend(it)
             }
             withTimeoutOrNull(15000) { resultChannel.receive() }
-                ?: AdbStateInfo.Failed("Timeout waiting for connection")
+                ?: AdbStateInfo.Failed("Timeout waiting for connection").also {
+                    ActivationLog.error("Timed out after 15 s waiting for adbd on TCP")
+                }
         } finally {
             setTryToActivate(false)
         }
@@ -321,9 +339,13 @@ class ActivateViewModel : ViewModel() {
         if (tryActivate) return@withContext result(AdbStateInfo.Process("Trying to activate"))
         setTryToActivate(true)
         try {
+            // An explicit Stop always stops (TCP mode only decides what activation switches to),
+            // and the outcome is always reported back.
             val tcpPort = AdbEnvironment.getAdbTcpPort()
-            if (tcpPort > 0 && !AxeronSettings.getTcpMode()) {
-                stopTcp(context, tcpPort)
+            if (tcpPort > 0) {
+                stopTcp(context, tcpPort, result)
+            } else {
+                result(AdbStateInfo.Failed(context.getString(R.string.adb_tcp_not_active)))
             }
         } finally {
             setTryToActivate(false)
