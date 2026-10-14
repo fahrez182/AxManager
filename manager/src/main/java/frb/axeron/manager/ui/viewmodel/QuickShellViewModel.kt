@@ -15,14 +15,20 @@ import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.axerish.R
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.launch
+import frb.axeron.manager.ui.util.TerminalBuffer
+import frb.axeron.manager.ui.util.TerminalPrefs
+import java.io.File
 
 class QuickShellViewModel(application: Application) : AndroidViewModel(application) {
 
     var session: AxeronCommandSession = AxeronCommandSession()
     private var savedCommand: TextFieldValue? = null
+
+    // Lives here, not in the screen, so the log survives leaving and re-entering QuickShell.
+    val terminal = TerminalBuffer<OutputType>(
+        spoolDir = File(application.cacheDir, "terminal"),
+        unlimited = TerminalPrefs.unlimited
+    )
 
     init {
         session.setProcessListener(object : AxeronCommandSession.ProcessListener {
@@ -33,6 +39,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                     append(OutputType.TYPE_COMMAND, command.trim())
                 } else append(OutputType.TYPE_COMMAND, "[command] ${command.trim()}")
                 append(OutputType.TYPE_START, "[start] pid=$pid")
+                // `clear`/`top` redraws wipe this command's output only, not the session log.
+                terminal.markScreenStart()
                 savedCommand = TextFieldValue(text = command, selection = TextRange(command.length))
                 commandText = TextFieldValue("") // clear input
                 execMode = "Inputs"
@@ -48,6 +56,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
             override fun onProcessFinished(exitCode: Int, lastOutput: String) {
                 Log.i("QuickShellViewModel", "onProcessFinished: $exitCode")
+                terminal.endStreams()
                 if (!AnsiFilter.isScreenControl(lastOutput)) {
                     append(OutputType.TYPE_EXIT, "[exit] code=$exitCode")
                     append(OutputType.TYPE_SPACE, "")
@@ -63,15 +72,11 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
 
         session.setResultListener(object : AxeronCommandSession.ResultListener {
             override fun output(output: CharSequence?) {
-                output?.let {
-                    append(OutputType.TYPE_STDOUT, it.toString())
-                }
+                output?.let { terminal.write(OutputType.TYPE_STDOUT, it.toString()) }
             }
 
             override fun onError(error: CharSequence?) {
-                error?.let {
-                    append(OutputType.TYPE_STDERR, it.toString())
-                }
+                error?.let { terminal.write(OutputType.TYPE_STDERR, it.toString()) }
             }
 
         })
@@ -95,7 +100,6 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
         VOLUME_DOWN(R.string.volume_down)
     }
 
-    data class Output(val type: OutputType, var output: String, var completed: Boolean = false)
 
     var isShellRestrictionEnabled: Boolean by mutableStateOf(
         prefs.getBoolean("shell_restriction", true)
@@ -122,16 +126,10 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
 
-    private val _output = MutableSharedFlow<Output>(extraBufferCapacity = 64)
-    val output: SharedFlow<Output> = _output
-
     var isRunning by mutableStateOf(false)
         private set
 
     var commandText by mutableStateOf(TextFieldValue(""))
-        private set
-
-    var clear by mutableStateOf(false)
         private set
 
     var execMode by mutableStateOf("Commands")
@@ -142,8 +140,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun clear() {
-        //make a toggle state
-        clear = !clear
+        terminal.clear()
     }
 
     fun stop() {
@@ -159,14 +156,13 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun append(type: OutputType, output: String) {
-        viewModelScope.launch {
-            _output.emit(Output(type, output))
-        }
+        terminal.appendLine(type, output)
     }
 
     override fun onCleared() {
         super.onCleared()
         if (Axeron.pingBinder()) stop()
+        terminal.close()
     }
 }
 

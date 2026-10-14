@@ -96,6 +96,13 @@ import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.component.FloatingBarFab
+import frb.axeron.manager.ui.component.TerminalOutput
+import frb.axeron.manager.ui.component.TerminalOptionsCard
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import frb.axeron.manager.ui.util.TerminalBuffer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.derivedStateOf
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.CheckBoxText
 import frb.axeron.manager.ui.component.KeyEventBlocker
@@ -121,7 +128,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     val running = viewModel.isRunning
 
     val listState = rememberLazyListState()
-    val logs = remember { mutableStateListOf<QuickShellViewModel.Output>() }
+    val hasLogs by remember { derivedStateOf { !viewModel.terminal.isEmpty } }
 
     var previousIndex by remember { mutableIntStateOf(0) }
     var previousScrollOffset by remember { mutableIntStateOf(0) }
@@ -192,7 +199,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                         onClick = {
                             viewModel.clear()
                         },
-                        enabled = logs.isNotEmpty()
+                        enabled = hasLogs
                     ) {
                         Icon(Icons.Filled.ClearAll, contentDescription = null)
                     }
@@ -208,12 +215,12 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         },
         floatingActionButton = {
             // Rendered beside the nav pill; only registered once there is a log to save.
-            if (logs.isNotEmpty()) {
+            if (hasLogs) {
                 val context = LocalContext.current
                 FloatingBarFab(visible = fabVisible) {
                     FloatingActionButton(shape = CircleShape, onClick = {
                         scope.launch {
-                            saveLogsToDownload(context, logs, snackBarHost)
+                            saveLogsToDownload(context, viewModel.terminal, snackBarHost)
                         }
                     }) {
                         Icon(Icons.Default.Save, contentDescription = stringResource(R.string.save))
@@ -264,153 +271,35 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
         ) {
 
 
-            LaunchedEffect(viewModel.clear) {
-                logs.clear()
+            // Visible kinds come from the output filter; re-read when the settings sheet closes.
+            val visibleTypes = remember(showExtraDialog) {
+                val prefs = PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
+                QuickShellViewModel.OutputType.entries
+                    .filter { prefs.loadState(context, it, true) }
+                    .toSet()
             }
-
-            LaunchedEffect(logs.size) {
-                if (logs.isNotEmpty()) {
-                    listState.animateScrollToItem(logs.lastIndex)
-                }
+            val filter = remember(visibleTypes) {
+                if (visibleTypes.size == QuickShellViewModel.OutputType.entries.size) null
+                else { type: QuickShellViewModel.OutputType -> type in visibleTypes }
             }
+            val floatingInset = LocalFloatingBarInset.current
 
-            // collect flow
-            LaunchedEffect(Unit) {
-                viewModel.output.collect { line ->
-                    val raw = line.output
-
-                    if (line.type != QuickShellViewModel.OutputType.TYPE_SPACE && raw.isBlank()) return@collect
-                    // ===== DETECT SCREEN MODE =====
-
-                    // ===== SCREEN MODE (top, watch, htop, etc) =====
-                    if (AnsiFilter.isScreenControl(raw)) {
-                        val clean = AnsiFilter.stripAnsi(raw)
-
-                        if (clean.isEmpty()) return@collect
-                        if (logs.isEmpty()) {
-                            logs.add(
-                                QuickShellViewModel.Output(
-                                    type = line.type,
-                                    output = clean,
-                                    completed = false
-                                )
-                            )
-                        } else {
-                            val last = logs.last()
-                            logs[logs.lastIndex] = last.copy(output = clean)
-                        }
-                        return@collect
-                    }
-
-
-                    // selain stdout/stderr → selalu item baru
-                    if (line.type != QuickShellViewModel.OutputType.TYPE_STDOUT && line.type != QuickShellViewModel.OutputType.TYPE_STDERR) {
-                        logs.add(line.copy(completed = true))
-                        return@collect
-                    }
-
-                    val hasNewline =
-                        raw.contains('\n')
-
-                    val hasCarriageReturn =
-                        raw.contains('\r') && !raw.contains('\n')
-
-                    val clean = raw.trimEnd('\n', '\r')
-
-                    val last = logs.lastOrNull()
-
-                    when {
-
-                        /* ===============================
-                           CASE 1: CARRIAGE RETURN (\r)
-                           overwrite baris terakhir
-                           =============================== */
-                        hasCarriageReturn && last != null &&
-                                !last.completed &&
-                                last.type == line.type -> {
-
-                            val i = logs.lastIndex
-                            logs[i] = last.copy(
-                                output = clean,
-                                completed = false
-                            )
-                        }
-
-                        /* ===============================
-                           CASE 2: LANJUT BARIS SEBELUMNYA
-                           =============================== */
-                        last != null &&
-                                !last.completed &&
-                                last.type == line.type -> {
-
-                            val i = logs.lastIndex
-                            logs[i] = last.copy(
-                                output = last.output + clean,
-                                completed = hasNewline
-                            )
-                        }
-
-                        /* ===============================
-                           CASE 3: BARIS BARU
-                           =============================== */
-                        else -> {
-                            logs.add(
-                                QuickShellViewModel.Output(
-                                    type = line.type,
-                                    output = clean,
-                                    completed = hasNewline
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-
-            val hScroll = rememberScrollState()
-
-            val context = LocalContext.current
-
-            SelectionContainer(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .horizontalScroll(hScroll)
-                ) {
-                    LazyColumn(
-                        state = listState,
-                    ) {
-                        item {
-                            Spacer(modifier = Modifier.size(70.dp))
-                        }
-                        items(logs) { line ->
-                            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                    .loadState(context, line.type, true)
-                            ) return@items
-                            BasicText(
-                                text = line.output.parseAsAnsiAnnotatedString(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    lineHeight = MaterialTheme.typography.labelSmall.fontSize, // samain dengan fontSize
-                                    lineHeightStyle = LineHeightStyle(
-                                        alignment = LineHeightStyle.Alignment.Center,
-                                        trim = LineHeightStyle.Trim.Both
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace
-                                ),
-                                softWrap = false,
-                            )
-                        }
-
-                        item {
-                            // Keep the last lines clear of the floating bar.
-                            Spacer(modifier = Modifier.size(22.dp + LocalFloatingBarInset.current))
-                        }
-                    }
-                }
-            }
+            TerminalOutput(
+                buffer = viewModel.terminal,
+                state = listState,
+                wrap = false,
+                filter = filter,
+                color = { it.color() },
+                // Top clears the command card; bottom clears the floating bar.
+                contentPadding = PaddingValues(
+                    start = 8.dp,
+                    end = 8.dp,
+                    top = 70.dp,
+                    bottom = 22.dp + floatingInset
+                ),
+                jumpButtonPadding = PaddingValues(bottom = 12.dp + floatingInset),
+                modifier = Modifier.fillMaxSize()
+            )
 
             @SuppressLint("ConfigurationScreenWidthHeight")
             val screen = LocalConfiguration.current.screenHeightDp
@@ -662,6 +551,10 @@ fun ExtraSettings(
                 }
 
                 item {
+                    TerminalOptionsCard(Modifier.padding(horizontal = 16.dp))
+                }
+
+                item {
                     SettingsItem(
                         iconVector = Icons.Filled.Security,
                         label = stringResource(R.string.shell_restriction),
@@ -686,14 +579,25 @@ fun ExtraSettings(
 }
 
 
+@Composable
+private fun QuickShellViewModel.OutputType.color(): Color = when (this) {
+    QuickShellViewModel.OutputType.TYPE_COMMAND -> MaterialTheme.colorScheme.primary
+    QuickShellViewModel.OutputType.TYPE_STDIN -> MaterialTheme.colorScheme.tertiary
+    QuickShellViewModel.OutputType.TYPE_STDERR,
+    QuickShellViewModel.OutputType.TYPE_THROW -> MaterialTheme.colorScheme.error
+    QuickShellViewModel.OutputType.TYPE_START,
+    QuickShellViewModel.OutputType.TYPE_EXIT -> MaterialTheme.colorScheme.outline
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
 suspend fun saveLogsToDownload(
     context: Context,
-    logs: List<QuickShellViewModel.Output>,
+    terminal: TerminalBuffer<QuickShellViewModel.OutputType>,
     snackbar: SnackbarHostState
 ) {
     val logSaved = context.getString(R.string.log_saved_to)
     val logFailed = context.getString(R.string.failed_to_save_log)
-    if (logs.isEmpty()) return
+    if (terminal.isEmpty) return
     val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
     val date = format.format(Date())
 
@@ -705,15 +609,15 @@ suspend fun saveLogsToDownload(
     val file = File(baseDir, "QuickShell_log_${date}.log")
 
     try {
-        val fos =
-            Axeron.newFileService().getStreamSession(file.absolutePath, true, false).outputStream
-        logs.forEach { line ->
-            if (!PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
-                    .loadState(context, line.type, true)
-            ) return@forEach
-            fos.write("${line.output}\n".toByteArray())
+        val prefs = PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
+        val saved = QuickShellViewModel.OutputType.entries
+            .filter { prefs.loadState(context, it, true) }
+            .toSet()
+        // Streamed line by line off the main thread: unlimited output can exceed the heap.
+        withContext(Dispatchers.IO) {
+            Axeron.newFileService().getStreamSession(file.absolutePath, true, false)
+                .outputStream.use { terminal.writeTo(it) { type -> type in saved } }
         }
-        fos.flush()
 
         snackbar.showSnackbar(logSaved.format(file.absolutePath))
     } catch (e: Exception) {

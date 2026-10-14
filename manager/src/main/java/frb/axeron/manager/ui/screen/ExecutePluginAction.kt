@@ -1,25 +1,38 @@
 package frb.axeron.manager.ui.screen
 
+import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.WrapText
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.FormatSize
+import androidx.compose.runtime.remember
+import frb.axeron.manager.ui.component.TerminalOptionsSheet
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -31,149 +44,172 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
-import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
+import frb.axeron.manager.ui.component.AxTopAppBar
 import frb.axeron.manager.ui.component.KeyEventBlocker
+import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.util.LocalSnackbarHost
+import frb.axeron.manager.ui.viewmodel.CommandRunViewModel
+import frb.axeron.manager.ui.viewmodel.CommandRunViewModel.Stream
 import frb.axeron.server.PluginInfo
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
+private const val COPY_MAX_LINES = 5_000
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun ExecutePluginActionScreen(
     navigator: DestinationsNavigator,
     plugin: PluginInfo
 ) {
+    val runner: CommandRunViewModel = viewModel()
+    val running = runner.isRunning
+    val finished = runner.state is CommandRunViewModel.State.Finished
     val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
 
-    var isActionRunning by rememberSaveable { mutableStateOf(true) }
+    var wrap by rememberSaveable { mutableStateOf(true) }
+    var showOptions by remember { mutableStateOf(false) }
+    if (showOptions) TerminalOptionsSheet(onDismissRequest = { showOptions = false })
 
     val view = LocalView.current
-    DisposableEffect(isActionRunning) {
-        view.keepScreenOn = isActionRunning
-        onDispose {
-            view.keepScreenOn = false
-        }
+    DisposableEffect(running) {
+        view.keepScreenOn = running
+        onDispose { view.keepScreenOn = false }
     }
 
-    BackHandler(enabled = isActionRunning) {
-        // Disable back button if action is running
-    }
-
-    val scope = rememberCoroutineScope()
-    var text by rememberSaveable { mutableStateOf("") }
-    val logContent = rememberSaveable { StringBuilder() }
+    // The action can't be cancelled; keep the user here until it ends.
+    BackHandler(enabled = !finished) {}
 
     LaunchedEffect(Unit) {
-        if (text.isNotEmpty()) {
-            return@LaunchedEffect
-        }
-        launch(Dispatchers.IO) {
-            val pluginPath =
-                File(
-                    PathHelper.getWorkingPath(
-                        Axeron.getAxeronInfo().isRoot(),
-                        AxeronApiConstant.folder.PARENT_PLUGIN
-                    ), plugin.dirId
-                )
+        runner.start { terminal ->
+            val pluginPath = File(
+                PathHelper.getWorkingPath(
+                    Axeron.getAxeronInfo().isRoot(),
+                    AxeronApiConstant.folder.PARENT_PLUGIN
+                ), plugin.dirId
+            )
             val pluginBin = "${pluginPath.absolutePath}/system/bin"
             val cmd =
                 $$"export PATH=$$pluginBin:$PATH; cd \"$$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit $RES"
             AxeronPluginService.execWithIO(
                 cmd = cmd,
-                onStdout = {
-                    if (AnsiFilter.isScreenControl(it)) { // clear command
-                        launch(Dispatchers.Main) {
-                            text = AnsiFilter.stripAnsi(it) + "\n"
-                        }
-                    } else {
-                        launch(Dispatchers.Main) {
-                            text += "$it\n"
-                        }
-                    }
-                    logContent.append(it).append("\n")
-                },
-                onStderr = {
-                    logContent.append(it).append("\n")
-                }
-            )
+                onStdout = terminal.sink(Stream.STDOUT),
+                onStderr = terminal.sink(Stream.STDERR),
+                hideStderr = false
+            ).code
         }
-        isActionRunning = false
     }
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val snackBarHost = LocalSnackbarHost.current
-    val scrollState = rememberScrollState()
-
     val logSaved = stringResource(R.string.log_saved_to)
     val logFailed = stringResource(R.string.failed_to_save_log)
+    val copied = stringResource(R.string.copied)
 
     Scaffold(
         topBar = {
-            TopBar(
-                isActionRunning = isActionRunning,
-                onBack = dropUnlessResumed {
-                    navigator.popBackStack()
+            AxTopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.action),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 },
-                onSave = {
-                    if (!isActionRunning) {
-                        scope.launch {
-                            val format =
-                                SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
-                            val date = format.format(Date())
-
-                            val baseDir = PathHelper.getPath(AxeronApiConstant.folder.PARENT_LOG)
-                            if (!baseDir.exists()) {
-                                baseDir.mkdirs()
-                            }
-
-                            val file = File(baseDir, "AxManager_action_log_${date}.log")
-
-                            try {
-                                val fos = Axeron.newFileService()
-                                    .getStreamSession(file.absolutePath, true, false).outputStream
-                                fos.write("$logContent\n".toByteArray())
-                                fos.flush()
-
-                                snackBarHost.showSnackbar(logSaved.format(file.absolutePath))
-                            } catch (e: Exception) {
-                                snackBarHost.showSnackbar(logFailed.format(e.message))
+                navigationIcon = {
+                    IconButton(
+                        onClick = dropUnlessResumed { navigator.popBackStack() },
+                        enabled = finished
+                    ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
+                },
+                actions = {
+                    IconButton(onClick = { showOptions = true }) {
+                        Icon(
+                            Icons.Outlined.FormatSize,
+                            contentDescription = stringResource(R.string.terminal_view_options)
+                        )
+                    }
+                    IconToggleButton(checked = wrap, onCheckedChange = { wrap = it }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.WrapText,
+                            contentDescription = stringResource(R.string.command_word_wrap)
+                        )
+                    }
+                    IconButton(
+                        enabled = finished,
+                        onClick = {
+                            scope.launch {
+                                runCatching { runner.saveLog("AxManager_action_log") }
+                                    .onSuccess { snackBarHost.showSnackbar(logSaved.format(it)) }
+                                    .onFailure { snackBarHost.showSnackbar(logFailed.format(it.message)) }
                             }
                         }
+                    ) {
+                        Icon(Icons.Filled.Save, contentDescription = stringResource(R.string.save))
                     }
-                }
+                },
             )
         },
-        floatingActionButton = {
-            if (!isActionRunning) {
-                ExtendedFloatingActionButton(shape = CircleShape, 
-                    text = { Text(text = stringResource(R.string.close)) },
-                    icon = { Icon(Icons.Filled.Close, contentDescription = null) },
-                    onClick = {
-                        navigator.popBackStack()
+        bottomBar = {
+            AnimatedVisibility(
+                visible = finished,
+                enter = fadeIn() + expandVertically()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            // Android 13+ shows its own clipboard confirmation.
+                            // The clipboard is a binder transaction (~1 MB): copy the tail.
+                            val log = runner.terminal.text(lastLines = COPY_MAX_LINES)
+                            if (ClipboardUtil.put(context, log) &&
+                                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                            ) {
+                                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Outlined.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.activation_copy_log))
                     }
-                )
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = dropUnlessResumed { navigator.popBackStack() }
+                    ) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
             }
         },
         snackbarHost = { AxSnackBarHost(snackBarHost) }
@@ -183,60 +219,21 @@ fun ExecutePluginActionScreen(
         }
         Column(
             modifier = Modifier
-                .fillMaxSize(1f)
+                .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(scrollState),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = if (finished) 0.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LaunchedEffect(text) {
-                scrollState.animateScrollTo(scrollState.maxValue)
-            }
-
-            text = if (developerOptionsEnabled) logContent.toString() else text
-            BasicText(
-                modifier = Modifier.padding(8.dp),
-                text = text.parseAsAnsiAnnotatedString(),
-                style = MaterialTheme.typography.bodySmall.copy(
-                    lineHeight = MaterialTheme.typography.bodyMedium.fontSize, // samain dengan fontSize
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace
-                ),
-                softWrap = true,
+            CommandRunStatusCard(runner = runner, subtitle = plugin.prop.name)
+            CommandRunOutput(
+                runner = runner,
+                wrap = wrap,
+                showStderr = developerOptionsEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             )
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TopBar(isActionRunning: Boolean, onBack: () -> Unit = {}, onSave: () -> Unit = {}) {
-    AxTopAppBar(
-        title = {
-            Text(
-                text = stringResource(R.string.action),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        },
-        navigationIcon = {
-            IconButton(
-                onClick = onBack,
-                enabled = !isActionRunning
-            ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
-        },
-        actions = {
-            IconButton(
-                onClick = onSave,
-                enabled = !isActionRunning
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Save,
-                    contentDescription = null,
-                )
-            }
-        },
-    )
 }
