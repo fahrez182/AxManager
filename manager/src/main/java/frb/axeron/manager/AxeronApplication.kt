@@ -9,9 +9,9 @@ import com.topjohnwu.superuser.Shell
 import frb.axeron.Axerish
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Engine
+import frb.axeron.manager.ui.util.RawAppIconFetcher
+import frb.axeron.manager.ui.util.RawAppIconKeyer
 import frb.axeron.manager.ui.util.createShellBuilder
-import me.zhanghai.android.appiconloader.coil.AppIconFetcher
-import me.zhanghai.android.appiconloader.coil.AppIconKeyer
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import org.lsposed.hiddenapibypass.HiddenApiBypass
@@ -48,12 +48,12 @@ class AxeronApplication : Engine() {
         super.onCreate()
 
         val context = this
-        val iconSize = resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
+        // App icons load raw from each APK's resources (same engine as AXGC).
         Coil.setImageLoader(
             ImageLoader.Builder(context)
                 .components {
-                    add(AppIconKeyer())
-                    add(AppIconFetcher.Factory(iconSize, false, context))
+                    add(RawAppIconKeyer())
+                    add(RawAppIconFetcher.Factory())
                 }
                 .build()
         )

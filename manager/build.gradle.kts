@@ -75,7 +75,6 @@ dependencies {
     implementation(libs.colorpicker.compose)
 
     implementation(libs.compose.coil)
-    implementation(libs.appiconloader.coil)
 
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.core.ktx)

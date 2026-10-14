@@ -24,7 +24,6 @@ composeBom = "2026.05.01"
 parcelablelist = "2.0.1"
 colorpicker-compose = "1.1.4"
 coil-compose = "2.7.0"
-appiconloader-coil = "1.5.0"
 mmrl = "v33890"
 hidden-api = "4.4.0"
 refine = "4.4.0"
@@ -83,7 +82,6 @@ compose-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 compose-destinations-core = { group = "io.github.raamcosta.compose-destinations", name = "core", version.ref = "compose-destination" }
 compose-destinations-ksp = { group = "io.github.raamcosta.compose-destinations", name = "ksp", version.ref = "compose-destination" }
 
-appiconloader-coil = { group = "me.zhanghai.android.appiconloader", name = "appiconloader-coil", version.ref = "appiconloader-coil" }
 mmrl-ui = { group = "com.github.MMRLApp.MMRL", name = "ui", version.ref = "mmrl" }
 
 markdown = { group = "io.noties.markwon", name = "core", version.ref = "markdown" }
