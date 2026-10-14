@@ -1,12 +1,16 @@
 package frb.axeron.manager.ui.component
 
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
+import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.net.Uri
+import android.os.Process
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -17,6 +21,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import frb.axeron.manager.R
+import frb.axeron.manager.receiver.ShortcutPinnedReceiver
+import frb.axeron.manager.ui.util.ShortcutIcons
+import frb.axeron.manager.ui.util.WebUiShortcutStore
 import frb.axeron.manager.ui.webui.WebUIActivity
 import frb.axeron.server.PluginInfo
 import java.util.Locale
@@ -73,29 +80,117 @@ fun formatSize(size: Long): String {
     }
 }
 
-fun createWebUIShortcut(context: Context, plugin: PluginInfo) {
-    val shortcutManager = context.getSystemService(ShortcutManager::class.java)
+enum class ShortcutResult { REQUESTED, UPDATED, PERMISSION_DENIED, FAILED }
 
-    if (shortcutManager.pinnedShortcuts.any { it.id == plugin.prop.id }) {
-        Toast.makeText(
-            context, "Shortcut already pinned", Toast.LENGTH_SHORT
-        ).show()
-        return
+/**
+ * Apps can't unpin a home-screen shortcut, only disable it: the launcher greys it out and shows
+ * this message when tapped, so the user knows to remove it. Used once a plugin is uninstalled.
+ */
+fun disableWebUIShortcut(context: Context, pluginId: String) {
+    try {
+        context.getSystemService(ShortcutManager::class.java)?.disableShortcuts(
+            listOf(pluginId),
+            context.getString(R.string.shortcut_plugin_uninstalled)
+        )
+    } catch (_: Exception) {
+        // No such shortcut, or the launcher refused; nothing else to do.
+    }
+}
+
+/** Undoes [disableWebUIShortcut], e.g. when an uninstall is restored. */
+fun enableWebUIShortcut(context: Context, pluginId: String) {
+    try {
+        context.getSystemService(ShortcutManager::class.java)?.enableShortcuts(listOf(pluginId))
+    } catch (_: Exception) {
+        // No such shortcut; nothing to re-enable.
+    }
+}
+
+/** HyperOS/MIUI's own "Home screen shortcuts" app-op; pin requests are dropped silently while denied. */
+private const val MIUI_OP_INSTALL_SHORTCUT = 10017
+
+private fun isMiuiShortcutPermissionDenied(context: Context): Boolean = try {
+    // Hidden int-op overload (hidden APIs are exempted at startup). Throws on ROMs
+    // without this op, which simply means there is no such gate.
+    val appOps = context.getSystemService(AppOpsManager::class.java)
+    val mode = AppOpsManager::class.java
+        .getMethod(
+            "checkOpNoThrow",
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            String::class.java
+        )
+        .invoke(appOps, MIUI_OP_INSTALL_SHORTCUT, Process.myUid(), context.packageName) as Int
+    mode == AppOpsManager.MODE_IGNORED || mode == AppOpsManager.MODE_ERRORED
+} catch (_: Throwable) {
+    false
+}
+
+/** Opens the HyperOS/MIUI per-app permission page, or the standard app info page elsewhere. */
+fun openShortcutPermissionSettings(context: Context) {
+    val miuiEditor = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+        setClassName(
+            "com.miui.securitycenter",
+            "com.miui.permcenter.permissions.PermissionsEditorActivity"
+        )
+        putExtra("extra_pkgname", context.packageName)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    try {
+        context.startActivity(miuiEditor)
+    } catch (_: Exception) {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", context.packageName, null))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
+
+/**
+ * Pins a home-screen shortcut that opens [plugin]'s WebUI, with a custom [label] and an
+ * adaptive [icon] layer (see ShortcutIcons). An already pinned shortcut is updated in place.
+ * Failures get a toast here; [ShortcutResult.PERMISSION_DENIED] is left to the caller to explain.
+ */
+fun createWebUIShortcut(
+    context: Context,
+    plugin: PluginInfo,
+    label: String,
+    icon: Bitmap
+): ShortcutResult {
+    val shortcutManager = context.getSystemService(ShortcutManager::class.java)
+    if (shortcutManager == null || !shortcutManager.isRequestPinShortcutSupported) {
+        Toast.makeText(context, R.string.shortcut_not_supported, Toast.LENGTH_SHORT).show()
+        return ShortcutResult.FAILED
     }
 
-    if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported) {
-        val shortcut = ShortcutInfo.Builder(context, plugin.prop.id)
-            .setShortLabel(plugin.prop.name)
-            .setLongLabel(plugin.prop.name)
-            .setIcon(Icon.createWithResource(context, R.mipmap.ic_launcher))
-            .setIntent(
-                Intent(context, WebUIActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    putExtra("id", plugin.prop.id)
-                }
-            )
-            .build()
+    val shortcut = ShortcutInfo.Builder(context, plugin.prop.id)
+        .setShortLabel(label)
+        .setLongLabel(label)
+        .setIcon(Icon.createWithAdaptiveBitmap(icon))
+        .setIntent(WebUIActivity.intentFor(context, plugin.prop.id))
+        .build()
 
-        shortcutManager.requestPinShortcut(shortcut, null)
+    // WebUIActivity shows this label/icon in recents, whichever way it's opened.
+    WebUiShortcutStore.save(context, plugin.prop.id, label, ShortcutIcons.toTaskIcon(icon))
+
+    if (shortcutManager.pinnedShortcuts.any { it.id == plugin.prop.id }) {
+        // It may have been disabled by an earlier uninstall of the same plugin id.
+        enableWebUIShortcut(context, plugin.prop.id)
+        shortcutManager.updateShortcuts(listOf(shortcut))
+        Toast.makeText(context, R.string.shortcut_updated, Toast.LENGTH_SHORT).show()
+        return ShortcutResult.UPDATED
+    }
+
+    if (isMiuiShortcutPermissionDenied(context)) {
+        return ShortcutResult.PERMISSION_DENIED
+    }
+
+    val onPinned = ShortcutPinnedReceiver.callback(context, plugin.prop.id, label)
+    return if (shortcutManager.requestPinShortcut(shortcut, onPinned)) {
+        ShortcutResult.REQUESTED
+    } else {
+        Toast.makeText(context, R.string.shortcut_failed, Toast.LENGTH_SHORT).show()
+        ShortcutResult.FAILED
     }
 }

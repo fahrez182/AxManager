@@ -166,6 +166,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Pinned-shortcut confirmation; only reached through our own PendingIntent. -->
+        <receiver
+            android:name=".receiver.ShortcutPinnedReceiver"
+            android:exported="false" />
+
         <service
             android:name=".features.quicksettings.AxeronTileService"
             android:exported="true"

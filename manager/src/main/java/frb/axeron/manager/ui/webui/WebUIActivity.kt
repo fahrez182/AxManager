@@ -2,6 +2,7 @@ package frb.axeron.manager.ui.webui
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -22,12 +23,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
+import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.disableWebUIShortcut
+import frb.axeron.manager.ui.util.WebUiShortcutStore
+import frb.axeron.manager.ui.util.awaitAxeronBinder
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
 import frb.axeron.manager.ui.webui.interfaces.AxWebInterface
 import frb.axeron.manager.ui.webui.interfaces.KsuWebInterface
@@ -36,8 +44,11 @@ import frb.axeron.server.util.AxWebLoader
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -46,6 +57,23 @@ import java.util.Locale
 
 @SuppressLint("SetJavaScriptEnabled")
 class WebUIActivity : ComponentActivity() {
+
+    companion object {
+        private const val EXTRA_ID = "id"
+        private const val PLUGIN_POLL_INTERVAL_MS = 2000L
+
+        /**
+         * The one way to open a plugin's WebUI (in-app and home-screen shortcuts alike).
+         * documentLaunchMode matches tasks by intent data, not extras, so the data Uri gives
+         * every plugin its own recents task instead of all WebUIs sharing one.
+         */
+        fun intentFor(context: Context, pluginId: String): Intent =
+            Intent(context, WebUIActivity::class.java)
+                .setAction(Intent.ACTION_VIEW)
+                .setData(Uri.fromParts("axwebui", pluginId, null))
+                .putExtra(EXTRA_ID, pluginId)
+    }
+
     private lateinit var webView: WebView
     private lateinit var insets: Insets
     private lateinit var plugin: PluginInfo
@@ -71,6 +99,9 @@ class WebUIActivity : ComponentActivity() {
         }
 
         super.onCreate(savedInstanceState)
+
+        // Recents identity first, before any binder wait, so the task never shows as "AxManager".
+        intent.getStringExtra(EXTRA_ID)?.let { applyTaskIdentity(it, pluginName = null) }
 
         fileChooserLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -111,33 +142,34 @@ class WebUIActivity : ComponentActivity() {
     }
 
     private suspend fun setupWebView() {
-        plugin = Axeron.getPluginById(intent.getStringExtra("id") ?: finishAndRemoveTask().let {
+        val pluginId = intent.getStringExtra(EXTRA_ID) ?: run {
             Toast.makeText(this, "Plugin-Id not found", Toast.LENGTH_SHORT).show()
-            return
-        })
-
-        if (!plugin.hasWebUi || plugin.remove || !plugin.enabled) {
-            Toast.makeText(
-                this,
-                when {
-                    plugin.remove -> "Plugin removed"
-                    !plugin.enabled -> "Plugin disabled"
-                    else -> "Plugin has no web UI"
-                },
-                Toast.LENGTH_SHORT
-            ).show()
-            finish()
+            finishAndRemoveTask()
             return
         }
 
-        val taskDescription = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityManager.TaskDescription.Builder().setLabel("AxWebUI | ${plugin.prop.name}")
-                .build()
+        // Server down: say so, but leave the shortcut alone — the plugin may be fine.
+        if (!awaitAxeronBinder()) {
+            close(R.string.webui_service_not_running, pluginId)
+            return
+        }
+
+        // Same checks the live watcher uses; a missing plugin also retires its shortcut.
+        val lookup = withContext(Dispatchers.IO) { fetchPlugin(pluginId) }
+        val found = (lookup as? PluginLookup.Found)?.plugin
+        val reason = if (lookup == PluginLookup.ServerDown) {
+            R.string.webui_service_not_running
         } else {
-            @Suppress("DEPRECATION")
-            ActivityManager.TaskDescription("AxWebUI | ${plugin.prop.name}")
+            blockReason(found)
         }
-        setTaskDescription(taskDescription)
+        if (reason != null || found == null) {
+            close(reason ?: R.string.shortcut_plugin_uninstalled, pluginId)
+            return
+        }
+        plugin = found
+
+        // A shortcut's custom label was applied in onCreate; otherwise fall back to the plugin name.
+        applyTaskIdentity(pluginId, plugin.prop.name)
 
         val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
         val enableWebDebugging = AxeronSettings.getEnableWebDebugging()
@@ -323,6 +355,85 @@ class WebUIActivity : ComponentActivity() {
             clearCache(true)
             loadUrl("ax://plugin.local/index.html")
         }
+
+        watchPluginState(pluginId)
+    }
+
+    /**
+     * Keeps the open WebUI in step with the plugin: re-checks right away whenever the screen
+     * comes back (e.g. after disabling it in the manager) and periodically while visible,
+     * since the server has no change events. Closes as soon as the plugin can't be shown.
+     */
+    private fun watchPluginState(pluginId: String) {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    val latest = withContext(Dispatchers.IO) { fetchPlugin(pluginId) }
+                    val reason = when (latest) {
+                        PluginLookup.ServerDown -> R.string.webui_service_not_running
+                        is PluginLookup.Found -> blockReason(latest.plugin)
+                        PluginLookup.Missing -> blockReason(null)
+                    }
+                    if (reason != null) {
+                        close(reason, pluginId)
+                        return@repeatOnLifecycle
+                    }
+                    delay(PLUGIN_POLL_INTERVAL_MS)
+                }
+            }
+        }
+    }
+
+    private sealed interface PluginLookup {
+        data object ServerDown : PluginLookup
+        data object Missing : PluginLookup
+        data class Found(val plugin: PluginInfo) : PluginLookup
+    }
+
+    /**
+     * getPluginById() also answers null when the binder died mid-call, so a null only means
+     * "uninstalled" while the server is still reachable.
+     */
+    private fun fetchPlugin(pluginId: String): PluginLookup {
+        if (!Axeron.pingBinder()) return PluginLookup.ServerDown
+        val found = try {
+            Axeron.getPluginById(pluginId)
+        } catch (_: Exception) {
+            return PluginLookup.ServerDown
+        }
+        return when {
+            found != null -> PluginLookup.Found(found)
+            Axeron.pingBinder() -> PluginLookup.Missing
+            else -> PluginLookup.ServerDown
+        }
+    }
+
+    /** Why [plugin]'s WebUI can't be shown right now (null = uninstalled), or null if it can. */
+    private fun blockReason(plugin: PluginInfo?): Int? = when {
+        plugin == null -> R.string.shortcut_plugin_uninstalled
+        plugin.remove -> R.string.webui_plugin_removed
+        !plugin.enabled -> R.string.webui_plugin_disabled
+        !plugin.hasWebUi -> R.string.webui_plugin_no_webui
+        else -> null
+    }
+
+    private fun close(@StringRes reason: Int, pluginId: String) {
+        // Only a plugin that is truly gone retires its shortcut; disabled/removed-pending can come back.
+        if (reason == R.string.shortcut_plugin_uninstalled) disableWebUIShortcut(this, pluginId)
+        Toast.makeText(this, reason, Toast.LENGTH_SHORT).show()
+        finishAndRemoveTask()
+    }
+
+    /**
+     * Recents label/icon: what the user gave the home-screen shortcut, else the plugin name.
+     * The deprecated constructor is the only one that still takes a Bitmap icon.
+     */
+    @Suppress("DEPRECATION")
+    private fun applyTaskIdentity(pluginId: String, pluginName: String?) {
+        val label = WebUiShortcutStore.label(this, pluginId) ?: pluginName ?: return
+        setTaskDescription(
+            ActivityManager.TaskDescription(label, WebUiShortcutStore.icon(this, pluginId))
+        )
     }
 
     private fun extractMimeTypeAndBase64Data(dataUrl: String): Pair<String, String>? {
@@ -393,10 +504,14 @@ class WebUIActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        webView.apply {
-            stopLoading()
-            removeAllViews()
-            destroy()
+        // setupWebView() finishes early (disabled/removed plugin, missing id, no WebUI)
+        // before the WebView exists, e.g. when opened from a home-screen shortcut.
+        if (::webView.isInitialized) {
+            webView.apply {
+                stopLoading()
+                removeAllViews()
+                destroy()
+            }
         }
         super.onDestroy()
     }
