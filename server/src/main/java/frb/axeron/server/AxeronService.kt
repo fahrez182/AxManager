@@ -513,6 +513,26 @@ open class AxeronService :
         cachedNewEnv = null
     }
 
+    /**
+     * WRITE_SETTINGS is an app-op, not a runtime permission (`pm grant` refuses it), so it is
+     * allowed through `cmd appops`. Off the binder thread: it spawns a process.
+     */
+    private fun allowWriteSettings(userId: Int) {
+        Thread {
+            try {
+                val code = Runtime.getRuntime().exec(
+                    arrayOf(
+                        "cmd", "appops", "set", "--user", userId.toString(),
+                        MANAGER_APPLICATION_ID, "WRITE_SETTINGS", "allow"
+                    )
+                ).waitFor()
+                if (code != 0) LOGGER.w("allow WRITE_SETTINGS exited with $code")
+            } catch (e: Throwable) {
+                LOGGER.w(e, "allow WRITE_SETTINGS")
+            }
+        }.start()
+    }
+
     fun checkRuntime(): Boolean {
         return checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
     }
@@ -778,14 +798,16 @@ open class AxeronService :
                 false
             )
         } else {
+            val userId = UserHandleCompat.getUserId(callingUid)
             try {
                 PermissionManagerApis.grantRuntimePermission(
                     MANAGER_APPLICATION_ID,
-                    WRITE_SECURE_SETTINGS, UserHandleCompat.getUserId(callingUid)
+                    WRITE_SECURE_SETTINGS, userId
                 )
             } catch (e: Throwable) {
                 LOGGER.w(e, "grant WRITE_SECURE_SETTINGS")
             }
+            allowWriteSettings(userId)
         }
         try {
             application.bindApplication(reply)
