@@ -294,9 +294,13 @@ open class AxeronService :
 
     val lockToken = Binder()
 
-    fun acquire() {
+    /** Whether [lockToken] currently holds the wakelock; guarded by [lockToken]. */
+    @Volatile
+    private var wakeLockHeld = false
+
+    private fun acquire(): Boolean {
         LOGGER.i("Acquire wakelock")
-        try {
+        return try {
             val flags = PowerManager.PARTIAL_WAKE_LOCK
             val tag = "axeron::wakelock"
             val pkg = "axeron_server"
@@ -310,20 +314,39 @@ open class AxeronService :
                 powerManager.get().acquireWakeLockWithUid(lockToken, flags, tag, pkg, uid)
             }
             LOGGER.i("Acquire wakelock success")
+            true
         } catch (e: Exception) {
             LOGGER.e("Acquire wakelock failed", e)
+            false
         }
     }
 
-    fun release() {
+    private fun release(): Boolean {
         LOGGER.i("Release wakelock")
-        try {
+        return try {
             powerManager.get().releaseWakeLock(lockToken, 0)
             LOGGER.i("Release wakelock success")
+            true
         } catch (e: Exception) {
             LOGGER.e("Release wakelock failed", e)
+            false
         }
     }
+
+    /** Manager only. Asking for the state it is already in does nothing. */
+    override fun setWakeLock(enabled: Boolean) {
+        enforceManagerPermission("setWakeLock")
+        synchronized(lockToken) {
+            if (enabled == wakeLockHeld) return
+            if (enabled) {
+                if (acquire()) wakeLockHeld = true
+            } else {
+                if (release()) wakeLockHeld = false
+            }
+        }
+    }
+
+    override fun isWakeLockHeld(): Boolean = wakeLockHeld
 
     override fun onCreateUserServiceManager(): AxeronUserServiceManager {
         return AxeronUserServiceManager(getEnvironment(TYPE_ENV)?.getEnv())
@@ -421,7 +444,8 @@ open class AxeronService :
             sendBinderToManager()
         }
 
-        acquire()
+        // Held from the start; the manager releases it on connect if the user turned it off.
+        synchronized(lockToken) { wakeLockHeld = acquire() }
     }
 
     fun sendBinderToClient() {
@@ -824,7 +848,9 @@ open class AxeronService :
     }
 
     override fun exit() {
-        release()
+        synchronized(lockToken) {
+            if (wakeLockHeld && release()) wakeLockHeld = false
+        }
         super.exit()
     }
 
