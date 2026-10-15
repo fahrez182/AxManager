@@ -41,8 +41,12 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
         }
     }
 
-    /** Simpan / ubah nilai setting */
+    /**
+     * Simpan / ubah nilai setting. Without the server, Global/Secure/System fall back to the
+     * app's own WRITE_SECURE_SETTINGS / WRITE_SETTINGS (see [SettingsAccess]).
+     */
     fun putValue(type: SettingType, key: String, value: String): Boolean {
+        if (!Axeron.pingBinder()) return putDirect(type, key, value)
         return when (type) {
             SettingType.GLOBAL,
             SettingType.SECURE,
@@ -51,6 +55,22 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             SettingType.ANDROID_PROP -> setAndroidProp(key, value)
             SettingType.AXERON_ENV -> setAxeronEnv(key, value)
         }
+    }
+
+    /**
+     * Writes through the Settings provider as the app itself. System only takes public keys
+     * from apps; a refused write (no permission, private key) returns false.
+     */
+    private fun putDirect(type: SettingType, key: String, value: String): Boolean = try {
+        when (type) {
+            SettingType.GLOBAL -> Settings.Global.putString(contentResolver, key, value)
+            SettingType.SECURE -> Settings.Secure.putString(contentResolver, key, value)
+            SettingType.SYSTEM -> Settings.System.putString(contentResolver, key, value)
+            SettingType.ANDROID_PROP, SettingType.AXERON_ENV -> false
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
     }
 
     /** Hapus nilai setting (atau kosongkan) */

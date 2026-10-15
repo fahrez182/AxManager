@@ -72,7 +72,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import frb.axeron.manager.data.QuickSettingsStore
+import frb.axeron.manager.ui.component.AxDropdownDivider
+import frb.axeron.manager.ui.component.AxDropdownHeader
+import frb.axeron.manager.ui.component.AxDropdownItem
+import frb.axeron.manager.ui.component.AxDropdownMenu
+import androidx.compose.material.icons.outlined.Key
+import frb.axeron.manager.ui.component.AxCardShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -164,6 +189,34 @@ fun SettingsEditorScreen(
         )
     }
 
+    var showQuickSettings by remember { mutableStateOf(false) }
+    if (showQuickSettings) {
+        QuickSettingsSheet(
+            onDismissRequest = { showQuickSettings = false },
+            // Keep the list in step with what the sheet just wrote.
+            onApplied = { viewModel.refresh(it) }
+        )
+    }
+
+    // Long-press → "Add to Quick Settings" opens the config sheet for that entry.
+    var pinning by remember { mutableStateOf<Entry?>(null) }
+    pinning?.let { entry ->
+        val added = stringResource(R.string.quick_settings_saved)
+        val context = LocalContext.current
+        QuickSettingConfigSheet(
+            type = entry.type,
+            key = entry.key,
+            currentValue = entry.value,
+            existing = QuickSettingsStore.find(entry.type, entry.key),
+            onSave = {
+                QuickSettingsStore.save(it)
+                pinning = null
+                Toast.makeText(context, added, Toast.LENGTH_SHORT).show()
+            },
+            onDismissRequest = { pinning = null }
+        )
+    }
+
     Scaffold(
         topBar = {
             SearchAppBar(
@@ -179,6 +232,9 @@ fun SettingsEditorScreen(
                 onSearchTextChange = { viewModel.query = it },
                 onClearClick = { viewModel.query = "" },
                 action = {
+                    IconButton(onClick = { showQuickSettings = true }) {
+                        Icon(Icons.Outlined.Bolt, contentDescription = stringResource(R.string.quick_settings))
+                    }
                     IconButton(onClick = { viewModel.refresh(currentType) }) {
                         Icon(Icons.Outlined.Refresh, contentDescription = null)
                     }
@@ -226,6 +282,7 @@ fun SettingsEditorScreen(
                     type = type,
                     shown = viewModel.filtered(type),
                     sourceEmpty = sourceEmpty,
+                    query = viewModel.query.trim(),
                     searching = viewModel.isSearching,
                     matched = { viewModel.filtered(it).size },
                     totals = { viewModel.entries(it).size },
@@ -233,6 +290,7 @@ fun SettingsEditorScreen(
                     listState = listStates[page],
                     onRefresh = { viewModel.refresh(type) },
                     onOpen = { editing = EditTarget(it.type, it.key, it.value, isNew = false) },
+                    onPin = { pinning = it },
                     onOpenSource = { target ->
                         scope.launch { pagerState.animateScrollToPage(pages.indexOf(target)) }
                     }
@@ -316,6 +374,7 @@ private fun SettingsPage(
     type: SettingType?,
     shown: List<Entry>,
     sourceEmpty: Boolean,
+    query: String,
     searching: Boolean,
     matched: (SettingType) -> Int,
     totals: (SettingType) -> Int,
@@ -323,6 +382,7 @@ private fun SettingsPage(
     listState: LazyListState,
     onRefresh: () -> Unit,
     onOpen: (Entry) -> Unit,
+    onPin: (Entry) -> Unit,
     onOpenSource: (SettingType) -> Unit
 ) {
     val floatingInset = LocalFloatingBarInset.current
@@ -369,7 +429,13 @@ private fun SettingsPage(
                 }
             }
             items(shown, key = { it.id }, contentType = { "entry" }) { entry ->
-                SettingRow(entry = entry, showSource = type == null, onClick = { onOpen(entry) })
+                SettingRow(
+                    entry = entry,
+                    query = query,
+                    showSource = type == null,
+                    onClick = { onOpen(entry) },
+                    onPin = { onPin(entry) }
+                )
             }
         }
 
@@ -432,59 +498,130 @@ private fun SourceOverview(
 @Composable
 private fun SettingRow(
     entry: Entry,
+    query: String,
     showSource: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onPin: () -> Unit
 ) {
-    AxCard(onClick = onClick) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+    val matchStyle = searchMatchStyle()
+    val keyText = remember(entry.id, query, matchStyle) {
+        highlightMatches(entry.keyDisplay, query, matchStyle)
+    }
+    val pinned = QuickSettingsStore.find(entry.type, entry.key) != null
+    val haptics = LocalHapticFeedback.current
+    var menu by remember { mutableStateOf(false) }
+
+    Box {
+        AxCard(
+            modifier = Modifier
+                .clip(AxCardShape)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menu = true
+                    }
+                )
         ) {
-            Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    text = entry.keyDisplay,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                if (showSource) {
-                    Spacer(Modifier.width(8.dp))
-                    StatusPill(
-                        text = stringResource(entry.type.shortStringId),
-                        color = sourceColor(entry.type)
-                    )
-                }
-            }
-            if (entry.value.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.settings_empty_value),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            } else {
-                // Cut off by the line limit (seen at layout) or by the preview length.
-                var clipped by remember(entry.id) { mutableStateOf(entry.isPreviewTruncated) }
-                Text(
-                    text = entry.valuePreview,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { if (it.hasVisualOverflow) clipped = true }
-                )
-                if (clipped) {
-                    LongValueHint(
-                        text = stringResource(
-                            R.string.settings_value_truncated,
-                            entry.value.lineCount(),
-                            entry.value.length
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    if (pinned) {
+                        Icon(
+                            Icons.Outlined.Bolt,
+                            contentDescription = stringResource(R.string.quick_settings),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(top = 1.dp, end = 4.dp)
+                                .size(16.dp)
                         )
+                    }
+                    Text(
+                        text = keyText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (showSource) {
+                        Spacer(Modifier.width(8.dp))
+                        StatusPill(
+                            text = stringResource(entry.type.shortStringId),
+                            color = sourceColor(entry.type)
+                        )
+                    }
+                }
+                if (entry.value.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_empty_value),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                } else {
+                    // Cut off by the line limit (seen at layout) or by the preview length.
+                    var clipped by remember(entry.id) { mutableStateOf(entry.isPreviewTruncated) }
+                    val valueText = remember(entry.id, query, matchStyle) {
+                        highlightMatches(entry.valuePreview, query, matchStyle)
+                    }
+                    Text(
+                        text = valueText,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { if (it.hasVisualOverflow) clipped = true }
+                    )
+                    if (clipped) {
+                        LongValueHint(
+                            text = stringResource(
+                                R.string.settings_value_truncated,
+                                entry.value.lineCount(),
+                                entry.value.length
+                            )
+                        )
+                    }
                 }
             }
+        }
+        val context = LocalContext.current
+        val keyCopied = stringResource(R.string.key_copied)
+        val valueCopied = stringResource(R.string.value_copied)
+        AxDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            AxDropdownHeader(entry.key, monospace = true)
+            AxDropdownItem(
+                text = stringResource(if (pinned) R.string.quick_settings_edit else R.string.quick_settings_add),
+                icon = Icons.Outlined.Bolt,
+                onClick = {
+                    menu = false
+                    onPin()
+                }
+            )
+            AxDropdownDivider()
+            AxDropdownItem(
+                text = stringResource(R.string.settings_copy_key),
+                icon = Icons.Outlined.Key,
+                onClick = {
+                    menu = false
+                    if (ClipboardUtil.put(context, entry.key)) {
+                        Toast.makeText(context, keyCopied, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+            AxDropdownItem(
+                text = stringResource(R.string.settings_copy_value),
+                icon = Icons.Outlined.ContentCopy,
+                enabled = entry.value.isNotEmpty(),
+                onClick = {
+                    menu = false
+                    if (ClipboardUtil.put(context, entry.value)) {
+                        Toast.makeText(context, valueCopied, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
         }
     }
 }
@@ -506,6 +643,28 @@ private fun SettingEditorSheet(
     val valueState = remember(target) { TextFieldState(target.value) }
     val value = valueState.text.toString()
     var busy by remember { mutableStateOf(false) }
+
+    // The list's search query: highlight it in the key and step through it in the value.
+    val query = viewModel.query.trim()
+    val matchStyle = searchMatchStyle()
+    val valueMatches = remember(value, query) { occurrences(value, query) }
+    var currentMatch by remember(target, query) { mutableIntStateOf(-1) }
+    val valueFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    /** Selects match [index] in the value field, which highlights it and scrolls it into view. */
+    fun selectMatch(index: Int) {
+        if (valueMatches.isEmpty()) return
+        currentMatch = Math.floorMod(index, valueMatches.size)
+        val start = valueMatches[currentMatch]
+        valueState.edit { selection = TextRange(start, start + query.length) }
+        scope.launch {
+            // Selection only shows (and scrolls) in a focused field; keep the keyboard down.
+            valueFocus.requestFocus()
+            withFrameNanos { }
+            keyboard?.hide()
+        }
+    }
 
     val modified = value != target.value
     val canSave = !busy && key.isNotBlank() && (target.isNew || modified)
@@ -615,7 +774,9 @@ private fun SettingEditorSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = key,
+                            text = remember(key, query, matchStyle) {
+                                highlightMatches(key, query, matchStyle)
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.SemiBold
@@ -658,7 +819,9 @@ private fun SettingEditorSheet(
                         )
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(valueFocus)
             )
             if (scrollsInside) {
                 Canvas(
@@ -679,6 +842,16 @@ private fun SettingEditorSheet(
                     )
                 }
             }
+        }
+        if (valueMatches.isNotEmpty()) {
+            MatchNavigator(
+                query = query,
+                current = currentMatch,
+                total = valueMatches.size,
+                enabled = !busy,
+                onPrevious = { selectMatch(if (currentMatch < 0) valueMatches.lastIndex else currentMatch - 1) },
+                onNext = { selectMatch(currentMatch + 1) }
+            )
         }
         if (scrollsInside || (!target.isNew && modified)) {
             Column(
@@ -736,6 +909,58 @@ private fun SettingEditorSheet(
     }
 }
 
+/** "Match 2 of 5 for “query”" with previous / next, for stepping through the value field. */
+@Composable
+private fun MatchNavigator(
+    query: String,
+    current: Int,
+    total: Int,
+    enabled: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
+    Surface(shape = AxPanelShape, color = MaterialTheme.colorScheme.tertiaryContainer) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 12.dp, end = 2.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (current < 0) {
+                    pluralStringResource(R.plurals.settings_value_matches, total, total, query)
+                } else {
+                    stringResource(R.string.settings_value_match_position, current + 1, total, query)
+                },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onPrevious, enabled = enabled) {
+                Icon(
+                    Icons.Outlined.KeyboardArrowUp,
+                    contentDescription = stringResource(R.string.terminal_search_previous),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+            IconButton(onClick = onNext, enabled = enabled) {
+                Icon(
+                    Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.terminal_search_next),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
+    }
+}
+
 /** "There is more than you see" note for long values, in the list and in the editor. */
 @Composable
 private fun LongValueHint(text: String) {
@@ -757,7 +982,53 @@ private fun LongValueHint(text: String) {
 
 private fun String.lineCount(): Int = count { it == '\n' } + 1
 
-private fun sourceIcon(type: SettingType?): ImageVector = when (type) {
+@Composable
+private fun searchMatchStyle() = SpanStyle(
+    background = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f),
+    fontWeight = FontWeight.Bold
+)
+
+/**
+ * [display] with each occurrence of [query] (ignoring case) styled. Display text carries
+ * zero-width break points after symbols; matching skips them so "a.b" still finds "a.b".
+ */
+private fun highlightMatches(display: String, query: String, style: SpanStyle): AnnotatedString {
+    if (query.isEmpty()) return AnnotatedString(display)
+    val toDisplay = IntArray(display.length)
+    val plain = buildString {
+        display.forEachIndexed { i, c ->
+            if (c != ZWSP) {
+                toDisplay[length] = i
+                append(c)
+            }
+        }
+    }
+    var i = plain.indexOf(query, ignoreCase = true)
+    if (i < 0) return AnnotatedString(display)
+    return buildAnnotatedString {
+        append(display)
+        while (i >= 0) {
+            addStyle(style, toDisplay[i], toDisplay[i + query.length - 1] + 1)
+            i = plain.indexOf(query, i + query.length, ignoreCase = true)
+        }
+    }
+}
+
+/** Start of every occurrence of [query] (ignoring case) in [text]. */
+private fun occurrences(text: String, query: String): List<Int> {
+    if (query.isEmpty()) return emptyList()
+    val found = ArrayList<Int>()
+    var i = text.indexOf(query, ignoreCase = true)
+    while (i >= 0) {
+        found.add(i)
+        i = text.indexOf(query, i + query.length, ignoreCase = true)
+    }
+    return found
+}
+
+private const val ZWSP = '​'
+
+internal fun sourceIcon(type: SettingType?): ImageVector = when (type) {
     null -> Icons.Outlined.Apps
     SettingType.GLOBAL -> Icons.Outlined.Public
     SettingType.SECURE -> Icons.Outlined.Shield
@@ -767,7 +1038,7 @@ private fun sourceIcon(type: SettingType?): ImageVector = when (type) {
 }
 
 @Composable
-private fun sourceColor(type: SettingType): Color = when (type) {
+internal fun sourceColor(type: SettingType): Color = when (type) {
     SettingType.GLOBAL, SettingType.ANDROID_PROP -> MaterialTheme.colorScheme.primary
     SettingType.SECURE, SettingType.AXERON_ENV -> MaterialTheme.colorScheme.tertiary
     SettingType.SYSTEM -> MaterialTheme.colorScheme.secondary

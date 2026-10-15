@@ -75,6 +75,8 @@ fun SettingsRow(
     showDivider: Boolean = false,
     onSwitchChange: ((checked: Boolean) -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    /** Extra actions (e.g. an icon button) placed before the switch or chevron. */
+    trailing: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable (enabled: Boolean) -> Unit)? = null
 ) {
     // A switch row toggles from anywhere on the row, not only from the switch itself.
@@ -100,6 +102,8 @@ fun SettingsRow(
                 icon = iconPainter ?: iconVector?.let { rememberVectorPainter(it) },
                 enabled = enabled
             )
+
+            trailing?.invoke(this)
 
             when {
                 onSwitchChange != null -> {

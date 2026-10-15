@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -91,6 +92,10 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
 
     var showDevDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showQuickSettings by remember { mutableStateOf(false) }
+    if (showQuickSettings) {
+        QuickSettingsSheet(onDismissRequest = { showQuickSettings = false })
+    }
 
     DeveloperInfo(
         showDevDialog
@@ -223,7 +228,16 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     SettingsRow(
                         iconVector = Icons.Filled.Edit,
                         label = stringResource(R.string.settings_editor),
-                        onClick = { navigator.navigate(SettingsEditorScreenDestination) }
+                        onClick = { navigator.navigate(SettingsEditorScreenDestination) },
+                        trailing = {
+                            IconButton(onClick = { showQuickSettings = true }) {
+                                Icon(
+                                    Icons.Outlined.Bolt,
+                                    contentDescription = stringResource(R.string.quick_settings),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     )
                 }
 

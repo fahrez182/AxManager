@@ -113,6 +113,10 @@ import frb.axeron.manager.ui.component.AxCardShape
 import frb.axeron.manager.ui.component.AxPanelShape
 import frb.axeron.manager.ui.component.SectionHeader
 import frb.axeron.manager.ui.component.IconBadge
+import frb.axeron.manager.ui.component.StatusPill
+import frb.axeron.manager.data.QuickSettingsStore
+import frb.axeron.manager.data.SettingsAccess
+import androidx.compose.material.icons.outlined.Bolt
 import frb.axeron.manager.ui.component.InlineDivider
 import frb.axeron.manager.ui.component.NeedMoreStepDialog
 import frb.axeron.manager.ui.component.PowerDialog
@@ -270,6 +274,23 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                         }
                     }
                 }
+            }
+
+            // With the server off, Quick Settings still works through the settings permissions
+            // the server granted earlier; offer it while both are held.
+            val context = LocalContext.current
+            val quickSettingsOffline = remember(isRunning) {
+                !isRunning && SettingsAccess.canWriteWithoutServer(context)
+            }
+            var showQuickSettings by remember { mutableStateOf(false) }
+            if (showQuickSettings) {
+                QuickSettingsSheet(onDismissRequest = { showQuickSettings = false })
+            }
+            AnimatedVisibility(visible = quickSettingsOffline) {
+                QuickSettingsCard(
+                    count = QuickSettingsStore.items.size,
+                    onClick = { showQuickSettings = true }
+                )
             }
 
             UpdateCard()
@@ -811,6 +832,36 @@ fun UpdateCard() {
                     confirm = updateText
                 )
             }
+        }
+    }
+}
+
+/** Entry to Quick Settings while the server is off. */
+@Composable
+private fun QuickSettingsCard(count: Int, onClick: () -> Unit) {
+    AxCard(onClick = onClick) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            IconBadge(imageVector = Icons.Outlined.Bolt)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.quick_settings),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(R.string.quick_settings_offline_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (count > 0) {
+                StatusPill(text = count.toString(), color = MaterialTheme.colorScheme.primary)
+            }
+            Chevron()
         }
     }
 }
