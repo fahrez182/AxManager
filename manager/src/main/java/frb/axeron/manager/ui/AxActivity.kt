@@ -77,7 +77,6 @@ import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
@@ -250,8 +249,7 @@ class AxActivity : ComponentActivity() {
 
         val showBottomBar = when (currentDestination?.route) {
             ActivateScreenDestination.route -> false // Hide for Activate
-            FlashScreenDestination.route -> false // Hide for Flash
-            ExecutePluginActionScreenDestination.route -> false // Hide for ExecutePluginAction
+            FlashScreenDestination.route -> false // Hide for Flash and plugin actions
             else -> true
         }
 

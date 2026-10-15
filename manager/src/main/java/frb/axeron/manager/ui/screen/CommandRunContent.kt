@@ -3,53 +3,41 @@ package frb.axeron.manager.ui.screen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import frb.axeron.manager.R
-import frb.axeron.manager.ui.component.AxCard
-import frb.axeron.manager.ui.component.IconBadge
-import frb.axeron.manager.ui.component.StatusPill
 import frb.axeron.manager.ui.component.TerminalOutput
-import frb.axeron.manager.ui.component.axPanel
 import frb.axeron.manager.ui.component.terminalTextStyle
+import frb.axeron.manager.ui.theme.GREEN
+import frb.axeron.manager.ui.theme.ORANGE
+import frb.axeron.manager.ui.theme.RED
 import frb.axeron.manager.ui.viewmodel.CommandRunViewModel
 import frb.axeron.manager.ui.viewmodel.CommandRunViewModel.State
 import frb.axeron.manager.ui.viewmodel.CommandRunViewModel.Stream
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-/** Status header for a command screen: state, what is running, duration and exit code. */
+/** Top bar title for a command screen: state, then what is running, duration and exit code. */
 @Composable
-fun CommandRunStatusCard(
+fun CommandRunTitle(
     runner: CommandRunViewModel,
     subtitle: String,
     modifier: Modifier = Modifier
 ) {
     val state = runner.state
-    val error = MaterialTheme.colorScheme.error
-    val primary = MaterialTheme.colorScheme.primary
 
     // Ticks while running; frozen once finished.
     val elapsed by produceState(runner.elapsedMillis(), state) {
@@ -60,80 +48,63 @@ fun CommandRunStatusCard(
         }
     }
 
-    AxCard(modifier) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            when {
-                state is State.Finished && state.success ->
-                    IconBadge(imageVector = Icons.Filled.CheckCircle)
+    val exitCode = (state as? State.Finished)
+        ?.let { stringResource(R.string.command_exit_code, it.exitCode) }
 
-                state is State.Finished ->
-                    IconBadge(imageVector = Icons.Outlined.ErrorOutline, tint = error)
-
-                else -> IconBadge(imageVector = Icons.Outlined.Terminal)
+    Column(modifier) {
+        Text(
+            text = stringResource(
+                when {
+                    state == State.Idle -> R.string.idle
+                    state is State.Finished && state.success -> R.string.command_success
+                    state is State.Finished -> R.string.command_failed
+                    else -> R.string.command_running
+                }
+            ),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = when {
+                state == State.Idle -> MaterialTheme.colorScheme.onSurfaceVariant
+                state is State.Finished && state.success -> GREEN
+                state is State.Finished -> RED
+                else -> ORANGE
             }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(
-                        when {
-                            state is State.Finished && state.success -> R.string.command_success
-                            state is State.Finished -> R.string.command_failed
-                            else -> R.string.command_running
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = if (state == State.Idle) subtitle
-                    else "$subtitle · ${formatDuration(elapsed)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            when (state) {
-                is State.Finished -> StatusPill(
-                    text = stringResource(R.string.command_exit_code, state.exitCode),
-                    color = if (state.success) primary else error
-                )
-
-                else -> CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
-                )
-            }
-        }
+        )
+        Text(
+            text = buildString {
+                append(subtitle)
+                if (state != State.Idle) append(" · ").append(formatDuration(elapsed))
+                if (exitCode != null) append(" · ").append(exitCode)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 /**
- * Output panel for a [CommandRunViewModel]. stderr is shown only when [showStderr] (developer
- * options); app notices are always shown.
+ * Output of a [CommandRunViewModel], edge to edge and never wrapped. stderr is shown only when
+ * [showStderr] (developer options); app notices are always shown.
  */
 @Composable
 fun CommandRunOutput(
     runner: CommandRunViewModel,
     modifier: Modifier = Modifier,
-    wrap: Boolean = true,
     showStderr: Boolean = true,
-    bottomPadding: androidx.compose.ui.unit.Dp = 12.dp
+    bottomPadding: Dp = 16.dp
 ) {
     val filter = remember(showStderr) {
         if (showStderr) null else { stream: Stream -> stream != Stream.STDERR }
     }
-    Box(modifier.axPanel(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+    Box(modifier) {
         TerminalOutput(
             buffer = runner.terminal,
-            wrap = wrap,
+            wrap = false,
             filter = filter,
             color = { it.color() },
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = bottomPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding),
             jumpButtonPadding = PaddingValues(bottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)),
             modifier = Modifier.fillMaxSize()
         )
@@ -142,7 +113,7 @@ fun CommandRunOutput(
                 text = stringResource(R.string.command_waiting_output),
                 style = terminalTextStyle(),
                 color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
     }

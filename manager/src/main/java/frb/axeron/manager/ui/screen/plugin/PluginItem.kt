@@ -59,7 +59,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.ramcosta.composedestinations.generated.destinations.ExecutePluginActionScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
+import frb.axeron.manager.ui.screen.FlashIt
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
@@ -446,7 +447,7 @@ fun PluginItem(
                                     enabled = !plugin.remove && plugin.enabled && !plugin.update,
                                     onClick = {
                                         navigator!!.navigate(
-                                            ExecutePluginActionScreenDestination(plugin)
+                                            FlashScreenDestination(FlashIt.PluginAction(plugin))
                                         )
                                         viewModel.markNeedRefresh()
                                     },

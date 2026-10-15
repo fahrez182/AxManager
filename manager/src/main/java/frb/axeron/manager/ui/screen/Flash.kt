@@ -4,10 +4,14 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.net.Uri
+import android.os.Build
 import android.os.Parcelable
 import android.provider.OpenableColumns
-import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,25 +20,24 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.FormatSize
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,11 +46,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import frb.axeron.manager.ui.component.AxTopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -62,16 +61,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
-import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -81,39 +77,28 @@ import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
-import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
+import frb.axeron.manager.ui.component.AxTopAppBar
 import frb.axeron.manager.ui.component.KeyEventBlocker
+import frb.axeron.manager.ui.component.TerminalOptionsSheet
 import frb.axeron.manager.ui.component.rememberLoadingDialog
 import frb.axeron.manager.ui.component.resolveDisplayName
-import frb.axeron.manager.ui.theme.GREEN
-import frb.axeron.manager.ui.theme.ORANGE
-import frb.axeron.manager.ui.theme.RED
+import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.CommandRunViewModel
-import frb.axeron.manager.ui.component.TerminalOptionsSheet
-import androidx.compose.material.icons.outlined.FormatSize
+import frb.axeron.manager.ui.viewmodel.CommandRunViewModel.State
+import frb.axeron.manager.ui.viewmodel.CommandRunViewModel.Stream
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
-import androidx.lifecycle.viewmodel.compose.viewModel
+import frb.axeron.server.PluginInfo
 import frb.axeron.server.PluginInstaller
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-enum class FlashingStatus {
-    IDLE,
-    FLASHING,
-    SUCCESS,
-    FAILED
-}
+private const val COPY_MAX_LINES = 5_000
 
 fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -134,11 +119,15 @@ fun Uri.getFileName(context: Context): String {
     } ?: (this.lastPathSegment ?: "unknown.zip")
 }
 
+/** A job for [FlashScreen], the shared output screen for installs, resets and plugin actions. */
 @Parcelize
 sealed class FlashIt : Parcelable {
     data class FlashPlugins(val installers: List<PluginInstaller>) : FlashIt()
 
     data class FlashUninstall(val rootMode: Boolean, val both: Boolean = false) : FlashIt()
+
+    /** Runs the plugin's action.sh. */
+    data class PluginAction(val plugin: PluginInfo) : FlashIt()
 }
 
 @ExperimentalMaterial3Api
@@ -286,78 +275,55 @@ fun FlashScreen(
 
     val developerOptionsEnabled = AxeronSettings.getEnableDeveloperOptions()
 
-    // The flash job and its output live in the ViewModel so rotation neither loses the log
-    // nor leaves the screen stuck on FLASHING.
+    // The job and its output live in the ViewModel so rotation neither loses the log nor
+    // runs it twice.
     val runner: CommandRunViewModel = viewModel()
-
-    // Dialog outcome before the job starts (confirmed / dismissed).
-    var requested by rememberSaveable {
-        mutableStateOf(FlashingStatus.IDLE)
-    }
-    val flashing = when (val state = runner.state) {
-        CommandRunViewModel.State.Idle -> requested
-        CommandRunViewModel.State.Running -> FlashingStatus.FLASHING
-        is CommandRunViewModel.State.Finished ->
-            if (state.success) FlashingStatus.SUCCESS else FlashingStatus.FAILED
-    }
+    val state = runner.state
+    val running = state == State.Running
+    val finished = state is State.Finished
 
     val view = LocalView.current
-    DisposableEffect(flashing) {
-        view.keepScreenOn = flashing == FlashingStatus.FLASHING
-        onDispose {
-            view.keepScreenOn = false
-        }
+    DisposableEffect(running) {
+        view.keepScreenOn = running
+        onDispose { view.keepScreenOn = false }
     }
 
-    BackHandler(enabled = flashing == FlashingStatus.FLASHING) {
-        // Disable back button if flashing is running
-    }
-
-    BackHandler(enabled = flashing != FlashingStatus.FLASHING) {
+    val close: () -> Unit = {
+        pluginViewModel.markNeedRefresh()
         navigator.popBackStack()
         if (finishIntent) activity?.finish()
     }
 
-//    var confirmed by rememberSaveable { mutableStateOf(flashIt !is FlashIt.FlashPlugins) }
-    var pendingFlashIt by rememberSaveable { mutableStateOf<FlashIt?>(null) }
+    // The job can't be cancelled; keep the user here until it ends.
+    BackHandler(enabled = running) {}
+    BackHandler(enabled = !running, onBack = close)
 
-
-    if (flashIt is FlashIt.FlashUninstall) {
-        pendingFlashIt = flashIt
+    // Installs wait for the confirm sheet; everything else starts right away.
+    var pendingFlashIt by rememberSaveable {
+        mutableStateOf(if (flashIt is FlashIt.FlashPlugins) null else flashIt)
     }
 
-
     InstallDialog(
-        confirm = flashing == FlashingStatus.IDLE,
+        confirm = pendingFlashIt == null && state == State.Idle,
         flashIt = flashIt,
-        onConfirm = {
-            requested = FlashingStatus.FLASHING
-            pendingFlashIt = it
-        },
-        onDismiss = {
-            requested = FlashingStatus.FAILED
-            navigator.popBackStack()
-            if (finishIntent) activity?.finish()
-        }
+        onConfirm = { pendingFlashIt = it },
+        onDismiss = close
     )
-
-    val scope = rememberCoroutineScope()
 
     val errorSaveLog = stringResource(R.string.log_error_code)
 
     LaunchedEffect(pendingFlashIt) {
-        Log.d("FlashScreen", "flashing: $flashing")
         val pending = pendingFlashIt ?: return@LaunchedEffect
-        // start() runs once per screen, so recomposition/rotation can't flash twice.
+        // start() runs once per screen, so recomposition/rotation can't run it twice.
         runner.start { terminal ->
             val result = flashIt(
                 pending,
-                onStdout = terminal.sink(CommandRunViewModel.Stream.STDOUT),
-                onStderr = terminal.sink(CommandRunViewModel.Stream.STDERR)
+                onStdout = terminal.sink(Stream.STDOUT),
+                onStderr = terminal.sink(Stream.STDERR)
             )
             if (result.code != 0) {
                 terminal.appendLine(
-                    CommandRunViewModel.Stream.NOTICE,
+                    Stream.NOTICE,
                     errorSaveLog.format(result.code, result.err).trimEnd()
                 )
             }
@@ -365,86 +331,100 @@ fun FlashScreen(
         }
     }
 
+    val subtitle = when (flashIt) {
+        is FlashIt.FlashPlugins -> remember(flashIt) {
+            flashIt.installers.joinToString { it.uri.resolveDisplayName(context) }
+        }
 
+        is FlashIt.FlashUninstall -> stringResource(R.string.uninstall)
+        is FlashIt.PluginAction -> flashIt.plugin.prop.name
+    }
+    val logPrefix = when (flashIt) {
+        is FlashIt.FlashPlugins -> "AxManager_install_log"
+        is FlashIt.FlashUninstall -> "AxManager_uninstall_log"
+        is FlashIt.PluginAction -> "AxManager_action_log"
+    }
+
+    val scope = rememberCoroutineScope()
     val snackBarHost = LocalSnackbarHost.current
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val logSaved = stringResource(R.string.log_saved_to)
+    val logFailed = stringResource(R.string.failed_to_save_log)
+    val copied = stringResource(R.string.copied)
     var showOptions by remember { mutableStateOf(false) }
     if (showOptions) TerminalOptionsSheet(onDismissRequest = { showOptions = false })
 
     Scaffold(
         topBar = {
-            val logSaved = stringResource(R.string.log_saved_to)
-            val logFailed = stringResource(R.string.failed_to_save_log)
-            TopBar(
-                flashing,
-                onBack = dropUnlessResumed {
-                    pluginViewModel.markNeedRefresh()
-                    navigator.popBackStack()
-                    if (finishIntent) activity?.finish()
+            AxTopAppBar(
+                title = { CommandRunTitle(runner = runner, subtitle = subtitle) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = dropUnlessResumed(block = close),
+                        enabled = !running
+                    ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
                 },
-                onOptions = { showOptions = true },
-                onSave = {
-                    scope.launch {
-                        runCatching { runner.saveLog("AxManager_install_log") }
-                            .onSuccess { snackBarHost.showSnackbar(logSaved.format(it)) }
-                            .onFailure { snackBarHost.showSnackbar(logFailed.format(it.message)) }
+                actions = {
+                    IconButton(onClick = { showOptions = true }) {
+                        Icon(
+                            Icons.Outlined.FormatSize,
+                            contentDescription = stringResource(R.string.terminal_view_options)
+                        )
+                    }
+                    IconButton(
+                        enabled = finished,
+                        onClick = {
+                            scope.launch {
+                                runCatching { runner.saveLog(logPrefix) }
+                                    .onSuccess { snackBarHost.showSnackbar(logSaved.format(it)) }
+                                    .onFailure { snackBarHost.showSnackbar(logFailed.format(it.message)) }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Filled.Save, contentDescription = stringResource(R.string.save))
                     }
                 },
-                scrollBehavior = scrollBehavior
             )
         },
-        floatingActionButton = {
-            val reigniteLoading = rememberLoadingDialog()
-            if (flashIt is FlashIt.FlashPlugins && (flashing == FlashingStatus.SUCCESS)) {
-                ExtendedFloatingActionButton(shape = CircleShape, 
-                    onClick = {
-                        scope.launch {
-                            reigniteLoading.withLoading {
-                                AxeronPluginService.igniteSuspendService()
+        bottomBar = {
+            AnimatedVisibility(
+                visible = finished,
+                enter = fadeIn() + expandVertically()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            // Android 13+ shows its own clipboard confirmation.
+                            // The clipboard is a binder transaction (~1 MB): copy the tail.
+                            val log = runner.terminal.text(lastLines = COPY_MAX_LINES)
+                            if (ClipboardUtil.put(context, log) &&
+                                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                            ) {
+                                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
                             }
-                            navigator.popBackStack()
-                            if (finishIntent) activity?.finish()
                         }
-                    },
-                    icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                    text = { Text(text = stringResource(R.string.re_ignite_and_close)) }
-                )
-            }
-
-            if (flashIt is FlashIt.FlashUninstall && (flashing == FlashingStatus.SUCCESS)) {
-                ExtendedFloatingActionButton(shape = CircleShape, 
-                    onClick = {
-                        scope.launch {
-                            reigniteLoading.withLoading {
-                                Axeron.newProcess(
-                                    AxeronCommandSession.getQuickCmd(
-                                        Starter.internalCommand,
-                                        true,
-                                        false
-                                    ),
-                                    null,
-                                    null
-                                )
-                            }
-                            navigator.popBackStack()
-                            if (finishIntent) activity?.finish()
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                    text = { Text(text = stringResource(R.string.restart_and_close)) }
-                )
-            }
-
-            if (flashing == FlashingStatus.FAILED) {
-                // Close button for modules flashing
-                ExtendedFloatingActionButton(shape = CircleShape, 
-                    text = { Text(text = stringResource(R.string.close)) },
-                    icon = { Icon(Icons.Filled.Close, contentDescription = null) },
-                    onClick = {
-                        navigator.popBackStack()
-                        if (finishIntent) activity?.finish()
+                    ) {
+                        Icon(
+                            Icons.Outlined.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.activation_copy_log))
                     }
-                )
+                    FinishButton(
+                        flashIt = flashIt,
+                        success = (state as? State.Finished)?.success == true,
+                        onClose = close,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         },
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -456,15 +436,65 @@ fun FlashScreen(
         CommandRunOutput(
             runner = runner,
             showStderr = developerOptionsEnabled,
-            // Room for the result FAB once the job is done.
-            bottomPadding = if (flashing == FlashingStatus.FLASHING) 12.dp else 88.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
         )
     }
+}
 
+/** Close, or the follow-up a successful job needs (re-ignite plugins, restart the server). */
+@Composable
+private fun FinishButton(
+    flashIt: FlashIt,
+    success: Boolean,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    val loading = rememberLoadingDialog()
+
+    fun closeAfter(block: suspend () -> Unit) {
+        scope.launch {
+            loading.withLoading { block() }
+            onClose()
+        }
+    }
+
+    when {
+        success && flashIt is FlashIt.FlashPlugins -> Button(
+            modifier = modifier,
+            onClick = { closeAfter { AxeronPluginService.igniteSuspendService() } }
+        ) {
+            Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.re_ignite_and_close))
+        }
+
+        success && flashIt is FlashIt.FlashUninstall -> Button(
+            modifier = modifier,
+            onClick = {
+                closeAfter {
+                    Axeron.newProcess(
+                        AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
+                        null,
+                        null
+                    )
+                }
+            }
+        ) {
+            Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.restart_and_close))
+        }
+
+        else -> Button(
+            modifier = modifier,
+            onClick = dropUnlessResumed(block = onClose)
+        ) {
+            Text(stringResource(R.string.close))
+        }
+    }
 }
 
 suspend fun flashModulesSequentially(
@@ -501,64 +531,25 @@ suspend fun flashIt(
                 AxeronPluginService.resetManagerNative(flashIt.rootMode, onStdout, onStderr)
             }
         }
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TopBar(
-    status: FlashingStatus,
-    onBack: () -> Unit = {},
-    onSave: () -> Unit = {},
-    onOptions: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null
-) {
-    AxTopAppBar(
-        title = {
-            Text(
-                when (status) {
-                    FlashingStatus.FLASHING -> stringResource(R.string.flashing)
-                    FlashingStatus.SUCCESS -> stringResource(R.string.success)
-                    FlashingStatus.FAILED -> stringResource(R.string.failed)
-                    else -> {
-                        stringResource(R.string.idle)
-                    }
-                },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = when (status) {
-                    FlashingStatus.FLASHING -> ORANGE
-                    FlashingStatus.SUCCESS -> GREEN
-                    FlashingStatus.FAILED -> RED
-                    else -> {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                }
+        is FlashIt.PluginAction -> {
+            val pluginPath = File(
+                PathHelper.getWorkingPath(
+                    Axeron.getAxeronInfo().isRoot(),
+                    AxeronApiConstant.folder.PARENT_PLUGIN
+                ), flashIt.plugin.dirId
             )
-        },
-        navigationIcon = {
-            IconButton(
-                onClick = { if (status != FlashingStatus.FLASHING) onBack() },
-                enabled = status != FlashingStatus.FLASHING
-            ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
-        },
-        actions = {
-            IconButton(onClick = onOptions) {
-                Icon(
-                    Icons.Outlined.FormatSize,
-                    contentDescription = stringResource(R.string.terminal_view_options)
-                )
-            }
-            IconButton(
-                onClick = { if (status != FlashingStatus.FLASHING) onSave() },
-                enabled = status != FlashingStatus.FLASHING
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Save,
-                    contentDescription = "Localized description"
-                )
-            }
-        },
-        scrollBehavior = scrollBehavior
-    )
+            val pluginBin = "${pluginPath.absolutePath}/system/bin"
+            val cmd =
+                $$"export PATH=$$pluginBin:$PATH; cd \"$$pluginPath\"; sh ./action.sh; RES=$?; cd /; exit $RES"
+            // stderr is already streamed into the log; don't repeat it in the error notice.
+            val result = AxeronPluginService.execWithIO(
+                cmd = cmd,
+                onStdout = onStdout,
+                onStderr = onStderr,
+                hideStderr = false
+            )
+            AxeronPluginService.FlashResult(result.code, "", false)
+        }
+    }
 }
