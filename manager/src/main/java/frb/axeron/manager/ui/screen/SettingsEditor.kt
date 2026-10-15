@@ -91,6 +91,7 @@ import frb.axeron.manager.ui.component.AxDropdownItem
 import frb.axeron.manager.ui.component.AxDropdownMenu
 import androidx.compose.material.icons.outlined.Key
 import frb.axeron.manager.ui.component.AxCardShape
+import frb.axeron.manager.ui.component.ScrollableTextField
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
@@ -793,56 +794,31 @@ private fun SettingEditorSheet(
             }
         }
 
-        // The field scrolls inside once the value passes its visible lines; nothing shows that
-        // on its own, so draw a scroll indicator and say how much there is.
+        // Scrolls inside past its visible lines, with an indicator; the hint below says how much.
         val valueScroll = rememberScrollState()
         val scrollsInside = valueScroll.maxValue > 0
-        val indicatorColor = MaterialTheme.colorScheme.primary
-        Box {
-            OutlinedTextField(
-                state = valueState,
-                label = { Text(stringResource(R.string.settings_value)) },
-                enabled = !busy,
-                lineLimits = TextFieldLineLimits.MultiLine(3, VALUE_FIELD_MAX_LINES),
-                scrollState = valueScroll,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                shape = AxPanelShape,
-                trailingIcon = {
-                    IconButton(
-                        enabled = value.isNotEmpty(),
-                        onClick = { if (ClipboardUtil.put(context, value)) toast(valueCopied) }
-                    ) {
-                        Icon(
-                            Icons.Outlined.ContentCopy,
-                            contentDescription = stringResource(R.string.settings_copy_value),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(valueFocus)
-            )
-            if (scrollsInside) {
-                Canvas(
-                    Modifier
-                        .matchParentSize()
-                        .padding(top = 14.dp, bottom = 14.dp, end = 4.dp)
+        ScrollableTextField(
+            state = valueState,
+            label = stringResource(R.string.settings_value),
+            enabled = !busy,
+            minLines = 3,
+            maxLines = VALUE_FIELD_MAX_LINES,
+            scrollState = valueScroll,
+            trailingIcon = {
+                IconButton(
+                    enabled = value.isNotEmpty(),
+                    onClick = { if (ClipboardUtil.put(context, value)) toast(valueCopied) }
                 ) {
-                    val viewport = valueScroll.viewportSize.toFloat()
-                    val max = valueScroll.maxValue.toFloat()
-                    val thumb = (size.height * viewport / (viewport + max)).coerceAtLeast(24.dp.toPx())
-                    val top = (size.height - thumb) * (valueScroll.value / max)
-                    val width = 3.dp.toPx()
-                    drawRoundRect(
-                        color = indicatorColor.copy(alpha = 0.6f),
-                        topLeft = Offset(size.width - width, top),
-                        size = Size(width, thumb),
-                        cornerRadius = CornerRadius(width / 2)
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(R.string.settings_copy_value),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-            }
-        }
+            },
+            fieldModifier = Modifier.focusRequester(valueFocus),
+            modifier = Modifier.fillMaxWidth()
+        )
         if (valueMatches.isNotEmpty()) {
             MatchNavigator(
                 query = query,

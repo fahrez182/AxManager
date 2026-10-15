@@ -71,6 +71,8 @@ import frb.axeron.manager.data.QuickSettingsStore
 import frb.axeron.manager.data.SettingsAccess
 import frb.axeron.manager.data.SettingsRepository.SettingType
 import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.ScrollableTextField
+import androidx.compose.foundation.text.input.TextFieldState
 import frb.axeron.manager.ui.component.AxDropdownDivider
 import frb.axeron.manager.ui.component.AxDropdownHeader
 import frb.axeron.manager.ui.component.AxDropdownItem
@@ -395,20 +397,20 @@ private fun CustomValueControl(
     onApply: (String) -> Unit
 ) {
     // Follows the setting until the user starts typing.
-    var draft by remember(value) { mutableStateOf(value.orEmpty()) }
+    val state = remember(value) { TextFieldState(value.orEmpty()) }
+    val draft = state.text.toString()
     val changed = draft != value.orEmpty()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(end = 8.dp)
     ) {
-        OutlinedTextField(
-            value = draft,
-            onValueChange = { draft = it },
+        // Shared long-text field: scroll bar past 4 lines, and its scrolling stays in it.
+        ScrollableTextField(
+            state = state,
             enabled = enabled,
+            minLines = 1,
             maxLines = 4,
-            placeholder = { Text(stringResource(R.string.quick_settings_unset)) },
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            shape = AxPanelShape,
+            placeholder = stringResource(R.string.quick_settings_unset),
             modifier = Modifier.weight(1f)
         )
         Spacer(Modifier.width(8.dp))
