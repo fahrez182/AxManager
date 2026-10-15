@@ -234,8 +234,6 @@
     <string name="terminal_line_numbers">Line numbers</string>
     <string name="terminal_line_numbers_desc">Show the line number beside each line</string>
     <string name="terminal_text_size">Text size</string>
-    <string name="terminal_unlimited">Unlimited lines</string>
-    <string name="terminal_unlimited_desc">Keep every line instead of the last 20,000. Lines are stored in app cache on disk, so huge output like dumpsys stays scrollable</string>
     <string name="activation_error_count">%d errors</string>
     <string name="activation_server_timeout">The starter ran, but the AxManager server didn\'t connect. Check the log above.</string>
     <string name="activation_pairing_started">Pairing started — follow the notification to pair, then try again.</string>

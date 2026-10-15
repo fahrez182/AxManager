@@ -16,7 +16,6 @@ import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.axerish.R
 import frb.axeron.manager.ui.util.TerminalBuffer
-import frb.axeron.manager.ui.util.TerminalPrefs
 import java.io.File
 
 class QuickShellViewModel(application: Application) : AndroidViewModel(application) {
@@ -27,7 +26,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     // Lives here, not in the screen, so the log survives leaving and re-entering QuickShell.
     val terminal = TerminalBuffer<OutputType>(
         spoolDir = File(application.cacheDir, "terminal"),
-        unlimited = TerminalPrefs.unlimited
+        unlimited = true
     )
 
     init {

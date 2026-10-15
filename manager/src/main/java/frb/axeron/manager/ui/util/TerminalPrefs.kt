@@ -14,7 +14,6 @@ object TerminalPrefs {
 
     private const val KEY_LINE_NUMBERS = "terminal_line_numbers"
     private const val KEY_TEXT_SCALE = "terminal_text_scale"
-    private const val KEY_UNLIMITED = "terminal_unlimited_lines"
 
     private val prefs get() = AxeronSettings.getPreferences()
 
@@ -22,7 +21,6 @@ object TerminalPrefs {
     private var _textScale by mutableFloatStateOf(
         prefs.getFloat(KEY_TEXT_SCALE, 1f).coerceIn(MIN_SCALE, MAX_SCALE)
     )
-    private var _unlimited by mutableStateOf(prefs.getBoolean(KEY_UNLIMITED, false))
 
     var lineNumbers: Boolean
         get() = _lineNumbers
@@ -37,13 +35,5 @@ object TerminalPrefs {
             val v = value.coerceIn(MIN_SCALE, MAX_SCALE)
             _textScale = v
             prefs.edit { putFloat(KEY_TEXT_SCALE, v) }
-        }
-
-    /** Keep every line (spooled to disk) instead of the last 20,000 in memory. */
-    var unlimited: Boolean
-        get() = _unlimited
-        set(value) {
-            _unlimited = value
-            prefs.edit { putBoolean(KEY_UNLIMITED, value) }
         }
 }

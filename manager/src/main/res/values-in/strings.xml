@@ -234,8 +234,6 @@
     <string name="terminal_line_numbers">Nomor baris</string>
     <string name="terminal_line_numbers_desc">Tampilkan nomor di samping setiap baris</string>
     <string name="terminal_text_size">Ukuran teks</string>
-    <string name="terminal_unlimited">Baris tanpa batas</string>
-    <string name="terminal_unlimited_desc">Simpan semua baris, bukan hanya 20.000 terakhir. Baris disimpan di cache aplikasi (disk), jadi output besar seperti dumpsys tetap bisa di-scroll</string>
     <string name="activation_error_count">%d error</string>
     <string name="activation_server_timeout">Starter sudah dijalankan, tapi server AxManager tidak terhubung. Cek log di atas.</string>
     <string name="activation_pairing_started">Penyandingan dimulai — ikuti notifikasi untuk menyandingkan, lalu coba lagi.</string>

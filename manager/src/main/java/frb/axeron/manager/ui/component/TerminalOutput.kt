@@ -108,8 +108,7 @@ fun terminalTextStyle(scale: Float = TerminalPrefs.textScale): TextStyle = TextS
  * output and a side pill (top / go to line[:column] / bottom).
  *
  * Index based: only the visible lines are read from the buffer, so a million spooled lines
- * scroll like twenty. View options (line numbers, text scale, unlimited lines) come from
- * [TerminalPrefs].
+ * scroll like twenty. View options (line numbers, text scale) come from [TerminalPrefs].
  *
  * @param wrap soft-wrap long lines; when false the text pans horizontally while the line
  * numbers stay put.
@@ -129,10 +128,6 @@ fun <K : Any> TerminalOutput(
 ) {
     val showLineNumbers = TerminalPrefs.lineNumbers
     val style = terminalTextStyle()
-
-    // The storage mode follows the shared preference, also for output already on screen.
-    val unlimited = TerminalPrefs.unlimited
-    LaunchedEffect(buffer, unlimited) { buffer.setUnlimited(unlimited) }
 
     val index = remember(buffer, filter) { filter?.let { FilterIndex(it) } }
     val view by remember(buffer, index) {

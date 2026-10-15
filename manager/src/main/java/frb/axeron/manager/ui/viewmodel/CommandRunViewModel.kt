@@ -3,7 +3,6 @@ package frb.axeron.manager.ui.viewmodel
 import android.app.Application
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
-import frb.axeron.manager.ui.util.TerminalPrefs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -40,7 +39,7 @@ class CommandRunViewModel(application: Application) : AndroidViewModel(applicati
 
     val terminal = TerminalBuffer<Stream>(
         spoolDir = File(application.cacheDir, "terminal"),
-        unlimited = TerminalPrefs.unlimited
+        unlimited = true
     )
 
     override fun onCleared() {

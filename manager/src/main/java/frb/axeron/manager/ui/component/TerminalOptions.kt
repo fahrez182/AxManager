@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
-import androidx.compose.material.icons.outlined.AllInclusive
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.TextDecrease
 import androidx.compose.material.icons.outlined.TextIncrease
@@ -60,14 +59,6 @@ fun TerminalOptionsCard(modifier: Modifier = Modifier) {
                 ) { Icon(Icons.Outlined.TextIncrease, contentDescription = null) }
             }
         }
-        SettingsDivider()
-        SettingsRow(
-            label = stringResource(R.string.terminal_unlimited),
-            description = stringResource(R.string.terminal_unlimited_desc),
-            iconVector = Icons.Outlined.AllInclusive,
-            checked = TerminalPrefs.unlimited,
-            onSwitchChange = { TerminalPrefs.unlimited = it }
-        )
     }
 }
 
