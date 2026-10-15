@@ -54,13 +54,14 @@ fun AxSnackBarHost(
 }
 
 /**
- * High-contrast card: icon badge, message, optional action and dismiss, and a thin line along
- * the bottom that runs down for as long as the snackbar stays up.
+ * A card in the app's own colours (like its other cards, primary for accents): icon badge,
+ * message, optional action and dismiss, and a thin line along the bottom that runs down for as
+ * long as the snackbar stays up. The shadow lifts it off the content underneath.
  */
 @Composable
 private fun AxSnackbar(data: SnackbarData) {
     val colors = MaterialTheme.colorScheme
-    val accent = colors.inversePrimary
+    val accent = colors.primary
     // How long the host keeps it up (Material's own timings); indefinite has no countdown.
     val durationMillis = when (data.visuals.duration) {
         SnackbarDuration.Short -> 4_000
@@ -74,8 +75,9 @@ private fun AxSnackbar(data: SnackbarData) {
 
     Surface(
         shape = AxCardShape,
-        color = colors.inverseSurface,
-        contentColor = colors.inverseOnSurface,
+        color = colors.surfaceContainerHigh,
+        contentColor = colors.onSurface,
+        tonalElevation = 2.dp,
         shadowElevation = 6.dp,
         modifier = Modifier
             .fillMaxWidth()
@@ -86,7 +88,7 @@ private fun AxSnackbar(data: SnackbarData) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp)
             ) {
-                Surface(shape = CircleShape, color = accent.copy(alpha = 0.18f), modifier = Modifier.size(32.dp)) {
+                Surface(shape = CircleShape, color = accent.copy(alpha = 0.12f), modifier = Modifier.size(32.dp)) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Outlined.Info,
