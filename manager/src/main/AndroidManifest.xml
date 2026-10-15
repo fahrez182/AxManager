@@ -121,6 +121,21 @@
             </intent-filter>
         </activity>
 
+        <!-- "Save snippet" in the text selection toolbar; not exported, so AxManager only. -->
+        <activity
+            android:name=".ui.SaveSnippetActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/quickshell_bookmark"
+            android:noHistory="true"
+            android:theme="@style/Theme.Transparent.NoUI">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".ui.CrashActivity"
             android:excludeFromRecents="true"

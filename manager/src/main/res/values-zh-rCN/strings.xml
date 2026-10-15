@@ -159,8 +159,8 @@
     <string name="block_key_event_desc">阻止选定的按键事件</string>
     <string name="shell_restriction">限制后台运行</string>
     <string name="shell_restriction_desc">开启后将限制命令在后台执行</string>
-    <string name="compat_mode">Busybox 兼容模式</string>
-    <string name="compat_mode_desc">开启后将使用 Busybox 来拦截不支持的命令。</string>
+    <string name="compat_mode">兼容模式</string>
+    <string name="compat_mode_desc">通过内置 busybox（setsid + sh）而非系统自带的工具启动每个会话。命令本身仍在 /system/bin/sh 中运行，使用哪些工具取决于 PATH（Prefer System Binaries）。若会话无法启动，请关闭此项。</string>
     <string name="axeron_permission">AX-权限接管</string>
     <string name="axeron_permission_desc">使用基于 Shizuku-API 构建的 Ax-Environment 接管授权请求</string>
     <string name="tcp_mode">无线调试模式</string>

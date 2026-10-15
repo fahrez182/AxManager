@@ -111,6 +111,28 @@ import frb.axeron.manager.ui.component.SettingsItemExpanded
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.util.PrefsEnumHelper
 import frb.axeron.manager.ui.viewmodel.QuickShellViewModel
+import android.widget.Toast
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import frb.axeron.manager.data.CommandBookmarks
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.text.style.TextAlign
+import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.AxOptionsSheet
+import frb.axeron.manager.ui.component.OptionsSectionHeader
+import frb.axeron.manager.ui.component.SettingsRow
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
+import frb.axeron.manager.ui.component.AxPanelShape
+import frb.axeron.manager.ui.component.scaleDp
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
@@ -306,81 +328,49 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             val paddingHeight = (screen * 0.52).dp
 
 
-            ElevatedCard(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.elevatedCardColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-//                    containerColor = Color.Transparent
-                ),
+            val savedText = stringResource(R.string.quickshell_bookmark_saved)
+            var showBookmarks by remember { mutableStateOf(false) }
+            if (showBookmarks) {
+                BookmarksSheet(
+                    onInsert = { command ->
+                        showBookmarks = false
+                        viewModel.insertCommand(command)
+                    },
+                    onRun = { command ->
+                        showBookmarks = false
+                        viewModel.setCommand(command)
+                        viewModel.runShell()
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    },
+                    onDismissRequest = { showBookmarks = false }
+                )
+            }
+
+            // Like a terminal: "#" when the server runs as root, "$" as shell.
+            val prompt = remember {
+                val root = runCatching { Axeron.pingBinder() && Axeron.getAxeronInfo().isRoot() }
+                    .getOrDefault(false)
+                if (root) "#" else "$"
+            }
+            CommandInput(
+                state = viewModel.commandInput,
+                prompt = prompt,
+                expanded = keyboardVisible,
+                onRun = {
+                    viewModel.runShell()
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                },
+                onSaveBookmark = { text ->
+                    CommandBookmarks.add(text)
+                    Toast.makeText(context, savedText, Toast.LENGTH_SHORT).show()
+                },
+                onOpenBookmarks = { showBookmarks = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .run {
-                        if (keyboardVisible) {
-                            padding(bottom = paddingHeight)
-                        } else {
-                            padding(bottom = 0.dp)
-                        }
-                    }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    TextField(
-                        value = viewModel.commandText,
-                        onValueChange = {
-                            viewModel.setCommand(it)
-                        },
-                        label = {
-                            Text(viewModel.execMode)
-                        },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = MaterialTheme.typography.bodyLarge.fontSize,
-                            lineHeightStyle = LineHeightStyle(
-                                alignment = LineHeightStyle.Alignment.Center,
-                                trim = LineHeightStyle.Trim.Both
-                            ),
-                            fontFamily = FontFamily.Monospace
-                        ),
-                        maxLines = if (keyboardVisible) Int.MAX_VALUE else 1,
-                        colors = TextFieldDefaults.colors(
-                            focusedIndicatorColor = Color.Transparent,   // garis saat fokus
-                            unfocusedIndicatorColor = Color.Transparent, // garis saat tidak fokus
-                            disabledIndicatorColor = Color.Transparent,   // garis saat disabled
-                            focusedContainerColor = Color.Transparent,   // ⬅ ini penting
-                            unfocusedContainerColor = Color.Transparent, // ⬅ ini juga
-                            disabledContainerColor = Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = tween(
-                                    durationMillis = 250,
-                                    easing = LinearOutSlowInEasing
-                                )
-                            )
-                    )
-
-                    IconButton(
-                        onClick = {
-                            viewModel.runShell()
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp)
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_exec),
-                            contentDescription = stringResource(R.string.exec),
-                            modifier = Modifier.size(38.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
+                    .padding(bottom = if (keyboardVisible) paddingHeight else 0.dp)
+            )
 
         }
     }
@@ -405,179 +395,218 @@ fun KeyboardVisibilityListener(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * QuickShell's settings: snippets, which output is shown and which is saved (one table),
+ * blocked keys, terminal view options and shell behaviour.
+ */
 @Composable
 fun ExtraSettings(
     showDialog: Boolean,
     quickShellViewModel: QuickShellViewModel,
     onDismissRequest: () -> Unit
 ) {
-    if (showDialog) {
-        ModalBottomSheet(
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            onDismissRequest = onDismissRequest
+    if (!showDialog) return
+    val context: Context = LocalContext.current
+
+    var showSnippets by remember { mutableStateOf(false) }
+    var addingSnippet by remember { mutableStateOf(false) }
+    if (showSnippets) {
+        BookmarksSheet(
+            onInsert = { command ->
+                showSnippets = false
+                quickShellViewModel.insertCommand(command)
+                onDismissRequest()
+            },
+            onRun = { command ->
+                showSnippets = false
+                quickShellViewModel.setCommand(command)
+                quickShellViewModel.runShell()
+                onDismissRequest()
+            },
+            onDismissRequest = { showSnippets = false }
+        )
+    }
+    if (addingSnippet) {
+        AddSnippetSheet(onDismissRequest = { addingSnippet = false })
+    }
+
+    AxOptionsSheet(
+        title = stringResource(R.string.quickshell_settings),
+        onDismissRequest = onDismissRequest
+    ) {
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val context: Context = LocalContext.current
-            val outputOption = QuickShellViewModel.OutputType.entries
-            val keyEventOption = QuickShellViewModel.KeyEventType.entries
+            // ---- snippets ----
+            AxCard {
+                SettingsRow(
+                    iconVector = Icons.Outlined.BookmarkBorder,
+                    label = stringResource(R.string.quickshell_bookmarks),
+                    description = stringResource(R.string.quickshell_snippets_count, CommandBookmarks.items.size),
+                    onClick = { showSnippets = true }
+                )
+                SettingsRow(
+                    iconVector = Icons.Outlined.Add,
+                    label = stringResource(R.string.quickshell_add_snippet),
+                    description = stringResource(R.string.quickshell_add_snippet_desc),
+                    onClick = { addingSnippet = true },
+                    showDivider = true
+                )
+            }
 
-            // SettingsItem carries its own 16dp gutter.
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    val checkedOutputStates = remember {
-                        mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
-                            outputOption.forEach {
-                                put(
-                                    it,
-                                    PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                        .loadState(context, it, true)
-                                )
-                            }
-                        }
+            // ---- output: shown on screen / kept in saved logs, per kind ----
+            OptionsSectionHeader(stringResource(R.string.quickshell_output_section))
+            OutputFilterTable(context)
+
+            // ---- keys ----
+            OptionsSectionHeader(stringResource(R.string.block_key_event))
+            AxCard {
+                val prefs = remember { PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_") }
+                val blocked = remember {
+                    mutableStateMapOf<QuickShellViewModel.KeyEventType, Boolean>().apply {
+                        QuickShellViewModel.KeyEventType.entries.forEach { put(it, prefs.loadState(context, it, true)) }
                     }
-
-                    SettingsItemExpanded(
-                        label = stringResource(R.string.output_filter),
-                        description = stringResource(R.string.filter_output_desc),
-                        iconVector = Icons.Outlined.Output
-                    ) { _, expanded ->
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            Column(Modifier.padding(bottom = 12.dp)) {
-                                outputOption.forEach { type ->
-                                    val isChecked = checkedOutputStates[type] ?: false
-                                    CheckBoxText(
-                                        label = stringResource(type.labelId),
-                                        checked = isChecked
-                                    ) {
-                                        checkedOutputStates[type] = it
-                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("output_")
-                                            .saveState(context, type, it)
-                                    }
+                }
+                // Checkboxes side by side: a short list of keys, each simply blocked or not.
+                Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                    QuickShellViewModel.KeyEventType.entries.forEach { type ->
+                        val checked = blocked[type] == true
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            // No clip: a rounded shape here cuts off the checkbox's own highlight.
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    blocked[type] = !checked
+                                    prefs.saveState(context, type, !checked)
                                 }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    val checkedSaveStates = remember {
-                        mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
-                            outputOption.forEach {
-                                put(
-                                    it,
-                                    PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
-                                        .loadState(context, it, true)
-                                )
-                            }
-                        }
-                    }
-
-                    SettingsItemExpanded(
-                        label = stringResource(R.string.save_log_filter),
-                        description = stringResource(R.string.filter_save_log_desc),
-                        iconVector = Icons.Outlined.Save,
-                    ) { _, expanded ->
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
+                                .padding(end = 8.dp)
                         ) {
-                            Column(Modifier.padding(bottom = 12.dp)) {
-                                outputOption.forEach { type ->
-                                    val isChecked = checkedSaveStates[type] ?: false
-                                    CheckBoxText(
-                                        label = stringResource(type.labelId),
-                                        checked = isChecked
-                                    ) {
-                                        checkedSaveStates[type] = it
-                                        PrefsEnumHelper<QuickShellViewModel.OutputType>("save_")
-                                            .saveState(context, type, it)
-                                    }
-                                }
-                            }
+                            Checkbox(checked = checked, onCheckedChange = null)
+                            Text(
+                                modifier = Modifier.padding(start = 8.dp),
+                                text = stringResource(type.labelId),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
+            }
 
-                item {
-                    val blockedKeyEventStates = remember {
-                        mutableStateMapOf<QuickShellViewModel.KeyEventType, Boolean>().apply {
-                            keyEventOption.forEach {
-                                put(
-                                    it,
-                                    PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
-                                        .loadState(context, it, true)
-                                )
-                            }
-                        }
-                    }
+            // ---- terminal view ----
+            OptionsSectionHeader(stringResource(R.string.terminal_view_options))
+            TerminalOptionsCard()
 
-                    SettingsItemExpanded(
-                        label = stringResource(R.string.block_key_event),
-                        description = stringResource(R.string.block_key_event_desc),
-                        iconVector = Icons.Outlined.DoNotTouch,
-                    ) { _, expanded ->
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            Column(Modifier.padding(bottom = 12.dp)) {
-                                keyEventOption.forEach { type ->
-                                    val isChecked = blockedKeyEventStates[type] ?: false
-                                    CheckBoxText(
-                                        label = stringResource(type.labelId),
-                                        checked = isChecked
-                                    ) {
-                                        blockedKeyEventStates[type] = it
-                                        PrefsEnumHelper<QuickShellViewModel.KeyEventType>("block_")
-                                            .saveState(context, type, it)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    TerminalOptionsCard(Modifier.padding(horizontal = 16.dp))
-                }
-
-                item {
-                    SettingsItem(
-                        iconVector = Icons.Filled.Security,
-                        label = stringResource(R.string.shell_restriction),
-                        description = stringResource(R.string.shell_restriction_desc),
-                        checked = quickShellViewModel.isShellRestrictionEnabled,
-                        onSwitchChange = { quickShellViewModel.setShellRestriction(it) }
-                    )
-                }
-
-                item {
-                    SettingsItem(
-                        iconVector = Icons.Outlined.Bolt,
-                        label = stringResource(R.string.compat_mode),
-                        description = stringResource(R.string.compat_mode_desc),
-                        checked = quickShellViewModel.isCompatModeEnabled,
-                        onSwitchChange = { quickShellViewModel.setCompatMode(it) }
-                    )
-                }
+            // ---- shell ----
+            OptionsSectionHeader(stringResource(R.string.quickshell_shell_section))
+            AxCard {
+                SettingsRow(
+                    iconVector = Icons.Filled.Security,
+                    label = stringResource(R.string.shell_restriction),
+                    description = stringResource(R.string.shell_restriction_desc),
+                    checked = quickShellViewModel.isShellRestrictionEnabled,
+                    onSwitchChange = { quickShellViewModel.setShellRestriction(it) }
+                )
+                SettingsRow(
+                    iconVector = Icons.Outlined.Bolt,
+                    label = stringResource(R.string.compat_mode),
+                    description = stringResource(R.string.compat_mode_desc),
+                    checked = quickShellViewModel.isCompatModeEnabled,
+                    onSwitchChange = { quickShellViewModel.setCompatMode(it) },
+                    showDivider = true
+                )
             }
         }
     }
 }
 
+/**
+ * One row per output kind, two checkboxes: shown on screen, and kept when the log is saved.
+ * Same preferences as the two filters it replaces ("output_", "save_"), so choices carry over.
+ */
+@Composable
+private fun OutputFilterTable(context: Context) {
+    val showPrefs = remember { PrefsEnumHelper<QuickShellViewModel.OutputType>("output_") }
+    val savePrefs = remember { PrefsEnumHelper<QuickShellViewModel.OutputType>("save_") }
+    val types = QuickShellViewModel.OutputType.entries
+    val shown = remember {
+        mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
+            types.forEach { put(it, showPrefs.loadState(context, it, true)) }
+        }
+    }
+    val saved = remember {
+        mutableStateMapOf<QuickShellViewModel.OutputType, Boolean>().apply {
+            types.forEach { put(it, savePrefs.loadState(context, it, true)) }
+        }
+    }
+    val column = 60.dp
+
+    AxCard {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.quickshell_output_desc),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            listOf(R.string.quickshell_show, R.string.quickshell_save_column).forEach {
+                Text(
+                    text = stringResource(it),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(column)
+                )
+            }
+        }
+        // Compact: no 48dp touch reserve per checkbox; each cell is its own tap target instead.
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            types.forEach { type ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 16.dp, end = 8.dp)
+                ) {
+                    Text(
+                        text = stringResource(type.labelId),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = type.color(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactCheckCell(checked = shown[type] == true, width = column) {
+                        shown[type] = it
+                        showPrefs.saveState(context, type, it)
+                    }
+                    CompactCheckCell(checked = saved[type] == true, width = column) {
+                        saved[type] = it
+                        savePrefs.saveState(context, type, it)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+
+/** A checkbox in a fixed-width table cell; the whole cell toggles it. */
+@Composable
+private fun CompactCheckCell(checked: Boolean, width: Dp, onChange: (Boolean) -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .width(width)
+            .clip(AxPanelShape)
+            .clickable { onChange(!checked) }
+            .padding(vertical = 6.dp)
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+    }
+}
 
 @Composable
 private fun QuickShellViewModel.OutputType.color(): Color = when (this) {

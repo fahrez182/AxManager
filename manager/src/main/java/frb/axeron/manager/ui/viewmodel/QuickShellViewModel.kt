@@ -5,8 +5,12 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,7 +25,20 @@ import java.io.File
 class QuickShellViewModel(application: Application) : AndroidViewModel(application) {
 
     var session: AxeronCommandSession = AxeronCommandSession()
-    private var savedCommand: TextFieldValue? = null
+
+    /**
+     * The command being typed. A TextFieldState (not a TextFieldValue) so the input can show
+     * its scroll position. Edit it on the main thread only: see [onMain].
+     */
+    val commandInput = TextFieldState()
+
+    /** The command that started the running process, put back in the input when it ends. */
+    private var savedCommand: String? = null
+
+    /** Process callbacks come from session threads; the input may only change on main. */
+    private fun onMain(block: () -> Unit) {
+        viewModelScope.launch(Dispatchers.Main.immediate) { block() }
+    }
 
     // Lives here, not in the screen, so the log survives leaving and re-entering QuickShell.
     val terminal = TerminalBuffer<OutputType>(
@@ -40,8 +57,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                 append(OutputType.TYPE_START, "[start] pid=$pid")
                 // `clear`/`top` redraws wipe this command's output only, not the session log.
                 terminal.markScreenStart()
-                savedCommand = TextFieldValue(text = command, selection = TextRange(command.length))
-                commandText = TextFieldValue("") // clear input
+                savedCommand = command
+                onMain { commandInput.clearText() } // now it takes the process's input
                 execMode = "Inputs"
                 isRunning = true
             }
@@ -50,7 +67,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                 Log.i("QuickShellViewModel", "onProcessRunning: $input")
                 val tagInput = if (input.lines().size > 1) "[input]\n" else "[input] "
                 append(OutputType.TYPE_STDIN, tagInput + input.trim())
-                commandText = TextFieldValue("")
+                onMain { commandInput.clearText() }
             }
 
             override fun onProcessFinished(exitCode: Int, lastOutput: String) {
@@ -61,10 +78,8 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                     append(OutputType.TYPE_SPACE, "")
                 }
                 execMode = "Commands"
-                if (savedCommand != null) {
-                    commandText = savedCommand!!
-                    savedCommand = null
-                }
+                savedCommand?.let { saved -> onMain { commandInput.setTextAndPlaceCursorAtEnd(saved) } }
+                savedCommand = null
                 isRunning = false
             }
         })
@@ -128,14 +143,17 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     var isRunning by mutableStateOf(false)
         private set
 
-    var commandText by mutableStateOf(TextFieldValue(""))
-        private set
-
     var execMode by mutableStateOf("Commands")
         private set
 
-    fun setCommand(text: TextFieldValue) {
-        commandText = text
+    /** Replaces the whole input, cursor at the end. Main thread. */
+    fun setCommand(text: String) = commandInput.setTextAndPlaceCursorAtEnd(text)
+
+    /** Puts [text] in place of the selection (or at the cursor), cursor after it. Main thread. */
+    fun insertCommand(text: String) = commandInput.edit {
+        val start = selection.min
+        replace(start, selection.max, text)
+        selection = TextRange(start + text.length)
     }
 
     fun clear() {
@@ -147,7 +165,7 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun runShell() {
-        val cmd = commandText.text.ifBlank { return }
+        val cmd = commandInput.text.toString().ifBlank { return }
             .replace(Regex("(?i)adb\\s+shell\\s+"), "")
             .replace(Regex("[^\\p{Print}\\n]"), "") // sanitize
 
