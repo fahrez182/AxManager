@@ -20,12 +20,13 @@ private val SettingsRepository.SettingType.alias: String
 
 class SettingsRepository(private val contentResolver: ContentResolver) {
 
-    enum class SettingType(val stringId: Int) {
-        GLOBAL(R.string.global_settings),
-        SECURE(R.string.secure_settings),
-        SYSTEM(R.string.system_settings),
-        ANDROID_PROP(R.string.android_properties),
-        AXERON_ENV(R.string.axeron_environment);
+    /** [stringId] is the full name, [shortStringId] the tab label. */
+    enum class SettingType(val stringId: Int, val shortStringId: Int) {
+        GLOBAL(R.string.global_settings, R.string.settings_tab_global),
+        SECURE(R.string.secure_settings, R.string.settings_tab_secure),
+        SYSTEM(R.string.system_settings, R.string.settings_tab_system),
+        ANDROID_PROP(R.string.android_properties, R.string.settings_tab_props),
+        AXERON_ENV(R.string.axeron_environment, R.string.settings_tab_env);
     }
 
 
@@ -155,7 +156,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             process.inputStream.bufferedReader().useLines { lines ->
                 lines.forEach { line ->
                     // Format output: [key]: [value]
-                    val match = Regex("\\[(.+?)]: \\[(.*?)]").find(line)
+                    val match = PROP_LINE.find(line)
                     if (match != null) {
                         val (key, value) = match.destructured
                         map[key] = value
@@ -202,5 +203,10 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
 
     private fun getAllLinuxEnv(): Map<String, String> {
         return Axeron.getEnvironment().envMap
+    }
+
+    private companion object {
+        // Compiled once: resetprop prints a line per property, often thousands.
+        val PROP_LINE = Regex("\\[(.+?)]: \\[(.*?)]")
     }
 }

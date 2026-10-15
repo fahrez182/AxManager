@@ -1,8 +1,6 @@
 package frb.axeron.manager.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -10,7 +8,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -54,7 +50,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,9 +63,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -83,7 +76,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fox2code.androidansi.ktx.parseAsAnsiAnnotatedString
@@ -391,74 +383,6 @@ private class FilterIndex<K : Any>(private val filter: (K) -> Boolean) {
         }
         while (start < size && positions[start] < snap.head) start++
         return LineView(size - start, snap.head, positions, start)
-    }
-}
-
-/** Draggable thumb on the right edge; maps the touch position straight to a line. */
-@Composable
-private fun FastScrollbar(
-    state: LazyListState,
-    count: Int,
-    onDragStart: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val thumbHeight = 44.dp
-    val thumbPx = with(density) { thumbHeight.toPx() }
-    var trackPx by remember { mutableIntStateOf(0) }
-    var dragging by remember { mutableStateOf(false) }
-    var dragFraction by remember { mutableFloatStateOf(0f) }
-
-    val scrollFraction by remember(count) {
-        derivedStateOf {
-            val visible = state.layoutInfo.visibleItemsInfo.size
-            val max = (count - visible).coerceAtLeast(1)
-            (state.firstVisibleItemIndex.toFloat() / max).coerceIn(0f, 1f)
-        }
-    }
-    val fraction = if (dragging) dragFraction else scrollFraction
-    val active = dragging || state.isScrollInProgress
-    val alpha by animateFloatAsState(if (active) 0.9f else 0.35f, label = "thumbAlpha")
-    val width by animateDpAsState(if (dragging) 8.dp else 4.dp, label = "thumbWidth")
-    val thumbColor = MaterialTheme.colorScheme.primary
-
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .width(22.dp)
-            .onSizeChanged { trackPx = it.height }
-            .pointerInput(count) {
-                fun jump(y: Float) {
-                    val range = (trackPx - thumbPx).coerceAtLeast(1f)
-                    dragFraction = ((y - thumbPx / 2) / range).coerceIn(0f, 1f)
-                    val target = (dragFraction * (count - 1)).roundToInt()
-                    scope.launch { state.scrollToItem(target) }
-                }
-                detectVerticalDragGestures(
-                    onDragStart = {
-                        dragging = true
-                        onDragStart()
-                        jump(it.y)
-                    },
-                    onDragEnd = { dragging = false },
-                    onDragCancel = { dragging = false }
-                ) { change, _ ->
-                    change.consume()
-                    jump(change.position.y)
-                }
-            }
-    ) {
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .offset { IntOffset(0, (fraction * (trackPx - thumbPx).coerceAtLeast(0f)).roundToInt()) }
-                .padding(end = 4.dp)
-                .width(width)
-                .height(thumbHeight)
-                .clip(CircleShape)
-                .background(thumbColor.copy(alpha = alpha))
-        )
     }
 }
 
