@@ -3,7 +3,6 @@ package frb.axeron.manager.ui.screen
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -65,6 +64,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.PrivilegeDetailScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.R
+import frb.axeron.manager.ui.component.AxCard
 import frb.axeron.manager.ui.component.AxOptionsSheet
 import frb.axeron.manager.ui.component.OptionTile
 import frb.axeron.manager.ui.component.OptionTileGrid
@@ -72,7 +72,6 @@ import frb.axeron.manager.ui.component.OptionsSectionHeader
 import frb.axeron.manager.ui.component.OrderToggle
 import frb.axeron.manager.ui.component.AxPullToRefreshBox
 import frb.axeron.manager.ui.component.EmptyState
-import frb.axeron.manager.ui.component.HeaderTitleStart
 import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.UseLifecycle
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
@@ -154,9 +153,12 @@ fun PrivilegeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 // Scroll under the fading top bar and clear the floating bar.
                 contentPadding = PaddingValues(
-                    top = paddingValues.calculateTopPadding(),
+                    start = 16.dp,
+                    top = paddingValues.calculateTopPadding() + 10.dp,
+                    end = 16.dp,
                     bottom = paddingValues.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
                 )
             ) {
@@ -198,51 +200,52 @@ private fun PrivilegeAppRow(
             .build()
     }
 
-    // Icon lines up with the header title; the right side stays tight so labels get room.
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(start = HeaderTitleStart, end = 10.dp, top = 10.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = iconRequest,
-            contentDescription = app.label,
-            modifier = Modifier.size(44.dp)
-        )
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = app.label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+    // The right side stays tight so labels get room.
+    AxCard(onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = iconRequest,
+                contentDescription = app.label,
+                modifier = Modifier.size(44.dp)
             )
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = app.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = app.packageName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = app.packageName,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = stringResource(
+                    if (app.isAdded) R.string.privilege_allowed else R.string.privilege_not_allowed
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (app.isAdded) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = stringResource(
-                if (app.isAdded) R.string.privilege_allowed else R.string.privilege_not_allowed
-            ),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = if (app.isAdded) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
