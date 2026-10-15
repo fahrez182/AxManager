@@ -72,6 +72,25 @@ class ActivateViewModel : ViewModel() {
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
 
+    /** Whether the server holds its wakelock, as the server reports it. */
+    var wakeLockHeld by mutableStateOf(false)
+        private set
+
+    /** Saves the choice so it is applied again on every (re)connect, then asks the server. */
+    fun setWakeLock(enabled: Boolean) {
+        AxeronSettings.setWakeLock(enabled)
+        applyWakeLock(enabled)
+    }
+
+    private fun applyWakeLock(enabled: Boolean) {
+        viewModelScope.launch {
+            wakeLockHeld = withContext(Dispatchers.IO) {
+                Axeron.setWakeLock(enabled)
+                Axeron.isWakeLockHeld()
+            }
+        }
+    }
+
     var isShizukuActive by mutableStateOf(
         Axeron.getShizukuService() != null
     )
@@ -200,6 +219,8 @@ class ActivateViewModel : ViewModel() {
                         checkShizukuIntercept()
                         // Re-apply the PATH preference on every (re)connect.
                         Axeron.setPreferSystemBinaries(AxeronSettings.getPreferSystemBinaries())
+                        // The server forgets the wakelock when it stops; hold it again if wanted.
+                        applyWakeLock(AxeronSettings.getWakeLock())
                         status.axeronInfo
                     }
 

@@ -417,6 +417,7 @@
     <string name="permission_kind_signature">Signature</string>
     <string name="permission_granted">Granted</string>
     <string name="permission_not_granted">Not granted</string>
+    <string name="home_wakelock">Wakelock</string>
     <string name="quick_settings">Quick Settings</string>
     <string name="quick_settings_desc">Change your saved settings in one tap</string>
     <string name="quick_settings_empty">No quick settings yet</string>

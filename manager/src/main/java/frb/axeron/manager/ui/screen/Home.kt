@@ -51,6 +51,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.IconButton
@@ -245,7 +246,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 AnimatedVisibility(visible = isRunning) {
                     val pluginCount = pluginViewModel.plugins.size
                     val privilegeCount = privilegeViewModel.privilegedCount
-                    // Plugin and privilege counts share one section, split by a divider.
+                    // Privilege and plugin counts share one section, split by a divider.
                     AxCard(shape = RectangleShape) {
                         Row(
                             modifier = Modifier.height(IntrinsicSize.Min),
@@ -253,11 +254,11 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                         ) {
                             CounterItem(
                                 modifier = Modifier.weight(1f),
-                                icon = Icons.Filled.Extension,
+                                icon = Icons.Filled.AdminPanelSettings,
                                 label = stringResource(
-                                    if (pluginCount <= 1) R.string.plugin else R.string.plugin_plural
+                                    if (privilegeCount <= 1) R.string.privilege else R.string.privilege_plural
                                 ),
-                                value = pluginCount
+                                value = privilegeCount
                             )
                             VerticalDivider(
                                 modifier = Modifier.padding(vertical = 12.dp),
@@ -265,11 +266,11 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                             )
                             CounterItem(
                                 modifier = Modifier.weight(1f),
-                                icon = Icons.Filled.AdminPanelSettings,
+                                icon = Icons.Filled.Extension,
                                 label = stringResource(
-                                    if (privilegeCount <= 1) R.string.privilege else R.string.privilege_plural
+                                    if (pluginCount <= 1) R.string.plugin else R.string.plugin_plural
                                 ),
-                                value = privilegeCount
+                                value = pluginCount
                             )
                         }
                     }
@@ -489,6 +490,10 @@ fun StatusCard(
                         }
                     }
 
+                    WakeLockStrip(
+                        held = activateViewModel.wakeLockHeld,
+                        onChange = activateViewModel::setWakeLock
+                    )
                     ServiceInfoStrip(
                         uptime = formatUptime(
                             time,
@@ -614,14 +619,15 @@ private fun StatusBadge(text: String, container: Color, content: Color, modifier
 @Composable
 private fun StatusStrip(
     onClick: (() -> Unit)? = null,
+    /** False wraps the strip around its content, as a chip (the wakelock toggle). */
+    fillWidth: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
     val color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
+    val width = if (fillWidth) Modifier.fillMaxWidth() else Modifier
     val row: @Composable () -> Unit = {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = width.padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
             content = content
@@ -630,8 +636,7 @@ private fun StatusStrip(
     // Plain clickable instead of Surface(onClick): that one pads the strip to a 48dp touch target
     // with transparent space around the visible part, which lifted it off the card's bottom edge.
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = width
             .clip(AxPanelShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = AxPanelShape,
@@ -775,6 +780,28 @@ private fun formatUptime(millis: Long, daySingular: String, dayPlural: String): 
     }
 
     return "$dayPart%02d:%02d:%02d".format(hours, minutes, seconds)
+}
+
+/**
+ * Server wakelock (keeps the CPU awake with the screen off) as a chip in the info strip's
+ * style: tap it to toggle. The icon and label turn primary while it is held.
+ */
+@Composable
+private fun WakeLockStrip(held: Boolean, onChange: (Boolean) -> Unit) {
+    StatusStrip(onClick = { onChange(!held) }, fillWidth = false) {
+        StripIconText(
+            icon = Icons.Outlined.Coffee,
+            text = stringResource(R.string.home_wakelock),
+            tint = if (held) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        InlineDivider(height = 12.dp)
+        Text(
+            text = stringResource(if (held) R.string.home_strip_on else R.string.home_strip_off),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (held) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 /** AXGC-style sub card: uptime, PID, UID and server version in one strip with dividers. */

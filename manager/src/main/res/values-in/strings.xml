@@ -417,6 +417,7 @@
     <string name="permission_kind_signature">Signature</string>
     <string name="permission_granted">Diizinkan</string>
     <string name="permission_not_granted">Tidak diizinkan</string>
+    <string name="home_wakelock">Wakelock</string>
     <string name="quick_settings">Quick Settings</string>
     <string name="quick_settings_desc">Ubah pengaturan tersimpan dengan sekali ketuk</string>
     <string name="quick_settings_empty">Belum ada quick settings</string>
