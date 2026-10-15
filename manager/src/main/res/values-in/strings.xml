@@ -230,6 +230,10 @@
     <string name="terminal_goto_title">Lompat ke baris</string>
     <string name="terminal_goto_range">Baris %1$d–%2$d · baris atau baris:kolom</string>
     <string name="terminal_goto">Lompat</string>
+    <string name="terminal_search">Cari di output</string>
+    <string name="terminal_search_hint">Cari di output</string>
+    <string name="terminal_search_previous">Hasil sebelumnya</string>
+    <string name="terminal_search_next">Hasil berikutnya</string>
     <string name="terminal_view_options">Tampilan output</string>
     <string name="terminal_line_numbers">Nomor baris</string>
     <string name="terminal_line_numbers_desc">Tampilkan nomor di samping setiap baris</string>

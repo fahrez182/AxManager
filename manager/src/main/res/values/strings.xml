@@ -230,6 +230,10 @@
     <string name="terminal_goto_title">Go to line</string>
     <string name="terminal_goto_range">Lines %1$d–%2$d · line or line:column</string>
     <string name="terminal_goto">Go</string>
+    <string name="terminal_search">Search output</string>
+    <string name="terminal_search_hint">Find in output</string>
+    <string name="terminal_search_previous">Previous match</string>
+    <string name="terminal_search_next">Next match</string>
     <string name="terminal_view_options">Output view</string>
     <string name="terminal_line_numbers">Line numbers</string>
     <string name="terminal_line_numbers_desc">Show the line number beside each line</string>

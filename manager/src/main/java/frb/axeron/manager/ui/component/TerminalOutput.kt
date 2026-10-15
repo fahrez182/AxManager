@@ -1,6 +1,19 @@
 package frb.axeron.manager.ui.component
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.graphics.SolidColor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -189,6 +202,69 @@ fun <K : Any> TerminalOutput(
     var showGoTo by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    // ---- find in output ----
+    var searchOpen by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var matches by remember { mutableStateOf(emptyList<TerminalBuffer.Match>()) }
+    var current by remember { mutableIntStateOf(-1) }
+    val matchHighlight = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f)
+    val currentHighlight = MaterialTheme.colorScheme.primary
+    val onCurrentHighlight = MaterialTheme.colorScheme.onPrimary
+
+    /** Scrolls [match] into view with some context above, panning to it when not wrapping. */
+    suspend fun reveal(match: TerminalBuffer.Match) {
+        val v = view
+        if (v.count == 0) return
+        follow = false
+        state.scrollToItem((v.indexOf(match.position) - 3).coerceAtLeast(0))
+        if (!wrap) {
+            withFrameNanos { } // let the line measure its width first
+            pan.scrollTo(match.start * charWidth - pan.viewport / 3f)
+        }
+    }
+
+    // Re-runs as output streams in; collectLatest drops a search that new output made stale.
+    LaunchedEffect(buffer, filter, query) {
+        if (query.isEmpty()) {
+            matches = emptyList()
+            current = -1
+            return@LaunchedEffect
+        }
+        var fresh = true
+        snapshotFlow { buffer.snapshot.version }.collectLatest {
+            delay(if (fresh) 200 else 400) // typing / live-output debounce
+            val found = withContext(Dispatchers.Default) {
+                val job = coroutineContext
+                buffer.search(query, filter ?: { true }, limit = SEARCH_LIMIT, stop = { !job.isActive })
+            }
+            matches = found
+            if (fresh) {
+                // Start from the first match on screen or below it, like find-in-page.
+                val top = view.let { v ->
+                    if (v.count == 0) 0L else v.positionAt(state.firstVisibleItemIndex.coerceIn(0, v.count - 1))
+                }
+                current = found.indexOfFirst { it.position >= top }.let { if (it < 0) 0 else it }
+                found.getOrNull(current)?.let { reveal(it) }
+                fresh = false
+            } else {
+                current = current.coerceAtMost(found.lastIndex)
+            }
+        }
+    }
+
+    fun step(delta: Int) {
+        if (matches.isEmpty()) return
+        current = Math.floorMod(current + delta, matches.size)
+        val target = matches[current]
+        scope.launch { reveal(target) }
+    }
+
+    fun closeSearch() {
+        searchOpen = false
+        query = ""
+    }
+    BackHandler(enabled = searchOpen) { closeSearch() }
+
     val canScroll by remember {
         derivedStateOf { state.canScrollBackward || state.canScrollForward }
     }
@@ -217,15 +293,25 @@ fun <K : Any> TerminalOutput(
                     val line = remember(position, version) { buffer.lineAt(position) }
                         ?: return@items
                     val mark = highlight?.takeIf { it.line == line.number }
+                    val currentStart = matches.getOrNull(current)
+                        ?.takeIf { it.position == position }?.start ?: -1
                     val parsed = remember(line.text) { line.text.toAnsiString() }
-                    val text = remember(parsed, mark) {
-                        if (mark?.column == null) parsed
-                        else parsed.withColumnMark(mark.column - 1, columnHighlight)
+                    val text = remember(parsed, mark, query, currentStart) {
+                        var t = parsed
+                        if (mark?.column != null) t = t.withColumnMark(mark.column - 1, columnHighlight)
+                        if (query.isNotEmpty()) {
+                            t = t.withMatches(
+                                query, matchHighlight, currentStart,
+                                SpanStyle(background = currentHighlight, color = onCurrentHighlight)
+                            )
+                        }
+                        t
                     }
+                    val marked = mark != null || currentStart >= 0
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(if (mark != null) Modifier.background(rowHighlight) else Modifier)
+                            .then(if (marked) Modifier.background(rowHighlight) else Modifier)
                     ) {
                         if (showLineNumbers) {
                             DisableSelection {
@@ -272,7 +358,29 @@ fun <K : Any> TerminalOutput(
             }
         }
         AnimatedVisibility(
-            visible = canScroll && view.count > 0,
+            visible = searchOpen,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = contentPadding.calculateTopPadding())
+                .padding(horizontal = 12.dp)
+        ) {
+            TerminalSearchBar(
+                query = query,
+                onQueryChange = { query = it },
+                current = current,
+                total = matches.size,
+                capped = matches.size >= SEARCH_LIMIT,
+                onPrevious = { step(-1) },
+                onNext = { step(1) },
+                onClose = { closeSearch() }
+            )
+        }
+
+        // Shown whenever there is output: search is useful even when it all fits.
+        AnimatedVisibility(
+            visible = view.count > 0,
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
@@ -286,6 +394,7 @@ fun <K : Any> TerminalOutput(
                 currentLine = currentLine,
                 following = follow,
                 canScrollUp = state.canScrollBackward,
+                onSearch = { searchOpen = true },
                 onTop = {
                     follow = false
                     scope.launch { state.scrollToItem(0) }
@@ -325,6 +434,98 @@ fun <K : Any> TerminalOutput(
 }
 
 private const val SCROLLBAR_MIN_LINES = 200
+
+/** Matches kept per search; enough to step through, bounded for million-line output. */
+private const val SEARCH_LIMIT = 10_000
+
+/** Find bar: query, "current/total" and previous / next / close. */
+@Composable
+private fun TerminalSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    current: Int,
+    total: Int,
+    capped: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    val content = MaterialTheme.colorScheme.onSecondaryContainer
+    val textStyle = MaterialTheme.typography.bodyMedium.copy(color = content)
+
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shadowElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .height(44.dp)
+                .padding(start = 14.dp, end = 2.dp)
+        ) {
+            Icon(
+                Icons.Filled.Search,
+                contentDescription = null,
+                tint = content.copy(alpha = 0.7f),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = textStyle,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onNext() }),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focus),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (query.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.terminal_search_hint),
+                                style = textStyle,
+                                color = content.copy(alpha = 0.6f),
+                                maxLines = 1
+                            )
+                        }
+                        inner()
+                    }
+                }
+            )
+            if (query.isNotEmpty()) {
+                Text(
+                    text = if (total == 0) "0/0"
+                    else "${current + 1}/$total${if (capped) "+" else ""}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = if (total == 0) MaterialTheme.colorScheme.error else content,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+            IconButton(onClick = onPrevious, enabled = total > 0, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Filled.KeyboardArrowUp,
+                    contentDescription = stringResource(R.string.terminal_search_previous)
+                )
+            }
+            IconButton(onClick = onNext, enabled = total > 0, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.terminal_search_next)
+                )
+            }
+            IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close))
+            }
+        }
+    }
+}
 
 /** Which buffer positions are on screen, in order. */
 @Immutable
@@ -391,6 +592,7 @@ private fun TerminalNavPill(
     currentLine: Long?,
     following: Boolean,
     canScrollUp: Boolean,
+    onSearch: () -> Unit,
     onTop: () -> Unit,
     onGoTo: () -> Unit,
     onBottom: () -> Unit,
@@ -401,6 +603,9 @@ private fun TerminalNavPill(
         shadowElevation = 3.dp
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.terminal_search))
+            }
             IconButton(onClick = onTop, enabled = canScrollUp) {
                 Icon(
                     Icons.Filled.KeyboardDoubleArrowUp,
@@ -530,6 +735,29 @@ private const val ESC = '\u001B'
 /** Most lines carry no ANSI codes; skip the parser for those. */
 private fun String.toAnsiString(): AnnotatedString =
     if (indexOf(ESC) < 0) AnnotatedString(this) else parseAsAnsiAnnotatedString()
+
+/**
+ * Marks every occurrence of [query] (ignoring case) with [color]; the one starting at
+ * [currentStart] gets [currentStyle] instead.
+ */
+private fun AnnotatedString.withMatches(
+    query: String,
+    color: Color,
+    currentStart: Int,
+    currentStyle: SpanStyle
+): AnnotatedString {
+    var i = text.indexOf(query, ignoreCase = true)
+    if (i < 0) return this
+    val source = this
+    return buildAnnotatedString {
+        append(source)
+        while (i >= 0) {
+            val style = if (i == currentStart) currentStyle else SpanStyle(background = color)
+            addStyle(style, i, i + query.length)
+            i = source.text.indexOf(query, i + query.length, ignoreCase = true)
+        }
+    }
+}
 
 private fun AnnotatedString.withColumnMark(index: Int, color: Color): AnnotatedString {
     if (index !in indices) return this

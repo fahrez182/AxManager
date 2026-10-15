@@ -24,6 +24,23 @@ class TerminalBufferTest {
     private fun TerminalBuffer<K>.texts() = toList().map { it.text }
 
     @Test
+    fun searchFindsEveryOccurrenceIgnoringCaseAndAnsi() {
+        val b = buffer()
+        b.write(K.OUT, "Error one\n")
+        b.write(K.ERR, "\u001B[31merror\u001B[0m and ERROR\n")
+        b.write(K.OUT, "fine\n")
+        val all = b.search("error")
+        assertEquals(
+            listOf(TerminalBuffer.Match(0, 0), TerminalBuffer.Match(1, 0), TerminalBuffer.Match(1, 10)),
+            all
+        )
+        // The filter hides stderr, and the limit caps the result.
+        assertEquals(listOf(TerminalBuffer.Match(0, 0)), b.search("error", filter = { it == K.OUT }))
+        assertEquals(2, b.search("error", limit = 2).size)
+        assertEquals(emptyList<TerminalBuffer.Match>(), b.search(""))
+    }
+
+    @Test
     fun chunkBoundariesDoNotSplitLines() {
         val b = buffer()
         b.write(K.OUT, "hel")

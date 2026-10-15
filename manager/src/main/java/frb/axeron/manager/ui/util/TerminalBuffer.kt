@@ -161,10 +161,49 @@ class TerminalBuffer<K : Any>(
 
     fun sink(kind: K): (String) -> Unit = { write(kind, it) }
 
+    /** One occurrence found by [search]: line position and start index in its plain text. */
+    @Immutable
+    data class Match(val position: Long, val start: Int)
+
+    /**
+     * Occurrences of [query] (ignoring case) in the plain text (ANSI stripped) of lines passing
+     * [filter], oldest first, at most [limit]. Walks the whole output, so call it off the main
+     * thread; [stop] is checked between batches to abandon a stale search.
+     */
+    fun search(
+        query: String,
+        filter: (K) -> Boolean = { true },
+        limit: Int = 10_000,
+        stop: () -> Boolean = { false },
+    ): List<Match> {
+        if (query.isEmpty()) return emptyList()
+        val matches = ArrayList<Match>()
+        val from = synchronized(stateLock) { store.head }
+        forEachLine(from, filter, stop) { line ->
+            val text = AnsiFilter.stripAnsi(line.text)
+            var i = text.indexOf(query, ignoreCase = true)
+            while (i >= 0 && matches.size < limit) {
+                matches.add(Match(line.number - 1, i))
+                i = text.indexOf(query, i + query.length, ignoreCase = true)
+            }
+            matches.size < limit
+        }
+        return matches
+    }
+
     /** Walks lines in small locked batches so parsing and the UI never stall behind it. */
-    private inline fun forEachLine(from: Long, filter: (K) -> Boolean, action: (Line<K>) -> Unit) {
+    private inline fun forEachLine(from: Long, filter: (K) -> Boolean, action: (Line<K>) -> Unit) =
+        forEachLine(from, filter, { false }) { action(it); true }
+
+    /** As above; stops when [stop] says so between batches or [action] returns false. */
+    private inline fun forEachLine(
+        from: Long,
+        filter: (K) -> Boolean,
+        stop: () -> Boolean,
+        action: (Line<K>) -> Boolean
+    ) {
         var position = from
-        while (true) {
+        while (!stop()) {
             val batch = synchronized(stateLock) {
                 if (position < store.head) position = store.head
                 val end = minOf(store.tail, position + 2_000)
@@ -173,7 +212,9 @@ class TerminalBuffer<K : Any>(
                 lines
             }
             if (batch.isEmpty()) break
-            batch.forEach { if (filter(it.kind)) action(it) }
+            for (line in batch) {
+                if (filter(line.kind) && !action(line)) return
+            }
         }
     }
 
