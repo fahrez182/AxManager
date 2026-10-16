@@ -3,9 +3,7 @@ package frb.axeron.manager.ui.screen
 import android.content.pm.ApplicationInfo
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.TextStyle
@@ -14,17 +12,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.BatteryChargingFull
@@ -107,10 +106,10 @@ import frb.axeron.manager.ui.component.AxTopAppBar
 import frb.axeron.manager.ui.component.ConfirmOption
 import frb.axeron.manager.ui.component.CountdownConfirmSheet
 import frb.axeron.manager.ui.component.IconBadge
-import frb.axeron.manager.ui.component.OptionTileGrid
 import frb.axeron.manager.ui.component.SectionHeader
 import frb.axeron.manager.ui.component.SettingsDivider
 import frb.axeron.manager.ui.component.StatusPill
+import frb.axeron.manager.ui.component.UseLifecycle
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
@@ -154,7 +153,26 @@ fun PrivilegeDetailScreen(
     // ---- package actions ----
     val scope = rememberCoroutineScope()
     val snackbar = LocalSnackbarHost.current
-    val serverRunning = remember { Axeron.pingBinder() }
+    var serverRunning by remember { mutableStateOf(Axeron.pingBinder()) }
+
+    // State can change while this page is in the background (system Settings, the Shizuku app,
+    // the server starting or stopping), so re-read all of it each time the page comes back.
+    UseLifecycle(
+        onResume = {
+            serverRunning = Axeron.pingBinder()
+            privilegeViewModel.loadInstalledApps(false) // re-reads the Axeron permission flags
+            detail.refresh()
+        }
+    )
+
+    // Uninstalled from outside (Settings, a store, adb): nothing left to show, so leave the page.
+    val goneText = stringResource(R.string.privilege_app_gone, appInfo.label)
+    LaunchedEffect(detail.gone) {
+        if (!detail.gone) return@LaunchedEffect
+        Toast.makeText(context, goneText, Toast.LENGTH_SHORT).show()
+        privilegeViewModel.loadInstalledApps()
+        navigator.popBackStack()
+    }
     val isRoot = remember(serverRunning) {
         serverRunning && runCatching { Axeron.getAxeronInfo().isRoot() }.getOrDefault(false)
     }
@@ -293,63 +311,73 @@ fun PrivilegeDetailScreen(
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                // Padding inside the scroll lets content pass under the fading top bar.
-                .padding(
-                    top = innerPadding.calculateTopPadding() + 8.dp,
-                    bottom = innerPadding.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
-                )
-                .padding(horizontal = 16.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            // Padding inside the list lets content pass under the fading top bar.
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                end = 16.dp,
+                bottom = innerPadding.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            HeaderCard(
-                appInfo = appInfo,
-                iconRequest = iconRequest,
-                allowed = allowed,
-                onAllowedChange = setAllowed,
-                serverRunning = serverRunning,
-                actionLabels = actionLabels,
-                actionNote = { action ->
-                    when {
-                        action == PackageAction.UNINSTALL && systemApp ->
-                            stringResource(R.string.privilege_uninstall_user_only_short)
-                        action == PackageAction.CLEAR_CACHE && serverRunning && !isRoot ->
-                            stringResource(R.string.privilege_clear_cache_external_short)
-                        else -> null
+            item(key = "header") {
+                HeaderCard(
+                    appInfo = appInfo,
+                    iconRequest = iconRequest,
+                    allowed = allowed,
+                    onAllowedChange = setAllowed,
+                    serverRunning = serverRunning,
+                    actionLabels = actionLabels,
+                    actionNote = { action ->
+                        when {
+                            action == PackageAction.UNINSTALL && systemApp ->
+                                stringResource(R.string.privilege_uninstall_user_only_short)
+                            action == PackageAction.CLEAR_CACHE && serverRunning && !isRoot ->
+                                stringResource(R.string.privilege_clear_cache_external_short)
+                            else -> null
+                        }
+                    },
+                    running = running,
+                    onAction = { action ->
+                        keepData = false
+                        confirming = action
                     }
-                },
-                running = running,
-                onAction = { action ->
-                    keepData = false
-                    confirming = action
-                }
-            )
+                )
+            }
 
-            GeneralSection(
-                viewModel = detail,
-                labels = generalLabels,
-                enabled = serverRunning,
-                onToggle = { item, on ->
-                    if (item == GeneralItem.ENABLED && !on) {
-                        confirmDisable = true
-                    } else scope.launch {
-                        reportFailure(detail.setGeneral(item, on), generalLabels.getValue(item))
-                    }
+            item(key = "general") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    GeneralSection(
+                        viewModel = detail,
+                        labels = generalLabels,
+                        enabled = serverRunning,
+                        onToggle = { item, on ->
+                            if (item == GeneralItem.ENABLED && !on) {
+                                confirmDisable = true
+                            } else scope.launch {
+                                reportFailure(detail.setGeneral(item, on), generalLabels.getValue(item))
+                            }
+                        }
+                    )
                 }
-            )
+            }
 
-            PermissionsSection(
-                viewModel = detail,
-                enabled = serverRunning,
-                onToggle = { permission, grant ->
-                    scope.launch { reportFailure(detail.setGranted(permission, grant), permission.label) }
-                },
-                onSetMode = { permission, mode ->
-                    scope.launch { reportFailure(detail.setAppOpMode(permission, mode), permission.label) }
+            item(key = "permissions") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PermissionsSection(
+                        viewModel = detail,
+                        enabled = serverRunning,
+                        onToggle = { permission, grant ->
+                            scope.launch { reportFailure(detail.setGranted(permission, grant), permission.label) }
+                        },
+                        onSetMode = { permission, mode ->
+                            scope.launch { reportFailure(detail.setAppOpMode(permission, mode), permission.label) }
+                        }
+                    )
                 }
-            )
+            }
         }
     }
 }
@@ -607,7 +635,7 @@ private enum class PackageAction(
 // General: toggle tiles
 // ---------------------------------------------------------------------------------------------
 
-/** Battery optimization, background activity, enabled: one tile each, coloured when on. */
+/** Battery optimization, background activity, enabled: one row each, saying what it does. */
 @Composable
 private fun GeneralSection(
     viewModel: PrivilegeDetailViewModel,
@@ -621,70 +649,63 @@ private fun GeneralSection(
     if (items.isEmpty()) return
 
     SectionHeader(stringResource(R.string.privilege_general))
-    OptionTileGrid(items = items, columns = 3) { item, modifier ->
-        val on = state[item] == true
-        // A plain on/off: the outline says it, no badge needed.
-        StateTile(
-            icon = item.icon(),
-            label = labels.getValue(item),
-            badge = null,
-            on = on,
-            busy = viewModel.changing[item.name] == true,
-            enabled = enabled,
-            onClick = { onToggle(item, !on) },
-            modifier = modifier
-        )
+    AxCard {
+        items.forEachIndexed { index, item ->
+            if (index > 0) SettingsDivider()
+            val on = state[item] == true
+            ToggleRow(
+                icon = item.icon(),
+                title = labels.getValue(item),
+                description = stringResource(item.descriptionId()),
+                on = on,
+                busy = viewModel.changing[item.name] == true,
+                enabled = enabled,
+                onToggle = { onToggle(item, it) }
+            )
+        }
     }
 }
 
-/**
- * Tile shared by General and Special access: neutral card, the state carried by the icon tint
- * plus a [badge] (Special access: the mode), or without one by an outline (General: on/off).
- */
+/** Icon, title, what it does, and a switch (a spinner while a change is in flight). */
 @Composable
-private fun StateTile(
+private fun ToggleRow(
     icon: ImageVector,
-    label: String,
-    badge: String?,
+    title: String,
+    description: String,
     on: Boolean,
     busy: Boolean,
     enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier
+    onToggle: (Boolean) -> Unit
 ) {
-    val accent by animateColorAsState(
-        if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-        label = "stateTile"
-    )
-    // Same tone as the icon badge's background (its tint at 12%), so the outline stays quiet.
-    val outline = accent.copy(alpha = 0.12f)
-    Surface(
-        onClick = onClick,
-        enabled = enabled && !busy,
-        shape = AxCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = if (badge == null) BorderStroke(if (on) 1.5.dp else 1.dp, outline) else null,
-        modifier = modifier.alpha(if (enabled) 1f else 0.5f)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled && !busy) { onToggle(!on) }
+            .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                    if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else IconBadge(imageVector = icon, tint = accent, size = 32.dp)
-                }
-                Spacer(Modifier.weight(1f))
-                if (badge != null) StatusPill(text = badge, color = accent)
-            }
+        IconBadge(
+            imageVector = icon,
+            size = 32.dp,
+            tint = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
             WrappingText(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(contentAlignment = Alignment.Center) {
+            if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            else Switch(checked = on, enabled = enabled, onCheckedChange = onToggle)
         }
     }
 }
@@ -693,6 +714,12 @@ private fun GeneralItem.labelId(): Int = when (this) {
     GeneralItem.BATTERY_UNRESTRICTED -> R.string.privilege_battery_unrestricted
     GeneralItem.BACKGROUND_ACTIVITY -> R.string.privilege_background_activity
     GeneralItem.ENABLED -> R.string.privilege_app_enabled
+}
+
+private fun GeneralItem.descriptionId(): Int = when (this) {
+    GeneralItem.BATTERY_UNRESTRICTED -> R.string.privilege_battery_unrestricted_desc
+    GeneralItem.BACKGROUND_ACTIVITY -> R.string.privilege_background_activity_desc
+    GeneralItem.ENABLED -> R.string.privilege_app_enabled_desc
 }
 
 private fun GeneralItem.icon(): ImageVector = when (this) {
@@ -735,14 +762,16 @@ private fun PermissionsSection(
             )
         }
         SectionHeader(stringResource(R.string.privilege_special_access))
-        OptionTileGrid(items = special, columns = 2) { permission, modifier ->
-            SpecialAccessTile(
-                permission = permission,
-                busy = viewModel.changing[permission.name] == true,
-                enabled = enabled,
-                onClick = { picking = permission },
-                modifier = modifier
-            )
+        AxCard {
+            special.forEachIndexed { index, permission ->
+                if (index > 0) SettingsDivider()
+                SpecialAccessRow(
+                    permission = permission,
+                    busy = viewModel.changing[permission.name] == true,
+                    enabled = enabled,
+                    onClick = { picking = permission }
+                )
+            }
         }
     }
 
@@ -835,7 +864,7 @@ private fun PermissionsSection(
     }
 }
 
-/** Group icon, label and the short name; [trailing] is the switch or the granted mark. */
+/** Group icon, the permission's name, what it is; [trailing] is the switch or the granted mark. */
 @Composable
 private fun PermissionRow(permission: Permission, trailing: @Composable () -> Unit) {
     Row(
@@ -849,29 +878,36 @@ private fun PermissionRow(permission: Permission, trailing: @Composable () -> Un
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            WrappingText(
-                text = permission.label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
+            // The name and its kind sit small on top; what it means is the line to read.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                WrappingText(
-                    text = permission.name.substringAfterLast('.'),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
+                PermissionName(permission.shortName, Modifier.weight(1f, fill = false))
                 // Only the kinds worth calling out; runtime is the expected case.
                 if (permission.kind != Kind.RUNTIME) {
                     Spacer(Modifier.width(6.dp))
                     KindTag(permission.kind)
                 }
             }
+            WrappingText(
+                text = permission.detail,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
         }
         Spacer(Modifier.width(8.dp))
         trailing()
     }
+}
+
+/** A permission's own name above its meaning: small, regular weight, muted, monospace. */
+@Composable
+private fun PermissionName(name: String, modifier: Modifier = Modifier) {
+    WrappingText(
+        text = name,
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = FontFamily.Monospace,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -909,25 +945,77 @@ private fun GrantedMark(granted: Boolean) {
     }
 }
 
+/**
+ * A special-access permission: its name, what it is, the app-op behind it when that is named
+ * differently, and the mode in effect. Tapping opens the mode picker.
+ */
 @Composable
-private fun SpecialAccessTile(
+private fun SpecialAccessRow(
     permission: Permission,
     busy: Boolean,
     enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier
+    onClick: () -> Unit
 ) {
-    StateTile(
-        icon = specialIcon(permission.appOp),
-        label = permission.label,
-        badge = stringResource(appOpModeLabel(permission.appOpState?.effective)),
-        on = permission.granted,
-        busy = busy,
-        enabled = enabled,
-        onClick = onClick,
-        modifier = modifier
-    )
+    val accent = if (permission.granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled && !busy, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.5f)
+            .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)
+    ) {
+        IconBadge(imageVector = specialIcon(permission.appOp), size = 32.dp, tint = accent)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            // The names sit small on top; what it is, then what it allows, are the lines to read.
+            PermissionName(permission.namesLine)
+            WrappingText(
+                text = permission.detail,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            permission.description?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        if (busy) {
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+        } else {
+            StatusPill(
+                text = stringResource(appOpModeLabel(permission.appOpState?.effective)),
+                color = accent
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
+
+/** The permission's own name without its package, e.g. "CAMERA": the row's title. */
+private val Permission.shortName: String
+    get() = name.substringAfterLast('.')
+
+/** [shortName], plus the app-op behind it when that is named differently. */
+private val Permission.namesLine: String
+    get() = appOp?.takeIf { it != shortName }?.let { "$shortName · $it" } ?: shortName
+
+/**
+ * What the permission is, as the row's description: its label, or the full name when it has
+ * no label of its own (the label then just repeats [shortName]).
+ */
+private val Permission.detail: String
+    get() = if (label.equals(shortName, ignoreCase = true)) name else label
 
 /** Icon by the permission's group, read from its name; a key for anything unrecognised. */
 private fun permissionIcon(name: String): ImageVector {
@@ -995,8 +1083,11 @@ private fun AppOpModeSheet(
     val state = permission.appOpState
     val current = state?.packageMode ?: "default"
     AxOptionsSheet(
-        title = permission.label,
-        description = permission.appOp ?: permission.name,
+        // Same hierarchy as the row: the names small on top, what it is as the title, then
+        // what it allows. With no description of its own, the full name takes that place.
+        overline = { PermissionName(permission.namesLine) },
+        title = permission.detail,
+        description = permission.description ?: permission.name,
         onDismissRequest = onDismissRequest
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -240,6 +240,13 @@ fun PluginList(
                 bottom = contentPadding.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
             ),
         ) {
+            // First item, so it sits right under the search pill and scrolls with the list.
+            if (settings.isDeveloperModeEnabled) {
+                item(key = "plugin_dev_info") {
+                    PluginDevInfoCard(viewModel.plugins)
+                }
+            }
+
             when {
                 viewModel.pluginList.isEmpty() -> {
                     item {

@@ -163,6 +163,19 @@
     <string name="compat_mode_desc">通过内置 busybox（setsid + sh）而非系统自带的工具启动每个会话。命令本身仍在 /system/bin/sh 中运行，使用哪些工具取决于 PATH（Prefer System Binaries）。若会话无法启动，请关闭此项。</string>
     <string name="axeron_permission">AX-权限接管</string>
     <string name="axeron_permission_desc">使用基于 Shizuku-API 构建的 Ax-Environment 接管授权请求</string>
+    <string name="plugin_dev_info_title">开发者信息</string>
+    <string name="plugin_dev_info_unavailable">无法获取服务信息。服务是否正在运行？</string>
+    <string name="plugin_dev_info_server">服务</string>
+    <string name="plugin_dev_info_paths">路径（插件脚本所见）</string>
+    <string name="plugin_dev_info_plugins">插件</string>
+    <string name="plugin_dev_info_counts">已安装 %1$d · 已启用 %2$d · 等待重新启动 %3$d</string>
+    <string name="plugin_dev_info_marker">进程标记</string>
+    <string name="plugin_dev_info_on">开</string>
+    <string name="plugin_dev_info_off">关</string>
+    <string name="plugin_dev_info_hint">点击值即可复制。插件启动的每个进程都带有此标记，因此会随插件一起停止。</string>
+    <string name="stop_plugins_with_server">随服务停止插件</string>
+    <string name="stop_plugins_with_server_desc">服务停止或退出时，所有插件也会随之停止。关闭时，插件将独立继续运行。</string>
+    <string name="axeron_permission_shizuku_missing">部分旧版 Shizuku 应用（如旧版 ZArchiver）只有在安装了 Shizuku 应用时才会连接。如果此类应用找不到 Shizuku，请安装 Shizuku，无需启动它。</string>
     <string name="tcp_mode">无线调试模式</string>
     <string name="tcp_mode_desc">允许 AxManager 在没有 Wi-Fi 的情况下自动激活（AxManager 在开机后至少激活过一次）</string>
     <string name="invalid_port">端口必须介于 1024 和 65535 之间</string>
@@ -186,6 +199,7 @@
     <string name="ask_reset_path">立即重置 AxManager？</string>
     <string name="ask_reset_path_desc">此操作将恢复 AxManager 至初始状态并删除您的所有插件\n\n目录 %s</string>
     <string name="reset">重置</string>
+    <string name="reset_current_mode">当前</string>
     <string name="settings_editor">设置编辑器</string>
     <string name="developer_and_maintainer">开发者 | 维护者</string>
     <string name="github">GitHub</string>

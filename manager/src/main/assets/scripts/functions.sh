@@ -5,7 +5,8 @@ ui_print() {
 
 abort() {
   ui_print "$1"
-  [ -n "$PLUGPATH" ] && rm -rf "$PLUGPATH"
+  # A half-installed plugin would still be listed and started, so drop it.
+  [ -n "$MODPATH" ] && rm -rf "$MODPATH"
   rm -rf "$TMPDIR"
   exit 1
 }
@@ -72,8 +73,13 @@ api_level_arch_detect() {
 }
 
 set_perm() {
-  chown "$2":"$3" "$1" || return 1
+  # chown is best effort: a shell (non-root) server can't give files to another uid, and
+  # Magisk-style scripts ask for 0:0. The mode must still be applied either way.
+  chown "$2":"$3" "$1" 2>/dev/null
   chmod "$4" "$1" || return 1
+  # Only an explicit context is applied; Magisk's system_file default is for /system overlays.
+  [ -n "$5" ] && chcon "$5" "$1" 2>/dev/null
+  return 0
 }
 
 # $1 = MODPATH
@@ -84,56 +90,6 @@ set_perm_recursive() {
   find "$1" -type f -o -type l 2>/dev/null | while read -r file; do
     set_perm "$file" "$2" "$3" "$5" "$6"
   done
-}
-
-reset_manager() {
-  local debug=$1
-
-  print_title "Resetting AxManager"
-  ui_print
-  ui_print "$AXERONDIR"
-  ui_print "- Removing plugins"
-
-  for plugin in "$AXERONDIR"/plugins/*; do
-      [ -d "$plugin" ] || continue
-
-      echo "- Mark to remove $plugin"
-      touch "$plugin/remove"
-  done
-
-  export CLASSPATH="${AXERONBIN}/ax_reignite.dex";
-  app_process / frb.axeron.reignite.Igniter "$debug"
-
-  rm -rf "$AXERONDIR"
-
-  ui_print "Complete"
-}
-
-uninstall_axmanager() {
-  local debug=$1
-  local package=$2
-
-  print_title "Uninstalling AxManager"
-  ui_print
-
-  for plugin in "$AXERONDIR"/plugins/*; do
-      [ -d "$plugin" ] || continue
-
-      echo "- Mark to remove $plugin"
-      touch "$plugin/remove"
-  done
-
-  export CLASSPATH="${AXERONBIN}/ax_reignite.dex";
-  app_process / frb.axeron.reignite.Igniter "$debug"
-
-  rm -rf "$AXERONDIR"
-
-  echo "GoodBye :)"
-
-  sleep 3
-
-  pm uninstall "$package"
-  pkill -f axeron_server
 }
 
 install_plugin() {
@@ -154,13 +110,25 @@ install_plugin() {
   MODNAME=$(grep_prop name "$TMPPROP")
   MODAUTH=$(grep_prop author "$TMPPROP")
   MODPLUGIN=$(grep_prop axeronPlugin "$TMPPROP")
-  
+
+  # The id names the plugin's folder, which is wiped with rm -rf below: an empty id, or one
+  # with "/" or "..", would point at the whole plugins folder or outside it. Same rule as Magisk.
+  echo "$MODID" | grep -qE '^[a-zA-Z][a-zA-Z0-9._-]+$' || abort "! Invalid module id: '$MODID'"
+
   [ -z "$MODPLUGIN" ] && abort "! This module not supporting AxManager Plugin!"
+  # A non-number would make the version test below error out and let the install through.
+  case "$MODPLUGIN" in
+    *[!0-9]*) abort "! Invalid axeronPlugin value: '$MODPLUGIN'" ;;
+  esac
 
   [ "$MODPLUGIN" -gt "$AXERONVER" ] && abort "! This module need AxManager Version >= $MODPLUGIN!"
 
   MODPATH=$MODROOT/$MODID
   MODPATH_UPDATE=$MODROOT_UPDATE/$MODID
+
+  # Tags everything customize.sh starts (e.g. a daemon launched right at install), so the
+  # igniter finds and stops it with the plugin's service. The id was validated above.
+  export AXERON_PLUGIN="$MODID"
   
   rm -rf "$MODPATH"
   mkdir -p "$MODPATH"
@@ -173,7 +141,8 @@ install_plugin() {
   if ! grep -q '^SKIPUNZIP=1$' "$MODPATH"/customize.sh 2>/dev/null; then
     ui_print "- Extracting module files"
     unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH" >&2
-    set_perm_recursive "$MODPATH" 2000 2000 0755 0755
+    # Owned by whoever runs the server: root in root mode (its world is /data/adb), shell otherwise.
+    set_perm_recursive "$MODPATH" "$(id -u)" "$(id -g)" 0755 0755
   fi
 
   # Load customization script

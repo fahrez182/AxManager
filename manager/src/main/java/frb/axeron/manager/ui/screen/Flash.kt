@@ -547,7 +547,9 @@ suspend fun flashIt(
                 cmd = cmd,
                 onStdout = onStdout,
                 onStderr = onStderr,
-                hideStderr = false
+                hideStderr = false,
+                // Anything action.sh leaves running is stopped with the plugin.
+                pluginId = flashIt.plugin.dirId
             )
             AxeronPluginService.FlashResult(result.code, "", false)
         }

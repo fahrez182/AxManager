@@ -44,7 +44,8 @@ import frb.axeron.manager.R
 
 /**
  * Bottom sheet frame shared by the filter and shortcut sheets: title, optional description,
- * an optional header action (e.g. Reset), then [content] on a 16dp gutter.
+ * an optional header action (e.g. Reset), then [content] on a 16dp gutter. [overline] is a
+ * small line above the title, e.g. a technical name the title explains.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +54,7 @@ fun AxOptionsSheet(
     onDismissRequest: () -> Unit,
     description: String? = null,
     headerAction: (@Composable () -> Unit)? = null,
+    overline: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ModalBottomSheet(
@@ -73,6 +75,7 @@ fun AxOptionsSheet(
                         .weight(1f)
                         .padding(start = 4.dp)
                 ) {
+                    overline?.invoke()
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleLarge,

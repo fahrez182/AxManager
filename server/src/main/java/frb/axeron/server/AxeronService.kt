@@ -84,8 +84,72 @@ open class AxeronService :
 
             @Suppress("DEPRECATION")
             Looper.prepareMainLooper()
+            // Before the service exists: its constructor already reads the root world's configs.
+            if (Os.getuid() == 0) migrateRootWorld()
             AxeronService()
             Looper.loop()
+        }
+
+        /**
+         * One-time move of the root world from its old home (/data/user_de/0/android/axeron) to
+         * /data/adb/axeron. Skipped when the new folder already exists, so nothing is overwritten;
+         * the old one is then left as it is.
+         *
+         * bin, xbin, cache and zip are dropped instead of moved: they are rebuilt on every start,
+         * and the symlinks in bin/xbin would still point into the old folder. Renamed files keep
+         * their old SELinux label, so they are relabeled to /data/adb's.
+         */
+        private fun migrateRootWorld() {
+            val old = File(AxeronApiConstant.folder.ROOT_DE, AxeronApiConstant.folder.PARENT).absoluteFile
+            val new = PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absoluteFile
+            if (!old.isDirectory) return
+            if (new.exists()) {
+                LOGGER.w("migrate: %s already exists, old root data left at %s", new, old)
+                return
+            }
+
+            val parent = new.parentFile ?: return
+            if (!parent.isDirectory && !parent.mkdirs()) {
+                LOGGER.e("migrate: can't create %s", parent)
+                return
+            }
+            // Same filesystem in practice (both on /data); mv covers the rare case where not.
+            if (!old.renameTo(new) && exec("mv", old.path, new.path) != 0) {
+                LOGGER.e("migrate: can't move %s to %s, root data left in place", old, new)
+                return
+            }
+
+            listOf(
+                AxeronApiConstant.folder.BINARY,
+                AxeronApiConstant.folder.EXTERNAL_BINARY,
+                AxeronApiConstant.folder.CACHE,
+                AxeronApiConstant.folder.ZIP
+            ).forEach {
+                // rm -rf never follows symlinks, unlike File.deleteRecursively.
+                exec("rm", "-rf", File(new, it).path)
+            }
+
+            val label = execOutput("stat", "-c", "%C", parent.path)?.takeIf { it.startsWith("u:") }
+            if (label != null) exec("chcon", "-hR", label, new.path)
+            else LOGGER.w("migrate: can't read the label of %s, %s keeps its old one", parent, new)
+
+            LOGGER.i("migrate: root world moved from %s to %s", old, new)
+        }
+
+        private fun exec(vararg cmd: String): Int = try {
+            Runtime.getRuntime().exec(cmd).waitFor()
+        } catch (e: Throwable) {
+            LOGGER.w(e, "exec %s", cmd.joinToString(" "))
+            -1
+        }
+
+        private fun execOutput(vararg cmd: String): String? = try {
+            val process = Runtime.getRuntime().exec(cmd)
+            val out = process.inputStream.bufferedReader().readText().trim()
+            if (process.waitFor() == 0) out else null
+        } catch (e: Throwable) {
+            LOGGER.w(e, "exec %s", cmd.joinToString(" "))
+            null
         }
 
         fun waitSystemService(name: String) {
@@ -413,6 +477,45 @@ open class AxeronService :
             "ax_perm_companion"
         )
 
+    /**
+     * Waits on a pipe whose write end only this server holds and never writes to. When the
+     * server dies for any reason (exit(), a crash, SIGKILL, replaced by a new server) the kernel
+     * closes it, the watchdog's read returns, and if the user asked for it (flag file
+     * [AxeronApiConstant.folder.STOP_PLUGINS_WITH_SERVER], read at that moment) it stops every
+     * plugin's processes through the igniter. Kept in a field: a collected Process closes the
+     * pipe, which would fire the watchdog while the server is still running.
+     */
+    private var deathWatchdog: Process? = null
+
+    private fun startDeathWatchdog() {
+        val flag = File(
+            PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT),
+            AxeronApiConstant.folder.STOP_PLUGINS_WITH_SERVER
+        ).absolutePath
+        val dex = File(
+            PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_BINARY),
+            "ax_reignite.dex"
+        ).absolutePath
+        val script = $$"""
+            read -r _
+            [ -f "$1" ] || exit 0
+            CLASSPATH="$2" exec /system/bin/app_process / frb.axeron.reignite.Igniter --stop-all
+        """.trimIndent()
+
+        try {
+            deathWatchdog = ProcessBuilder("/system/bin/sh", "-c", script, "axeron_watchdog", flag, dex)
+                .apply {
+                    // The server's env, without a plugin marker (see getMergedEnvironment).
+                    environment().clear()
+                    environment().putAll(getEnvironment(TYPE_ENV).envMap)
+                }
+                .redirectErrorStream(true)
+                .redirectOutput(File("/dev/null"))
+                .start()
+        } catch (e: Throwable) {
+            LOGGER.w(e, "start death watchdog")
+        }
+    }
 
     init {
 
@@ -446,6 +549,8 @@ open class AxeronService :
 
         // Held from the start; the manager releases it on connect if the user turned it off.
         synchronized(lockToken) { wakeLockHeld = acquire() }
+
+        startDeathWatchdog()
     }
 
     fun sendBinderToClient() {
@@ -463,7 +568,12 @@ open class AxeronService :
         }
     }
 
+    /**
+     * Reached from the manager's toggle and from Shizuku's own "stop" (IShizukuService.exit), so
+     * only the manager or the Shizuku app may switch it; any other Shizuku client is refused.
+     */
     override fun enableShizukuService(enable: Boolean) {
+        enforceManagerPermission("enableShizukuService")
         if (enable) {
             if (axCompanion.createNewFile()) {
                 LOGGER.i("AX-Scope")
@@ -472,6 +582,8 @@ open class AxeronService :
         } else {
             if (axCompanion.delete()) {
                 userServiceManager.removeAllUserService()
+                // Clients keep the old binder alive; make it refuse calls instead of serving on.
+                shizuku?.revoke()
                 shizuku = null
             }
         }
@@ -495,6 +607,9 @@ open class AxeronService :
         val merged = Environment.Builder(true)
             .putAll(getDefaultEnvironment().envMap) // prefer to pass the map directly
             .putAll(environmentManager.getAll())    // avoid new HashMap(...)
+            // A plugin's process marker set in the user's env would tag every process as that
+            // plugin's, so stopping it would stop them all. Only plugin code gets it.
+            .remove("AXERON_PLUGIN")
             .build()
 
         cachedMergedEnv = merged
@@ -810,7 +925,15 @@ open class AxeronService :
         )
         reply.putInt(
             BIND_APPLICATION_SERVER_PATCH_VERSION,
-            SHIZUKU_SERVER_PATCH_VERSION
+            // The Shizuku app shows the server as "<api>.<patch>" and can't show text, so the
+            // patch carries AxManager's version code as a hint that AxManager is serving it
+            // (e.g. "13.14800"). It no longer matches, so the app shows its "update" note.
+            // Other clients keep the real patch: they never display it.
+            if (requestPackageName == SHIZUKU_MANAGER_APPLICATION_ID) {
+                VERSION_CODE.toInt()
+            } else {
+                SHIZUKU_SERVER_PATCH_VERSION
+            }
         )
         if (!isManager) {
             reply.putBoolean(
@@ -840,6 +963,8 @@ open class AxeronService :
         }
     }
 
+    // Same lock as checkCaller, so a reset from BinderSender's thread is seen by binder threads.
+    @Synchronized
     @Throws(RemoteException::class)
     override fun dispatchPackageChanged(intent: Intent?) {
         // Manager / Shizuku-manager uid may have changed on (re)install.
@@ -864,48 +989,37 @@ open class AxeronService :
             users.add(userId)
         }
 
+        // Only the Shizuku app reads this list (AxManager's Privilege screen lists apps itself),
+        // so it follows upstream Shizuku: apps that already have a permission entry, plus apps
+        // built on Shizuku-API (V3_SUPPORT meta-data and the API_V23 permission).
         for (user in users) {
             val packages = PackageManagerApis.getInstalledPackagesNoThrow(
                 (PackageManager.GET_META_DATA or PackageManager.GET_PERMISSIONS).toLong(),
                 user
-            ).filter {
-                val isSystem =
-                    it.applicationInfo!!
-                        .flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
+            )
 
-                val isSelf = it.packageName == MANAGER_APPLICATION_ID
-                val isShizukuSelf = it.packageName == SHIZUKU_MANAGER_APPLICATION_ID
+            for (pi in packages) {
+                if (pi.packageName == MANAGER_APPLICATION_ID) continue
+                if (pi.packageName == SHIZUKU_MANAGER_APPLICATION_ID) continue
 
-                !isSystem && !isSelf&& !isShizukuSelf
+                val appInfo = pi.applicationInfo ?: continue
+                val uid = appInfo.uid
+
+                val entry = configManager.find(uid)
+                val flags = entry?.let {
+                    if (it.packages != null && !it.packages.contains(pi.packageName)) {
+                        return@let 0 // entry belongs to another package of a shared uid
+                    }
+                    it.flags and ConfigManager.MASK_PERMISSION
+                } ?: 0
+
+                when {
+                    flags != 0 -> list.add(pi)
+
+                    appInfo.metaData?.getBoolean("moe.shizuku.client.V3_SUPPORT", false) == true &&
+                            pi.requestedPermissions?.contains(PERMISSION) == true -> list.add(pi)
+                }
             }
-
-            list.addAll(packages)
-
-//            for (pi in packages) {
-//                if (pi.packageName == MANAGER_APPLICATION_ID) continue
-//
-//                val appInfo = pi.applicationInfo ?: continue
-//                val uid = appInfo.uid
-//
-//                val entry = configManager.find(uid)
-//                val flags = entry?.let {
-//                    if (it.packages != null && !it.packages.contains(pi.packageName)) {
-//                        return@let 0 // skip by flags=0
-//                    }
-//                    it.flags and ConfigManager.MASK_PERMISSION
-//                } ?: 0
-//
-//                when {
-//                    flags != 0 -> {
-//                        list.add(pi)
-//                    }
-//
-//                    appInfo.metaData?.getBoolean("moe.shizuku.client.V3_SUPPORT", false) == true &&
-//                            pi.requestedPermissions?.contains(PERMISSION) == true -> {
-//                        list.add(pi)
-//                    }
-//                }
-//            }
         }
 
         return ParcelableListSlice(list)

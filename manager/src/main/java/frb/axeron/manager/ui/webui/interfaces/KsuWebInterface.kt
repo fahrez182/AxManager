@@ -44,6 +44,10 @@ class KsuWebInterface(
     val pluginBin: String
         get() = "${modDir.absolutePath}/system/bin"
 
+    /** Commands from the plugin's page are its code: tag them so they stop with the plugin. */
+    private val pluginId: String
+        get() = modDir.name
+
     @JavascriptInterface
     fun exec(cmd: String): String {
         return runCatching {
@@ -51,7 +55,8 @@ class KsuWebInterface(
                 val result = AxeronPluginService.execWithIO(
                     cmd = cmd,
                     useBusybox = false,
-                    hideStderr = false
+                    hideStderr = false,
+                    pluginId = pluginId
                 )
                 if (result.err.isNotBlank()) "${result.out}\n${result.err}" else result.out
             }
@@ -102,7 +107,8 @@ class KsuWebInterface(
             val result = AxeronPluginService.execWithIO(
                 cmd = finalCommand,
                 useBusybox = false,
-                hideStderr = false
+                hideStderr = false,
+                pluginId = pluginId
             )
 
             val jsCode =
@@ -166,7 +172,8 @@ class KsuWebInterface(
                 onStdout = { emitData("stdout", it) },
                 onStderr = { emitData("stderr", it) },
                 useBusybox = false,
-                hideStderr = false
+                hideStderr = false,
+                pluginId = pluginId
             )
             val completableFuture = CompletableFuture.supplyAsync {
                 future.get()

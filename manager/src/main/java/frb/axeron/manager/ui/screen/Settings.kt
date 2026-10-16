@@ -1,8 +1,10 @@
 package frb.axeron.manager.ui.screen
 
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Edit
@@ -26,8 +29,11 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -35,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -51,12 +58,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,15 +80,19 @@ import com.ramcosta.composedestinations.generated.destinations.SettingsEditorScr
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.AxCardShape
+import frb.axeron.manager.ui.component.AxPanelShape
 import frb.axeron.manager.ui.component.IconBadge
 import frb.axeron.manager.ui.component.SectionHeader
 import frb.axeron.manager.ui.component.SettingsDivider
 import frb.axeron.manager.ui.component.SettingsGroup
 import frb.axeron.manager.ui.component.SettingsRow
+import frb.axeron.manager.ui.component.StatusPill
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
+import frb.axeron.server.ServerConstants
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -159,11 +172,17 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             SettingsSectionHeader(stringResource(R.string.settings_section_environment))
             SettingsGroup {
                 if (axeronRunning) {
+                    val context = LocalContext.current
+                    // Older Shizuku clients (e.g. old ZArchiver) refuse to connect unless the real
+                    // Shizuku app is installed. Re-checked on resume: the user may install it meanwhile.
+                    var shizukuAppInstalled by remember { mutableStateOf(isShizukuAppInstalled(context)) }
                     val lifecycleOwner = rememberLifecycleOwner()
                     DisposableEffect(Unit) {
                         val observer = object : androidx.lifecycle.DefaultLifecycleObserver {
                             override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
                                 activateViewModel.checkShizukuIntercept()
+                                activateViewModel.checkStopPluginsWithServer()
+                                shizukuAppInstalled = isShizukuAppInstalled(context)
                             }
                         }
                         lifecycleOwner.lifecycle.addObserver(observer)
@@ -174,9 +193,22 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     SettingsRow(
                         iconPainter = painterResource(R.drawable.ic_axeron),
                         label = stringResource(R.string.axeron_permission),
-                        description = stringResource(R.string.axeron_permission_desc),
+                        description = if (activateViewModel.isShizukuActive && !shizukuAppInstalled) {
+                            stringResource(R.string.axeron_permission_desc) + "\n\n" +
+                                    stringResource(R.string.axeron_permission_shizuku_missing)
+                        } else {
+                            stringResource(R.string.axeron_permission_desc)
+                        },
                         checked = activateViewModel.isShizukuActive,
                         onSwitchChange = { activateViewModel.setShizukuIntercept(it) }
+                    )
+                    SettingsRow(
+                        iconVector = Icons.Outlined.PowerSettingsNew,
+                        label = stringResource(R.string.stop_plugins_with_server),
+                        description = stringResource(R.string.stop_plugins_with_server_desc),
+                        checked = activateViewModel.isStopPluginsWithServer,
+                        onSwitchChange = { activateViewModel.updateStopPluginsWithServer(it) },
+                        showDivider = true
                     )
                 }
 
@@ -390,6 +422,13 @@ fun DeveloperInfo(
     }
 }
 
+private fun isShizukuAppInstalled(context: Context): Boolean = try {
+    context.packageManager.getPackageInfo(ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID, 0)
+    true
+} catch (_: PackageManager.NameNotFoundException) {
+    false
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResetBottomSheet(
@@ -397,8 +436,13 @@ fun ResetBottomSheet(
     isRoot: Boolean,
     onReset: (rootMode: Boolean, both: Boolean) -> Unit
 ) {
+    val error = MaterialTheme.colorScheme.error
+    val rootPath = PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath
+    val shellPath = PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
@@ -406,84 +450,131 @@ fun ResetBottomSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            // Hero, in the same style as the other destructive sheets: what this does.
+            Surface(
+                shape = AxCardShape,
+                color = error.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, error.copy(alpha = 0.18f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(R.string.reset_path),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = stringResource(R.string.reset_path_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(vertical = 18.dp, horizontal = 16.dp)
+                ) {
+                    Surface(shape = CircleShape, color = error, modifier = Modifier.size(56.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.RestartAlt,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.reset_path),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(R.string.reset_path_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
+            // Root and shell keep separate folders, so each can be reset on its own.
+            // Only a root server can reach the root folder; shell mode resets its own.
             if (isRoot) {
-                AxCard {
-                    ResetOptionItem(
-                        title = stringResource(R.string.reset_root),
-                        path = PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath,
-                        onClick = { onReset(true, false) }
-                    )
-                    SettingsDivider()
-                    ResetOptionItem(
-                        title = stringResource(R.string.reset_shell),
-                        path = PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath,
-                        onClick = { onReset(false, false) }
-                    )
-                    SettingsDivider()
-                    ResetOptionItem(
-                        title = stringResource(R.string.reset_both),
-                        path = "${PathHelper.getWorkingPath(true, AxeronApiConstant.folder.PARENT).absolutePath}\n${PathHelper.getWorkingPath(false, AxeronApiConstant.folder.PARENT).absolutePath}",
-                        onClick = { onReset(true, true) }
-                    )
-                }
-            } else {
-                FilledTonalButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { onReset(false, false) }
-                ) {
-                    Text(stringResource(R.string.reset))
-                }
+                ResetOptionItem(
+                    icon = Icons.Outlined.AdminPanelSettings,
+                    title = stringResource(R.string.reset_root),
+                    paths = listOf(rootPath),
+                    current = true,
+                    onClick = { onReset(true, false) }
+                )
+            }
+            ResetOptionItem(
+                icon = Icons.Default.Terminal,
+                title = stringResource(if (isRoot) R.string.reset_shell else R.string.reset),
+                paths = listOf(shellPath),
+                current = !isRoot,
+                onClick = { onReset(false, false) }
+            )
+            if (isRoot) {
+                ResetOptionItem(
+                    icon = Icons.Outlined.Layers,
+                    title = stringResource(R.string.reset_both),
+                    paths = listOf(rootPath, shellPath),
+                    onClick = { onReset(true, true) }
+                )
             }
         }
     }
 }
 
+/** One reset target: its icon, name, the folder(s) it wipes, and a mark on the current mode. */
 @Composable
 fun ResetOptionItem(
+    icon: ImageVector,
     title: String,
-    path: String,
-    onClick: () -> Unit
+    paths: List<String>,
+    onClick: () -> Unit,
+    current: Boolean = false
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    val error = MaterialTheme.colorScheme.error
+    Surface(
+        onClick = onClick,
+        shape = AxPanelShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(
+            1.dp,
+            if (current) error.copy(alpha = 0.35f)
+            else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        ),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        IconBadge(
-            imageVector = Icons.Default.FolderDelete,
-            tint = MaterialTheme.colorScheme.error
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = path,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 8.dp)
+        ) {
+            IconBadge(imageVector = icon, tint = error)
+            Spacer(Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (current) {
+                        Spacer(Modifier.width(8.dp))
+                        StatusPill(text = stringResource(R.string.reset_current_mode), color = error)
+                    }
+                }
+                paths.forEach { path ->
+                    Text(
+                        text = path,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

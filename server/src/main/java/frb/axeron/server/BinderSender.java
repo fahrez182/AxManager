@@ -147,6 +147,11 @@ public class BinderSender {
                             == PackageManager.PERMISSION_GRANTED;
 
                     if (granted) {
+                        // The server caches the Shizuku app's uid on its first permission check;
+                        // if Shizuku was installed (or reinstalled) after that, the cache is stale
+                        // and its calls get denied. Its process always passes here before it can
+                        // call the server, so refresh the cache now.
+                        axeronService.dispatchPackageChanged(null);
                         AxeronService.sendBinderToShizukuManager(
                                 shizukuService.asBinder(),
                                 userId

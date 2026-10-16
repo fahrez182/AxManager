@@ -31,6 +31,8 @@ import frb.axeron.manager.adb.ActivationLog
 import frb.axeron.manager.adb.AdbStarter
 import frb.axeron.manager.adb.AdbStarter.stopTcp
 import frb.axeron.manager.adb.AdbStateInfo
+import frb.axeron.shared.AxeronApiConstant
+import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -38,6 +40,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import kotlinx.coroutines.withTimeoutOrNull
 
 class ActivateViewModel : ViewModel() {
@@ -106,6 +109,43 @@ class ActivateViewModel : ViewModel() {
     fun checkShizukuIntercept() {
         viewModelScope.launch(Dispatchers.Main) {
             isShizukuActive = Axeron.pingBinder() && Axeron.getShizukuService() != null
+        }
+    }
+
+    /**
+     * Whether every plugin is stopped once the server dies. The setting is a flag file the
+     * server's death watchdog reads at that moment, so it holds without the app running. It
+     * lives in the current mode's folder and is written through the server, as its own uid.
+     */
+    var isStopPluginsWithServer by mutableStateOf(false)
+        private set
+
+    private fun stopPluginsFlag(): String = File(
+        PathHelper.getWorkingPath(Axeron.getAxeronInfo().isRoot(), AxeronApiConstant.folder.PARENT),
+        AxeronApiConstant.folder.STOP_PLUGINS_WITH_SERVER
+    ).absolutePath
+
+    fun checkStopPluginsWithServer() {
+        viewModelScope.launch {
+            isStopPluginsWithServer = withContext(Dispatchers.IO) {
+                runCatching { Axeron.newFileService()?.exists(stopPluginsFlag()) == true }
+                    .getOrDefault(false)
+            }
+        }
+    }
+
+    fun updateStopPluginsWithServer(enable: Boolean) {
+        viewModelScope.launch {
+            isStopPluginsWithServer = enable
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val fs = Axeron.newFileService() ?: return@runCatching
+                    val flag = stopPluginsFlag()
+                    if (enable) fs.createNewFile(flag) else fs.delete(flag)
+                }
+            }
+            // Show what is really on disk, in case the write failed.
+            checkStopPluginsWithServer()
         }
     }
 

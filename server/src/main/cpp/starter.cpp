@@ -50,6 +50,11 @@ static void run_server(const char *dex_path, const char *main_class, const char 
         exit(EXIT_FATAL_SET_CLASSPATH);
     }
 
+    // A plugin's process marker. Started from a plugin's script (one that restarts AxManager),
+    // the server would inherit it and pass it to every process it starts, so stopping that
+    // plugin would take all of them down. The server never belongs to a plugin.
+    unsetenv("AXERON_PLUGIN");
+
 #define ARG(v) char **v = nullptr; \
     char buf_##v[PATH_MAX]; \
     size_t v_size = 0; \

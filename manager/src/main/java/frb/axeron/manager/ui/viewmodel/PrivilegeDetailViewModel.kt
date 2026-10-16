@@ -13,8 +13,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import frb.axeron.manager.R
 import frb.axeron.manager.data.PackageControl
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -52,6 +54,8 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
     data class Permission(
         val name: String,
         val label: String,
+        /** What it allows, in a sentence; null when neither the system nor we have one. */
+        val description: String? = null,
         val kind: Kind,
         /** In effect: for [Kind.SPECIAL] that is the app-op mode, not the grant flag. */
         val granted: Boolean,
@@ -79,6 +83,10 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
     var loading by mutableStateOf(true)
         private set
 
+    /** The app was uninstalled (for this user) while the page was open or in the background. */
+    var gone by mutableStateOf(false)
+        private set
+
     /** Permission names and [GeneralItem] names with a change in flight. */
     val changing = mutableStateMapOf<String, Boolean>()
 
@@ -90,8 +98,16 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
         refresh()
     }
 
+    private var refreshJob: Job? = null
+
+    /**
+     * Re-reads everything. Called on bind and whenever the screen resumes, since grants can
+     * change outside it (system Settings, the Shizuku app, a shell). A load already running
+     * covers the request, so the first open doesn't load twice.
+     */
     fun refresh() {
-        viewModelScope.launch {
+        if (packageName.isEmpty() || refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
             load()
             loading = false
         }
@@ -141,12 +157,21 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
 
     /** One `cmd appops get` feeds both special access and background activity. */
     private suspend fun load() {
+        if (!withContext(Dispatchers.IO) { isInstalled() }) {
+            gone = true
+            return
+        }
         val ops = PackageControl.appOps(packageName, userId)
         appOps = ops.orEmpty()
         val (perms, gen) = withContext(Dispatchers.IO) { readPermissions(ops) to readGeneral(ops) }
         permissions = perms
         general = gen
     }
+
+    /** Disabled apps still count as installed, so turning one off doesn't read as "gone". */
+    private fun isInstalled(): Boolean = runCatching {
+        getApplication<Application>().packageManager.getApplicationInfo(packageName, MATCH_DISABLED)
+    }.isSuccess
 
     private fun readGeneral(appOps: Map<String, PackageControl.AppOpState>?): Map<GeneralItem, Boolean> {
         val app = getApplication<Application>()
@@ -158,7 +183,7 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
             appOps?.let {
                 put(GeneralItem.BACKGROUND_ACTIVITY, it[OP_RUN_ANY_IN_BACKGROUND]?.effective != "ignore")
             }
-            runCatching { app.packageManager.getApplicationInfo(packageName, 0).enabled }
+            runCatching { app.packageManager.getApplicationInfo(packageName, MATCH_DISABLED).enabled }
                 .getOrNull()?.let { put(GeneralItem.ENABLED, it) }
         }
     }
@@ -167,10 +192,29 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
      * @param appOps from the server; null when it is off, and special access then falls
      * back to the grant flag (which an app allowed through Settings usually doesn't have).
      */
+    /**
+     * A permission's label and description come from the package that *declares* it (for
+     * android.permission.* the framework), never from the app requesting it. Some special
+     * accesses are declared without either (PACKAGE_USAGE_STATS): system Settings names them
+     * from its own strings, which differ per OEM. These are the same names, as a fallback.
+     */
+    private fun specialAccessText(appOp: String): Pair<Int, Int>? = when (appOp) {
+        "SYSTEM_ALERT_WINDOW" -> R.string.special_access_overlay to R.string.special_access_overlay_desc
+        "WRITE_SETTINGS" -> R.string.special_access_write_settings to R.string.special_access_write_settings_desc
+        "GET_USAGE_STATS" -> R.string.special_access_usage to R.string.special_access_usage_desc
+        "MANAGE_EXTERNAL_STORAGE" -> R.string.special_access_all_files to R.string.special_access_all_files_desc
+        "REQUEST_INSTALL_PACKAGES" -> R.string.special_access_install to R.string.special_access_install_desc
+        "SCHEDULE_EXACT_ALARM" -> R.string.special_access_alarms to R.string.special_access_alarms_desc
+        "MANAGE_MEDIA" -> R.string.special_access_media to R.string.special_access_media_desc
+        "USE_FULL_SCREEN_INTENT" -> R.string.special_access_full_screen to R.string.special_access_full_screen_desc
+        else -> null
+    }
+
     private fun readPermissions(appOps: Map<String, PackageControl.AppOpState>?): List<Permission> {
-        val pm = getApplication<Application>().packageManager
+        val app = getApplication<Application>()
+        val pm = app.packageManager
         val info: PackageInfo = runCatching {
-            pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS or MATCH_DISABLED)
         }.getOrNull() ?: return emptyList()
         val names = info.requestedPermissions ?: return emptyList()
         val flags = info.requestedPermissionsFlags
@@ -184,11 +228,16 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
             val appOp = if (kind != Kind.SPECIAL) null
             else AppOpsManager.permissionToOp(name)?.removePrefix("android:")?.uppercase()
             val state = appOp?.let { appOps?.get(it) }
+            // Special access goes by the names Settings shows; the system label comes after.
+            val known = appOp?.let { specialAccessText(it) }
             Permission(
                 name = name,
-                label = defined?.loadLabel(pm)?.toString()?.takeIf { it != name }
-                    ?.replaceFirstChar { it.uppercaseChar() }
+                label = known?.let { app.getString(it.first) }
+                    ?: defined?.loadLabel(pm)?.toString()?.takeIf { it != name }
+                        ?.replaceFirstChar { it.uppercaseChar() }
                     ?: name.substringAfterLast('.'),
+                description = defined?.loadDescription(pm)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: known?.let { app.getString(it.second) },
                 kind = kind,
                 granted = when (state?.effective) {
                     "allow", "foreground" -> true
@@ -204,6 +253,10 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
 
     private companion object {
         const val OP_RUN_ANY_IN_BACKGROUND = "RUN_ANY_IN_BACKGROUND"
+
+        /** Keeps a disabled app readable instead of looking uninstalled. */
+        const val MATCH_DISABLED = PackageManager.MATCH_DISABLED_COMPONENTS or
+                PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
     }
 
     @Suppress("DEPRECATION") // protectionLevel: `protection`/`protectionFlags` need API 28

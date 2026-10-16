@@ -28,6 +28,10 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         private const val MASK_PERMISSION = FLAG_ALLOWED or FLAG_DENIED
         private const val KEY_FILTER = "filter"
         private const val KEY_ASCENDING = "ascending"
+
+        /** Keeps disabled apps in the list instead of dropping them as if uninstalled. */
+        private const val MATCH_DISABLED = PackageManager.MATCH_DISABLED_COMPONENTS or
+                PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
     }
 
     var isRefreshing: Boolean by mutableStateOf(false)
@@ -133,18 +137,33 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
 
-    // Requested permissions are needed for the "Shizuku supported" filter.
+    // Requested permissions are needed for the "Shizuku supported" filter. Disabled apps stay
+    // listed, otherwise one turned off could no longer be turned back on from here.
     private fun getApplications(): List<PackageInfo> {
-        return application.packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+        return application.packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS or MATCH_DISABLED)
     }
+
+    /** Uids the full load would list; compared on resume to spot installs and uninstalls. */
+    private fun installedUids(): Set<Int> =
+        application.packageManager.getInstalledPackages(MATCH_DISABLED)
+            .mapNotNullTo(HashSet()) { it.applicationInfo?.uid }
+            .apply { remove(android.os.Process.myUid()) }
 
     fun loadInstalledApps(refresh: Boolean = true) {
         // Avoid stacking loads: resume triggers a non-refresh load, pull-to-refresh forces one.
         if (isRefreshing) return
-        if (!refresh && privileges.isNotEmpty()) return
+        if (!refresh && privileges.isNotEmpty()) {
+            // The list may still be good, but apps can be (un)installed and grants changed
+            // elsewhere (e.g. the Shizuku app writes the same config): check, then update.
+            reloadFlags()
+            return
+        }
+        loadAll(showRefreshing = refresh)
+    }
 
+    private fun loadAll(showRefreshing: Boolean) {
         viewModelScope.launch {
-            isRefreshing = refresh
+            isRefreshing = showRefreshing
             val pm = application.packageManager
 
             val result = withContext(Dispatchers.IO) {
@@ -178,6 +197,38 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
 
             privileges = result
             isRefreshing = false
+        }
+    }
+
+    private fun reloadFlags() {
+        viewModelScope.launch {
+            val current = privileges
+            val uids = current.keys.toIntArray()
+            val installedChanged = withContext(Dispatchers.IO) { installedUids() != current.keys }
+            if (installedChanged) {
+                // An app was installed or uninstalled meanwhile: rebuild the list quietly.
+                if (privileges === current && !isRefreshing) loadAll(showRefreshing = false)
+                return@launch
+            }
+            val flags = withContext(Dispatchers.IO) {
+                // Without the server the call answers all zeros, which would read as "revoked".
+                if (!Axeron.pingBinder()) null
+                else Axeron.getFlagsForUids(uids, MASK_PERMISSION)
+            } ?: return@launch
+            // Skip the update when a full load replaced the list meanwhile, or nothing changed.
+            if (privileges !== current) return@launch
+
+            var changed = false
+            val updated = current.toMutableMap()
+            uids.forEachIndexed { index, uid ->
+                val isAdded = (flags.getOrElse(index) { 0 } and FLAG_ALLOWED) == FLAG_ALLOWED
+                val app = updated[uid] ?: return@forEachIndexed
+                if (app.isAdded != isAdded) {
+                    updated[uid] = app.copy(isAdded = isAdded)
+                    changed = true
+                }
+            }
+            if (changed) privileges = updated
         }
     }
 }

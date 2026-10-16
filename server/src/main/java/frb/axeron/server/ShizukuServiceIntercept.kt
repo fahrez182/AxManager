@@ -27,6 +27,17 @@ class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizuku
         val LOGGER = Logger("ShizukuServiceIntercept")
     }
 
+    /**
+     * Set when the intercept is switched off. Upstream Shizuku kills its server process on stop,
+     * so every client binder dies; ours stays alive, so a revoked instance refuses every call.
+     */
+    @Volatile
+    private var revoked = false
+
+    fun revoke() {
+        revoked = true
+    }
+
     override fun getVersion(): Int {
         return 13
     }
@@ -137,6 +148,10 @@ class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizuku
     }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+        // INTERFACE_TRANSACTION only reports the descriptor; everything else is refused.
+        if (revoked && code != INTERFACE_TRANSACTION) {
+            throw SecurityException("AX-Permission Intercept is disabled")
+        }
         when (code) {
             ServerConstants.BINDER_TRANSACTION_getApplications -> {
                 data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)

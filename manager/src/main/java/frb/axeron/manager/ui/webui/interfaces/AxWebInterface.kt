@@ -47,7 +47,9 @@ class AxWebInterface(
             val result = AxeronPluginService.execWithIO(
                 cmd = finalCommand.toString(),
                 useBusybox = false,
-                hideStderr = false
+                hideStderr = false,
+                // Commands from the plugin's page are its code: they stop with the plugin.
+                pluginId = modDir.name
             )
             Gson().toJson(result).toString()
         }
