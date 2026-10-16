@@ -1,4 +1,4 @@
-# 环境与路径
+# <Icon name="folder" /> 环境与路径
 
 AxManager 运行插件脚本时脚本能看到什么、文件放在哪里，以及 AxManager 如何启动和停止插件的进程。
 

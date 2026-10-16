@@ -1,4 +1,4 @@
-# App Tour
+# <Icon name="tour" /> App Tour
 
 A walk through every screen of AxManager and what each option does. To start AxManager in the first place, see the [User Manual](./user-manual.md).
 

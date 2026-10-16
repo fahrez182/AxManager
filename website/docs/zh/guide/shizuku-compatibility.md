@@ -1,4 +1,4 @@
-# Shizuku 兼容
+# <Icon name="swap" /> Shizuku 兼容
 
 AxManager 可以代替 [Shizuku](https://github.com/RikkaApps/Shizuku)：基于 [Shizuku-API](https://github.com/RikkaApps/Shizuku-API) 构建的应用可以连接到 AxManager 的服务，获得同样的 shell 或 root 权限，而无需运行 Shizuku。
 

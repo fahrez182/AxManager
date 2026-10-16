@@ -1,4 +1,4 @@
-# 插件（非 Root 模块）
+# <Icon name="plugin" /> 插件（非 Root 模块）
 
 ::: warning 结论
 **了解你的限制**

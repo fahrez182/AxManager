@@ -1,4 +1,4 @@
-# 应用导览
+# <Icon name="tour" /> 应用导览
 
 逐一介绍 AxManager 的每个页面及其选项的作用。如何启动 AxManager，请参阅[用户手册](./user-manual.md)。
 

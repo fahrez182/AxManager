@@ -1,4 +1,4 @@
-# 在任意终端中运行（axsh）
+# <Icon name="code" /> 在任意终端中运行（axsh）
 
 `axsh` 让 Termux 等任意终端应用获得 AxManager 的 shell 或 root 权限，该应用中无需安装任何东西。它的参数与 `sh` 相同；在真正的终端中，您会得到完整的交互式会话：提示符、行编辑、颜色、`vi`、`top`。
 

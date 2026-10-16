@@ -1,4 +1,4 @@
-# Re-ignite (Reboot system)
+# <Icon name="reboot" /> Re-ignite (Reboot system)
 
 ::: info TL;DR
 **Re-ignite** is a system that restarts a plugin/module to apply updates — similar to rebooting a rooted module on your phone, but for **AxManager**.

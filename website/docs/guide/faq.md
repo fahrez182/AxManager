@@ -1,4 +1,4 @@
-# FAQ
+# <Icon name="help" /> FAQ
 
 [[toc]]
 

@@ -1,4 +1,4 @@
-# Re-ignite（重启系统）
+# <Icon name="reboot" /> Re-ignite（重启系统）
 
 ::: info 简而言之
 **Re-ignite** 是一个重启插件/模块以应用更新的系统——类似于在手机上重启 Root 模块，但是针对 **AxManager** 的。

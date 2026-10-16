@@ -1,4 +1,4 @@
-# Run in Any Terminal (axsh)
+# <Icon name="code" /> Run in Any Terminal (axsh)
 
 `axsh` brings AxManager's shell or root access to any terminal app, such as Termux, with nothing to install in that app. It takes the same arguments as `sh`, and in a real terminal you get a full interactive session: prompt, line editing, colors, `vi`, `top`.
 

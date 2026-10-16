@@ -1,4 +1,4 @@
-# WebUI API
+# <Icon name="web" /> WebUI API
 
 带有 `webroot/index.html` 的插件会获得一个 WebUI：AxManager 在独立窗口中打开的网页，页面中的 JavaScript 对象可以通过 AxManager 的服务运行 shell 命令。`ksu` 对象遵循 [KernelSU 的 WebUI API](https://kernelsu.org/guide/module-webui.html)，因此大多数 KernelSU 的 WebUI 无需修改即可使用；AxManager 还额外提供了自己的 `Axeron` 对象。
 

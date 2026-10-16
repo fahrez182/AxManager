@@ -1,4 +1,4 @@
-# User Manual
+# <Icon name="start" /> User Manual
 
 [[toc]]
 

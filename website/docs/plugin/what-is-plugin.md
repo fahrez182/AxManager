@@ -1,4 +1,4 @@
-# Plugin (Unrooted Module)
+# <Icon name="plugin" /> Plugin (Unrooted Module)
 
 ::: warning Conclusion
 **Know your limits**

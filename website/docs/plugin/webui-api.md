@@ -1,4 +1,4 @@
-# WebUI API
+# <Icon name="web" /> WebUI API
 
 A plugin with a `webroot/index.html` gets a WebUI: a web page AxManager opens in its own window, with JavaScript objects that run shell commands through AxManager's server. The `ksu` object follows [KernelSU's WebUI API](https://kernelsu.org/guide/module-webui.html), so most KernelSU WebUIs work unchanged; AxManager adds an `Axeron` object of its own.
 

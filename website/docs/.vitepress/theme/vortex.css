@@ -1,0 +1,240 @@
+/*
+ * AxManager's "Vortex" palette, as the app builds it from its default primary #FFB487
+ * (manager/ui/theme/Color.kt: getVortexLightColorScheme / getVortexDarkColorScheme).
+ * The values below are what those functions produce; keep them in step if the app's change.
+ */
+
+/* ---- light ---- */
+:root {
+  /* primary #A66C44, its container #E5D5C9, on-surface #4D2400 */
+  --vp-c-brand-1: #a66c44;
+  --vp-c-brand-2: #b57b52;
+  --vp-c-brand-3: #a66c44;
+  --vp-c-brand-soft: rgba(166, 108, 68, 0.14);
+
+  /* surface #FFFFFF and its containers */
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #f1edea;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #f4f2f0;
+
+  --vp-c-text-1: #4d2400;
+  --vp-c-text-2: rgba(77, 36, 0, 0.75);
+  --vp-c-text-3: rgba(77, 36, 0, 0.5);
+
+  --vp-c-divider: #e5ddd6;
+  --vp-c-gutter: #f1edea;
+  --vp-c-border: #d8cbc0;
+
+  --vp-button-brand-text: #fbf8f6;
+  --vp-button-brand-hover-text: #fbf8f6;
+  --vp-button-brand-active-text: #fbf8f6;
+
+  /* Neutral tones (secondary buttons, inline code, badges) from the same warm surfaces. */
+  --vp-c-default-1: #d8cbc0;
+  --vp-c-default-2: #e5ddd6;
+  --vp-c-default-3: #f1edea;
+  --vp-c-default-soft: rgba(77, 36, 0, 0.06);
+  --vp-button-alt-bg: #f1edea;
+  --vp-button-alt-border: transparent;
+  --vp-button-alt-text: #4d2400;
+  --vp-button-alt-hover-bg: #e5d5c9;
+  --vp-button-alt-hover-border: transparent;
+  --vp-button-alt-hover-text: #4d2400;
+  --vp-button-alt-active-bg: #e5d5c9;
+  --vp-button-alt-active-text: #4d2400;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #a66c44 20%, #ffb487);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #ffb487 50%, #a66c44 50%);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+/* ---- dark ---- */
+.dark {
+  /* primary #FFB487, its container #824F29, on-primary #4D2400 */
+  --vp-c-brand-1: #ffb487;
+  --vp-c-brand-2: #f8c9ad;
+  --vp-c-brand-3: #ffb487;
+  --vp-c-brand-soft: rgba(255, 180, 135, 0.16);
+
+  /* surface #15120F and its containers */
+  --vp-c-bg: #15120f;
+  --vp-c-bg-alt: #1d1a17;
+  --vp-c-bg-elv: #221f1c;
+  --vp-c-bg-soft: #282522;
+
+  --vp-c-text-1: #ede9e6;
+  --vp-c-text-2: rgba(237, 233, 230, 0.8);
+  --vp-c-text-3: rgba(237, 233, 230, 0.56);
+
+  --vp-c-divider: #2f2b28;
+  --vp-c-gutter: #0e0c0a;
+  --vp-c-border: #4b4744;
+
+  --vp-button-brand-text: #4d2400;
+  --vp-button-brand-hover-text: #4d2400;
+  --vp-button-brand-active-text: #4d2400;
+
+  --vp-c-default-1: #4b4744;
+  --vp-c-default-2: #2f2b28;
+  --vp-c-default-3: #282522;
+  --vp-c-default-soft: rgba(237, 233, 230, 0.08);
+  --vp-button-alt-bg: #282522;
+  --vp-button-alt-border: transparent;
+  --vp-button-alt-text: #ede9e6;
+  --vp-button-alt-hover-bg: #2f2b28;
+  --vp-button-alt-hover-border: transparent;
+  --vp-button-alt-hover-text: #ede9e6;
+  --vp-button-alt-active-bg: #2f2b28;
+  --vp-button-alt-active-text: #ede9e6;
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #ffb487 20%, #f8c9ad);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #824f29 50%, #ffb487 50%);
+}
+
+/* The app's cards: rounded tonal surfaces. */
+.VPFeature,
+.custom-block,
+div[class*="language-"] {
+  border-radius: 16px;
+}
+
+/* Feature cards: an icon badge in the primary's soft tint, as the app's icon badges. */
+.VPFeature {
+  background-color: var(--vp-c-bg-soft);
+  border: 1px solid transparent;
+  transition: border-color 0.25s, transform 0.25s;
+}
+
+.VPFeature.link:hover {
+  border-color: var(--vp-c-brand-1);
+  transform: translateY(-2px);
+}
+
+.VPFeature .icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+.VPFeature .icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.VPFeature .title {
+  font-weight: 700;
+}
+
+.VPFeature .details code {
+  color: var(--vp-c-brand-1);
+}
+
+.VPFeature .link-text {
+  color: var(--vp-c-brand-1);
+}
+
+/* The hero logo is a tall glyph: size it by height. */
+.VPHero .image-src {
+  max-height: 220px;
+  max-width: 180px;
+}
+
+@media (min-width: 960px) {
+  .VPHero .image-src {
+    max-height: 300px;
+    max-width: 240px;
+  }
+}
+
+/* ---- icons (icons.ts) ---- */
+.ax-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+}
+
+/* Sidebar and prev/next links: the icon in the primary, the text beside it. */
+.VPSidebarItem .text,
+.VPDocFooter .title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.VPSidebarItem .text .ax-icon,
+.VPDocFooter .title .ax-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--vp-c-brand-1);
+  opacity: 0.85;
+}
+
+.VPSidebarItem.is-active .text .ax-icon {
+  opacity: 1;
+}
+
+/* A page title's icon sits in a badge, as the app's icon badges. */
+.vp-doc h1 .ax-icon {
+  box-sizing: content-box;
+  width: 0.8em;
+  height: 0.8em;
+  padding: 0.22em;
+  margin-right: 0.35em;
+  border-radius: 0.32em;
+  vertical-align: -0.24em;
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+.vp-doc h2 .ax-icon,
+.vp-doc h3 .ax-icon {
+  margin-right: 0.3em;
+  color: var(--vp-c-brand-1);
+}
+
+/* Custom blocks: an icon before the title, in the block's own color. */
+.custom-block .custom-block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-block.info .custom-block-title::before,
+.custom-block.tip .custom-block-title::before,
+.custom-block.warning .custom-block-title::before,
+.custom-block.danger .custom-block-title::before {
+  content: "";
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask: var(--ax-block-icon) center / contain no-repeat;
+  mask: var(--ax-block-icon) center / contain no-repeat;
+}
+
+.custom-block.info {
+  --ax-block-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/%3E%3C/svg%3E");
+}
+
+.custom-block.tip {
+  --ax-block-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z'/%3E%3C/svg%3E");
+}
+
+.custom-block.warning {
+  --ax-block-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
+}
+
+.custom-block.danger {
+  --ax-block-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E");
+}
+
+/* The logo is tall; keep it from crowding the title. */
+.VPNavBarTitle .logo {
+  height: 26px;
+}

@@ -1,4 +1,4 @@
-# Environment & Paths
+# <Icon name="folder" /> Environment & Paths
 
 What a plugin's scripts see when AxManager runs them, where things live, and how AxManager starts and stops a plugin's processes.
 

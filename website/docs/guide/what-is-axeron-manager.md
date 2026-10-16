@@ -1,4 +1,4 @@
-# What is Axeron Manager?
+# <Icon name="info" /> What is Axeron Manager?
 
 Axeron Manager (AxManager) is an open experiment to build a more inclusive Android “manager.”
 Instead of being strictly tied to root access, AxManager focuses on ADB/Non-Root mode so it can run on a wider range of devices. At the same time, its architecture remains flexible — allowing optional root execution, support for third-party plugins, and even a Web-based Shell interface.

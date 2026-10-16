@@ -1,4 +1,4 @@
-# Shizuku Compatibility
+# <Icon name="swap" /> Shizuku Compatibility
 
 AxManager can stand in for [Shizuku](https://github.com/RikkaApps/Shizuku): apps built on [Shizuku-API](https://github.com/RikkaApps/Shizuku-API) connect to AxManager's server and get the same shell or root access, without Shizuku running.
 
