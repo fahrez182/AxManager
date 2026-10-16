@@ -71,9 +71,10 @@ function Stdio() {
   export function spawn(command, args, options) {
     if (typeof args === "undefined") {
       args = [];
-    } else if (typeof args === "object") {
-        // allow for (command, options) signature
+    } else if (!Array.isArray(args)) {
+        // allow for (command, options) signature; an array is always args
         options = args;
+        args = [];
     }
 
     if (typeof options === "undefined") {

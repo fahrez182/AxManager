@@ -25,15 +25,19 @@ WebUI 运行的每条命令都由 AxManager 的服务启动，拥有服务的权
 命令字符串会由一个 shell 以 `sh -c "…"` 的形式传递，即放在双引号内。需要原样传给命令的 `"`、`$` 和反引号请转义；较长的逻辑可以放进插件内的脚本中再运行（`sh ./script.sh`，并把 `cwd` 选项设为 `moduleInfo()` 中的插件文件夹）。
 :::
 
+::: tip 保持页面响应
+调用 `ksu` 或 `Axeron` 时，页面的 JavaScript 会一直阻塞到调用返回：页面不会重绘，定时器停止，加载动画也会卡住。回调形式（`ksu.exec(command, options, callback)`、`ksu.spawn`、`Axeron.exec(command, options, callback)`）会立即返回并在后台运行命令，因此耗时的操作请优先使用它们，或基于它们的 `kernelsu.js` / `axeron.js` 辅助模块。同步形式适合很快就能完成的调用。
+:::
+
 ## `ksu` 对象 {#the-ksu-object}
 
 ### `ksu.exec(command)` {#ksu-exec-command}
 
-运行 `command` 并等待其结束。返回 stdout 字符串；如果 stderr 不为空，后面会附加换行和 stderr。
+运行 `command` 并等待其结束，期间页面会被阻塞。返回 stdout 字符串；如果 stderr 不为空，后面会附加换行和 stderr。
 
 ### `ksu.exec(command, options, callbackName)` {#ksu-exec-callback}
 
-在不阻塞页面的情况下运行 `command`，结束后调用 `window[callbackName](errno, stdout, stderr)`。`options` 是一个 JSON 字符串：
+立即返回并在后台运行 `command`，结束后调用 `window[callbackName](errno, stdout, stderr)`。`options` 是一个 JSON 字符串：
 
 | 选项 | 含义 |
 |---|---|
@@ -47,8 +51,8 @@ WebUI 运行的每条命令都由 AxManager 的服务启动，拥有服务的权
 以 `args`（JSON 数组字符串，追加在命令之后）启动 `command`，并以流的方式输出。`window[callbackName]` 必须是一个带有 `stdout`、`stderr` 事件发射器和 `emit` 方法的对象；AxManager 会调用：
 
 - 输出到达时调用 `stdout.emit('data', chunk)` 和 `stderr.emit('data', chunk)`，
-- 结束时调用 `emit('exit', code)`，
-- 退出码不为 0 时调用 `emit('error', err)`（`err.exitCode`，`err.message` 为 stderr）。
+- 退出码不为 0 时调用 `emit('error', err)`（`err.exitCode`，`err.message` 为 stderr），
+- 最后在结束时调用 `emit('exit', code)`。它在 `error` 之后，因此可以在 `exit` 时丢弃该对象。
 
 `options` 和 `PATH` 的处理与 `exec` 相同。[`kernelsu` 辅助模块](#helper-modules)会为您构建这个对象。
 
@@ -71,7 +75,8 @@ WebUI 运行的每条命令都由 AxManager 的服务启动，拥有服务的权
 
 | 方法 | 返回 |
 |---|---|
-| `Axeron.exec(command, options)` | 运行 `command` 并等待其结束。`options` 是与 `ksu.exec` 相同的 JSON 字符串。返回 JSON 字符串 `{"errno": …, "stdout": "…", "stderr": "…"}`。 |
+| `Axeron.exec(command, options)` | 运行 `command` 并等待其结束，期间页面会被阻塞。`options` 是与 `ksu.exec` 相同的 JSON 字符串。返回 JSON 字符串 `{"errno": …, "stdout": "…", "stderr": "…"}`。 |
+| `Axeron.exec(command, options, callbackName)` | 立即返回并在后台运行 `command`，结束后调用 `window[callbackName](errno, stdout, stderr)`。 |
 | `Axeron.toast(message)` | 显示一条 Toast。 |
 
 ## 辅助模块 {#helper-modules}
@@ -93,9 +98,9 @@ child.on("exit", (code) => toast(`exit ${code}`));
 **`axeron.js`**（地址 `ax://axeron.js/`）：
 
 ```js
-export async function exec(command, options) // → { errno, stdout, stderr }
+import { exec } from "ax://axeron.js/";
+
+const { errno, stdout, stderr } = await exec("id", { cwd: "/" }); // 不会阻塞页面
 ```
 
-::: warning 1.9.1 中的已知问题
-内置的 `kernelsu.js` 会把 `spawn()` 的第二个参数一律当作 `options`，因此 `spawn(cmd, ["arg"])` 和 `spawn(cmd, { cwd })` 会失败。修复之前，请把参数写进命令中（`spawn("ls -l")`），把选项作为第三个参数传入（`spawn("ls", undefined, { cwd })`），或直接调用 `ksu.spawn`。
-:::
+`spawn(command, args)`、`spawn(command, options)` 和 `spawn(command, args, options)` 都可以使用：数组总是 `args`，对象则是 `options`。

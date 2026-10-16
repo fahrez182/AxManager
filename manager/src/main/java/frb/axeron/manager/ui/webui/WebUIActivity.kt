@@ -266,7 +266,7 @@ class WebUIActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
 
-            addJavascriptInterface(AxWebInterface(this@WebUIActivity, pluginDir), "Axeron")
+            addJavascriptInterface(AxWebInterface(this@WebUIActivity, this, pluginDir), "Axeron")
             addJavascriptInterface(KsuWebInterface(this@WebUIActivity, this, pluginDir), "ksu")
 
             webChromeClient = object : WebChromeClient() {

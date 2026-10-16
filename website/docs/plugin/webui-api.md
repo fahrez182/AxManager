@@ -25,15 +25,19 @@ Every command a WebUI runs is started by AxManager's server, with the server's p
 The command string is handed to `sh -c "…"` by a shell, inside double quotes. Escape `"`, `$` and backticks that should reach your command as they are, or put longer logic in a script inside your plugin and run that (`sh ./script.sh` with the `cwd` option set to the plugin's folder from `moduleInfo()`).
 :::
 
+::: tip Keep the page responsive
+A call into `ksu` or `Axeron` blocks the page's JavaScript until it returns: nothing redraws, timers stop, a spinner freezes. The callback variants (`ksu.exec(command, options, callback)`, `ksu.spawn`, `Axeron.exec(command, options, callback)`) return at once and run the command in the background, so prefer them, or the `kernelsu.js` / `axeron.js` helpers built on them, for anything that can take time. The synchronous variants are fine for quick calls.
+:::
+
 ## The `ksu` object
 
 ### `ksu.exec(command)`
 
-Runs `command` and waits for it. Returns stdout as a string, followed by a newline and stderr when stderr is not empty.
+Runs `command` and waits for it, blocking the page meanwhile. Returns stdout as a string, followed by a newline and stderr when stderr is not empty.
 
 ### `ksu.exec(command, options, callbackName)`
 
-Runs `command` without blocking the page, then calls `window[callbackName](errno, stdout, stderr)`. `options` is a JSON string:
+Returns at once and runs `command` in the background, then calls `window[callbackName](errno, stdout, stderr)`. `options` is a JSON string:
 
 | Option | Meaning |
 |---|---|
@@ -47,8 +51,8 @@ The plugin's `system/bin` is put first in `PATH`. `ksu.exec(command, callbackNam
 Starts `command` with `args` (a JSON array string, appended to the command) and streams its output. `window[callbackName]` must be an object with `stdout` and `stderr` emitters and an `emit` method; AxManager calls:
 
 - `stdout.emit('data', chunk)` and `stderr.emit('data', chunk)` as output arrives,
-- `emit('exit', code)` when it ends,
-- `emit('error', err)` when the exit code is not 0 (`err.exitCode`, `err.message` holds stderr).
+- `emit('error', err)` when the exit code is not 0 (`err.exitCode`, `err.message` holds stderr),
+- `emit('exit', code)` last, when it ends. It comes after `error`, so you can drop the object on `exit`.
 
 `options` and `PATH` work as for `exec`. The [`kernelsu` helper](#helper-modules) builds this object for you.
 
@@ -71,7 +75,8 @@ Package lists cover the device's main user (user 0).
 
 | Method | Returns |
 |---|---|
-| `Axeron.exec(command, options)` | Runs `command` and waits for it. `options` is a JSON string as for `ksu.exec`. Returns a JSON string `{"errno": …, "stdout": "…", "stderr": "…"}`. |
+| `Axeron.exec(command, options)` | Runs `command` and waits for it, blocking the page. `options` is a JSON string as for `ksu.exec`. Returns a JSON string `{"errno": …, "stdout": "…", "stderr": "…"}`. |
+| `Axeron.exec(command, options, callbackName)` | Returns at once and runs `command` in the background, then calls `window[callbackName](errno, stdout, stderr)`. |
 | `Axeron.toast(message)` | Shows a toast. |
 
 ## Helper modules
@@ -93,9 +98,9 @@ child.on("exit", (code) => toast(`exit ${code}`));
 **`axeron.js`** (served at `ax://axeron.js/`):
 
 ```js
-export async function exec(command, options) // → { errno, stdout, stderr }
+import { exec } from "ax://axeron.js/";
+
+const { errno, stdout, stderr } = await exec("id", { cwd: "/" }); // non-blocking
 ```
 
-::: warning Known issue in 1.9.1
-The bundled `kernelsu.js` treats any second argument of `spawn()` as `options`, so `spawn(cmd, ["arg"])` and `spawn(cmd, { cwd })` fail. Until it is fixed, put the arguments in the command (`spawn("ls -l")`), pass options as the third argument (`spawn("ls", undefined, { cwd })`), or call `ksu.spawn` directly.
-:::
+`spawn(command, args)`, `spawn(command, options)` and `spawn(command, args, options)` all work: an array is always `args`, an object is `options`.
