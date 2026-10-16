@@ -34,7 +34,7 @@
 
 ::: info 所有设备
 
-- 确保 Shizuku 可以在后台运行。
+- 确保 AxManager 可以在后台运行。
 
 - 不要禁用“USB 调试”和“开发者选项”。
 
@@ -58,3 +58,27 @@
 ::: info 索尼
 不要点击连接 USB 后显示的对话框，因为它会更改 USB 使用模式。
 :::
+
+## 应用提示找不到 Shizuku {#shizuku-not-found}
+
+1. 在 AxManager 运行时打开**设置 → AX-权限接管**。
+2. 一些较旧的 Shizuku 客户端（例如旧版 ZArchiver）只有在**安装了** Shizuku 应用时才会连接。安装它即可，不需要启动。
+
+参见 [Shizuku 兼容](./shizuku-compatibility.md)。
+
+## Shizuku 应用提示需要更新 {#shizuku-update-note}
+
+这是预期行为。由 AxManager 为 Shizuku 应用提供服务时，报告的服务版本为 `13.<AxManager 版本号>`，没有任何真实的 Shizuku 版本与之匹配，因此 Shizuku 应用会显示更新提示。无需更新任何东西。
+
+## 服务停止后插件仍在运行 {#plugins-keep-running}
+
+这是默认行为：插件启动后会独立运行。如需在服务停止或退出时停止所有插件的进程，请打开**设置 → 随服务停止插件**。参见[插件进程](../plugin/environment.md#plugin-processes)。
+
+## 插件日志在哪里？ {#plugin-logs}
+
+`post-fs-data.sh` 和 `uninstall.sh` 的输出写入 `$AXERONDIR/logs/<id>.post-fs-data.log` 和 `$AXERONDIR/logs/<id>.uninstall.log`：
+
+- Root 模式：`/data/adb/axeron/logs`
+- Shell 模式：`/data/user_de/0/com.android.shell/axeron/logs`
+
+`service.sh` 的输出不会被保留；如有需要，请自行重定向到文件。安装插件和运行其操作时，输出会显示在屏幕上，并提供保存日志的按钮。

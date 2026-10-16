@@ -22,9 +22,12 @@ AxManager's plugins support displaying interfaces and interacting with users sam
 AxManager is support **KernelSU** API and only differs in permissions and how to treat local directories from `webroot/index.html`
 :::
 
+The `ksu` and `Axeron` JavaScript objects available to a WebUI are documented in [WebUI API](./webui-api.md).
+
 ## BusyBox
 
-AxManager ships with a feature-complete BusyBox binary (including full SELinux support). The executable is located at `/data/user_de/0/com.android.shell/axeron/bin/busybox`,
+AxManager ships with a feature-complete BusyBox binary (including full SELinux support). The executable is located at `$AXERONDIR/bin/busybox` (see [Working folder](#working-folder)).
+
 AxManager's BusyBox supports runtime toggle-able "ASH Standalone Shell Mode". What this Standalone Mode means is that when running in the ash shell of BusyBox, every single command will directly use the applet within BusyBox, regardless of what is set as `PATH`. For example, commands like `ls`, `rm`, `chmod` will **NOT** use what is in PATH (in the case of Android by default it will be `/system/bin/ls`, `/system/bin/rm`, and `/system/bin/chmod` respectively), but will instead directly call internal BusyBox applets. This makes sure that scripts always run in a predictable environment and always have the full suite of commands no matter which Android version it is running on. To force a command not to use BusyBox, you have to call the executable with full paths.
 
 Every single shell script running in the context of AxManager will be executed in BusyBox's `ash` shell with Standalone Mode enabled. For what is relevant to 3rd party developers, this includes all boot scripts and module installation scripts.
@@ -33,12 +36,23 @@ Every single shell script running in the context of AxManager will be executed i
 AxManager's BusyBox is now using the binary file compiled directly from the Magisk project. Thanks to Magisk! Therefore, you don't need to worry about compatibility issues between BusyBox scripts in Magisk, KernelSU and AxManager, as they're exactly the same!
 :::
 
+## Working folder
+
+Root mode and shell mode each keep their own folder, exposed to every script as `$AXERONDIR`:
+
+| Mode | `$AXERONDIR` |
+|---|---|
+| Root | `/data/adb/axeron` |
+| Shell | `/data/user_de/0/com.android.shell/axeron` |
+
+Always use `$AXERONDIR` instead of hardcoding either path. What is inside it, and every variable your scripts get, is listed in [Environment & Paths](./environment.md).
+
 ## AxManager plugins
 
-A AxManager plugins is a folder placed in `/data/user_de/0/com.android.shell/axeron/plugins` with the structure below:
+A AxManager plugin is a folder placed in `$AXERONDIR/plugins` with the structure below:
 
 ```
-/data/user_de/0/com.android.shell/axeron/plugins
+$AXERONDIR/plugins
 ├── .
 ├── .
 │
@@ -100,7 +114,9 @@ axeronPlugin=<int> <--- A field for targeting AxManager server version supported
 - `id` has to match this regular expression: `^[a-zA-Z][a-zA-Z0-9._-]+$`
   Example: ✓ `a_module`, ✓ `a.module`, ✓ `module-101`, ✗ `a module`, ✗ `1_module`, ✗ `-a-module`
   This is the **unique identifier** of your module. You should not change it once published.
+  The installer refuses a module whose `id` does not match, since the id names the plugin's folder.
 - `versionCode` has to be an **integer**. This is used to compare versions.
+- `axeronPlugin` is **required** and has to be a **number** (e.g. `19100`). A module without it, or with a non-numeric value, is refused.
 - Others that were not mentioned above can be any **single line string.**
 - Make sure to use the `UNIX (LF)` line break type and not the `Windows (CR+LF)` or `Macintosh (CR)`.
 
@@ -122,6 +138,14 @@ You can use the environment variable `AXERON` to determine if a script is runnin
 
 AxManager **for now** only affects `/system/bin` by adding it to the `PATH`, so binaries there can be called directly in any script.
 :::
+
+### Processes and script limits
+
+- Every process a plugin starts (from any of its scripts, its action or its WebUI) carries `AXERON_PLUGIN=<id>`. Disabling, updating or removing the plugin stops all of them, daemons included: `SIGTERM`, then `SIGKILL` after about 3 seconds. Don't clear that variable in your scripts.
+- `post-fs-data.sh` and `uninstall.sh` may block for at most **40 seconds**. Their output goes to `$AXERONDIR/logs/<id>.post-fs-data.log` and `$AXERONDIR/logs/<id>.uninstall.log`. Start long-running work from `service.sh`.
+- By default plugins keep running when the server stops; **Settings → Stop plugins with the server** changes that.
+
+Details in [Environment & Paths](./environment.md#plugin-processes).
 
 ## Plugin installer
 
@@ -155,7 +179,7 @@ The customize.sh script runs in AxManager's BusyBox ash shell with Standalone Mo
 #### Variables
 
 - `AXERON` (bool): a variable to mark that the script is running in the AxManager environment, and the value of this variable will always be true. You can use it to distinguish between AxManager, KernelSU and Magisk.
-- `AXERONVER` (int): the version int of currently running AxManager Server (e.g. 10400).
+- `AXERONVER` (int): the version int of currently running AxManager Server (e.g. 19100).
 - `BOOTMODE` (bool): always be true in AxManager.
 - `MODPATH` (path): the path where your module files should be installed.
 - `TMPDIR` (path): a place where you can temporarily store files.
@@ -176,15 +200,14 @@ abort <msg>
     Avoid using 'exit' as it will skip the termination cleanup steps
 
 set_perm <target> <owner> <group> <permission> [context]
-    if [context] is not set, the default is "u:object_r:system_file:s0"
     this function is a shorthand for the following commands:
-       chown owner.group target
-       chmod permission target
-       chcon context target
+       chown owner:group target    (best effort, a failure is ignored)
+       chmod permission target     (always applied; set_perm fails if this fails)
+       chcon context target        (only if [context] is set)
+    if [context] is not set, the SELinux context is left unchanged
 
 set_perm_recursive <directory> <owner> <group> <dirpermission> <filepermission> [context]
-    if [context] is not set, the default is "u:object_r:system_file:s0"
-    for all files in <directory>, it will call:
+    for all files and symlinks in <directory>, it will call:
        set_perm file owner group filepermission context
     for all directories in <directory> (including itself), it will call:
        set_perm dir owner group dirpermission context

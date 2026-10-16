@@ -34,7 +34,7 @@ Disable "Flyme payment protection" in "Developer options".
 
 ::: info All devices
 
-- Make sure Shizuku can run in the background.
+- Make sure AxManager can run in the background.
 
 - Do not disable "USB debugging" and "Developer options".
 
@@ -58,3 +58,27 @@ Do not use the scan feature in MIUI's "Security" app, since it will disable "Dev
 ::: info Sony
 Don't click the dialog shows after connecting the USB, because it will change USB usage mode.
 :::
+
+## An app says Shizuku is not found
+
+1. Turn on **Settings → AX-Permission Intercept** while AxManager is running.
+2. Some older Shizuku clients (for example older versions of ZArchiver) only connect when the Shizuku app is **installed**. Install it; it doesn't need to be started.
+
+See [Shizuku compatibility](./shizuku-compatibility.md).
+
+## The Shizuku app says an update is needed
+
+This is expected. When AxManager serves the Shizuku app, the server version it reports is `13.<AxManager version code>`, which no real Shizuku release matches, so the Shizuku app shows its update note. Nothing needs updating.
+
+## Plugins keep running after the server stops
+
+That is the default: plugins run on their own once started. To stop every plugin's processes whenever the server stops or dies, turn on **Settings → Stop plugins with the server**. See [Plugin processes](../plugin/environment.md#plugin-processes).
+
+## Where are the plugin logs?
+
+`post-fs-data.sh` and `uninstall.sh` write their output to `$AXERONDIR/logs/<id>.post-fs-data.log` and `$AXERONDIR/logs/<id>.uninstall.log`:
+
+- Root mode: `/data/adb/axeron/logs`
+- Shell mode: `/data/user_de/0/com.android.shell/axeron/logs`
+
+Output of `service.sh` is not kept; redirect it to a file yourself if you need it. Installing a plugin and running its action show their output on screen, with a button to save the log.

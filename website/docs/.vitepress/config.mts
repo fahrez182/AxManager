@@ -30,6 +30,11 @@ export default defineConfig({
                 link: "/guide/what-is-axeron-manager",
               },
               { text: "User Manual", link: "/guide/user-manual" },
+              { text: "App Tour", link: "/guide/app-tour" },
+              {
+                text: "Shizuku Compatibility",
+                link: "/guide/shizuku-compatibility",
+              },
               { text: "FAQ", link: "/guide/faq" },
             ],
           },
@@ -37,6 +42,8 @@ export default defineConfig({
             text: "Plugin",
             items: [
               { text: "What is Plugin?", link: "/plugin/what-is-plugin" },
+              { text: "Environment & Paths", link: "/plugin/environment" },
+              { text: "WebUI API", link: "/plugin/webui-api" },
               {
                 text: "Re-ignite (Reboot System)",
                 link: "/plugin/re-ignite",
@@ -71,6 +78,11 @@ export default defineConfig({
                 link: "/zh/guide/what-is-axeron-manager",
               },
               { text: "用户手册", link: "/zh/guide/user-manual" },
+              { text: "应用导览", link: "/zh/guide/app-tour" },
+              {
+                text: "Shizuku 兼容",
+                link: "/zh/guide/shizuku-compatibility",
+              },
               { text: "常见问题", link: "/zh/guide/faq" },
             ],
           },
@@ -78,6 +90,8 @@ export default defineConfig({
             text: "插件",
             items: [
               { text: "什么是插件？", link: "/zh/plugin/what-is-plugin" },
+              { text: "环境与路径", link: "/zh/plugin/environment" },
+              { text: "WebUI API", link: "/zh/plugin/webui-api" },
               { text: "Re-ignite（重启系统）", link: "/zh/plugin/re-ignite" },
             ],
           },

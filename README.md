@@ -1,74 +1,143 @@
-# Axeron Manager (Proof of Concept)
+# Axeron Manager (AxManager)
 
-> **Axeron Manager (AxManager)** is a Proof of Concept (POC) for a self-created environment on Android that leverages ADB permissions to provide system-level control. This project explores the idea of creating a persistent, independent ADB-based execution layer within the system.
+A privileged environment for Android that runs on **ADB (shell) permissions**, or on **root** when you have it. AxManager keeps a background server alive and builds on it: Magisk-style plugins with a WebUI, per-app privilege control, a Shizuku-compatible API, a shell, and a system settings editor.
 
 [Switch to Chinese translation 切换到中文翻译](README_cn.md)
 
-## 💡 The Concept
-This project is a personal exploration into creating a dedicated **ADB Environment** on Android. Instead of just being a simple command runner, AxManager aims to establish a background infrastructure that can host plugins, manage system optimizations, and provide a unified interface for privileged operations—all without requiring full root access (though it can utilize root if available).
+## What it is
 
-## ✨ Features
-- 🏗️ **Internal ADB Environment**  
-  A self-contained environment designed to maintain and utilize ADB-level privileges.
-- 🖥️ **Shell Executor**  
-  Run shell commands with persistent sessions.  
-  - Supports **ADB / Non-Root execution**.  
-  - Optional **Root execution** for enhanced capabilities.  
+AxManager starts its own server process, either as the `shell` user (through Wireless Debugging, a computer, or another phone over OTG) or as `root`. The app, plugins, their WebUIs and the other apps you allow all work through that server. Most features need no root; with root they run with root's reach.
 
-- ⚡ **Plugin (Unrooted Module)**  
-  A system to manage third-party modules within the unrooted environment. [Learn more](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)  
+## Features
 
-- 🌐 **WebUI Interface**  
-  Manage and interact with the system environment through a web-based interface.
+### Activation
+- **Root**: start directly from the app.
+- **Wireless Debugging** (Android 11+): pair and start on the device itself, without a computer.
+- **TCP debugging**, with a configurable port.
+- **Computer**: start it with one `adb shell` command.
+- **OTG**: use this phone as the computer and start AxManager on another phone over a USB cable.
+- **Start as Shell**: run in shell mode even on a rooted device.
+- **Start on boot**: root, or ADB on Android 11+ (experimental).
+- An activation log streams each step, so a failure says where it stopped.
 
-## 📱 Why this POC?
-- **Independence**: Aims to minimize reliance on external PCs for ADB tasks once set up.
-- **Environment-centric**: Focuses on creating a resident privileged layer rather than just one-off command execution.
-- **Accessibility**: Bringing "Root-like" capabilities to non-rooted devices through native system mechanisms.
+### Home
+- Server status, how it was started (root, root as shell, or ADB) and whether it starts on boot.
+- A wakelock switch that keeps the server from being suspended.
+- Device details: model, Android version, security patch, kernel, supported ABIs, SELinux context.
+- An update notice when a newer release is out.
 
-## 📖 Roadmap
-- [x] Wireless Debugging Activator.
-- [x] Command-line / Root Activator.
-- [x] Shell Executor basic support (ADB/Non-Root).
-- [x] Auto active when use Wireless Debugging (Test)
-- [x] [Plugin](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html) system for third-party extensions.  
-- [x] Developer Mode & Advanced Debugging tools.  
-- [ ] App optimization based on profiles.
+### Privilege
+- Grant or deny AxManager access per app, with filters for installed, system and Shizuku-API apps.
+- **Shizuku compatibility**: apps built on [Shizuku-API](https://github.com/RikkaApps/Shizuku-API) connect to AxManager without Shizuku running. Some older apps still require the Shizuku app to be installed (not running), and Settings warns you when it isn't.
+- **Per-app detail**:
+  - Force stop, clear cache, clear data, and uninstall (system apps for the current user).
+  - Battery optimization, background activity, and enabling or disabling the app.
+  - Special access as app-op modes (allow, foreground, ignore, deny, default): display over other apps, usage access, all files access, install unknown apps, alarms, and more.
+  - Grant or revoke runtime and development permissions; every other permission is listed read-only.
+  - The page refreshes when you come back, so changes made elsewhere show up.
 
-## 🔧 Build & Install
-Clone the repository and build using Android Studio or Gradle:
+### Plugins (unrooted modules)
+Modules in the familiar Magisk/KernelSU layout, run by AxManager's server instead of a root daemon. See the [plugin docs](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html).
+- `module.prop`, `customize.sh`, `post-fs-data.sh`, `service.sh`, `system.prop`, `action.sh`, `uninstall.sh`, and `system/bin` (linked into `$AXERONXBIN`, which is on `PATH`).
+- A full BusyBox (with Standalone Mode), `resetprop`, and the `AXERON`, `AXERONVER`, `AXERONDIR`, `AXERONBIN`, `AXERONXBIN` and `TMPDIR` environment variables.
+- **WebUI** with a KernelSU-compatible `ksu` JavaScript API and AxManager's own `Axeron` API. Any plugin's WebUI can be pinned to the home screen with its own name and icon.
+- **Process lifecycle**: every process a plugin starts (from its scripts, its action or its WebUI) carries an `AXERON_PLUGIN=<id>` marker. Disabling or removing the plugin stops all of them, daemons included: SIGTERM first, SIGKILL after 3 seconds.
+- `post-fs-data.sh` and `uninstall.sh` can block for 40 seconds at most; their output is kept in `$AXERONDIR/logs`.
+- Plugins keep running when the server stops, unless you turn on **Stop plugins with the server**.
+- Install several zips at once, filter and sort the list, and re-ignite from the page.
+- **Developer mode** adds a card with the server's paths, version and plugin counts, as plugin scripts see them.
+
+### QuickShell
+- Run commands with the server's privileges (shell or root, depending on how it was started).
+- Save commands and whole scripts as snippets, also from selected text anywhere in the app ("Save snippet" in the selection menu).
+- Find in output, unlimited output, a key event blocker, and a compatibility mode that starts sessions through BusyBox.
+- `axrun` and `axerish` bring the same privileges to a terminal app.
+
+### Settings Editor
+- Browse, search and edit the `system`, `secure` and `global` settings tables, and add or remove entries.
+- **Quick Settings**: keep the values you change often in one list and switch them in one tap.
+
+### Settings and appearance
+- Environment: the Shizuku intercept, stopping plugins with the server, and preferring the system's binaries over BusyBox on `PATH`.
+- Start on boot, and re-ignite plugins every time the app reconnects to the server (by default only on the first connection after the server starts).
+- Reset per mode (root, shell, or both).
+- A theme that follows the system, dynamic color or a custom palette, and the app language (English, Indonesian, Chinese).
+- Developer mode and WebView debugging for plugin WebUIs.
+
+## Where things live
+
+Root and shell mode each keep their own folder, so files made as root never block shell mode.
+
+| Mode | Folder |
+|---|---|
+| Root | `/data/adb/axeron` |
+| Shell | `/data/user_de/0/com.android.shell/axeron` |
+
+Each one holds:
+
+| Folder | Contents |
+|---|---|
+| `plugins/` | Installed plugins |
+| `bin/` | BusyBox and the bundled tools, rebuilt on every start |
+| `xbin/` | Links to the plugins' `system/bin` |
+| `cache/` | `$TMPDIR` |
+| `logs/` | Output of `post-fs-data.sh` and `uninstall.sh` |
+
+Root mode used to live in `/data/user_de/0/android/axeron`; it moves to `/data/adb/axeron` automatically the first time the server starts as root.
+
+## Requirements
+- Android 8.0 (API 26) or newer.
+- Wireless Debugging activation needs Android 11 or newer.
+
+## Install
+Download the latest APK from [Releases](https://github.com/fahrez182/AxManager/releases), then follow the [user manual](https://fahrez182.github.io/AxManager/guide/user-manual.html) to start it.
+
+## Build
+The API lives in a git submodule, so clone with it:
 
 ```bash
-git clone https://github.com/fahrez182/AxManager.git
+git clone --recurse-submodules https://github.com/fahrez182/AxManager.git
 cd AxManager
 ./gradlew :manager:assembleDebug
 ```
 
-Install the manager app to your device via ADB:
+Already cloned without it? Run `git submodule update --init`. To build against a local copy of the API, set `api.useLocal=true` and `api.dir=<path>` in `local.properties`.
+
+Install the debug build:
 
 ```bash
 adb install manager/build/outputs/apk/debug/manager-debug.apk
 ```
 
-## 🤝 Contribution
-Contributions are welcome!  
-Feel free to open **issues**, submit **pull requests**, or start a discussion for new ideas and improvements.
+| Module | What it is |
+|---|---|
+| `manager` | The app |
+| `server` | The privileged server and its native starter |
+| `reignite` | The plugin igniter (`ax_reignite.dex`), which starts and stops plugins |
+| `adb` | Wireless Debugging pairing and the ADB client |
+| `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `rish`, `axerish` |
 
+## Documentation
+- [What is Axeron Manager?](https://fahrez182.github.io/AxManager/guide/what-is-axeron-manager.html)
+- [User manual](https://fahrez182.github.io/AxManager/guide/user-manual.html)
+- [Plugins](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)
+- [Re-ignite](https://fahrez182.github.io/AxManager/plugin/re-ignite.html)
+- [FAQ](https://fahrez182.github.io/AxManager/guide/faq.html)
 
-## 🙏 Credits
-- **[Magisk]()** "**BusyBox** and Plugin (Unrooted module) ideas"
-- **[Shizuku](https://github.com/RikkaApps/Shizuku) / [API](https://github.com/RikkaApps/Shizuku-API)** "Starting point and reference for learning Android IPC and ADB-based permission handling"
-- **[KernelSU](https://github.com/tiann/KernelSU) / [Next](https://github.com/KernelSU-Next/KernelSU-Next)** "Inspiration for the UI and WebUI features."
+## Contributing
+Contributions are welcome. Open an issue, send a pull request, or start a discussion.
 
-## ⚠️ Notices & Legal Disclaimer
+## Credits
+- **[Magisk](https://github.com/topjohnwu/Magisk)**: BusyBox, `resetprop`, and the module system that plugins are modelled on.
+- **[Shizuku](https://github.com/RikkaApps/Shizuku) / [Shizuku-API](https://github.com/RikkaApps/Shizuku-API)**: the starting point and reference for Android IPC and ADB-based permissions.
+- **[KernelSU](https://github.com/tiann/KernelSU) / [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next)**: inspiration for the UI and the WebUI.
+
+## Notices and legal disclaimer
 This project includes adapted portions of code from:
-- Shizuku Manager (© Rikka Apps)
-  Licensed under the Apache License, Version 2.0
-  Repository: https://github.com/RikkaApps/Shizuku
+- Shizuku Manager (© Rikka Apps), licensed under the Apache License, Version 2.0. Repository: https://github.com/RikkaApps/Shizuku
 - Other open-source projects as credited above.
 
-AxManager does not include or distribute any original Shizuku Manager visual assets or claim to be an official replacement.
-All adapted code is used strictly for educational and experimental purposes, with clear attribution and compliance with the Apache License 2.0.
+AxManager does not include or distribute any original Shizuku Manager visual assets and does not claim to be an official replacement. Adapted code is used with clear attribution and in compliance with the Apache License 2.0.
 
-## 📜 License
+## License
 Licensed under the [Apache License 2.0](LICENSE).
