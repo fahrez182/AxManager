@@ -64,11 +64,5 @@ project(":server-shared").projectDir = file("$root${File.separator}server-shared
 include(":rish")
 project(":rish").projectDir = file("$root${File.separator}rish")
 
-include(":shell")
-project(":shell").projectDir = file("$root${File.separator}shell")
-
-include(":runtime")
-project(":runtime").projectDir = file("$root${File.separator}runtime")
-
-include(":axerish")
-project(":axerish").projectDir = file("$root${File.separator}axerish")
+include(":axsh")
+project(":axsh").projectDir = file("$root${File.separator}axsh")

@@ -539,4 +539,16 @@
     <string name="start_as_shell">Start as Shell</string>
     <string name="permission_need_more_step">Additional Steps Required</string>
     <string name="permission_grant_runtime_not_allowed">This feature requires special permissions that are not currently enabled. Please read the documentation to learn how to grant the necessary permissions.</string>
+
+    <!-- QuickShell line types and volume keys -->
+    <string name="type_command">Type Command</string>
+    <string name="type_start">Type Start</string>
+    <string name="type_stdin">Type Input</string>
+    <string name="type_stdout">Type Output</string>
+    <string name="type_stderr">Type Error</string>
+    <string name="type_throw">Type Throw</string>
+    <string name="type_space">Type Space</string>
+    <string name="type_exit">Type Exit</string>
+    <string name="volume_up">Volume UP</string>
+    <string name="volume_down">Volume DOWN</string>
 </resources>

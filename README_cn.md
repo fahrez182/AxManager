@@ -34,7 +34,7 @@ AxManager 以 `shell` 用户（通过无线调试、电脑或另一台手机经 
 
 ### 💻 Shell
 - **QuickShell**：以服务的权限运行命令（shell 或 root，取决于启动方式），支持代码片段、在输出中查找以及无限输出。
-- `axrun` / `axerish`：在终端应用中使用 AxManager 的权限。
+- `axsh`：在终端应用中使用 AxManager 的权限：直接运行管理器的 `libaxsh.so`，参数与 `sh` 相同（`axsh -c 'id'`），终端应用无需安装任何东西。
 
 ### ⚙️ 系统
 - **设置编辑器**：浏览、搜索和编辑 `system`、`secure` 和 `global` 设置，常用项可放入**快捷设置**。
@@ -81,7 +81,7 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 | `server` | 特权服务及其原生启动器 |
 | `reignite` | 插件点火器（`ax_reignite.dex`），负责启动和停止插件 |
 | `adb` | 无线调试配对和 ADB 客户端 |
-| `api`（子模块） | AIDL、客户端 API、共享的服务端代码、Shizuku 兼容层、`rish`、`axerish` |
+| `api`（子模块） | AIDL、客户端 API、共享的服务端代码、Shizuku 兼容层、`rish`、`axsh` |
 
 ## 📖 文档
 - [什么是 Axeron 管理器？](https://fahrez182.github.io/AxManager/zh/guide/what-is-axeron-manager.html)

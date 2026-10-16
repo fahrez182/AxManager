@@ -123,18 +123,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name="frb.axeron.server.shell.ShellRequestHandlerActivity"
-            android:directBootAware="true"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:theme="@style/GrantPermissions">
-            <intent-filter>
-                <action android:name="AxRuntime.REQUEST_BINDER" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
         <!-- "Save snippet" in the text selection toolbar; not exported, so AxManager only. -->
         <activity
             android:name=".ui.SaveSnippetActivity"

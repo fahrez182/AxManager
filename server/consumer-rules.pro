@@ -49,10 +49,6 @@
     public <init>(...);
 }
 
--keep class frb.axeron.server.shell.Shell {
-    public static void main(java.lang.String[], java.lang.String, android.os.IBinder, android.os.Handler);
-}
-
 -assumenosideeffects class frb.axeron.server.util.Logger {
     public *** d(...);
 }

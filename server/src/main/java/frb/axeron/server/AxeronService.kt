@@ -32,6 +32,7 @@ import frb.axeron.server.ServerConstants.MANAGER_APPLICATION_ID
 import frb.axeron.server.ServerConstants.PERMISSION
 import frb.axeron.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
 import frb.axeron.server.api.RemoteProcessHolder
+import frb.axeron.server.axsh.AxshServer
 import frb.axeron.server.util.HandlerUtil
 import frb.axeron.server.util.IContentProviderCompat
 import frb.axeron.server.util.OsUtils
@@ -87,7 +88,8 @@ open class AxeronService :
             // Before the service exists: its constructor already reads the root world's configs.
             if (Os.getuid() == 0) migrateRootWorld()
             ensureCacheDir(Os.getuid() == 0)
-            AxeronService()
+            val service = AxeronService()
+            service.startAxsh()
             Looper.loop()
         }
 
@@ -458,6 +460,27 @@ open class AxeronService :
         return checkCaller(callingUid)
     }
 
+    private var axshServer: AxshServer? = null
+
+    /**
+     * Native `axsh` clients (uid/pid from SO_PEERCRED) reach the same gate as binder callers:
+     * root/shell always, the manager app always, everything else only once granted per-uid.
+     */
+    private fun checkAxshCaller(uid: Int): Boolean {
+        if (uid == 0 || uid == 2000) return true
+        if (checkCaller(uid)) return true
+        return configManager.find(uid)?.isAllowed == true
+    }
+
+    fun startAxsh() {
+        val server = AxshServer(
+            environment = { getEnvironment(TYPE_ENV)?.envMap },
+            authorize = { uid, _ -> checkAxshCaller(uid) }
+        )
+        axshServer = server
+        server.start()
+    }
+
     override fun checkCallerPermission(
         func: String?,
         callingUid: Int,
@@ -471,7 +494,7 @@ open class AxeronService :
         if (clientRecord != null) {
             return false
         }
-        // Non-attached callers (axerish/axrun, unattached Shizuku clients) are only allowed once
+        // Non-attached callers (axsh brokers, unattached Shizuku clients) are only allowed once
         // their uid has been granted permission, mirroring Service.checkSelfPermission().
         if (callingUid == 0 || callingUid == 2000) {
             return true

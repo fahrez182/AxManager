@@ -51,7 +51,7 @@ Modules in the familiar Magisk/KernelSU layout, run by AxManager's server instea
 - Run commands with the server's privileges (shell or root, depending on how it was started).
 - Save commands and whole scripts as snippets, also from selected text anywhere in the app ("Save snippet" in the selection menu).
 - Find in output, unlimited output, a key event blocker, and a compatibility mode that starts sessions through BusyBox.
-- `axrun` and `axerish` bring the same privileges to a terminal app.
+- `axsh` brings the same privileges to a terminal app: run the manager's `libaxsh.so` with plain `sh` arguments (`axsh -c 'id'`), nothing to install in that app.
 
 ### Settings Editor
 - Browse, search and edit the `system`, `secure` and `global` settings tables, and add or remove entries.
@@ -115,7 +115,7 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 | `server` | The privileged server and its native starter |
 | `reignite` | The plugin igniter (`ax_reignite.dex`), which starts and stops plugins |
 | `adb` | Wireless Debugging pairing and the ADB client |
-| `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `rish`, `axerish` |
+| `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `rish`, `axsh` |
 
 ## Documentation
 - [What is Axeron Manager?](https://fahrez182.github.io/AxManager/guide/what-is-axeron-manager.html)
