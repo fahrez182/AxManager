@@ -1,6 +1,8 @@
 package frb.axeron.manager.ui.component
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -32,16 +34,35 @@ import androidx.compose.ui.unit.dp
 val AxCardShape = RoundedCornerShape(16.dp)
 val AxPanelShape = RoundedCornerShape(12.dp)
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AxCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /** A long press; the card then handles both itself (Surface's onClick has no long press). */
+    onLongClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     shape: Shape = AxCardShape,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val color = MaterialTheme.colorScheme.surfaceContainerHigh
-    if (onClick != null) {
+    if (onLongClick != null) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = onClick ?: {},
+                    onLongClick = onLongClick
+                ),
+            shape = shape,
+            color = color,
+            tonalElevation = 2.dp
+        ) {
+            Column(content = content)
+        }
+    } else if (onClick != null) {
         Surface(
             modifier = modifier.fillMaxWidth(),
             onClick = onClick,

@@ -62,6 +62,16 @@ public class AxeronConfigManager extends ConfigManager {
             changed = true;
         }
 
+        if (config.version < 3) {
+            // Older configs stamped FLAG_DENIED on every app that wasn't allowed; nobody chose it.
+            for (AxeronConfig.PackageEntry entry : config.packages) {
+                entry.flags &= ~ConfigManager.FLAG_DENIED;
+            }
+            LOGGER.i("config v%d -> v%d: cleared implicit denials", config.version, AxeronConfig.LATEST_VERSION);
+            config.version = AxeronConfig.LATEST_VERSION;
+            changed = true;
+        }
+
         for (AxeronConfig.PackageEntry entry : new ArrayList<>(config.packages)) {
             if (entry.packages == null) {
                 entry.packages = new ArrayList<>();
@@ -113,15 +123,19 @@ public class AxeronConfigManager extends ConfigManager {
                 String pkg = pi.packageName;
                 AxeronConfig.PackageEntry entry = findLocked(uid);
                 boolean allowed = false;
+                boolean denied = false;
 
-                if (entry != null) {
-                    allowed = entry.packages.contains(pkg) && entry.isAllowed();
+                if (entry != null && entry.packages.contains(pkg)) {
+                    allowed = entry.isAllowed();
+                    denied = entry.isDenied();
                 }
 
                 List<String> packages = new ArrayList<>();
                 packages.add(pkg);
 
-                updateLocked(uid, packages, ConfigManager.MASK_PERMISSION, allowed ? ConfigManager.FLAG_ALLOWED : ConfigManager.FLAG_DENIED);
+                // Neither allowed nor denied is "ask": 0, not FLAG_DENIED.
+                int flags = allowed ? ConfigManager.FLAG_ALLOWED : denied ? ConfigManager.FLAG_DENIED : 0;
+                updateLocked(uid, packages, ConfigManager.MASK_PERMISSION, flags);
                 changed = true;
             }
         }
@@ -212,7 +226,8 @@ public class AxeronConfigManager extends ConfigManager {
         synchronized (this) {
             AxeronConfig.PackageEntry entry = findLocked(uid);
             if (entry == null) {
-                entry = new AxeronConfig.PackageEntry(uid, ConfigManager.MASK_PERMISSION & ConfigManager.FLAG_DENIED);
+                // A first request: "ask", not denied.
+                entry = new AxeronConfig.PackageEntry(uid, 0);
                 entry.packages.addAll(PackageManagerApis.getPackagesForUidNoThrow(uid));
                 config.packages.add(entry);
             }

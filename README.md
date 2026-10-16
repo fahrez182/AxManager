@@ -115,7 +115,7 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 | `server` | The privileged server and its native starter |
 | `reignite` | The plugin igniter (`ax_reignite.dex`), which starts and stops plugins |
 | `adb` | Wireless Debugging pairing and the ADB client |
-| `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `rish`, `axsh` |
+| `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `axsh` |
 
 ## Documentation
 - [What is Axeron Manager?](https://fahrez182.github.io/AxManager/guide/what-is-axeron-manager.html)

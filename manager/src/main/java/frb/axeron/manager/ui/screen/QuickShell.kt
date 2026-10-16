@@ -37,7 +37,9 @@ import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DoNotTouch
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Output
@@ -46,7 +48,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -94,6 +98,8 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import frb.axeron.api.utils.AnsiFilter
 import frb.axeron.manager.R
+import frb.axeron.manager.data.AxshLauncher
+import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.component.FloatingBarFab
 import frb.axeron.manager.ui.component.TerminalOutput
@@ -111,6 +117,7 @@ import frb.axeron.manager.ui.component.SettingsItemExpanded
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.util.PrefsEnumHelper
 import frb.axeron.manager.ui.viewmodel.QuickShellViewModel
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -123,6 +130,7 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Checkbox
 import androidx.compose.ui.text.style.TextAlign
 import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.IconBadge
 import frb.axeron.manager.ui.component.AxOptionsSheet
 import frb.axeron.manager.ui.component.OptionsSectionHeader
 import frb.axeron.manager.ui.component.SettingsRow
@@ -517,7 +525,125 @@ fun ExtraSettings(
                     showDivider = true
                 )
             }
+            RunInAnyTerminalCard()
         }
+    }
+}
+
+/**
+ * How to reach this shell from another terminal: the /sdcard/axeron/axsh launcher, run with sh or
+ * installed once into Termux. Each copy first makes sure the launcher matches this install.
+ */
+@Composable
+private fun RunInAnyTerminalCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val copied = stringResource(R.string.copied)
+    val failed = stringResource(R.string.run_in_any_terminal_failed, AxshLauncher.PATH)
+    val binary = remember { AxshLauncher.binaryPath(context) }
+
+    fun copy(command: String) {
+        scope.launch {
+            // The launcher may still carry the path of an older install: rewrite it first.
+            val ready = withContext(Dispatchers.IO) { AxshLauncher.ensure(context) }
+            if (!ready) {
+                Toast.makeText(context, failed, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            // Android 13+ shows its own clipboard confirmation.
+            if (ClipboardUtil.put(context, command) && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    AxCard {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconBadge(imageVector = Icons.Filled.Terminal, size = 32.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.run_in_any_terminal),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(R.string.run_in_any_terminal_desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Surface(
+                shape = AxPanelShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column {
+                    CommandLine(
+                        label = stringResource(R.string.run_in_any_terminal_run),
+                        command = AxshLauncher.RUN_COMMAND,
+                        onCopy = ::copy
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                    )
+                    CommandLine(
+                        label = stringResource(R.string.run_in_any_terminal_install),
+                        command = AxshLauncher.TERMUX_INSTALL_COMMAND,
+                        onCopy = ::copy
+                    )
+                }
+            }
+
+            // The raw binary, for whoever wants it; it changes with every update.
+            SelectionContainer {
+                Text(
+                    text = binary,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+    }
+}
+
+/** One command in the inner card: what it is for, the command itself, tap to copy. */
+@Composable
+private fun CommandLine(label: String, command: String, onCopy: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCopy(command) }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = command,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Outlined.ContentCopy,
+            contentDescription = stringResource(R.string.copy),
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

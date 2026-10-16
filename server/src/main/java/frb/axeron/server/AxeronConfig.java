@@ -9,7 +9,11 @@ import java.util.List;
 
 public class AxeronConfig {
 
-    public static final int LATEST_VERSION = 2;
+    /**
+     * 3: FLAG_DENIED means "denied in the manager" and is enforced (no dialog). Before, it was
+     * also written for every app that simply wasn't allowed, so loading an older config clears it.
+     */
+    public static final int LATEST_VERSION = 3;
 
     @SerializedName("version")
     public int version = LATEST_VERSION;

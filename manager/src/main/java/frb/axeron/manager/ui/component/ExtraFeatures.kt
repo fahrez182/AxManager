@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import frb.axeron.manager.R
+import frb.axeron.shared.MiuiAppOps
 import frb.axeron.manager.receiver.ShortcutPinnedReceiver
 import frb.axeron.manager.ui.util.ShortcutIcons
 import frb.axeron.manager.ui.util.WebUiShortcutStore
@@ -106,8 +107,6 @@ fun enableWebUIShortcut(context: Context, pluginId: String) {
     }
 }
 
-/** HyperOS/MIUI's own "Home screen shortcuts" app-op; pin requests are dropped silently while denied. */
-private const val MIUI_OP_INSTALL_SHORTCUT = 10017
 
 private fun isMiuiShortcutPermissionDenied(context: Context): Boolean = try {
     // Hidden int-op overload (hidden APIs are exempted at startup). Throws on ROMs
@@ -120,7 +119,7 @@ private fun isMiuiShortcutPermissionDenied(context: Context): Boolean = try {
             Int::class.javaPrimitiveType,
             String::class.java
         )
-        .invoke(appOps, MIUI_OP_INSTALL_SHORTCUT, Process.myUid(), context.packageName) as Int
+        .invoke(appOps, MiuiAppOps.INSTALL_SHORTCUT, Process.myUid(), context.packageName) as Int
     mode == AppOpsManager.MODE_IGNORED || mode == AppOpsManager.MODE_ERRORED
 } catch (_: Throwable) {
     false

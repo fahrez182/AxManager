@@ -1,6 +1,28 @@
 package frb.axeron.manager.ui.screen
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.PowerSettingsNew
+import androidx.compose.material.icons.outlined.StopCircle
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import frb.axeron.api.Axeron
+import frb.axeron.manager.data.PackageControl
+import frb.axeron.manager.ui.component.AxDropdownDivider
+import frb.axeron.manager.ui.component.AxDropdownHeader
+import frb.axeron.manager.ui.component.AxDropdownMenu
+import frb.axeron.manager.ui.component.AxSnackBarHost
+import frb.axeron.manager.ui.component.AxPanelShape
+import frb.axeron.manager.ui.component.CountdownConfirmSheet
+import frb.axeron.manager.ui.util.LocalSnackbarHost
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,19 +40,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Api
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -77,6 +105,9 @@ import frb.axeron.manager.ui.component.UseLifecycle
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel
+import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel.Access
+import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel.AccessFilter
+import frb.axeron.manager.ui.viewmodel.access
 import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel.AppFilter
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 
@@ -106,6 +137,7 @@ fun PrivilegeScreen(
     }
 
     Scaffold(
+        snackbarHost = { AxSnackBarHost(LocalSnackbarHost.current) },
         topBar = {
             SearchAppBar(
                 title = {
@@ -177,9 +209,11 @@ fun PrivilegeScreen(
                 ) { app ->
                     PrivilegeAppRow(
                         app = app,
-                        onClick = {
+                        onDetails = {
                             navigator.navigate(PrivilegeDetailScreenDestination(appInfo = app))
-                        }
+                        },
+                        onAccessChange = { privilegeViewModel.setAccess(app.uid, it) },
+                        onPackageChanged = { privilegeViewModel.refreshPackage(app.uid) }
                     )
                 }
             }
@@ -187,12 +221,27 @@ fun PrivilegeScreen(
     }
 }
 
+/** Grayscale, for an app that is disabled. */
+private val DisabledIconFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+
+/** What the quick menu asks to confirm first: both lose state the user may care about. */
+private enum class QuickConfirm { FORCE_STOP, DISABLE }
+
+/**
+ * One app. A tap opens its details; a long press opens a quick menu at the right: the Axeron
+ * permission, open, clear cache, force stop and enable/disable. A disabled app is in grayscale.
+ */
 @Composable
 private fun PrivilegeAppRow(
     app: AppsViewModel.AppInfo,
-    onClick: () -> Unit
+    onDetails: () -> Unit,
+    onAccessChange: (Access) -> Unit,
+    onPackageChanged: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbar = LocalSnackbarHost.current
+    val outcomes = outcomeTexts()
     val iconRequest = remember(app.packageInfo) {
         ImageRequest.Builder(context)
             .data(app.packageInfo)
@@ -200,51 +249,266 @@ private fun PrivilegeAppRow(
             .build()
     }
 
-    // The right side stays tight so labels get room.
-    AxCard(onClick = onClick) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    val disabled = app.packageInfo.applicationInfo?.enabled == false
+    val userId = PackageControl.userIdOf(app.uid)
+    var menu by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf<QuickConfirm?>(null) }
+    // Re-read each time the menu opens: the server may have started or stopped meanwhile.
+    var serverRunning by remember { mutableStateOf(false) }
+    val launchIntent = remember(app.packageName, disabled) {
+        if (disabled) null else context.packageManager.getLaunchIntentForPackage(app.packageName)
+    }
+
+    fun run(label: String, block: suspend () -> PackageControl.Outcome) {
+        scope.launch {
+            val outcome = block()
+            if (outcome.ok) onPackageChanged()
+            snackbar.showSnackbar(outcomes.of(outcome, label))
+        }
+    }
+
+    val forceStopLabel = stringResource(R.string.privilege_force_stop)
+    val clearCacheLabel = stringResource(R.string.privilege_clear_cache)
+    val disableLabel = stringResource(R.string.privilege_disable_app)
+    val enableLabel = stringResource(R.string.privilege_enable_app)
+
+    val subject: @Composable () -> Unit = {
+        AppChip(iconRequest = iconRequest, label = app.label, packageName = app.packageName)
+    }
+    when (confirm) {
+        QuickConfirm.FORCE_STOP -> CountdownConfirmSheet(
+            title = forceStopLabel,
+            message = stringResource(R.string.privilege_force_stop_desc, app.label),
+            confirmLabel = forceStopLabel,
+            icon = Icons.Outlined.StopCircle,
+            destructive = false,
+            subject = subject,
+            onConfirm = {
+                confirm = null
+                run(forceStopLabel) { PackageControl.forceStop(app.packageName, userId) }
+            },
+            onDismissRequest = { confirm = null }
+        )
+        QuickConfirm.DISABLE -> CountdownConfirmSheet(
+            title = disableLabel,
+            message = stringResource(R.string.privilege_disable_app_desc, app.label),
+            confirmLabel = disableLabel,
+            icon = Icons.Outlined.Block,
+            subject = subject,
+            onConfirm = {
+                confirm = null
+                run(disableLabel) { PackageControl.setEnabled(app.packageName, userId, false) }
+            },
+            onDismissRequest = { confirm = null }
+        )
+        null -> Unit
+    }
+
+    Box {
+        // The right side stays tight so labels get room.
+        AxCard(
+            onClick = onDetails,
+            onLongClick = {
+                serverRunning = Axeron.pingBinder()
+                menu = true
+            }
         ) {
-            AsyncImage(
-                model = iconRequest,
-                contentDescription = app.label,
-                modifier = Modifier.size(44.dp)
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = app.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
+                    .alpha(if (disabled) 0.6f else 1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = iconRequest,
+                    contentDescription = app.label,
+                    colorFilter = if (disabled) DisabledIconFilter else null,
+                    modifier = Modifier.size(44.dp)
                 )
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = app.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (disabled) {
+                            stringResource(R.string.privilege_disabled_tag, app.packageName)
+                        } else app.packageName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = app.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = stringResource(app.access.labelId()),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = app.access.color()
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(
-                    if (app.isAdded) R.string.privilege_allowed else R.string.privilege_not_allowed
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (app.isAdded) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+        // A zero-size anchor at the card's bottom-right corner: the menu opens on the right,
+        // under the access label, and the popup shifts left only as far as the screen needs.
+        Box(Modifier.align(Alignment.BottomEnd)) {
+            AxDropdownMenu(
+                expanded = menu,
+                onDismissRequest = { menu = false },
+                minWidth = 260.dp,
+                maxWidth = 340.dp
+            ) {
+                AxDropdownHeader(app.label)
+                Box(Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
+                    AccessOptions(
+                        access = app.access,
+                        enabled = serverRunning,
+                        onSelect = {
+                            menu = false
+                            onAccessChange(it)
+                        }
+                    )
+                }
+                AxDropdownDivider()
+                // Icon-only actions in one row; each says what it is to TalkBack.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    QuickIconAction(
+                        icon = Icons.Outlined.PlayArrow,
+                        label = stringResource(R.string.privilege_launch),
+                        enabled = launchIntent != null
+                    ) {
+                        menu = false
+                        val intent = launchIntent ?: return@QuickIconAction
+                        try {
+                            context.startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (_: ActivityNotFoundException) {
+                            scope.launch {
+                                snackbar.showSnackbar(context.getString(R.string.privilege_launch_failed, app.label))
+                            }
+                        }
+                    }
+                    QuickIconAction(
+                        icon = Icons.Outlined.CleaningServices,
+                        label = clearCacheLabel,
+                        enabled = serverRunning
+                    ) {
+                        menu = false
+                        run(clearCacheLabel) { PackageControl.clearCache(app.packageName, userId) }
+                    }
+                    QuickIconAction(
+                        icon = Icons.Outlined.StopCircle,
+                        label = forceStopLabel,
+                        enabled = serverRunning
+                    ) {
+                        menu = false
+                        confirm = QuickConfirm.FORCE_STOP
+                    }
+                    QuickIconAction(
+                        icon = Icons.Outlined.PowerSettingsNew,
+                        label = if (disabled) enableLabel else disableLabel,
+                        enabled = serverRunning,
+                        destructive = !disabled
+                    ) {
+                        menu = false
+                        // Enabling gives nothing up, so only disabling asks first.
+                        if (disabled) {
+                            run(enableLabel) { PackageControl.setEnabled(app.packageName, userId, true) }
+                        } else {
+                            confirm = QuickConfirm.DISABLE
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One action of the quick menu's icon row; [label] is what TalkBack says. */
+@Composable
+private fun QuickIconAction(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    destructive: Boolean = false,
+    onClick: () -> Unit
+) {
+    FilledTonalIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        colors = if (destructive) {
+            IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
             )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        } else IconButtonDefaults.filledTonalIconButtonColors()
+    ) {
+        Icon(imageVector = icon, contentDescription = label)
+    }
+}
+
+/**
+ * Allowed / Ask / Denied as a column of radio options, in the style of the app-op mode picker.
+ * [withDescriptions] adds what each does (the detail sheet); the quick menu keeps to the names.
+ */
+@Composable
+internal fun AccessOptions(
+    access: Access,
+    onSelect: (Access) -> Unit,
+    enabled: Boolean = true,
+    withDescriptions: Boolean = false
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(if (withDescriptions) 6.dp else 4.dp)) {
+        Access.entries.forEach { option ->
+            val selected = option == access
+            Surface(
+                onClick = { if (!selected) onSelect(option) },
+                enabled = enabled,
+                shape = AxPanelShape,
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier.alpha(if (enabled) 1f else 0.5f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 12.dp, top = 2.dp, bottom = 2.dp)
+                ) {
+                    RadioButton(
+                        selected = selected,
+                        enabled = enabled,
+                        onClick = { if (!selected) onSelect(option) }
+                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(option.labelId()),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (withDescriptions) {
+                            Text(
+                                text = stringResource(option.descriptionId()),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -287,10 +551,52 @@ private fun PrivilegeFilterSheet(
             )
         }
 
+        val accessCounts = privilegeViewModel.accessCounts
+        OptionsSectionHeader(stringResource(R.string.privilege_filter_access))
+        OptionTileGrid(
+            items = listOf(
+                Triple(AccessFilter.ALL, Icons.Outlined.DoneAll, R.string.privilege_filter_all),
+                Triple(AccessFilter.ALLOWED, Icons.Outlined.CheckCircle, R.string.privilege_access_allowed),
+                Triple(AccessFilter.ASK, Icons.AutoMirrored.Outlined.HelpOutline, R.string.privilege_access_ask),
+                Triple(AccessFilter.DENIED, Icons.Outlined.Block, R.string.privilege_access_denied)
+            ),
+            columns = 2
+        ) { (access, icon, labelId), modifier ->
+            OptionTile(
+                modifier = modifier,
+                icon = icon,
+                label = stringResource(labelId),
+                subtitle = stringResource(R.string.privilege_filter_count, accessCounts[access] ?: 0),
+                selected = privilegeViewModel.access == access,
+                onClick = { privilegeViewModel.updateAccess(access) }
+            )
+        }
+
         OptionsSectionHeader(stringResource(R.string.sort_order))
         OrderToggle(
             ascending = privilegeViewModel.ascending,
             onChange = privilegeViewModel::updateAscending
         )
     }
+}
+
+/** "Allowed" / "Ask (default)" / "Denied", as the list and the detail screen show it. */
+internal fun Access.labelId(): Int = when (this) {
+    Access.ALLOWED -> R.string.privilege_access_allowed
+    Access.ASK -> R.string.privilege_access_ask
+    Access.DENIED -> R.string.privilege_access_denied
+}
+
+/** What the server does when the app asks, for the detail screen. */
+internal fun Access.descriptionId(): Int = when (this) {
+    Access.ALLOWED -> R.string.privilege_access_allowed_desc
+    Access.ASK -> R.string.privilege_access_ask_desc
+    Access.DENIED -> R.string.privilege_access_denied_desc
+}
+
+@Composable
+internal fun Access.color(): Color = when (this) {
+    Access.ALLOWED -> MaterialTheme.colorScheme.primary
+    Access.ASK -> MaterialTheme.colorScheme.onSurfaceVariant
+    Access.DENIED -> MaterialTheme.colorScheme.error
 }

@@ -27,6 +27,7 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         private const val FLAG_DENIED = 1 shl 2
         private const val MASK_PERMISSION = FLAG_ALLOWED or FLAG_DENIED
         private const val KEY_FILTER = "filter"
+        private const val KEY_ACCESS = "access"
         private const val KEY_ASCENDING = "ascending"
 
         /** Keeps disabled apps in the list instead of dropping them as if uninstalled. */
@@ -42,10 +43,24 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
     /** Which apps the privilege list shows. */
     enum class AppFilter { INSTALLED, SYSTEM, SHIZUKU }
 
+    /**
+     * What the server does when the app asks for permission. [ASK] is the default: a dialog,
+     * whose "allow once" lasts until the app's processes are gone.
+     */
+    enum class Access { ALLOWED, ASK, DENIED }
+
+    /** Narrows [AppFilter] further by [Access]. Ordinals are stored: only append. */
+    enum class AccessFilter { ALL, ALLOWED, ASK, DENIED }
+
     private val prefs = application.getSharedPreferences("privilege_prefs", Context.MODE_PRIVATE)
 
     var filter by mutableStateOf(
         AppFilter.entries.getOrElse(prefs.getInt(KEY_FILTER, 0)) { AppFilter.INSTALLED }
+    )
+        private set
+
+    var access by mutableStateOf(
+        AccessFilter.entries.getOrElse(prefs.getInt(KEY_ACCESS, 0)) { AccessFilter.ALL }
     )
         private set
 
@@ -57,6 +72,11 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         prefs.edit { putInt(KEY_FILTER, value.ordinal) }
     }
 
+    fun updateAccess(value: AccessFilter) {
+        access = value
+        prefs.edit { putInt(KEY_ACCESS, value.ordinal) }
+    }
+
     fun updateAscending(value: Boolean) {
         ascending = value
         prefs.edit { putBoolean(KEY_ASCENDING, value) }
@@ -64,22 +84,28 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun resetFilter() {
         updateFilter(AppFilter.INSTALLED)
+        updateAccess(AccessFilter.ALL)
         updateAscending(true)
     }
 
     val isFilterDefault by derivedStateOf {
-        filter == AppFilter.INSTALLED && ascending
+        filter == AppFilter.INSTALLED && access == AccessFilter.ALL && ascending
     }
 
-    /** How many apps each filter would show, for the filter sheet. */
+    /** How many apps each filter would show with the other one as it is, for the filter sheet. */
     val filterCounts by derivedStateOf {
-        val apps = privileges.values
+        val apps = privileges.values.filter { it.matches(access) }
         AppFilter.entries.associateWith { f -> apps.count { it.matches(f) } }
+    }
+
+    val accessCounts by derivedStateOf {
+        val apps = privileges.values.filter { it.matches(filter) }
+        AccessFilter.entries.associateWith { a -> apps.count { it.matches(a) } }
     }
 
     val privilegeList by derivedStateOf {
         val currentSearch = search
-        val shown = privileges.values.filter { it.matches(filter) }
+        val shown = privileges.values.filter { it.matches(filter) && it.matches(access) }
 
         val searched = if (currentSearch.isEmpty()) {
             shown
@@ -106,36 +132,59 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private fun AppsViewModel.AppInfo.matches(filter: AccessFilter): Boolean = when (filter) {
+        AccessFilter.ALL -> true
+        AccessFilter.ALLOWED -> access == Access.ALLOWED
+        AccessFilter.ASK -> access == Access.ASK
+        AccessFilter.DENIED -> access == Access.DENIED
+    }
+
 
     var privileges by mutableStateOf<Map<Int, AppsViewModel.AppInfo>>(HashMap())
         private set
+
+    private fun AppsViewModel.AppInfo.withFlags(flags: Int) = copy(
+        isAdded = flags and FLAG_ALLOWED != 0,
+        isDenied = flags and FLAG_DENIED != 0
+    )
 
     val privilegedCount by derivedStateOf {
         privileges.values.count { it.isAdded }
     }
 
-    fun granted(uid: Int): Boolean {
-        return (Axeron.getFlagsForUid(uid, MASK_PERMISSION) and FLAG_ALLOWED) == FLAG_ALLOWED
-    }
-
-    fun grant(uid: Int) {
-        Axeron.updateFlagsForUid(uid, MASK_PERMISSION, FLAG_ALLOWED)
+    /**
+     * Leaving [Access.ALLOWED] stops the app, as the server does for any revoke. Same uid, same
+     * answer: the setting is per uid, like the server's config.
+     */
+    fun setAccess(uid: Int, access: Access) {
+        val flags = when (access) {
+            Access.ALLOWED -> FLAG_ALLOWED
+            Access.ASK -> 0
+            Access.DENIED -> FLAG_DENIED
+        }
+        Axeron.updateFlagsForUid(uid, MASK_PERMISSION, flags)
         privileges = privileges.toMutableMap().apply {
-            this[uid]?.let {
-                this[uid] = it.copy(isAdded = true)
-            }
+            this[uid]?.let { this[uid] = it.withFlags(flags) }
         }
     }
 
-    fun revoke(uid: Int) {
-        Axeron.updateFlagsForUid(uid, MASK_PERMISSION, 0)
-        privileges = privileges.toMutableMap().apply {
-            this[uid]?.let {
-                this[uid] = it.copy(isAdded = false)
+
+    /** Re-reads one app's package (e.g. after enabling or disabling it), keeping its flags. */
+    fun refreshPackage(uid: Int) {
+        val app = privileges[uid] ?: return
+        viewModelScope.launch {
+            val fresh = withContext(Dispatchers.IO) {
+                runCatching {
+                    application.packageManager.getPackageInfo(
+                        app.packageName, PackageManager.GET_PERMISSIONS or MATCH_DISABLED
+                    )
+                }.getOrNull()
+            } ?: return@launch
+            privileges = privileges.toMutableMap().apply {
+                this[uid]?.let { this[uid] = it.copy(packageInfo = fresh) }
             }
         }
     }
-
 
     // Requested permissions are needed for the "Shizuku supported" filter. Disabled apps stay
     // listed, otherwise one turned off could no longer be turned back on from here.
@@ -184,14 +233,14 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
                 candidates.mapIndexed { index, (uid, packageInfo) ->
                     val appInfo = packageInfo.applicationInfo!!
                     val label = appInfo.loadLabel(pm).toString()
-                    val isAdded = (flags.getOrElse(index) { 0 } and FLAG_ALLOWED) == FLAG_ALLOWED
+                    val value = flags.getOrElse(index) { 0 }
 
                     uid to AppsViewModel.AppInfo(
                         label = label,
                         pinyinLabel = HanziToPinyin.getInstance().toPinyinString(label),
                         packageInfo = packageInfo,
-                        isAdded = isAdded
-                    )
+                        isAdded = false
+                    ).withFlags(value)
                 }.toMap()
             }
 
@@ -221,10 +270,10 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
             var changed = false
             val updated = current.toMutableMap()
             uids.forEachIndexed { index, uid ->
-                val isAdded = (flags.getOrElse(index) { 0 } and FLAG_ALLOWED) == FLAG_ALLOWED
                 val app = updated[uid] ?: return@forEachIndexed
-                if (app.isAdded != isAdded) {
-                    updated[uid] = app.copy(isAdded = isAdded)
+                val fresh = app.withFlags(flags.getOrElse(index) { 0 })
+                if (fresh != app) {
+                    updated[uid] = fresh
                     changed = true
                 }
             }
@@ -232,3 +281,11 @@ class PrivilegeViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 }
+
+/** Allowed wins over denied, as on the server. */
+val AppsViewModel.AppInfo.access: PrivilegeViewModel.Access
+    get() = when {
+        isAdded -> PrivilegeViewModel.Access.ALLOWED
+        isDenied -> PrivilegeViewModel.Access.DENIED
+        else -> PrivilegeViewModel.Access.ASK
+    }

@@ -11,6 +11,7 @@ import frb.axeron.server.util.Logger
 import frb.axeron.server.util.UserHandleCompat
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_ENV
+import frb.axeron.shared.ShizukuApiConstant
 import frb.axeron.shared.ShizukuApiConstant.ATTACH_APPLICATION_API_VERSION
 import frb.axeron.shared.ShizukuApiConstant.ATTACH_APPLICATION_PACKAGE_NAME
 import frb.axeron.shared.ShizukuApiConstant.BINDER_TRANSACTION_transact
@@ -130,12 +131,20 @@ class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizuku
         return false
     }
 
+    // The Shizuku app has no "ask" state: its revoke and its dialog's deny would land as Denied,
+    // which AxManager enforces without a dialog. From that side they mean "not allowed", so they
+    // become Ask (no flag) and the app can still request. Denied stays AxManager's own choice.
+
     override fun dispatchPermissionConfirmationResult(
         requestUid: Int,
         requestPid: Int,
         requestCode: Int,
         data: Bundle?
     ) {
+        if (data != null && !data.getBoolean(ShizukuApiConstant.REQUEST_PERMISSION_REPLY_ALLOWED)) {
+            // A one-time denial is not stored, so the next request asks again.
+            data.putBoolean(ShizukuApiConstant.REQUEST_PERMISSION_REPLY_IS_ONETIME, true)
+        }
         shizukuIntercept.dispatchPermissionConfirmationResult(requestUid, requestPid, requestCode, data)
     }
 
@@ -144,7 +153,7 @@ class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizuku
     }
 
     override fun updateFlagsForUid(uid: Int, mask: Int, value: Int) {
-        shizukuIntercept.updateFlagsForUid(uid, mask, value)
+        shizukuIntercept.updateFlagsForUid(uid, mask, value and ConfigManager.FLAG_DENIED.inv())
     }
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {

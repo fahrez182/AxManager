@@ -40,6 +40,8 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
         val pinyinLabel: String,
         val packageInfo: PackageInfo,
         val isAdded: Boolean,
+        /** Privilege list only: denied in the manager, so its requests get no dialog. */
+        val isDenied: Boolean = false,
     ) : Parcelable {
         class Handler : AxWebLoader.PathHandler {
             override fun handle(

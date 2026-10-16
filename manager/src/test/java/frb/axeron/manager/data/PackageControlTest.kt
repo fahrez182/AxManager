@@ -44,6 +44,23 @@ class PackageControlTest {
     }
 
     @Test
+    fun readsMiuiOpsByNumber() {
+        val output = """
+            MIUIOP(10008): allow; time=+3m ago
+            Uid mode: MIUIOP(10021): ignore
+            MIUIOP(10021): allow
+            WAKE_LOCK: allow
+        """.trimIndent()
+
+        val ops = PackageControl.parseAppOps(output)
+
+        assertEquals(AppOpState("allow", null), ops["10008"])
+        assertEquals(AppOpState("allow", "ignore"), ops["10021"])
+        assertNull(ops["MIUIOP(10008)"])
+        assertEquals(AppOpState("allow", null), ops["WAKE_LOCK"])
+    }
+
+    @Test
     fun ignoresLinesThatAreNotOps() {
         val ops = PackageControl.parseAppOps("No operations.\n\nError: unknown package")
         assertEquals(emptyMap<String, AppOpState>(), ops)

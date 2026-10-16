@@ -81,7 +81,7 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 | `server` | 特权服务及其原生启动器 |
 | `reignite` | 插件点火器（`ax_reignite.dex`），负责启动和停止插件 |
 | `adb` | 无线调试配对和 ADB 客户端 |
-| `api`（子模块） | AIDL、客户端 API、共享的服务端代码、Shizuku 兼容层、`rish`、`axsh` |
+| `api`（子模块） | AIDL、客户端 API、共享的服务端代码、Shizuku 兼容层、`axsh` |
 
 ## 📖 文档
 - [什么是 Axeron 管理器？](https://fahrez182.github.io/AxManager/zh/guide/what-is-axeron-manager.html)

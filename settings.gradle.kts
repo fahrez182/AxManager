@@ -61,8 +61,5 @@ project(":shared").projectDir = file("$root${File.separator}shared")
 include(":server-shared")
 project(":server-shared").projectDir = file("$root${File.separator}server-shared")
 
-include(":rish")
-project(":rish").projectDir = file("$root${File.separator}rish")
-
 include(":axsh")
 project(":axsh").projectDir = file("$root${File.separator}axsh")

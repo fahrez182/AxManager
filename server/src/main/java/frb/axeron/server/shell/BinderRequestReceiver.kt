@@ -15,7 +15,9 @@ import frb.axeron.server.ServerConstants
 class BinderRequestReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ServerConstants.REQUEST_BINDER_AXRUNTIME) return
-        ShellBinderRequestHandler.handleRequest(context.applicationContext, intent)
+        // The reply may have to wait for the server's binder; keep the process alive until then.
+        val pending = goAsync()
+        ShellBinderRequestHandler.handleRequest(context.applicationContext, intent) { pending.finish() }
     }
 
     @SuppressLint("BatteryLife")

@@ -195,30 +195,51 @@ fun OrderToggle(
     ascending: Boolean,
     onChange: (Boolean) -> Unit
 ) {
+    ChoicePill(
+        options = listOf(
+            Triple(true, Icons.Outlined.ArrowUpward, R.string.ascending),
+            Triple(false, Icons.Outlined.ArrowDownward, R.string.descending)
+        ),
+        selected = ascending,
+        onSelect = onChange
+    )
+}
+
+/**
+ * One pill, one segment per option (value, icon, label); the selected one is filled with
+ * [selectedColor] of it, primary unless given.
+ */
+@Composable
+fun <T> ChoicePill(
+    options: List<Triple<T, ImageVector, Int>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    enabled: Boolean = true,
+    selectedColor: @Composable (T) -> Color = { MaterialTheme.colorScheme.primary },
+    selectedContentColor: @Composable (T) -> Color = { MaterialTheme.colorScheme.onPrimary },
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(modifier = Modifier.padding(4.dp)) {
-            listOf(
-                Triple(true, Icons.Outlined.ArrowUpward, R.string.ascending),
-                Triple(false, Icons.Outlined.ArrowDownward, R.string.descending)
-            ).forEach { (value, icon, labelId) ->
-                val selected = value == ascending
+            options.forEach { (value, icon, labelId) ->
+                val isSelected = value == selected
                 val background by animateColorAsState(
-                    targetValue = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    label = "orderOption"
+                    targetValue = if (isSelected) selectedColor(value) else Color.Transparent,
+                    label = "choiceOption"
                 )
-                val content = if (selected) MaterialTheme.colorScheme.onPrimary
+                val content = if (isSelected) selectedContentColor(value)
                 else MaterialTheme.colorScheme.onSurfaceVariant
+                val onClick = { if (!isSelected) onSelect(value) }
 
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .clip(CircleShape)
                         .background(background)
-                        .clickable { onChange(value) }
+                        .clickable(enabled = enabled, onClick = onClick)
                         .padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically

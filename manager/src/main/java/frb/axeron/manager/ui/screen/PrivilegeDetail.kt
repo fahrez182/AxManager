@@ -1,5 +1,7 @@
 package frb.axeron.manager.ui.screen
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Bluetooth
@@ -39,6 +42,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.InstallMobile
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Key
@@ -48,16 +52,21 @@ import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,6 +107,8 @@ import frb.axeron.api.Axeron
 import frb.axeron.manager.R
 import frb.axeron.manager.data.PackageControl
 import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.ChoicePill
+import frb.axeron.manager.ui.component.OptionsSectionHeader
 import frb.axeron.manager.ui.component.AxCardShape
 import frb.axeron.manager.ui.component.AxOptionsSheet
 import frb.axeron.manager.ui.component.AxPanelShape
@@ -113,11 +124,14 @@ import frb.axeron.manager.ui.component.UseLifecycle
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.util.LocalSnackbarHost
 import frb.axeron.manager.ui.viewmodel.AppsViewModel
+import frb.axeron.manager.ui.viewmodel.PrivilegeViewModel.Access
+import frb.axeron.manager.ui.viewmodel.access
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.GeneralItem
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.Kind
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.Permission
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
+import frb.axeron.shared.MiuiAppOps
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,12 +145,14 @@ fun PrivilegeDetailScreen(
     val privilegeViewModel = viewModelGlobal.privilegeViewModel
     val context = LocalContext.current
 
-    // Prefer the live entry so grant/revoke reflects immediately.
+    // Prefer the live entry so a change reflects immediately.
     val live = privilegeViewModel.privileges[appInfo.uid] ?: appInfo
-    val allowed = live.isAdded
-    val setAllowed: (Boolean) -> Unit = { checked ->
-        if (checked) privilegeViewModel.grant(appInfo.uid)
-        else privilegeViewModel.revoke(appInfo.uid)
+    val access = live.access
+    val setAccess: (Access) -> Unit = { privilegeViewModel.setAccess(appInfo.uid, it) }
+
+    // Apps without a launcher activity (services, libraries) have nothing to open.
+    val launchIntent = remember(appInfo.packageName) {
+        context.packageManager.getLaunchIntentForPackage(appInfo.packageName)
     }
 
     val iconRequest = remember(appInfo.packageInfo) {
@@ -182,9 +198,7 @@ fun PrivilegeDetailScreen(
     var running by remember { mutableStateOf<PackageAction?>(null) }
     var keepData by remember { mutableStateOf(false) }
 
-    val doneText = stringResource(R.string.privilege_action_done)
-    val failedText = stringResource(R.string.privilege_action_failed)
-    val partialCacheText = stringResource(R.string.privilege_clear_cache_partial)
+    val outcomes = outcomeTexts()
     val needsServerText = stringResource(R.string.privilege_needs_server)
     val needsRootText = stringResource(R.string.privilege_needs_root)
     val permissionFailed = stringResource(R.string.privilege_permission_failed)
@@ -202,14 +216,7 @@ fun PrivilegeDetailScreen(
                 PackageAction.UNINSTALL -> PackageControl.uninstall(pkg, userId, systemApp, keepData)
             }
             running = null
-            val label = actionLabels.getValue(action)
-            val message = when {
-                outcome.ok && outcome.partial -> partialCacheText
-                outcome.ok -> doneText.format(label)
-                outcome.serverOff -> needsServerText
-                outcome.needsRoot -> failedText.format(label, needsRootText)
-                else -> failedText.format(label, outcome.error.orEmpty())
-            }
+            val message = outcomes.of(outcome, actionLabels.getValue(action))
             if (outcome.ok && action == PackageAction.UNINSTALL) {
                 // The app is gone (for this user): leave its page and drop it from the list.
                 // A toast, since leaving cancels this scope before a snackbar could show.
@@ -326,8 +333,19 @@ fun PrivilegeDetailScreen(
                 HeaderCard(
                     appInfo = appInfo,
                     iconRequest = iconRequest,
-                    allowed = allowed,
-                    onAllowedChange = setAllowed,
+                    access = access,
+                    onAccessChange = setAccess,
+                    onLaunch = launchIntent?.let { intent ->
+                        {
+                            try {
+                                context.startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            } catch (_: ActivityNotFoundException) {
+                                scope.launch {
+                                    snackbar.showSnackbar(context.getString(R.string.privilege_launch_failed, appInfo.label))
+                                }
+                            }
+                        }
+                    },
                     serverRunning = serverRunning,
                     actionLabels = actionLabels,
                     actionNote = { action ->
@@ -372,8 +390,8 @@ fun PrivilegeDetailScreen(
                         onToggle = { permission, grant ->
                             scope.launch { reportFailure(detail.setGranted(permission, grant), permission.label) }
                         },
-                        onSetMode = { permission, mode ->
-                            scope.launch { reportFailure(detail.setAppOpMode(permission, mode), permission.label) }
+                        onSetMode = { permission, mode, uid ->
+                            scope.launch { reportFailure(detail.setAppOpMode(permission, mode, uid), permission.label) }
                         }
                     )
                 }
@@ -390,8 +408,10 @@ fun PrivilegeDetailScreen(
 private fun HeaderCard(
     appInfo: AppsViewModel.AppInfo,
     iconRequest: ImageRequest,
-    allowed: Boolean,
-    onAllowedChange: (Boolean) -> Unit,
+    access: Access,
+    onAccessChange: (Access) -> Unit,
+    /** Null when the app has no launcher activity. */
+    onLaunch: (() -> Unit)?,
     serverRunning: Boolean,
     actionLabels: Map<PackageAction, String>,
     actionNote: @Composable (PackageAction) -> String?,
@@ -433,39 +453,73 @@ private fun HeaderCard(
                     MetaChip("${stringResource(R.string.uid_label)} ${appInfo.uid}")
                 }
             }
+            Spacer(Modifier.width(8.dp))
+            FilledTonalIconButton(
+                onClick = { onLaunch?.invoke() },
+                enabled = onLaunch != null
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.PlayArrow,
+                    contentDescription = stringResource(R.string.privilege_launch)
+                )
+            }
         }
 
         SettingsDivider()
 
-        // Privilege switch, compact: the whole row toggles.
+        // Axeron permission, like a special-access row: the current state, a sheet to change it.
+        var pickingAccess by remember { mutableStateOf(false) }
+        if (pickingAccess) {
+            AxOptionsSheet(
+                title = stringResource(R.string.privilege_grant),
+                description = stringResource(R.string.privilege_access_sheet_desc),
+                onDismissRequest = { pickingAccess = false }
+            ) {
+                AccessOptions(
+                    access = access,
+                    withDescriptions = true,
+                    onSelect = {
+                        pickingAccess = false
+                        onAccessChange(it)
+                    }
+                )
+            }
+        }
         Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onAllowedChange(!allowed) }
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .clickable(enabled = serverRunning) { pickingAccess = true }
+                .alpha(if (serverRunning) 1f else 0.5f)
+                .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)
         ) {
             IconBadge(
                 imageVector = Icons.Outlined.AdminPanelSettings,
                 size = 32.dp,
-                tint = if (allowed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                tint = access.color()
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.privilege_grant),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = stringResource(
-                        if (allowed) R.string.privilege_allowed else R.string.privilege_not_allowed
-                    ),
+                    text = stringResource(access.descriptionId()),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (allowed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Switch(checked = allowed, onCheckedChange = onAllowedChange)
+            Spacer(Modifier.width(8.dp))
+            StatusPill(text = stringResource(access.labelId()), color = access.color())
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         SettingsDivider()
@@ -540,7 +594,7 @@ private fun MetaChip(text: String) {
 
 /** The target app as a chip (icon, name, package): shown in confirmations under the title. */
 @Composable
-private fun AppChip(iconRequest: ImageRequest, label: String, packageName: String) {
+internal fun AppChip(iconRequest: ImageRequest, label: String, packageName: String) {
     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -741,27 +795,32 @@ private fun PermissionsSection(
     viewModel: PrivilegeDetailViewModel,
     enabled: Boolean,
     onToggle: (Permission, Boolean) -> Unit,
-    onSetMode: (Permission, String) -> Unit
+    onSetMode: (Permission, String, Boolean) -> Unit
 ) {
     val permissions = viewModel.permissions
     val changeable = remember(permissions) { permissions.filter { it.kind.grantable } }
     val special = remember(permissions) { permissions.filter { it.appOp != null } }
     val other = remember(permissions) { permissions.filter { !it.kind.grantable && it.appOp == null } }
 
-    if (special.isNotEmpty()) {
-        // App-ops have more than on/off, and two places they can be set: pick a mode instead.
-        var picking by remember { mutableStateOf<Permission?>(null) }
-        picking?.let { permission ->
-            AppOpModeSheet(
-                permission = permission,
-                onSelect = { mode ->
-                    picking = null
-                    onSetMode(permission, mode)
-                },
-                onDismissRequest = { picking = null }
-            )
-        }
+    val otherOps = viewModel.otherAppOps
+
+    // App-ops have more than on/off, and two places they can be set: pick a mode instead.
+    var picking by remember { mutableStateOf<Permission?>(null) }
+    picking?.let { permission ->
+        AppOpModeSheet(
+            permission = permission,
+            onSelect = { mode, uid ->
+                picking = null
+                onSetMode(permission, mode, uid)
+            },
+            onDismissRequest = { picking = null }
+        )
+    }
+
+    if (special.isNotEmpty() || otherOps.isNotEmpty()) {
         SectionHeader(stringResource(R.string.privilege_special_access))
+    }
+    if (special.isNotEmpty()) {
         AxCard {
             special.forEachIndexed { index, permission ->
                 if (index > 0) SettingsDivider()
@@ -771,6 +830,52 @@ private fun PermissionsSection(
                     enabled = enabled,
                     onClick = { picking = permission }
                 )
+            }
+        }
+    }
+    // Whatever else the system reports for this app, a ROM's own ops included: folded away,
+    // since most are plain bookkeeping.
+    if (otherOps.isNotEmpty()) {
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        val arrow by animateFloatAsState(if (expanded) 180f else 0f, label = "otherOpsArrow")
+        AxCard {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.privilege_app_ops_other, otherOps.size),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(R.string.privilege_app_ops_other_short),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Outlined.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(arrow)
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    otherOps.forEach { permission ->
+                        SettingsDivider()
+                        SpecialAccessRow(
+                            permission = permission,
+                            busy = viewModel.changing[permission.name] == true,
+                            enabled = enabled,
+                            onClick = { picking = permission }
+                        )
+                    }
+                }
             }
         }
     }
@@ -1006,9 +1111,14 @@ private fun SpecialAccessRow(
 private val Permission.shortName: String
     get() = name.substringAfterLast('.')
 
-/** [shortName], plus the app-op behind it when that is named differently. */
+/**
+ * [shortName], plus the app-op behind it when that is named differently. A MIUI op is shown as
+ * `cmd appops` prints it, MIUIOP(10008), though it is kept (and set) by number.
+ */
 private val Permission.namesLine: String
-    get() = appOp?.takeIf { it != shortName }?.let { "$shortName · $it" } ?: shortName
+    get() = appOp
+        ?.let { if (it.all(Char::isDigit)) "MIUIOP($it)" else it }
+        ?.takeIf { it != shortName }?.let { "$shortName · $it" } ?: shortName
 
 /**
  * What the permission is, as the row's description: its label, or the full name when it has
@@ -1044,6 +1154,9 @@ private fun specialIcon(appOp: String?): ImageVector = when (appOp) {
     "REQUEST_INSTALL_PACKAGES" -> Icons.Outlined.InstallMobile
     "GET_USAGE_STATS" -> Icons.Outlined.QueryStats
     "SCHEDULE_EXACT_ALARM" -> Icons.Outlined.Alarm
+    MiuiAppOps.AUTO_START.toString() -> Icons.Outlined.RestartAlt
+    MiuiAppOps.INSTALL_SHORTCUT.toString() -> Icons.Outlined.Home
+    MiuiAppOps.BACKGROUND_START_ACTIVITY.toString() -> Icons.Outlined.Web
     else -> Icons.Outlined.Shield
 }
 
@@ -1071,17 +1184,19 @@ private fun appOpModeDescription(mode: String): Int = when (mode) {
 }
 
 /**
- * Picks the app-op mode of a special-access permission. Shows the package and the uid-wide
- * mode, since a uid-wide one overrides the package's (and is reset when a mode is picked).
+ * Picks the app-op mode of a special-access permission, for the package (the default) or the
+ * whole uid. Shows both modes, since a uid-wide one other than Default overrides the package's;
+ * a package write resets it, a uid write leaves the package mode alone.
  */
 @Composable
 private fun AppOpModeSheet(
     permission: Permission,
-    onSelect: (String) -> Unit,
+    onSelect: (mode: String, uid: Boolean) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val state = permission.appOpState
-    val current = state?.packageMode ?: "default"
+    var uidTarget by rememberSaveable { mutableStateOf(false) }
+    val current = (if (uidTarget) state?.uidMode else state?.packageMode) ?: "default"
     AxOptionsSheet(
         // Same hierarchy as the row: the names small on top, what it is as the title, then
         // what it allows. With no description of its own, the full name takes that place.
@@ -1112,11 +1227,30 @@ private fun AppOpModeSheet(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
+
+        OptionsSectionHeader(stringResource(R.string.appop_target))
+        ChoicePill(
+            options = listOf(
+                Triple(false, Icons.Outlined.Android, R.string.appop_target_package),
+                Triple(true, Icons.Outlined.Groups, R.string.appop_target_uid)
+            ),
+            selected = uidTarget,
+            onSelect = { uidTarget = it }
+        )
+        Text(
+            text = stringResource(
+                if (uidTarget) R.string.appop_target_uid_desc else R.string.appop_target_package_desc
+            ),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             APP_OP_MODES.forEach { mode ->
                 val selected = current == mode
                 Surface(
-                    onClick = { onSelect(mode) },
+                    onClick = { onSelect(mode, uidTarget) },
                     shape = AxPanelShape,
                     color = if (selected) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.surfaceContainerHigh
@@ -1125,7 +1259,7 @@ private fun AppOpModeSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 12.dp, top = 2.dp, bottom = 2.dp)
                     ) {
-                        RadioButton(selected = selected, onClick = { onSelect(mode) })
+                        RadioButton(selected = selected, onClick = { onSelect(mode, uidTarget) })
                         Column(Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(appOpModeLabel(mode)),

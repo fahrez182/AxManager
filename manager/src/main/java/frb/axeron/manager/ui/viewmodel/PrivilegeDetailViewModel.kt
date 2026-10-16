@@ -15,10 +15,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import frb.axeron.manager.R
 import frb.axeron.manager.data.PackageControl
+import frb.axeron.shared.MiuiAppOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import rikka.compatibility.DeviceCompatibility
 
 /**
  * Live state of one app for the Privilege detail screen. Package info is re-read here rather
@@ -76,6 +78,14 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
     var permissions by mutableStateOf(emptyList<Permission>())
         private set
 
+    /**
+     * App-ops the system reports for this app that nothing above stands for: no requested
+     * permission, not a General switch. Read from `cmd appops get`, so a ROM's own ops show up
+     * whatever they are called; [knownAppOpText] only names the ones it knows.
+     */
+    var otherAppOps by mutableStateOf(emptyList<Permission>())
+        private set
+
     /** On/off per [GeneralItem]; an item is absent when its state can't be read. */
     var general by mutableStateOf(emptyMap<GeneralItem, Boolean>())
         private set
@@ -123,12 +133,16 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
         }
 
     /**
-     * Sets the app-op [mode] of a special-access permission. A uid-wide mode would keep
-     * overriding it, so that one is reset to `default` at the same time.
+     * Sets the app-op [mode] of a special-access permission, for the package or, with [uid],
+     * uid-wide. A package write also resets a uid-wide mode that would keep overriding it; a
+     * uid write leaves the package mode as it is.
      */
-    suspend fun setAppOpMode(permission: Permission, mode: String): PackageControl.Outcome {
+    suspend fun setAppOpMode(permission: Permission, mode: String, uid: Boolean = false): PackageControl.Outcome {
         val op = permission.appOp ?: return PackageControl.Outcome(false, error = "No app-op")
-        return change(permission.name) { writeAppOp(op, mode) }
+        return change(permission.name) {
+            if (uid) PackageControl.setUidAppOp(packageName, userId, op, mode)
+            else writeAppOp(op, mode)
+        }
     }
 
     suspend fun setGeneral(item: GeneralItem, on: Boolean): PackageControl.Outcome =
@@ -166,6 +180,7 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
         val (perms, gen) = withContext(Dispatchers.IO) { readPermissions(ops) to readGeneral(ops) }
         permissions = perms
         general = gen
+        otherAppOps = withContext(Dispatchers.IO) { readOtherAppOps(ops) }
     }
 
     /** Disabled apps still count as installed, so turning one off doesn't read as "gone". */
@@ -198,7 +213,36 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
      * accesses are declared without either (PACKAGE_USAGE_STATS): system Settings names them
      * from its own strings, which differ per OEM. These are the same names, as a fallback.
      */
-    private fun specialAccessText(appOp: String): Pair<Int, Int>? = when (appOp) {
+    /**
+     * OEM op numbers aren't standard: 10008 is Autostart on MIUI and may be anything elsewhere.
+     * So MIUI's names only apply on MIUI; on other ROMs the same number shows as it is.
+     */
+    private val isMiui by lazy { DeviceCompatibility.isMiui() }
+
+    // FIXME: the MIUI names are a static table (MiuiAppOps). OEMs number their own ops however
+    // they like and a code can mean something else on another vendor's ROM, or change between
+    // ROM versions, so a name here can mislead. It is only used on MIUI for that reason; a
+    // dynamic source (the ROM's own permission app, or a community mapping) should replace it.
+    private fun knownAppOpText(appOp: String): Pair<Int, Int>? =
+        if (appOp.all(Char::isDigit) && !isMiui) null
+        else knownAppOpTextOnThisRom(appOp)
+
+    /**
+     * What the ROM itself calls an op it keys by number: the hidden AppOpsManager.opToName,
+     * which knows a ROM's own ops when the ROM registered a name. Falls back to how
+     * `cmd appops` prints it.
+     */
+    private fun romOpName(op: String): String {
+        if (!op.all(Char::isDigit)) return op
+        val code = op.toIntOrNull() ?: return op
+        val name = runCatching {
+            AppOpsManager::class.java.getMethod("opToName", Int::class.javaPrimitiveType)
+                .invoke(null, code) as? String
+        }.getOrNull()
+        return name?.takeIf { it.isNotBlank() } ?: "MIUIOP($op)"
+    }
+
+    private fun knownAppOpTextOnThisRom(appOp: String): Pair<Int, Int>? = when (appOp) {
         "SYSTEM_ALERT_WINDOW" -> R.string.special_access_overlay to R.string.special_access_overlay_desc
         "WRITE_SETTINGS" -> R.string.special_access_write_settings to R.string.special_access_write_settings_desc
         "GET_USAGE_STATS" -> R.string.special_access_usage to R.string.special_access_usage_desc
@@ -207,7 +251,49 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
         "SCHEDULE_EXACT_ALARM" -> R.string.special_access_alarms to R.string.special_access_alarms_desc
         "MANAGE_MEDIA" -> R.string.special_access_media to R.string.special_access_media_desc
         "USE_FULL_SCREEN_INTENT" -> R.string.special_access_full_screen to R.string.special_access_full_screen_desc
+        // MIUI/HyperOS ops come keyed by number (see PackageControl.parseAppOps).
+        "${MiuiAppOps.AUTO_START}" -> R.string.miui_op_autostart to R.string.miui_op_autostart_desc
+        "${MiuiAppOps.INSTALL_SHORTCUT}" -> R.string.miui_op_shortcut to R.string.miui_op_shortcut_desc
+        "${MiuiAppOps.BACKGROUND_START_ACTIVITY}" ->
+            R.string.miui_op_background_start to R.string.miui_op_background_start_desc
         else -> null
+    }
+
+    /**
+     * What [readOtherAppOps] leaves out: ops behind the app's requested permissions (shown with
+     * those), the General switch, and the MIUI ops [miuiPermissions] lists anyway.
+     */
+    private fun coveredAppOps(): Set<String> {
+        val pm = getApplication<Application>().packageManager
+        val requested = runCatching {
+            pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS or MATCH_DISABLED).requestedPermissions
+        }.getOrNull().orEmpty()
+        return buildSet {
+            requested.forEach { name ->
+                AppOpsManager.permissionToOp(name)?.removePrefix("android:")?.uppercase()?.let(::add)
+            }
+            permissions.mapNotNullTo(this) { it.appOp }
+            add(OP_RUN_ANY_IN_BACKGROUND)
+        }
+    }
+
+    private fun readOtherAppOps(appOps: Map<String, PackageControl.AppOpState>?): List<Permission> {
+        if (appOps.isNullOrEmpty()) return emptyList()
+        val app = getApplication<Application>()
+        val covered = coveredAppOps()
+        return appOps.filterKeys { it !in covered }.map { (op, state) ->
+            val known = knownAppOpText(op)
+            val shown = romOpName(op)
+            Permission(
+                name = shown,
+                label = known?.let { app.getString(it.first) } ?: shown,
+                description = app.getString(known?.second ?: R.string.app_op_unknown_desc),
+                kind = Kind.SPECIAL,
+                granted = state.effective == "allow" || state.effective == "foreground",
+                appOp = op,
+                appOpState = state
+            )
+        }.sortedBy { it.label.lowercase() }
     }
 
     private fun readPermissions(appOps: Map<String, PackageControl.AppOpState>?): List<Permission> {
@@ -216,7 +302,8 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
         val info: PackageInfo = runCatching {
             pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS or MATCH_DISABLED)
         }.getOrNull() ?: return emptyList()
-        val names = info.requestedPermissions ?: return emptyList()
+        // No requested permissions still leaves the MIUI ops, which every app has.
+        val names = info.requestedPermissions ?: emptyArray()
         val flags = info.requestedPermissionsFlags
 
         return names.mapIndexed { i, name ->
@@ -229,7 +316,7 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
             else AppOpsManager.permissionToOp(name)?.removePrefix("android:")?.uppercase()
             val state = appOp?.let { appOps?.get(it) }
             // Special access goes by the names Settings shows; the system label comes after.
-            val known = appOp?.let { specialAccessText(it) }
+            val known = appOp?.let { knownAppOpText(it) }
             Permission(
                 name = name,
                 label = known?.let { app.getString(it.first) }
@@ -248,11 +335,42 @@ class PrivilegeDetailViewModel(application: Application) : AndroidViewModel(appl
                 appOpState = state
             )
         }.distinctBy { it.name }
+            .plus(miuiPermissions(appOps))
             .sortedWith(compareBy({ it.kind.ordinal }, { it.label.lowercase() }))
+    }
+
+    /**
+     * The MIUI/HyperOS ops that matter even before anything set them (an unset op isn't in
+     * `cmd appops get`, so [readOtherAppOps] can't find it): always listed on those ROMs.
+     * Unset reads as not allowed, which is how MIUI treats it.
+     */
+    private fun miuiPermissions(appOps: Map<String, PackageControl.AppOpState>?): List<Permission> {
+        if (!isMiui) return emptyList()
+        val app = getApplication<Application>()
+        return listOf(
+            MiuiAppOps.AUTO_START,
+            MiuiAppOps.INSTALL_SHORTCUT,
+            MiuiAppOps.BACKGROUND_START_ACTIVITY,
+        ).map { code ->
+            val op = code.toString()
+            val state = appOps?.get(op)
+            val text = knownAppOpText(op)
+            val romName = romOpName(op)
+            Permission(
+                name = romName,
+                label = text?.let { app.getString(it.first) } ?: romName,
+                description = app.getString(text?.second ?: R.string.app_op_unknown_desc),
+                kind = Kind.SPECIAL,
+                granted = state?.effective == "allow" || state?.effective == "foreground",
+                appOp = op,
+                appOpState = state
+            )
+        }
     }
 
     private companion object {
         const val OP_RUN_ANY_IN_BACKGROUND = "RUN_ANY_IN_BACKGROUND"
+
 
         /** Keeps a disabled app readable instead of looking uninstalled. */
         const val MATCH_DISABLED = PackageManager.MATCH_DISABLED_COMPONENTS or

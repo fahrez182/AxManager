@@ -168,10 +168,19 @@
     <string name="server_uid">Server UID</string>
     <string name="server_mode">Server Mode</string>
     <string name="server_version">Server Version</string>
-    <string name="privilege_allowed">Allowed</string>
-    <string name="privilege_not_allowed">Not allowed</string>
     <string name="privilege_grant">Axeron permission</string>
-    <string name="privilege_grant_desc">Allow this app to use the Axeron environment.</string>
+    <!-- Axeron permission states: list label, choice label, what the server does -->
+    <string name="privilege_access_allowed">Allowed</string>
+    <string name="privilege_access_ask">Ask (default)</string>
+    <string name="privilege_access_denied">Denied</string>
+    <string name="privilege_access_allowed_desc">Uses the Axeron environment without asking.</string>
+    <string name="privilege_access_ask_desc">Asks you each time it requests access; "allow once" lasts until the app is closed.</string>
+    <string name="privilege_access_denied_desc">Refused at once, with no dialog.</string>
+    <string name="privilege_access_sheet_desc">What happens when this app asks to use the Axeron environment. Leaving Allowed stops the app.</string>
+    <string name="privilege_launch">Open app</string>
+    <string name="privilege_enable_app">Enable app</string>
+    <string name="privilege_disabled_tag">Disabled · %s</string>
+    <string name="privilege_launch_failed">Can\'t open %s</string>
     <string name="privilege_more_soon">More per-app options will appear here in a future update.</string>
     <string name="uid_label">UID</string>
     <string name="package_label">Package</string>
@@ -185,6 +194,8 @@
     <string name="privilege_filter_system">System</string>
     <string name="privilege_filter_shizuku">Shizuku</string>
     <string name="privilege_filter_count">%d apps</string>
+    <string name="privilege_filter_access">Access</string>
+    <string name="privilege_filter_all">All</string>
     <string name="privilege_filter_desc">Choose which apps appear and how they are sorted.</string>
     <string name="plugin_filter_desc">Choose how plugins are sorted.</string>
     <string name="webui_shortcut_title">Add to Home Screen</string>
@@ -417,6 +428,13 @@
     <string name="special_access_media_desc">Lets the app change or delete media files made by other apps without asking each time.</string>
     <string name="special_access_full_screen">Full screen notifications</string>
     <string name="special_access_full_screen_desc">Lets the app show notifications that take up the whole screen, like incoming calls or alarms.</string>
+    <!-- MIUI / HyperOS only -->
+    <string name="miui_op_autostart">Autostart</string>
+    <string name="miui_op_autostart_desc">Lets the system and other apps start this app when it isn\'t running. Off, it can\'t be woken from the background.</string>
+    <string name="miui_op_shortcut">Home screen shortcuts</string>
+    <string name="miui_op_shortcut_desc">Lets the app add shortcuts to the home screen; while off, its requests are dropped silently.</string>
+    <string name="miui_op_background_start">Open new windows while running in the background</string>
+    <string name="miui_op_background_start_desc">Lets the app open screens while it isn\'t in front.</string>
     <string name="privilege_disable_app">Disable app</string>
     <string name="privilege_disable_app_desc">Disable %s? It disappears from the launcher and can\'t run until enabled again.</string>
     <string name="privilege_special_access">Special access</string>
@@ -437,11 +455,19 @@
     <string name="appop_mode_default">Default</string>
     <string name="appop_mode_default_desc">Follows the permission grant, which ordinary apps don\'t hold</string>
     <string name="appop_not_set">not set</string>
+    <string name="appop_target">Apply to</string>
+    <string name="appop_target_package">Package</string>
+    <string name="appop_target_uid">Whole uid</string>
+    <string name="appop_target_package_desc">This package only, as Settings does it. The uid-wide mode is checked first, so if it is anything but Default it is reset here, or this choice wouldn\'t take effect.</string>
+    <string name="appop_target_uid_desc">Every package that shares this uid. It is checked before the package mode and wins over it unless it is Default, which hands the decision back to the package mode. The package mode is left as it is.</string>
     <string name="appop_uid_override">The uid-wide mode (%s) overrides the app mode, so the app mode has no effect. Picking a mode below resets it to Default.</string>
     <string name="privilege_permissions">Permissions</string>
     <string name="privilege_permissions_summary">%1$d of %2$d granted</string>
     <string name="privilege_permissions_none">This app requests no permissions.</string>
     <string name="privilege_permissions_other">Other permissions (%d)</string>
+    <string name="privilege_app_ops_other">Other app-ops (%d)</string>
+    <string name="privilege_app_ops_other_short">Everything else the system tracks for this app, the ROM\'s own included</string>
+    <string name="app_op_unknown_desc">Set by the system or this ROM; what it controls isn\'t known here.</string>
     <string name="privilege_permission_failed">Couldn\'t change %1$s: %2$s</string>
     <string name="permission_kind_runtime">Runtime</string>
     <string name="permission_kind_development">Development</string>
@@ -467,6 +493,11 @@
     <string name="quickshell_show">Show</string>
     <string name="quickshell_save_column">Save</string>
     <string name="quickshell_shell_section">Shell</string>
+    <string name="run_in_any_terminal">Run in any terminal</string>
+    <string name="run_in_any_terminal_desc">Same arguments as sh, e.g. -c \'id\'. The terminal needs storage access (termux-setup-storage in Termux).</string>
+    <string name="run_in_any_terminal_run">Run with sh</string>
+    <string name="run_in_any_terminal_install">Install in Termux, then just axsh</string>
+    <string name="run_in_any_terminal_failed">Can\'t write %s: is the server running?</string>
     <string name="quickshell_snippet">Snippet</string>
     <string name="quickshell_snippet_stats">%1$d lines · %2$d chars</string>
     <string name="quickshell_snippet_long_hint">%1$d lines · %2$d chars · tap to view all</string>

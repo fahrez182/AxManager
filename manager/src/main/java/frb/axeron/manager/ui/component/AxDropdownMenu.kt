@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 
@@ -26,12 +27,14 @@ fun AxDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    minWidth: Dp = 220.dp,
+    maxWidth: Dp = 300.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
-        modifier = modifier.widthIn(min = 220.dp, max = 300.dp),
+        modifier = modifier.widthIn(min = minWidth, max = maxWidth),
         offset = DpOffset(0.dp, 4.dp),
         shape = AxCardShape,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

@@ -91,7 +91,9 @@ object PackageControl {
     }
 
     /** `OP_NAME: mode; time=…`, optionally prefixed `Uid mode: ` for a uid-wide override. */
-    private val APP_OP_LINE = Regex("^\\s*(Uid mode: )?([A-Z0-9_]+): ([a-z]+)")
+    // MIUI/HyperOS print their own ops as MIUIOP(10008); `cmd appops set` takes those by number.
+    private val APP_OP_LINE = Regex("^\\s*(Uid mode: )?([A-Z0-9_]+|MIUIOP\\(\\d+\\)): ([a-z]+)")
+    private val MIUI_OP_NAME = Regex("^MIUIOP\\((\\d+)\\)$")
 
     /**
      * An app-op is set in two places: for the package, and uid-wide. The system enforces a
@@ -119,7 +121,9 @@ object PackageControl {
         val uidModes = HashMap<String, String>()
         output.lineSequence().forEach { line ->
             val m = APP_OP_LINE.find(line) ?: return@forEach
-            val (uid, op, mode) = m.destructured
+            val (uid, name, mode) = m.destructured
+            // Keyed as it is written back: "10008" rather than "MIUIOP(10008)".
+            val op = MIUI_OP_NAME.find(name)?.groupValues?.get(1) ?: name
             (if (uid.isNotEmpty()) uidModes else packageModes)[op] = mode
         }
         return (packageModes.keys + uidModes.keys).associateWith {
@@ -140,8 +144,15 @@ object PackageControl {
     ): Outcome {
         val outcome = setAppOp(pkg, userId, op, mode)
         if (!outcome.ok || !clearUidOverride) return outcome
-        return command("cmd", "appops", "set", "--user", "$userId", "--uid", pkg, op, "default")
+        return setUidAppOp(pkg, userId, op, "default")
     }
+
+    /**
+     * Sets the uid-wide mode of [op]: every package of [pkg]'s uid, ahead of their package
+     * modes. `default` hands the decision back to the package mode.
+     */
+    suspend fun setUidAppOp(pkg: String, userId: Int, op: String, mode: String): Outcome =
+        command("cmd", "appops", "set", "--user", "$userId", "--uid", pkg, op, mode)
 
     private suspend fun isRoot(): Boolean? = withContext(Dispatchers.IO) {
         if (!Axeron.pingBinder()) null
