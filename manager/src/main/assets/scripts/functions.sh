@@ -94,6 +94,11 @@ set_perm_recursive() {
 
 install_plugin() {
   local AUTO_ENABLE=$1
+  # $TMPDIR is the cache every plugin shares at runtime; wiping it would pull it from under
+  # running plugins. The install (and customize.sh, which sees this TMPDIR) gets its own
+  # subfolder, which abort and the end of the install remove.
+  [ -n "$TMPDIR" ] || abort "! TMPDIR is not set"
+  TMPDIR="$TMPDIR/install"
   rm -rf "$TMPDIR"
   mkdir -p "$TMPDIR"
   cd "$TMPDIR" || exit

@@ -86,8 +86,20 @@ open class AxeronService :
             Looper.prepareMainLooper()
             // Before the service exists: its constructor already reads the root world's configs.
             if (Os.getuid() == 0) migrateRootWorld()
+            ensureCacheDir(Os.getuid() == 0)
             AxeronService()
             Looper.loop()
+        }
+
+        /**
+         * $TMPDIR (cache/) is handed to every plugin process, but nothing else creates it: made
+         * here so it exists from the first start, owned by the server's uid.
+         */
+        private fun ensureCacheDir(isRoot: Boolean) {
+            val cache = PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_CACHE)
+            if (!cache.isDirectory && !cache.mkdirs()) {
+                LOGGER.w("can't create %s, plugins get a missing TMPDIR", cache)
+            }
         }
 
         /**
@@ -95,7 +107,7 @@ open class AxeronService :
          * /data/adb/axeron. Skipped when the new folder already exists, so nothing is overwritten;
          * the old one is then left as it is.
          *
-         * bin, xbin, cache and zip are dropped instead of moved: they are rebuilt on every start,
+         * bin, xbin, cache and zip are dropped instead of moved: they are recreated on every start,
          * and the symlinks in bin/xbin would still point into the old folder. Renamed files keep
          * their old SELinux label, so they are relabeled to /data/adb's.
          */
