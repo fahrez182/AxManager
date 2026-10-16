@@ -140,7 +140,9 @@ class AxActivity : ComponentActivity() {
 
         ShortcutManagerCompat.pushDynamicShortcut(this@AxActivity, shortcut)
 
-        intentState = intent
+        // Only a fresh start: after a recreate (rotation, theme change) the intent was already
+        // handled, and handling a VIEW again would flash the same zip a second time.
+        if (savedInstanceState == null) intentState = intent
 
         setContent {
             AxManagerTheme {
@@ -188,17 +190,20 @@ class AxActivity : ComponentActivity() {
                 }
 
                 Intent.ACTION_VIEW -> {
-                    if (intentState!!.data?.scheme == "content") {
+                    // The intent being handled: with singleTask a VIEW often arrives through
+                    // onNewIntent, while `intent` is still the one that first created the activity.
+                    val view = intentState!!
+                    if (view.data?.scheme == "content") {
                         zipUri =
-                            intent.data?.let { uri ->
+                            view.data?.let { uri ->
                                 arrayListOf(PluginInstaller(uri))
                             } ?: run {
                                 val uris: ArrayList<Uri>? =
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        intent.getParcelableArrayListExtra("uris", Uri::class.java)
+                                        view.getParcelableArrayListExtra("uris", Uri::class.java)
                                     } else {
                                         @Suppress("DEPRECATION")
-                                        intent.getParcelableArrayListExtra("uris")
+                                        view.getParcelableArrayListExtra("uris")
                                     }
 
                                 uris

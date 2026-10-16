@@ -53,13 +53,27 @@
         tools:ignore="HardcodedDebugMode"
         tools:targetApi="33">
 
+        <!-- singleTask: one AxActivity, in AxManager's own task. Zips from other apps arrive
+             through OpenZipActivity below, never directly. -->
         <activity
             android:name=".ui.AxActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <!-- Invisible hop for zips opened from other apps: it runs in the sender's task (empty
+             affinity, no history, not in recents) and forwards to AxActivity in a new task. -->
+        <activity
+            android:name=".ui.OpenZipActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Transparent.NoUI">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
