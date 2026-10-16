@@ -31,6 +31,7 @@ export default defineConfig({
               },
               { text: "User Manual", link: "/guide/user-manual" },
               { text: "App Tour", link: "/guide/app-tour" },
+              { text: "Run in Any Terminal (axsh)", link: "/guide/axsh" },
               {
                 text: "Shizuku Compatibility",
                 link: "/guide/shizuku-compatibility",
@@ -79,6 +80,7 @@ export default defineConfig({
               },
               { text: "用户手册", link: "/zh/guide/user-manual" },
               { text: "应用导览", link: "/zh/guide/app-tour" },
+              { text: "在任意终端中运行（axsh）", link: "/zh/guide/axsh" },
               {
                 text: "Shizuku 兼容",
                 link: "/zh/guide/shizuku-compatibility",

@@ -15,6 +15,8 @@ Instead of being strictly tied to root access, AxManager focuses on ADB/Non-Root
 
 - Shell Executor: Run commands directly in ADB or Root context.
 
+- Any Terminal: Use the same shell from Termux or any other terminal app, with a full interactive terminal. [Learn More](./axsh)
+
 - Plugin Support: Extend functionality through unrooted modules. [Learn More](../plugin/what-is-plugin)
 
 - Web-based Shell UI: Interact with the device over a browser interface.

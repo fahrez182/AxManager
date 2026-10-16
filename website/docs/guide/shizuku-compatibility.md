@@ -13,7 +13,14 @@ AxManager then hands its Shizuku-compatible service to apps that use Shizuku-API
 
 ## Granting apps
 
-When an app asks for Shizuku permission, AxManager shows its own permission request: **Allow all the time**, **Allow once this time**, or **Don't Allow**. You can change the decision later in **Privilege** (the **Shizuku** filter lists apps built on Shizuku-API).
+When an app asks for Shizuku permission, AxManager shows its own permission request: **Allow all the time**, **Allow once this time**, or **Don't Allow**. You can change the decision later in **Privilege** (the **Shizuku** filter lists apps built on Shizuku-API), where each app is **Allowed**, **Ask** or **Denied** (see [Axeron permission](./app-tour.md#axeron-permission)).
+
+The Shizuku app has no "ask" setting of its own, so what it does maps to **Ask**, never to **Denied**:
+
+- Turning an app off in the Shizuku app sets it to **Ask**: the app is no longer allowed, but it can still request again.
+- **Deny** in the Shizuku app's permission dialog refuses that one request and is not remembered.
+
+Only AxManager's **Privilege** screen sets an app to **Denied**, where its requests are refused without a dialog.
 
 ## Apps that need the Shizuku app installed
 

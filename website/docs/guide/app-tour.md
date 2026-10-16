@@ -36,19 +36,33 @@ Device model, Android version, security patch, kernel, ABI and the server's SELi
 
 ## Privilege
 
-The list of apps you can allow to use AxManager. Search by name or package name; the filter button chooses which apps show:
+The list of apps you can allow to use AxManager. Each app shows its [Axeron permission](#axeron-permission): **Allowed**, **Ask (default)** or **Denied**. Search by name or package name; the filter button chooses which apps show:
 
-- **Installed**: user apps (default)
-- **System**: system apps
-- **Shizuku**: apps built on Shizuku-API (see [Shizuku compatibility](./shizuku-compatibility.md))
+- **Show**: **Installed** (user apps, default), **System** (system apps) or **Shizuku** (apps built on Shizuku-API, see [Shizuku compatibility](./shizuku-compatibility.md))
+- **Access**: **All**, **Allowed**, **Ask** or **Denied**
 
-Sort by name, ascending or descending. Tap an app to open its details.
+Sort by name, ascending or descending. A disabled app is shown in grayscale, marked **Disabled**.
+
+- **Tap** an app to open its details.
+- **Long-press** an app for a quick menu: set its Axeron permission, then **Open app**, **Clear cache**, **Force stop** and **Disable** / **Enable** in one row of buttons. Force stop and disable ask for confirmation first.
 
 ### App details
 
 Most actions need the server running. Some are only possible with root, and AxManager says so when shell mode is not enough.
 
-**Axeron permission**: allow or deny this app access to AxManager.
+The play button next to the app's name opens the app. It is greyed out for apps that have nothing to open (services, libraries) and for disabled apps.
+
+#### Axeron permission {#axeron-permission}
+
+What happens when the app asks to use AxManager. Tap the row to change it:
+
+| Setting | Meaning |
+|---|---|
+| **Allowed** | Uses AxManager without asking. |
+| **Ask** (default) | AxManager asks you each time. *Allow once* in that dialog lasts until the app is closed. |
+| **Denied** | Refused at once, with no dialog. |
+
+Changing an app from **Allowed** to **Ask** or **Denied** stops it, so it can't keep using access it no longer has.
 
 **Actions**
 
@@ -77,9 +91,24 @@ For each special access the app requests (display over other apps, modify system
 | **Deny** | Refused with an error, like turning it off in system Settings |
 | **Default** | Follows the permission grant, which ordinary apps don't hold |
 
-::: info Uid-wide mode
-Android stores these modes per app and also per uid. A uid-wide mode other than *Default* overrides the app mode, so changing only the app mode would do nothing. AxManager shows when this happens, and picking a mode resets the uid-wide mode to *Default*.
+On **MIUI / HyperOS**, every app also lists three of the ROM's own permissions here: **Autostart** (others may start the app when it isn't running), **Home screen shortcuts** and **Open new windows while running in the background**.
+
+**Other app-ops**: below special access, a folded card lists everything else Android keeps for the app that the sections above don't cover, including permissions your ROM added. They use the same modes. Ones AxManager doesn't know are shown by their raw name (for example `MIUIOP(10050)`), with a note that their meaning isn't known.
+
+::: warning Names of a ROM's own permissions
+A ROM numbers its own permissions however it likes, and gives them no names AxManager can read. The names above for MIUI's come from a list in AxManager and are only used on MIUI / HyperOS: the same number can mean something else on another brand's ROM, so there it shows by its raw name.
 :::
+
+**Package or whole uid**
+
+Android stores each of these modes twice: for the app's package, and for its whole uid (every package that shares it). The uid mode is checked first: anything but *Default* there wins, and *Default* hands the decision back to the package mode. Android often sets uid modes itself for permissions tied to runtime permissions, such as location.
+
+When you pick a mode, **Apply to** chooses where it goes:
+
+- **Package** (default): this package only, as system Settings does it. If the uid mode isn't *Default*, it is reset, or your choice wouldn't take effect.
+- **Whole uid**: the uid mode, for every package of the uid. The package mode is left as it is.
+
+The sheet shows both modes, and marks the uid mode when it is overriding the package mode.
 
 **Permissions**
 
@@ -114,6 +143,7 @@ A terminal that runs commands with the server's privileges: shell, or root when 
 - **Output**: per output kind (command, stdout, stderr, exit code, …), whether it is shown on screen and whether it is kept in saved logs.
 - **Key Event Blocker**: block Volume Up and/or Volume Down while QuickShell is open.
 - **Compatibility Mode**: starts each session through the bundled BusyBox (`setsid` + `sh`). Your commands still run in `/system/bin/sh`, and which tools they use follows `PATH` (see [Prefer System Binaries](#environment)). Turn it off if sessions fail to start.
+- **Run in any terminal**: commands to use the same shell from another terminal app, such as Termux. See [Run in any terminal](./axsh.md).
 
 ## Settings Editor
 

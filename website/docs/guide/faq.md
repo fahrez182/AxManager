@@ -70,6 +70,18 @@ See [Shizuku compatibility](./shizuku-compatibility.md).
 
 This is expected. When AxManager serves the Shizuku app, the server version it reports is `13.<AxManager version code>`, which no real Shizuku release matches, so the Shizuku app shows its update note. Nothing needs updating.
 
+## axsh says "AxManager permission required"
+
+The terminal app isn't allowed. Set it to **Allowed** in **Privilege**, or leave it on **Ask** and allow it in the dialog that appears; `axsh` waits for your answer for up to 15 seconds. If it is set to **Denied**, no dialog appears. See [Run in any terminal](./axsh.md#permission).
+
+## axsh says "AxManager server is not running" after swiping AxManager away
+
+In shell mode, `axsh` asks AxManager for the server, so AxManager has to be started in the background. Some systems, MIUI / HyperOS in particular, kill apps swiped from recents and block them from being started again. AxManager allows its own **Autostart** on MIUI / HyperOS when it connects to the server; if the message persists, allow **Autostart** (or "run in background") for AxManager in the system settings. See [How it connects](./axsh.md#how-it-connects).
+
+## An app-op shows a raw name like MIUIOP(10050)
+
+It is a permission your ROM added, and the ROM gives it no name AxManager can read. AxManager shows it by its number so you can still change it. Names exist only for the few it knows, and only on the ROM they belong to, because another brand can use the same number for something else. See [Other app-ops](./app-tour.md#app-details).
+
 ## Plugins keep running after the server stops
 
 That is the default: plugins run on their own once started. To stop every plugin's processes whenever the server stops or dies, turn on **Settings → Stop plugins with the server**. See [Plugin processes](../plugin/environment.md#plugin-processes).

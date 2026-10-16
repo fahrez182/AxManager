@@ -13,7 +13,14 @@ AxManager 可以代替 [Shizuku](https://github.com/RikkaApps/Shizuku)：基于 
 
 ## 授权应用 {#granting-apps}
 
-当应用请求 Shizuku 权限时，AxManager 会显示自己的授权请求：**始终允许**、**仅本次允许**或**拒绝**。之后可以在**特权**页面修改（**Shizuku** 筛选会列出基于 Shizuku-API 构建的应用）。
+当应用请求 Shizuku 权限时，AxManager 会显示自己的授权请求：**始终允许**、**仅本次允许**或**拒绝**。之后可以在**特权**页面修改（**Shizuku** 筛选会列出基于 Shizuku-API 构建的应用），每个应用可设为 **Allowed**、**Ask** 或 **Denied**（参见 [Axeron permission](./app-tour.md#axeron-permission)）。
+
+Shizuku 应用本身没有"询问"这一设置，因此它的操作对应的是 **Ask**，而不是 **Denied**：
+
+- 在 Shizuku 应用中关闭某个应用，会把它设为 **Ask**：该应用不再被允许，但仍可再次请求。
+- 在 Shizuku 应用的授权对话框中选择**拒绝**，只会拒绝这一次请求，不会被记住。
+
+只有在 AxManager 的**特权**页面才能把应用设为 **Denied**，此时它的请求会被直接拒绝，不显示对话框。
 
 ## 需要安装 Shizuku 应用的情况 {#apps-that-need-the-shizuku-app-installed}
 

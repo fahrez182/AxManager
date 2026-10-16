@@ -70,6 +70,18 @@
 
 这是预期行为。由 AxManager 为 Shizuku 应用提供服务时，报告的服务版本为 `13.<AxManager 版本号>`，没有任何真实的 Shizuku 版本与之匹配，因此 Shizuku 应用会显示更新提示。无需更新任何东西。
 
+## axsh 提示 "AxManager permission required" {#axsh-permission-required}
+
+终端应用未获允许。请在**特权**中将其设为 **Allowed**，或保持 **Ask** 并在弹出的对话框中允许；`axsh` 最多会等待您的回答 15 秒。如果设为 **Denied**，则不会显示对话框。参见[在任意终端中运行](./axsh.md#permission)。
+
+## 划掉 AxManager 后 axsh 提示 "AxManager server is not running" {#axsh-server-not-running}
+
+在 shell 模式下，`axsh` 会向 AxManager 请求服务，因此 AxManager 需要能在后台启动。有些系统（尤其是 MIUI / HyperOS）会杀死从最近任务中划掉的应用，并阻止它们再次被启动。AxManager 在 MIUI / HyperOS 上连接到服务时会为自己允许**自启动**；如果仍然出现该提示，请在系统设置中为 AxManager 允许**自启动**（或"后台运行"）。参见[连接方式](./axsh.md#how-it-connects)。
+
+## app-op 显示为 MIUIOP(10050) 这样的原始名称 {#raw-app-op-name}
+
+这是 ROM 添加的权限，而 ROM 没有提供 AxManager 可以读取的名称。AxManager 用它的编号显示，以便您仍然可以修改它。只有少数已知的项有名称，并且只在其所属的 ROM 上使用，因为其他品牌可能用同一个编号表示别的东西。参见[应用详情](./app-tour.md#app-details)。
+
 ## 服务停止后插件仍在运行 {#plugins-keep-running}
 
 这是默认行为：插件启动后会独立运行。如需在服务停止或退出时停止所有插件的进程，请打开**设置 → 随服务停止插件**。参见[插件进程](../plugin/environment.md#plugin-processes)。
