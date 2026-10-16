@@ -1,0 +1,8 @@
+id=test_function
+name=Test Function
+version=v1.0
+versionCode=1
+author=AxManager
+description=Exercises the plugin environment: installer, boot scripts, service, action, system/bin, system.prop, WebUI API and process lifecycle. Results in reports/ and the WebUI.
+axeronPlugin=19100
+banner=banner.png

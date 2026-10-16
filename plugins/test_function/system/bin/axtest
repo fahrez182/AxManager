@@ -1,0 +1,29 @@
+#!/system/bin/sh
+# Linked into $AXERONXBIN when the plugin starts, so it is on PATH wherever AxManager runs
+# commands: QuickShell, other plugins, WebUIs. Try "axtest" in QuickShell.
+
+case "$1" in
+  ping)
+    echo "pong from $(readlink -f "$0")"
+    ;;
+  env)
+    env | grep -E '^(AXERON|TMPDIR|PATH|LD_LIBRARY_PATH|HOSTNAME)' | sort
+    ;;
+  marker)
+    echo "AXERON_PLUGIN=${AXERON_PLUGIN:-<none>}"
+    ;;
+  procs)
+    # Processes that carry any plugin marker, with the plugin they belong to.
+    # Other uids' environ is unreadable: skip them, and keep 2>/dev/null before the < redirect.
+    # One escape per tr: Android's tr misreads '\0\n' and replaces every letter n.
+    for d in /proc/[0-9]*; do
+      [ -r "$d/environ" ] || continue
+      m=$(tr '\0' '\n' 2>/dev/null < "$d/environ" | grep '^AXERON_PLUGIN=')
+      [ -n "$m" ] || continue
+      echo "${d#/proc/} ${m#AXERON_PLUGIN=} $(tr '\0' ' ' 2>/dev/null < "$d/cmdline" | tr '\n' ' ')"
+    done
+    ;;
+  *)
+    echo "usage: axtest ping|env|marker|procs"
+    ;;
+esac

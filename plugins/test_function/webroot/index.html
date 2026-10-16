@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Test Function</title>
+  <!-- Served by AxManager: window insets and the app's color scheme as CSS variables. -->
+  <link rel="stylesheet" href="/internal/insets.css">
+  <link rel="stylesheet" href="/internal/colors.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="busy" class="busy" hidden></div>
+  <header>
+    <h1>Test Function</h1>
+    <p class="muted">Every button runs one part of AxManager's WebUI API. Results stay on the page.</p>
+    <div class="row">
+      <button id="run-all" class="primary">Run all</button>
+      <button id="clear-all">Clear</button>
+    </div>
+    <p id="bridge" class="muted"></p>
+    <p class="muted">Each result shows the longest freeze of the page while it ran: how long its
+      JavaScript was stuck. Anything over 200&nbsp;ms means the call blocked the page.</p>
+  </header>
+  <main id="tests"></main>
+  <script src="app.js"></script>
+</body>
+</html>

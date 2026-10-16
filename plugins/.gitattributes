@@ -1,0 +1,3 @@
+# Plugin scripts run on Android: keep them LF in every checkout.
+* text=auto eol=lf
+*.png binary

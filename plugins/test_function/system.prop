@@ -1,0 +1,2 @@
+# Loaded with resetprop -f when the plugin starts; checked by service.sh, action.sh and the WebUI.
+debug.axeron.test_function=loaded

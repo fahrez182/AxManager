@@ -1,0 +1,91 @@
+:root {
+  color-scheme: light dark;
+  --fallback-bg: #101418;
+  --fallback-fg: #e0e3e8;
+  --fallback-card: #1c2026;
+  --fallback-accent: #8ecdff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding:
+    calc(var(--window-inset-top, 0px) + 16px)
+    calc(var(--window-inset-right, 0px) + 16px)
+    calc(var(--window-inset-bottom, 0px) + 24px)
+    calc(var(--window-inset-left, 0px) + 16px);
+  font: 15px/1.45 system-ui, sans-serif;
+  background: var(--background, var(--fallback-bg));
+  color: var(--onBackground, var(--fallback-fg));
+}
+
+h1 { margin: 0 0 4px; font-size: 24px; }
+h2 { margin: 0; font-size: 16px; }
+.muted { color: var(--onSurfaceVariant, #9aa3ad); margin: 4px 0 12px; font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.card {
+  background: var(--surfaceContainer, var(--fallback-card));
+  border-radius: 16px;
+  padding: 14px;
+  margin: 12px 0;
+}
+.card header { display: flex; align-items: center; gap: 8px; }
+.card header h2 { flex: 1; }
+.card .desc { margin: 6px 0 10px; }
+
+.status { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.status.pass { background: var(--primary, var(--fallback-accent)); color: var(--onPrimary, #00344f); }
+.status.fail { background: var(--error, #ffb4ab); color: var(--onError, #690005); }
+.status.warn { background: var(--tertiaryContainer, #5c4a00); color: var(--onTertiaryContainer, #ffe08a); }
+.status.run { background: var(--surfaceVariant, #40484f); color: var(--onSurfaceVariant, #c0c7cf); }
+
+/* Spinner in a running card's status. Driven by JS (see spin() in app.js), not a CSS
+   animation: CSS animations keep moving on the compositor even while the page's JS is
+   blocked, so they would hide a freeze instead of showing it. */
+.status.run::before { content: attr(data-spin); display: inline-block; width: 1em; margin-right: 4px; }
+
+button:disabled { opacity: .5; }
+
+/* Top progress bar while anything runs; moved by JS for the same reason as the spinner. */
+.busy {
+  position: fixed;
+  top: var(--window-inset-top, 0px);
+  left: 0;
+  height: 3px;
+  width: 30%;
+  background: var(--primary, var(--fallback-accent));
+  z-index: 10;
+}
+
+button {
+  border: 0;
+  border-radius: 99px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 600;
+  background: var(--secondaryContainer, #374955);
+  color: var(--onSecondaryContainer, #d2e5f5);
+}
+button.primary { background: var(--primary, var(--fallback-accent)); color: var(--onPrimary, #00344f); }
+
+pre {
+  margin: 10px 0 0;
+  padding: 10px;
+  max-height: 320px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--surfaceContainerLowest, #0b0f13);
+  font: 12px/1.4 ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+pre:empty { display: none; }
+
+.icons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.icons figure { margin: 0; text-align: center; font-size: 10px; width: 64px; overflow: hidden; }
+.icons img { width: 48px; height: 48px; display: block; margin: 0 auto 4px; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.swatches span { width: 28px; height: 28px; border-radius: 8px; border: 1px solid #8884; }
