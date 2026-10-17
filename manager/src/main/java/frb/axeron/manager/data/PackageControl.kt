@@ -1,6 +1,7 @@
 package frb.axeron.manager.data
 
 import frb.axeron.api.Axeron
+import frb.axeron.shell.Axsh
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -182,7 +183,7 @@ object PackageControl {
 
     private suspend fun run(vararg argv: String): Exec? = withContext(Dispatchers.IO) {
         runCatching {
-            val process = Axeron.newProcess(arrayOf(*argv))
+            val process = Axsh.exec(arrayOf(*argv))
             process.outputStream.close()
             // Both streams at once: a full pipe on one would stall the process.
             coroutineScope {

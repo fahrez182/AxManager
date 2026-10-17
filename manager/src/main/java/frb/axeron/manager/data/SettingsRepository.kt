@@ -3,6 +3,7 @@ package frb.axeron.manager.data
 import android.content.ContentResolver
 import android.provider.Settings
 import frb.axeron.api.Axeron
+import frb.axeron.shell.Axsh
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.R
 import frb.axeron.server.Environment
@@ -103,7 +104,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
         val alias = type.alias
 
         return try {
-            Axeron.newProcess(arrayOf("settings", "put", alias, key, value)).waitFor() == 0
+            Axsh.exec(arrayOf("settings", "put", alias, key, value)).waitFor() == 0
         } catch (e: Exception) {
             e.printStackTrace()
             false
@@ -115,7 +116,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
         val alias = type.alias
 
         return try {
-            Axeron.newProcess(arrayOf("settings", "delete", alias, key)).waitFor() == 0
+            Axsh.exec(arrayOf("settings", "delete", alias, key)).waitFor() == 0
         } catch (e: Exception) {
             e.printStackTrace()
             false
@@ -128,7 +129,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
         val map = mutableMapOf<String, String>()
 
         try {
-            val process = Axeron.newProcess(arrayOf("settings", "list", alias))
+            val process = Axsh.exec(arrayOf("settings", "list", alias))
             process.inputStream.bufferedReader().useLines { lines ->
                 lines.forEach { line ->
                     // Format baris biasanya: name=value
@@ -152,7 +153,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
     // ======= AndroidProp =======
     private fun getAndroidProp(key: String): String? {
         return try {
-            val process = Axeron.newProcess(arrayOf(AxeronPluginService.RESETPROP, key))
+            val process = Axsh.exec(arrayOf(AxeronPluginService.RESETPROP, key))
             process.inputStream.bufferedReader().use { it.readText().trim() }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -162,7 +163,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
 
     private fun setAndroidProp(key: String, value: String): Boolean {
         return try {
-            Axeron.newProcess(arrayOf(AxeronPluginService.RESETPROP, key, value)).waitFor() == 0
+            Axsh.exec(arrayOf(AxeronPluginService.RESETPROP, key, value)).waitFor() == 0
         } catch (e: Exception) {
             e.printStackTrace()
             false
@@ -172,7 +173,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
     private fun getAllAndroidProps(): Map<String, String> {
         val map = mutableMapOf<String, String>()
         try {
-            val process = Axeron.newProcess(AxeronPluginService.RESETPROP)
+            val process = Axsh.newProcess("-c", AxeronPluginService.RESETPROP)
             process.inputStream.bufferedReader().useLines { lines ->
                 lines.forEach { line ->
                     // Format output: [key]: [value]

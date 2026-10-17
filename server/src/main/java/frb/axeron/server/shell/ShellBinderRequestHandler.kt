@@ -8,7 +8,7 @@ import android.os.Looper
 import android.os.Parcel
 import android.util.Log
 import frb.axeron.api.Axeron
-import frb.axeron.axsh.AxshKeepAlive
+import frb.axeron.shell.KeepAlive
 import frb.axeron.server.ServerConstants
 import frb.axeron.shared.AxeronApiConstant
 import java.util.concurrent.atomic.AtomicBoolean
@@ -39,14 +39,14 @@ object ShellBinderRequestHandler {
         val request = intent.getBundleExtra("data")
         val receiver = request?.getBinder("binder")
         // Older requesters send no uid: their keep-alive is off.
-        val keepAlive = AxshKeepAlive.get(context, request?.getInt(AxshKeepAlive.EXTRA_UID, -1) ?: -1)
+        val uid = request?.getInt(KeepAlive.EXTRA_UID, -1) ?: -1
         if (receiver == null) {
             onDone()
             return false
         }
 
         Axeron.getBinder()?.takeIf { it.pingBinder() }?.let {
-            reply(context, receiver, it, keepAlive)
+            reply(context, receiver, it, keepAlive(uid))
             onDone()
             return true
         }
@@ -58,7 +58,7 @@ object ShellBinderRequestHandler {
             override fun onBinderReceived() {
                 if (done.getAndSet(true)) return
                 Axeron.removeBinderReceivedListener(this)
-                Axeron.getBinder()?.let { reply(context, receiver, it, keepAlive) }
+                Axeron.getBinder()?.let { reply(context, receiver, it, keepAlive(uid)) }
                 onDone()
             }
         }
@@ -71,6 +71,11 @@ object ShellBinderRequestHandler {
         }, BINDER_WAIT_MS)
         return true
     }
+
+    /** The requester's setting, kept by the server: ask only once its binder is here. */
+    private fun keepAlive(uid: Int): Int =
+        if (uid < 0) KeepAlive.OFF
+        else KeepAlive.fromFlags(Axeron.getFlagsForUid(uid, KeepAlive.MASK))
 
     private fun reply(context: Context, receiver: IBinder, axeronBinder: IBinder, keepAlive: Int) {
         val data = Parcel.obtain()

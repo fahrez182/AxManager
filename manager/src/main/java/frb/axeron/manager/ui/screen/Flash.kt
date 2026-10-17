@@ -72,11 +72,9 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
-import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.flashPlugin
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxSnackBarHost
 import frb.axeron.manager.ui.component.AxTopAppBar
@@ -474,13 +472,7 @@ private fun FinishButton(
         success && flashIt is FlashIt.FlashUninstall -> Button(
             modifier = modifier,
             onClick = {
-                closeAfter {
-                    Axeron.newProcess(
-                        AxeronCommandSession.getQuickCmd(Starter.internalCommand, true, false),
-                        null,
-                        null
-                    )
-                }
+                closeAfter { Axeron.relaunchServer() }
             }
         ) {
             Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))

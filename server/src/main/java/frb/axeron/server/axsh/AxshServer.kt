@@ -5,7 +5,7 @@ import android.os.ParcelFileDescriptor
 import android.system.Os
 import android.system.OsConstants
 import android.util.SparseArray
-import frb.axeron.axsh.AxshSessions
+import frb.axeron.shell.Sessions
 import frb.axeron.server.IAxeronService
 import frb.axeron.server.util.Logger
 import java.io.FileDescriptor
@@ -16,14 +16,14 @@ import kotlin.concurrent.thread
 
 /**
  * Native `axsh` clients connect to the abstract socket [SOCKET_NAME] wherever SELinux lets them
- * (root mode) and run the shared [AxshSessions] protocol right here, without the binder round
+ * (root mode) and run the shared [Sessions] protocol right here, without the binder round
  * trip a broker needs. Callers are identified by SO_PEERCRED.
  */
 class AxshServer(
     private val server: () -> IAxeronService,
     private val authorize: (uid: Int, pid: Int) -> Boolean,
     private val requestPermission: (uid: Int, pid: Int) -> Unit,
-) : AxshSessions.Host {
+) : Sessions.Host {
 
     companion object {
         private val LOGGER = Logger("AxshServer")
@@ -33,7 +33,7 @@ class AxshServer(
 
     override val tag = "AxshServer"
 
-    private val sessions = AxshSessions(this)
+    private val sessions = Sessions(this)
 
     /** One dialog per uid in flight; every session from that uid waits on the same answer. */
     private class PermissionWait {
@@ -155,7 +155,7 @@ class AxshServer(
 
     override fun refuse(uid: Int, pid: Int): String? {
         if (authorize(uid, pid)) return null
-        return if (awaitPermission(uid, pid)) null else AxshSessions.DENIED_MESSAGE
+        return if (awaitPermission(uid, pid)) null else Sessions.DENIED_MESSAGE
     }
 
     // Started from here, the shell runs as us: the calls are local, past the binder permission
@@ -180,7 +180,7 @@ class AxshServer(
             }
         }
 
-        val answered = wait.latch.await(AxshSessions.PERMISSION_WAIT_MS, TimeUnit.MILLISECONDS)
+        val answered = wait.latch.await(Sessions.PERMISSION_WAIT_MS, TimeUnit.MILLISECONDS)
         if (!answered) {
             // Unanswered (dismissed or left open): the next client asks again.
             synchronized(waits) {

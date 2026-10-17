@@ -8,7 +8,7 @@ import coil.ImageLoader
 import com.topjohnwu.superuser.Shell
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.axsh.AxshBroker
+import frb.axeron.shell.Broker
 import frb.axeron.manager.data.AxshLauncher
 import kotlin.concurrent.thread
 import frb.axeron.api.core.Engine
@@ -45,7 +45,7 @@ class AxeronApplication : Engine() {
         // The default shell runs our libaxsh.so (found through applicationInfo, so not before
         // this point). Its broker hands out the binder we already hold, never a broadcast to
         // ourselves, which could wait behind a main thread blocked on that same shell.
-        AxshBroker.start(this) { Axeron.getBinder() }
+        Broker.start(this) { Axeron.getBinder() }
         Shell.setDefaultBuilder(createShellBuilder())
         // The server writes /sdcard/axeron/axsh for us; with it back after an update, the
         // launcher gets the new libaxsh.so path before anyone opens the card that offers it.

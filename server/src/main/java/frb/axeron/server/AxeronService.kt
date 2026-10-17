@@ -70,8 +70,9 @@ import rikka.hidden.compat.PermissionManagerApis
 import rikka.hidden.compat.UserManagerApis
 import rikka.hidden.compat.util.SystemServiceBinder
 import rikka.parcelablelist.ParcelableListSlice
-import frb.axeron.axsh.host.AxshProcess
-import frb.axeron.axsh.host.PtyHost
+import frb.axeron.shell.KeepAlive
+import frb.axeron.shell.host.AxshProcess
+import frb.axeron.shell.host.PtyHost
 import java.io.File
 import java.io.IOException
 import java.lang.ref.WeakReference
@@ -822,8 +823,11 @@ open class AxeronService :
             val argv = cmd?.filterNotNull()?.toTypedArray()
             require(!argv.isNullOrEmpty()) { "empty command" }
 
+            // As newProcess: an attached app's shells end with it. A broker or bootstrap isn't
+            // attached until it asks for permission; its sessions end with their socket instead.
+            val owner = clientManager.findClient(getCallingUid(), getCallingPid())?.client?.asBinder()
             return AxshProcess.start(
-                argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size
+                argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size, owner
             )
         } catch (e: Throwable) {
             // Already detached ones (PtyHost failed later) close as a no-op.
@@ -841,11 +845,6 @@ open class AxeronService :
         enforceCallingPermission("openAxshChannel")
         val server = checkNotNull(axshServer) { "axsh is not running" }
         return server.openChannel(getCallingUid())
-    }
-
-    override fun closeAxshChannels(uid: Int) {
-        enforceManagerPermission("closeAxshChannels")
-        axshServer?.closeChannels(uid)
     }
 
     override fun getServerInfo(): ServerInfo {
@@ -1212,6 +1211,20 @@ open class AxeronService :
             }
         }
 
+        val keepAlive = mask and KeepAlive.MASK
+        if (keepAlive != 0) {
+            // With its packages: an entry without them is dropped as stale on the next start, and
+            // a terminal app like Termux has none until it asks for the permission.
+            configManager.findOrUpdate(uid)
+        }
+        val keepAliveBefore = getFlagsForUidInternal(uid, KeepAlive.MASK)
+
         configManager.update(uid, null, mask, value)
+
+        // The app's daemon runs with the setting it was started with: end it, and the next
+        // command starts one with this.
+        if (keepAlive != 0 && getFlagsForUidInternal(uid, KeepAlive.MASK) != keepAliveBefore) {
+            axshServer?.closeChannels(uid)
+        }
     }
 }

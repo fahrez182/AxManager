@@ -108,6 +108,8 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
 import kotlin.concurrent.thread
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import frb.axeron.manager.R
 import frb.axeron.manager.data.PackageControl
 import frb.axeron.manager.ui.component.AxCard
@@ -138,7 +140,7 @@ import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.GeneralItem
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.Kind
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.Permission
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
-import frb.axeron.axsh.AxshKeepAlive
+import frb.axeron.shell.KeepAlive
 import frb.axeron.shared.MiuiAppOps
 import kotlinx.coroutines.launch
 
@@ -570,15 +572,19 @@ private fun HeaderCard(
 
 /**
  * Whether this app keeps axsh's shell-mode helper ready after its first command: off, while used
- * (smart) or with no limit. The manager answers the helper's binder request with it
- * (AxshKeepAlive); a change also ends the helper running now, so the next one has the new setting.
+ * (smart) or with no limit. Kept by the server in the app's flags (KeepAlive), which ends the
+ * helper running now when it changes, so the next one has the new setting.
  */
 @Composable
 private fun KeepAliveRow(uid: Int) {
-    val context = LocalContext.current
-    var minutes by remember(uid) { mutableIntStateOf(AxshKeepAlive.get(context, uid)) }
+    var minutes by remember(uid) { mutableIntStateOf(KeepAlive.DEFAULT) }
+    LaunchedEffect(uid) {
+        minutes = withContext(Dispatchers.IO) {
+            KeepAlive.fromFlags(Axeron.getFlagsForUid(uid, KeepAlive.MASK))
+        }
+    }
     var picking by remember { mutableStateOf(false) }
-    val on = minutes != AxshKeepAlive.OFF
+    val on = minutes != KeepAlive.OFF
 
     Box {
         Row(
@@ -622,7 +628,7 @@ private fun KeepAliveRow(uid: Int) {
         Box(Modifier.align(Alignment.BottomEnd)) {
             AxDropdownMenu(expanded = picking, onDismissRequest = { picking = false }) {
                 AxDropdownHeader(stringResource(R.string.axsh_keep_alive_pick))
-                AxshKeepAlive.CHOICES.forEach { choice ->
+                KeepAlive.CHOICES.forEach { choice ->
                     AxDropdownItem(
                         text = keepAliveLabel(choice),
                         note = keepAliveNote(choice),
@@ -631,10 +637,9 @@ private fun KeepAliveRow(uid: Int) {
                             picking = false
                             if (choice != minutes) {
                                 minutes = choice
-                                AxshKeepAlive.set(context, uid, choice)
-                                // A daemon already running keeps its old limit: end it, so the
-                                // next command starts one with this setting.
-                                thread(name = "axsh-keep-alive") { Axeron.closeAxshChannels(uid) }
+                                thread(name = "axsh-keep-alive") {
+                                    Axeron.updateFlagsForUid(uid, KeepAlive.MASK, KeepAlive.toFlags(choice))
+                                }
                             }
                         }
                     )
@@ -646,16 +651,16 @@ private fun KeepAliveRow(uid: Int) {
 
 @Composable
 private fun keepAliveLabel(minutes: Int): String = when (minutes) {
-    AxshKeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off)
-    AxshKeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never)
+    KeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off)
+    KeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never)
     else -> stringResource(R.string.axsh_keep_alive_smart)
 }
 
 @Composable
 private fun keepAliveNote(minutes: Int): String = when (minutes) {
-    AxshKeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off_note)
-    AxshKeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never_note)
-    else -> stringResource(R.string.axsh_keep_alive_smart_note, AxshKeepAlive.SMART)
+    KeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off_note)
+    KeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never_note)
+    else -> stringResource(R.string.axsh_keep_alive_smart_note, KeepAlive.SMART)
 }
 
 /** A title that wraps onto as many lines as it needs instead of cutting off with "…". */

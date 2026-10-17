@@ -22,7 +22,6 @@ import com.topjohnwu.superuser.Shell
 import frb.axeron.adb.AdbPairingService
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.Axeron
-import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronInfo
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
@@ -219,15 +218,8 @@ class ActivateViewModel : ViewModel() {
             if (status is ActivateStatus.Updating) {
                 Log.i("AxManagerBinder", "Server needs update, starting update process")
                 setTryToActivate(true)
-                Axeron.newProcess(
-                    AxeronCommandSession.getQuickCmd(
-                        Starter.internalCommand,
-                        true,
-                        false
-                    ),
-                    null,
-                    null
-                )
+                // The server here is the old one: relaunchServer falls back to its newProcess.
+                Axeron.relaunchServer()
             }
         }
         val receivedListener = Axeron.OnBinderReceivedListener {

@@ -104,9 +104,7 @@ import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDes
 import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
-import frb.axeron.api.AxeronCommandSession
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.api.core.Starter
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
@@ -168,17 +166,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                 }
             },
             onShutdown = { Axeron.destroy() },
-            onRestart = {
-                Axeron.newProcess(
-                    AxeronCommandSession.getQuickCmd(
-                        Starter.internalCommand,
-                        true,
-                        false
-                    ),
-                    null,
-                    null
-                )
-            }
+            onRestart = { Axeron.relaunchServer() }
         )
     }
 

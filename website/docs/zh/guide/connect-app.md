@@ -51,10 +51,12 @@ android {
 在 `Application` 中启动 broker，并运行应用自己的 `libaxsh.so`：
 
 ```kotlin
+import frb.axeron.shell.Broker
+
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
-        AxshBroker.start(this)
+        Broker.start(this)
     }
 }
 
