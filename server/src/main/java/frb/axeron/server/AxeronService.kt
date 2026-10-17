@@ -837,6 +837,17 @@ open class AxeronService :
         }
     }
 
+    override fun openAxshChannel(): ParcelFileDescriptor {
+        enforceCallingPermission("openAxshChannel")
+        val server = checkNotNull(axshServer) { "axsh is not running" }
+        return server.openChannel(getCallingUid())
+    }
+
+    override fun closeAxshChannels(uid: Int) {
+        enforceManagerPermission("closeAxshChannels")
+        axshServer?.closeChannels(uid)
+    }
+
     override fun getServerInfo(): ServerInfo {
         return ServerInfo(
             VERSION_NAME,

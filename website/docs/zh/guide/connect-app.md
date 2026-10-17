@@ -95,7 +95,13 @@ Shell.cmd("pm list packages").exec()
 | **Shell** | 每条命令都启动助手并请求 AxManager | 应用内的 broker：只请求 AxManager 一次 |
 
 ::: tip 保持 axsh 就绪
-在 shell 模式下使用 AxManager 的 `libaxsh.so` 时，请在 AxManager 中为你的应用开启**保持 axsh 就绪**（**特权 → 你的应用**，在 Axeron 权限下方）。助手会在第一条命令后保留下来，之后的命令像连接 broker 一样连接它。等待期间约占用 20–30 MB 内存，在你选择的时间内未使用或 AxManager 更新时退出。更改从下一个启动的助手开始生效。
+在 shell 模式下使用 AxManager 的 `libaxsh.so` 时，应用第一条命令启动的助手会留下一个很小的原生进程（约 3 MB），之后的命令像连接 broker 一样连接它。可在 AxManager 中按应用设置（**特权 → 你的应用 → 保持 axsh 就绪**，在 Axeron 权限下方）：
+
+- **智能**（默认）：应用使用 axsh 期间保留，5 分钟没有命令后退出。
+- **无限制**：保留到服务停止或 AxManager 更新。
+- **关闭**：每条命令都启动新的助手。
+
+更改设置会结束当前运行的助手，下一条命令会以新设置启动助手。
 :::
 
 ## 权限 {#permission}

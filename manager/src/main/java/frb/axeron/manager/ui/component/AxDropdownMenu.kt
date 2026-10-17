@@ -59,13 +59,15 @@ fun AxDropdownHeader(text: String, monospace: Boolean = false) {
     )
 }
 
+/** [note]: an optional line under [text] saying what the choice does. */
 @Composable
 fun AxDropdownItem(
     text: String,
     icon: ImageVector,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    destructive: Boolean = false
+    destructive: Boolean = false,
+    note: String? = null
 ) {
     val tint = when {
         !enabled -> MaterialTheme.colorScheme.outline
@@ -74,16 +76,25 @@ fun AxDropdownItem(
     }
     DropdownMenuItem(
         text = {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = when {
-                    !enabled -> MaterialTheme.colorScheme.outline
-                    destructive -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurface
+            Column(Modifier.padding(vertical = if (note != null) 6.dp else 0.dp)) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = when {
+                        !enabled -> MaterialTheme.colorScheme.outline
+                        destructive -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                if (note != null) {
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            )
+            }
         },
         leadingIcon = { IconBadge(imageVector = icon, tint = tint, size = 28.dp) },
         onClick = onClick,

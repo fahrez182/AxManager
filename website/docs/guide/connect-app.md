@@ -95,7 +95,13 @@ What a command costs before it runs depends on the way you connect and, for AxMa
 | **Shell** | Helper started, AxManager asked, every command | Broker in your app: AxManager asked once |
 
 ::: tip Keep axsh ready
-With AxManager's `libaxsh.so` in shell mode, turn on **Keep axsh ready** for your app in AxManager (**Privilege → your app**, under the Axeron permission). The helper then stays after the first command and the next commands connect to it like to a broker. It uses about 20–30 MB of memory while it waits, and leaves after the time you pick without use, or when AxManager updates. A change applies from the next helper started.
+With AxManager's `libaxsh.so` in shell mode, the helper started by your app's first command leaves a small native process behind (about 3 MB), and the next commands connect to it like to a broker. Set it per app in AxManager (**Privilege → your app → Keep axsh ready**, under the Axeron permission):
+
+- **Smart** (default): stays while your app uses axsh, and leaves after 5 minutes without a command.
+- **No limit**: stays until the server stops or AxManager updates.
+- **Off**: every command starts a new helper.
+
+Changing it ends the helper running now; the next command starts one with the new setting.
 :::
 
 ## Permission {#permission}

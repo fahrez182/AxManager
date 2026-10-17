@@ -107,6 +107,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
+import kotlin.concurrent.thread
 import frb.axeron.manager.R
 import frb.axeron.manager.data.PackageControl
 import frb.axeron.manager.ui.component.AxCard
@@ -568,9 +569,9 @@ private fun HeaderCard(
 }
 
 /**
- * Whether this app keeps axsh's shell-mode helper ready after its first command, and for how
- * long without use. The manager answers the helper's binder request with it (AxshKeepAlive), so
- * a change applies from the next helper this app starts.
+ * Whether this app keeps axsh's shell-mode helper ready after its first command: off, while used
+ * (smart) or with no limit. The manager answers the helper's binder request with it
+ * (AxshKeepAlive); a change also ends the helper running now, so the next one has the new setting.
  */
 @Composable
 private fun KeepAliveRow(uid: Int) {
@@ -600,7 +601,7 @@ private fun KeepAliveRow(uid: Int) {
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = stringResource(R.string.axsh_keep_alive_desc),
+                    text = keepAliveNote(minutes),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -624,11 +625,17 @@ private fun KeepAliveRow(uid: Int) {
                 AxshKeepAlive.CHOICES.forEach { choice ->
                     AxDropdownItem(
                         text = keepAliveLabel(choice),
+                        note = keepAliveNote(choice),
                         icon = if (choice == minutes) Icons.Outlined.CheckCircle else Icons.Outlined.Timer,
                         onClick = {
                             picking = false
-                            minutes = choice
-                            AxshKeepAlive.set(context, uid, choice)
+                            if (choice != minutes) {
+                                minutes = choice
+                                AxshKeepAlive.set(context, uid, choice)
+                                // A daemon already running keeps its old limit: end it, so the
+                                // next command starts one with this setting.
+                                thread(name = "axsh-keep-alive") { Axeron.closeAxshChannels(uid) }
+                            }
                         }
                     )
                 }
@@ -641,8 +648,14 @@ private fun KeepAliveRow(uid: Int) {
 private fun keepAliveLabel(minutes: Int): String = when (minutes) {
     AxshKeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off)
     AxshKeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never)
-    60 -> stringResource(R.string.axsh_keep_alive_hour)
-    else -> stringResource(R.string.axsh_keep_alive_minutes, minutes)
+    else -> stringResource(R.string.axsh_keep_alive_smart)
+}
+
+@Composable
+private fun keepAliveNote(minutes: Int): String = when (minutes) {
+    AxshKeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off_note)
+    AxshKeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never_note)
+    else -> stringResource(R.string.axsh_keep_alive_smart_note, AxshKeepAlive.SMART)
 }
 
 /** A title that wraps onto as many lines as it needs instead of cutting off with "…". */
