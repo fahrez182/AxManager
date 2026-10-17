@@ -218,7 +218,7 @@ class ActivateViewModel : ViewModel() {
             if (status is ActivateStatus.Updating) {
                 Log.i("AxManagerBinder", "Server needs update, starting update process")
                 setTryToActivate(true)
-                // The server here is the old one: relaunchServer falls back to its newProcess.
+                // A server from before axsh can't run the starter: it is stopped, to be started again.
                 Axeron.relaunchServer()
             }
         }

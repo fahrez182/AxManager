@@ -1,9 +1,7 @@
 package frb.axeron.server
 
 import android.Manifest.permission.WRITE_SECURE_SETTINGS
-import android.app.ActivityThread
 import android.content.Context
-import android.content.ContextHidden
 import android.content.IContentProvider
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -26,10 +24,7 @@ import android.os.SELinux
 import android.os.SystemProperties
 import android.os.ServiceManager
 import android.os.SystemClock
-import android.os.UserHandle
-import android.os.UserHandleHidden
 import android.system.Os
-import dev.rikka.tools.refine.Refine
 import frb.axeron.server.ServerConstants.MANAGER_APPLICATION_ID
 import frb.axeron.server.ServerConstants.PERMISSION
 import frb.axeron.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
@@ -75,7 +70,6 @@ import frb.axeron.shell.host.AxshProcess
 import frb.axeron.shell.host.PtyHost
 import java.io.File
 import java.io.IOException
-import java.lang.ref.WeakReference
 import kotlin.system.exitProcess
 
 
@@ -582,14 +576,7 @@ open class AxeronService :
             shizuku = ShizukuServiceIntercept(this)
         }
 
-        // make ApkChangedObservers lazy or start on-demand; and keep reference to listener so you can stop it
-//        val apkObserver = ApkChangedListener {
-//            if (getManagerApplicationInfo() == null) exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
-//        }
-//        ApkChangedObservers.start(ai.sourceDir, mainHandler, apkObserver)
-
-
-        BinderSender.register(asInterface(this))
+        BinderSender.register(this)
 
         mainHandler.post {
             sendBinderToClient()
@@ -702,13 +689,11 @@ open class AxeronService :
     }
 
     /**
-     * WRITE_SETTINGS is an app-op, not a runtime permission (`pm grant` refuses it), so it is
-     * allowed through `cmd appops`. Off the binder thread: it spawns a process.
-     */
-    /**
      * App-ops the manager needs, set like WRITE_SECURE_SETTINGS is granted: WRITE_SETTINGS, and on
      * MIUI/HyperOS its own ops. Without Autostart there, a manager swiped from recents (which MIUI
-     * kills) can't be woken to hand axsh the server binder.
+     * kills) can't be woken to hand axsh the server binder. They are app-ops, not runtime
+     * permissions (`pm grant` refuses them), so they go through `cmd appops`, off the binder
+     * thread as that spawns a process.
      */
     private fun allowWriteSettings(userId: Int) {
         Thread {
@@ -741,32 +726,6 @@ open class AxeronService :
     @Throws(RemoteException::class)
     override fun getShizukuService(): IShizukuService? {
         return shizuku
-    }
-
-    private var context: WeakReference<Context>? = null
-
-    @Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
-    fun getContext(): Context {
-        if (context == null || context!!.get() == null) {
-            val activityThread = ActivityThread.systemMain()
-            val systemContext: Context? = activityThread.systemContext
-
-            val userHandle = Refine.unsafeCast<UserHandle?>(
-                UserHandleHidden.of(0)
-            )
-            try {
-                context = WeakReference<Context>(
-                    Refine.unsafeCast<ContextHidden>(systemContext).createPackageContextAsUser(
-                        MANAGER_APPLICATION_ID,
-                        Context.CONTEXT_INCLUDE_CODE or Context.CONTEXT_IGNORE_SECURITY,
-                        userHandle
-                    )
-                )
-            } catch (e: PackageManager.NameNotFoundException) {
-                throw RuntimeException(e)
-            }
-        }
-        return context!!.get()!!
     }
 
     override fun newProcess(
