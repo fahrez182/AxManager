@@ -1,4 +1,4 @@
-package frb.axeron.server.shell
+package frb.axeron.manager.receiver
 
 import android.content.Context
 import android.content.Intent

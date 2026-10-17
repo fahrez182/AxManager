@@ -23,7 +23,6 @@ import com.google.gson.GsonBuilder
 import com.google.gson.ToNumberPolicy
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronPluginService
-import frb.axeron.server.util.flattenOneLevel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope

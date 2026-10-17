@@ -1,4 +1,4 @@
-package frb.axeron.server.util
+package frb.axeron.manager.ui.webui.interfaces
 
 fun flattenOneLevel(map: Map<String, Any?>, separator: String = "."): Map<String, Any?> {
     val result = mutableMapOf<String, Any?>()

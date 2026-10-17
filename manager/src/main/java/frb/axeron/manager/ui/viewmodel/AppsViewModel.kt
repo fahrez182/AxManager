@@ -20,7 +20,7 @@ import frb.axeron.api.Axeron
 import frb.axeron.manager.AxeronApplication.Companion.axeronApp
 import frb.axeron.manager.ui.util.HanziToPinyin
 import frb.axeron.manager.ui.webui.AppIconUtil
-import frb.axeron.server.util.AxWebLoader
+import frb.axeron.manager.ui.webui.AxWebLoader
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.Dispatchers

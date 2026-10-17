@@ -1,4 +1,4 @@
-package frb.axeron.server.util;
+package frb.axeron.manager.ui.webui;
 
 import android.content.Context;
 import android.net.Uri;
