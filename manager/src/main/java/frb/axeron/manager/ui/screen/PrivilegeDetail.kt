@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Bluetooth
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contacts
@@ -64,6 +65,7 @@ import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material.icons.outlined.StopCircle
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
@@ -78,6 +80,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -107,6 +110,9 @@ import frb.axeron.api.Axeron
 import frb.axeron.manager.R
 import frb.axeron.manager.data.PackageControl
 import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.AxDropdownHeader
+import frb.axeron.manager.ui.component.AxDropdownItem
+import frb.axeron.manager.ui.component.AxDropdownMenu
 import frb.axeron.manager.ui.component.ChoicePill
 import frb.axeron.manager.ui.component.OptionsSectionHeader
 import frb.axeron.manager.ui.component.AxCardShape
@@ -131,6 +137,7 @@ import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.GeneralItem
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.Kind
 import frb.axeron.manager.ui.viewmodel.PrivilegeDetailViewModel.Permission
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
+import frb.axeron.axsh.AxshKeepAlive
 import frb.axeron.shared.MiuiAppOps
 import kotlinx.coroutines.launch
 
@@ -523,6 +530,9 @@ private fun HeaderCard(
         }
 
         SettingsDivider()
+        KeepAliveRow(uid = appInfo.uid)
+
+        SettingsDivider()
 
         // Quick actions: one round button each, like the system's App info.
         Row(
@@ -555,6 +565,84 @@ private fun HeaderCard(
             )
         }
     }
+}
+
+/**
+ * Whether this app keeps axsh's shell-mode helper ready after its first command, and for how
+ * long without use. The manager answers the helper's binder request with it (AxshKeepAlive), so
+ * a change applies from the next helper this app starts.
+ */
+@Composable
+private fun KeepAliveRow(uid: Int) {
+    val context = LocalContext.current
+    var minutes by remember(uid) { mutableIntStateOf(AxshKeepAlive.get(context, uid)) }
+    var picking by remember { mutableStateOf(false) }
+    val on = minutes != AxshKeepAlive.OFF
+
+    Box {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { picking = true }
+                .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp)
+        ) {
+            IconBadge(
+                imageVector = Icons.Outlined.Timer,
+                size = 32.dp,
+                tint = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.axsh_keep_alive),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.axsh_keep_alive_desc),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            StatusPill(
+                text = keepAliveLabel(minutes),
+                color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Opens at the row's right, like the list's quick menu.
+        Box(Modifier.align(Alignment.BottomEnd)) {
+            AxDropdownMenu(expanded = picking, onDismissRequest = { picking = false }) {
+                AxDropdownHeader(stringResource(R.string.axsh_keep_alive_pick))
+                AxshKeepAlive.CHOICES.forEach { choice ->
+                    AxDropdownItem(
+                        text = keepAliveLabel(choice),
+                        icon = if (choice == minutes) Icons.Outlined.CheckCircle else Icons.Outlined.Timer,
+                        onClick = {
+                            picking = false
+                            minutes = choice
+                            AxshKeepAlive.set(context, uid, choice)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun keepAliveLabel(minutes: Int): String = when (minutes) {
+    AxshKeepAlive.OFF -> stringResource(R.string.axsh_keep_alive_off)
+    AxshKeepAlive.NEVER -> stringResource(R.string.axsh_keep_alive_never)
+    60 -> stringResource(R.string.axsh_keep_alive_hour)
+    else -> stringResource(R.string.axsh_keep_alive_minutes, minutes)
 }
 
 /** A title that wraps onto as many lines as it needs instead of cutting off with "…". */

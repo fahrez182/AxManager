@@ -601,6 +601,13 @@ private fun RunInAnyTerminalCard() {
                 }
             }
 
+            // Keeping axsh ready is per app, next to its Axeron permission.
+            Text(
+                text = stringResource(R.string.run_in_any_terminal_keep_alive_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             // The raw binary, for whoever wants it; it changes with every update.
             SelectionContainer {
                 Text(

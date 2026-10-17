@@ -8,6 +8,7 @@ import android.os.Looper
 import android.os.Parcel
 import android.util.Log
 import frb.axeron.api.Axeron
+import frb.axeron.axsh.AxshKeepAlive
 import frb.axeron.server.ServerConstants
 import frb.axeron.shared.AxeronApiConstant
 import java.util.concurrent.atomic.AtomicBoolean
@@ -35,14 +36,17 @@ object ShellBinderRequestHandler {
             return false
         }
 
-        val receiver = intent.getBundleExtra("data")?.getBinder("binder")
+        val request = intent.getBundleExtra("data")
+        val receiver = request?.getBinder("binder")
+        // Older requesters send no uid: their keep-alive is off.
+        val keepAlive = AxshKeepAlive.get(context, request?.getInt(AxshKeepAlive.EXTRA_UID, -1) ?: -1)
         if (receiver == null) {
             onDone()
             return false
         }
 
         Axeron.getBinder()?.takeIf { it.pingBinder() }?.let {
-            reply(context, receiver, it)
+            reply(context, receiver, it, keepAlive)
             onDone()
             return true
         }
@@ -54,7 +58,7 @@ object ShellBinderRequestHandler {
             override fun onBinderReceived() {
                 if (done.getAndSet(true)) return
                 Axeron.removeBinderReceivedListener(this)
-                Axeron.getBinder()?.let { reply(context, receiver, it) }
+                Axeron.getBinder()?.let { reply(context, receiver, it, keepAlive) }
                 onDone()
             }
         }
@@ -68,12 +72,14 @@ object ShellBinderRequestHandler {
         return true
     }
 
-    private fun reply(context: Context, receiver: IBinder, axeronBinder: IBinder) {
+    private fun reply(context: Context, receiver: IBinder, axeronBinder: IBinder, keepAlive: Int) {
         val data = Parcel.obtain()
         try {
             data.writeStrongBinder(axeronBinder)
             data.writeLong(AxeronApiConstant.server.VERSION_CODE)
             data.writeString(context.applicationInfo.nativeLibraryDir)
+            // Appended last, so older readers that stop after the library dir still work.
+            data.writeInt(keepAlive)
             receiver.transact(1, data, null, IBinder.FLAG_ONEWAY)
         } catch (e: Throwable) {
             Log.w(TAG, "reply failed", e)
