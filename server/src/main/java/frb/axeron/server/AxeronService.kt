@@ -804,23 +804,37 @@ open class AxeronService :
         pty: Boolean,
         size: Long
     ): IAxshProcess {
-        enforceCallingPermission("newAxshProcess")
+        // The binder stub has already made these fds in this process. Until PtyHost takes them
+        // they are ours to close: one left open (here a refusal, as before a permission prompt)
+        // holds the client's pipe, so its relay never sees EOF and `axsh -c` never returns.
+        try {
+            enforceCallingPermission("newAxshProcess")
 
-        LOGGER.d(
-            "newAxshProcess: uid=%d, pty=%s, cmd=%s",
-            getCallingUid(),
-            pty.toString(),
-            cmd.contentToString()
-        )
+            LOGGER.d(
+                "newAxshProcess: uid=%d, pty=%s, cmd=%s",
+                getCallingUid(),
+                pty.toString(),
+                cmd.contentToString()
+            )
 
-        requireNotNull(stdin) { "stdin" }
-        requireNotNull(stdout) { "stdout" }
-        val argv = cmd?.filterNotNull()?.toTypedArray()
-        require(!argv.isNullOrEmpty()) { "empty command" }
+            requireNotNull(stdin) { "stdin" }
+            requireNotNull(stdout) { "stdout" }
+            val argv = cmd?.filterNotNull()?.toTypedArray()
+            require(!argv.isNullOrEmpty()) { "empty command" }
 
-        return AxshProcess.start(
-            argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size
-        )
+            return AxshProcess.start(
+                argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size
+            )
+        } catch (e: Throwable) {
+            // Already detached ones (PtyHost failed later) close as a no-op.
+            for (fd in arrayOf(stdin, stdout, stderr)) {
+                try {
+                    fd?.close()
+                } catch (_: Exception) {
+                }
+            }
+            throw e
+        }
     }
 
     override fun getServerInfo(): ServerInfo {
