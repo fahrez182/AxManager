@@ -56,7 +56,7 @@ When `axsh` is used from a script, a pipe or an app (input or output is not a te
 | **Root** | Directly to the server. |
 | **Shell** (wireless debugging, computer, …) | Android doesn't let apps talk to a shell process directly, so `axsh` starts a small helper from AxManager's app inside your terminal app. The helper gets the server from AxManager and hands the session over. This adds a short delay at start. |
 
-Apps that build axsh in (see [For app developers](#for-app-developers)) skip the helper.
+Apps that build axsh in (see [Connect with an App](./connect-app.md)) skip the helper. For a terminal app, **Keep axsh ready** (in AxManager, **Privilege → the app**, under the Axeron permission) keeps the helper after the first command, so the next ones start at once.
 
 ::: info MIUI / HyperOS
 In shell mode the helper asks AxManager for the server. MIUI kills apps swiped away from recents and by default blocks other apps from starting them again, so AxManager could not answer. AxManager therefore allows its own **Autostart** (and its home screen shortcut and background window permissions) whenever it connects to the server. If `axsh` still says the server is not running after you swipe AxManager away, check **Autostart** for AxManager in the system settings.
@@ -85,9 +85,4 @@ Changing an app from **Allowed** to **Ask** or **Denied** stops that app, so cha
 
 ## For app developers {#for-app-developers}
 
-An app can use axsh the same way a terminal does:
-
-- **Run AxManager's `libaxsh.so`.** Get its folder from `PackageManager.getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir` (declare `frb.axeron.manager` in `<queries>` on Android 11+) and run `libaxsh.so` from there, for example as a [libsu](https://github.com/topjohnwu/libsu) shell. It is always the version that matches the installed AxManager.
-- **Build the `axsh` module in** and start its broker from your `Application`. Then shell-mode sessions skip the helper and start faster.
-
-Either way the app needs AxManager's permission, as above.
+An app can use axsh the same way a terminal does: run AxManager's `libaxsh.so`, or build the `axsh` module in so its commands skip the helper. See **[Connect with an App](./connect-app.md)** for both, how fast each is, and the demo app that tests them.

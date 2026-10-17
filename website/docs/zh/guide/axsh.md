@@ -60,7 +60,7 @@ axsh script.sh      # 一个脚本文件
 | **Root** | 直接连接到服务。 |
 | **Shell**（无线调试、电脑等） | Android 不允许应用直接与 shell 进程通信，因此 `axsh` 会在您的终端应用中，从 AxManager 的应用里启动一个小助手。助手从 AxManager 获取服务并交接会话。启动时会多一点延迟。 |
 
-内置了 axsh 的应用（参见[面向应用开发者](#for-app-developers)）会跳过这个助手。
+内置了 axsh 的应用（参见[与应用连接](./connect-app.md)）会跳过这个助手。对于终端应用，**保持 axsh 就绪**（在 AxManager 的**特权 → 该应用**中，Axeron 权限下方）会在第一条命令后保留助手，之后的命令会立即启动。
 
 ::: info MIUI / HyperOS
 在 shell 模式下，助手会向 AxManager 请求服务。MIUI 会杀死从最近任务中划掉的应用，并默认阻止其他应用再次启动它们，因此 AxManager 无法响应。为此，AxManager 每次连接到服务时都会为自己允许**自启动**（以及桌面快捷方式和后台弹出界面权限）。如果划掉 AxManager 后 `axsh` 仍提示服务未运行，请在系统设置中检查 AxManager 的**自启动**。
@@ -89,9 +89,4 @@ axsh script.sh      # 一个脚本文件
 
 ## 面向应用开发者 {#for-app-developers}
 
-应用可以像终端一样使用 axsh：
-
-- **运行 AxManager 的 `libaxsh.so`。** 通过 `PackageManager.getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir` 获取其文件夹（Android 11+ 需要在 `<queries>` 中声明 `frb.axeron.manager`），然后从那里运行 `libaxsh.so`，例如作为 [libsu](https://github.com/topjohnwu/libsu) 的 shell。它始终与已安装的 AxManager 版本匹配。
-- **内置 `axsh` 模块**，并在您的 `Application` 中启动它的 broker。这样 shell 模式的会话会跳过助手，启动更快。
-
-无论哪种方式，应用都需要如上所述的 AxManager 权限。
+应用可以像终端一样使用 axsh：运行 AxManager 的 `libaxsh.so`，或内置 `axsh` 模块让命令跳过助手。两种方式、各自的速度以及用来测试它们的演示应用，请参见 **[与应用连接](./connect-app.md)**。

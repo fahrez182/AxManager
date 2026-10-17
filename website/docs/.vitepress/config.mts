@@ -73,6 +73,7 @@ export default defineConfig({
               { text: withIcon("start", "User Manual"), link: "/guide/user-manual" },
               { text: withIcon("tour", "App Tour"), link: "/guide/app-tour" },
               { text: withIcon("code", "Run in Any Terminal (axsh)"), link: "/guide/axsh" },
+              { text: withIcon("link", "Connect with an App"), link: "/guide/connect-app" },
               {
                 text: withIcon("swap", "Shizuku Compatibility"),
                 link: "/guide/shizuku-compatibility",
@@ -123,6 +124,7 @@ export default defineConfig({
               { text: withIcon("start", "用户手册"), link: "/zh/guide/user-manual" },
               { text: withIcon("tour", "应用导览"), link: "/zh/guide/app-tour" },
               { text: withIcon("code", "在任意终端中运行（axsh）"), link: "/zh/guide/axsh" },
+              { text: withIcon("link", "与应用连接"), link: "/zh/guide/connect-app" },
               {
                 text: withIcon("swap", "Shizuku 兼容"),
                 link: "/zh/guide/shizuku-compatibility",
