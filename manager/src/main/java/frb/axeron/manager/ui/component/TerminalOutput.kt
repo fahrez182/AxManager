@@ -291,7 +291,13 @@ fun <K : Any> TerminalOutput(
                     val position = shown.positionAt(i)
                     // Re-read on every publish: an open line (progress bar) changes in place.
                     val line = remember(position, version) { buffer.lineAt(position) }
-                        ?: return@items
+                    if (line == null) {
+                        // Gone before the next snapshot (clear, screen clear): keep one line's
+                        // height. A zero-height item makes a scrolling list compose every
+                        // remaining item in one frame to fill the viewport (ANR on big output).
+                        BasicText("", style = style)
+                        return@items
+                    }
                     val mark = highlight?.takeIf { it.line == line.number }
                     val currentStart = matches.getOrNull(current)
                         ?.takeIf { it.position == position }?.start ?: -1
