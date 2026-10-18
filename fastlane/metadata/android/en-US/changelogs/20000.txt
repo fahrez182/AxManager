@@ -1,4 +1,5 @@
 *What's new in 2.0.0?
+
 • Redesigned app: floating nav bar, new Home, per-app Privilege details
 • axsh: AxManager's shell for any terminal or app (replaces axerish/axrun)
 • ShellService: libsu's RootService, in ADB mode too
