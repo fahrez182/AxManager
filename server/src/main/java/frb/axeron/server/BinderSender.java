@@ -58,6 +58,13 @@ public class BinderSender {
     }
 
     private static void sendToManager(int userId) {
+        // As for the Shizuku app below: a reinstalled manager has a new uid, which the server's
+        // cache still lacks, so its calls get denied. It gets the binder here first; refresh now.
+        try {
+            axeronService.dispatchPackageChanged(null);
+        } catch (Throwable e) {
+            LOGGER.w(e, "dispatchPackageChanged");
+        }
         managerRuntime = currentRuntime();
         AxeronService.sendBinderToManager(axeronService.asBinder(), userId);
     }
