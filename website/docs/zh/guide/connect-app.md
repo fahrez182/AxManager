@@ -36,12 +36,23 @@ val process = ProcessBuilder(axsh.path, "-c", "id").start()
 
 ### `axsh` 模块 {#axsh-module}
 
-添加该模块（作为 Gradle 项目，或从 Maven local，参见 Axeron API 的 README），并保持原生库解压，因为 `libaxsh.so` 是作为程序运行的：
+从 [JitPack](https://jitpack.io/#fahrez182/Axeron-API) 添加该模块（或作为 Gradle 项目，参见 Axeron API 的 README），并保持原生库解压，因为 `libaxsh.so` 是作为程序运行的：
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+}
+```
 
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation(project(":axsh"))   // 或从 mavenLocal() 使用 "dev.frb.axeron:axsh:<version>"
+    implementation("com.github.fahrez182.Axeron-API:axsh:2.0.0")
 }
 android {
     packaging { jniLibs { useLegacyPackaging = true } }

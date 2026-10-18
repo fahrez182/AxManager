@@ -36,12 +36,23 @@ val process = ProcessBuilder(axsh.path, "-c", "id").start()
 
 ### The `axsh` module {#axsh-module}
 
-Add the module, as a Gradle project or from Maven local (see the Axeron API README), and keep native libraries extracted, since `libaxsh.so` is run as a program:
+Add the module from [JitPack](https://jitpack.io/#fahrez182/Axeron-API) (or as a Gradle project, see the Axeron API README), and keep native libraries extracted, since `libaxsh.so` is run as a program:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+}
+```
 
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation(project(":axsh"))   // or "dev.frb.axeron:axsh:<version>" from mavenLocal()
+    implementation("com.github.fahrez182.Axeron-API:axsh:2.0.0")
 }
 android {
     packaging { jniLibs { useLegacyPackaging = true } }
