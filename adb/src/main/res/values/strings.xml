@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wireless debugging pairing notification (AdbPairingService) -->
+    <string name="adb_pairing_channel">Wireless debugging pairing</string>
+
+    <string name="adb_pairing_searching_title">Searching for pairing service</string>
+    <string name="adb_pairing_searching_text">In Wireless debugging, tap \"Pair device with pairing code\".</string>
+    <string name="adb_pairing_found_title">Pairing service found</string>
+    <string name="adb_pairing_found_text">Enter the 6-digit code shown in Wireless debugging.</string>
+    <string name="adb_pairing_working_title">Pairing…</string>
+    <string name="adb_pairing_paired_title">Pairing successful</string>
+    <string name="adb_pairing_starting_text">Starting AxManager…</string>
+    <string name="adb_pairing_activated_title">AxManager activated</string>
+    <string name="adb_pairing_activated_text">The service is now running.</string>
+
+    <string name="adb_pairing_failed_title">Pairing failed</string>
+    <string name="adb_pairing_start_failed_title">Couldn\'t start AxManager</string>
+    <string name="adb_pairing_timeout_title">Pairing timed out</string>
+    <string name="adb_pairing_timeout_text">Open Wireless debugging, then tap Retry.</string>
+
+    <string name="adb_pairing_wrong_code">Wrong pairing code. Tap \"Pair device with pairing code\" again.</string>
+    <string name="adb_pairing_rejected">Wireless debugging didn\'t accept the pairing.</string>
+    <string name="adb_pairing_cant_connect">Can\'t connect to the wireless debugging service.</string>
+    <string name="adb_pairing_key_failed">Couldn\'t create this app\'s ADB key.</string>
+    <string name="adb_pairing_no_connect">The wireless debugging connection wasn\'t found.</string>
+
+    <string name="adb_pairing_code_label">Pairing code</string>
+    <string name="adb_pairing_action_enter_code">Enter code</string>
+    <string name="adb_pairing_action_settings">Open settings</string>
+    <string name="adb_pairing_action_stop">Stop</string>
+    <string name="adb_pairing_action_retry">Retry</string>
+</resources>

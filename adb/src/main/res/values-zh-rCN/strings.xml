@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wireless debugging pairing notification (AdbPairingService) -->
+    <string name="adb_pairing_channel">无线调试配对</string>
+
+    <string name="adb_pairing_searching_title">正在搜索配对服务</string>
+    <string name="adb_pairing_searching_text">在“无线调试”中，点按“使用配对码配对设备”。</string>
+    <string name="adb_pairing_found_title">已找到配对服务</string>
+    <string name="adb_pairing_found_text">输入“无线调试”中显示的 6 位配对码。</string>
+    <string name="adb_pairing_working_title">正在配对…</string>
+    <string name="adb_pairing_paired_title">配对成功</string>
+    <string name="adb_pairing_starting_text">正在启动 AxManager…</string>
+    <string name="adb_pairing_activated_title">AxManager 已激活</string>
+    <string name="adb_pairing_activated_text">服务正在运行。</string>
+
+    <string name="adb_pairing_failed_title">配对失败</string>
+    <string name="adb_pairing_start_failed_title">无法启动 AxManager</string>
+    <string name="adb_pairing_timeout_title">配对超时</string>
+    <string name="adb_pairing_timeout_text">打开“无线调试”，然后点按“重试”。</string>
+
+    <string name="adb_pairing_wrong_code">配对码错误。请再次点按“使用配对码配对设备”。</string>
+    <string name="adb_pairing_rejected">无线调试未接受此次配对。</string>
+    <string name="adb_pairing_cant_connect">无法连接到无线调试服务。</string>
+    <string name="adb_pairing_key_failed">无法创建本应用的 ADB 密钥。</string>
+    <string name="adb_pairing_no_connect">未找到无线调试连接。</string>
+
+    <string name="adb_pairing_code_label">配对码</string>
+    <string name="adb_pairing_action_enter_code">输入配对码</string>
+    <string name="adb_pairing_action_settings">打开设置</string>
+    <string name="adb_pairing_action_stop">停止</string>
+    <string name="adb_pairing_action_retry">重试</string>
+</resources>

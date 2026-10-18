@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wireless debugging pairing notification (AdbPairingService) -->
+    <string name="adb_pairing_channel">Penyandingan wireless debugging</string>
+
+    <string name="adb_pairing_searching_title">Mencari layanan penyandingan</string>
+    <string name="adb_pairing_searching_text">Di Wireless debugging, ketuk \"Sambungkan perangkat dengan kode penyambungan\".</string>
+    <string name="adb_pairing_found_title">Layanan penyandingan ditemukan</string>
+    <string name="adb_pairing_found_text">Masukkan kode 6 digit yang tampil di Wireless debugging.</string>
+    <string name="adb_pairing_working_title">Menyandingkan…</string>
+    <string name="adb_pairing_paired_title">Penyandingan berhasil</string>
+    <string name="adb_pairing_starting_text">Memulai AxManager…</string>
+    <string name="adb_pairing_activated_title">AxManager aktif</string>
+    <string name="adb_pairing_activated_text">Layanan sekarang berjalan.</string>
+
+    <string name="adb_pairing_failed_title">Penyandingan gagal</string>
+    <string name="adb_pairing_start_failed_title">Tidak dapat memulai AxManager</string>
+    <string name="adb_pairing_timeout_title">Waktu penyandingan habis</string>
+    <string name="adb_pairing_timeout_text">Buka Wireless debugging, lalu ketuk Coba lagi.</string>
+
+    <string name="adb_pairing_wrong_code">Kode penyandingan salah. Ketuk \"Sambungkan perangkat dengan kode penyambungan\" lagi.</string>
+    <string name="adb_pairing_rejected">Wireless debugging tidak menerima penyandingan.</string>
+    <string name="adb_pairing_cant_connect">Tidak dapat terhubung ke layanan wireless debugging.</string>
+    <string name="adb_pairing_key_failed">Tidak dapat membuat kunci ADB aplikasi ini.</string>
+    <string name="adb_pairing_no_connect">Koneksi wireless debugging tidak ditemukan.</string>
+
+    <string name="adb_pairing_code_label">Kode penyandingan</string>
+    <string name="adb_pairing_action_enter_code">Masukkan kode</string>
+    <string name="adb_pairing_action_settings">Buka pengaturan</string>
+    <string name="adb_pairing_action_stop">Berhenti</string>
+    <string name="adb_pairing_action_retry">Coba lagi</string>
+</resources>

@@ -6,9 +6,12 @@ import android.os.Build
 import coil.Coil
 import coil.ImageLoader
 import com.topjohnwu.superuser.Shell
+import frb.axeron.adb.AdbPairingService
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.shell.Broker
+import frb.axeron.manager.adb.AdbStarter
+import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.data.AxshLauncher
 import kotlin.concurrent.thread
 import frb.axeron.api.core.Engine
@@ -59,6 +62,16 @@ class AxeronApplication : Engine() {
         super.onCreate()
 
         val context = this
+        // Activation from the pairing notification takes the same steps as from the app.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            AdbPairingService.starter = { ctx, port ->
+                var info: AdbStateInfo? = null
+                AdbStarter.startAdbClient(ctx, port) { info = it }
+                if (info is AdbStateInfo.Success) Result.success(Unit)
+                else Result.failure(IllegalStateException(info?.message))
+            }
+        }
+
         // App icons load raw from each APK's resources (same engine as AXGC).
         Coil.setImageLoader(
             ImageLoader.Builder(context)
