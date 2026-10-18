@@ -174,7 +174,7 @@ ShellService.unbind(connection)
 | **调用** | `bind`、`unbind`、`stop` | 相同 |
 | **进程** | 所有服务共用一个，随应用退出 | 相同 |
 | **守护模式** | `CATEGORY_DAEMON_MODE` | `ShellService.CATEGORY_DAEMON_MODE` |
-| **`bindOrTask`** | 有 | 暂无 |
+| **自行启动进程** | `bindOrTask`，每次绑定 | `ShellService.setLauncher`，全局设置一次 |
 | **用户** | 全部 | 仅用户 0 |
 
 ### 守护模式 {#daemon-mode}

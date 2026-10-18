@@ -174,7 +174,7 @@ Nothing goes in the manifest.
 | **Calls** | `bind`, `unbind`, `stop` | The same |
 | **Processes** | One for all your services, gone with the app | The same |
 | **Daemon mode** | `CATEGORY_DAEMON_MODE` | `ShellService.CATEGORY_DAEMON_MODE` |
-| **`bindOrTask`** | Yes | Not yet |
+| **Start the process yourself** | `bindOrTask`, per bind | `ShellService.setLauncher`, once for all |
 | **Users** | All | User 0 only |
 
 ### Daemon mode {#daemon-mode}
