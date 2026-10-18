@@ -10,6 +10,8 @@ plugins {
     id("kotlin-parcelize")
 }
 
+val splitAbis = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+
 android {
     namespace = "frb.axeron.manager"
 
@@ -32,12 +34,28 @@ android {
         }
     }
 
+    // Release: an APK per ABI plus a universal one. Only the ABIs the server ships its binaries
+    // for (server/src/main/jniLibs). Off for other builds, so Studio's run installs one APK.
+    // Every APK keeps the same versionCode: the server's update check goes by it.
+    splits {
+        abi {
+            isEnable = splitAbis
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
     applicationVariants.all {
         val ts = LocalDateTime.now()
             .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
         outputs.all {
             val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputImpl.outputFileName = "AxManager_v${versionName}_${versionCode}-${buildType.name}_$ts.apk"
+            val abi = outputImpl.getFilter(com.android.build.OutputFile.ABI)
+                ?: if (splitAbis) "universal" else null
+            val abiSuffix = abi?.let { "-$it" } ?: ""
+            outputImpl.outputFileName =
+                "AxManager_v${versionName}_${versionCode}-${buildType.name}${abiSuffix}_$ts.apk"
 
             val outDir = File(rootDir, "out")
             val mappingPath = File(outDir, "mapping").absolutePath
