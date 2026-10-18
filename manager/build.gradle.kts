@@ -118,6 +118,8 @@ dependencies {
     implementation(project(":server-shared"))
     // libaxsh.so (default shell, and the binary other apps exec) plus its broker/bootstrap.
     implementation(project(":axsh"))
+    // libaxreignite.so: the plugin igniter, run by the plugin service and the server's watchdog.
+    implementation(project(":reignite"))
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.mmrl.ui)

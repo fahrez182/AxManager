@@ -535,13 +535,16 @@ open class AxeronService :
             PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT),
             AxeronApiConstant.folder.STOP_PLUGINS_WITH_SERVER
         ).absolutePath
-        val dex = File(
-            PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_BINARY),
-            "ax_reignite.dex"
-        ).absolutePath
+        // The manager's :reignite dex. An update of the manager moves its lib dir, so a server
+        // replaced after one finds it gone and leaves the plugins as they are.
+        val libDir = getManagerApplicationInfo()?.nativeLibraryDir ?: run {
+            LOGGER.w("no manager lib dir, no death watchdog")
+            return
+        }
+        val dex = File(libDir, "libaxreignite.so").absolutePath
         val script = $$"""
             read -r _
-            [ -f "$1" ] || exit 0
+            [ -f "$1" ] && [ -f "$2" ] || exit 0
             CLASSPATH="$2" exec /system/bin/app_process / frb.axeron.reignite.Igniter --stop-all
         """.trimIndent()
 

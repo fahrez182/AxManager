@@ -113,7 +113,7 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 |---|---|
 | `manager` | The app |
 | `server` | The privileged server and its native starter |
-| `reignite` | The plugin igniter (`ax_reignite.dex`), which starts and stops plugins |
+| `reignite` | The plugin igniter (`libaxreignite.so`, a dex run in app_process), which starts and stops plugins |
 | `adb` | Wireless Debugging pairing and the ADB client |
 | `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `axsh` |
 

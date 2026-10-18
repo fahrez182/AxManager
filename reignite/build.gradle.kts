@@ -1,66 +1,76 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.rikka.tools.refine)
 }
 
 android {
     namespace = "frb.axeron.reignite"
+}
 
-    defaultConfig {
-        applicationId = "frb.axeron.reignite"
-    }
+dependencies {
+    // DdmHandleAppName is hidden; app_process has it at runtime.
+    compileOnly(libs.rikka.hidden.stub)
+}
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+// ---- libaxreignite.so: the igniter's own dex ----
+//
+// The igniter runs in app_process (`CLASSPATH=<lib dir>/libaxreignite.so app_process /
+// frb.axeron.reignite.Igniter`), from the plugin service and from the server's death watchdog.
+// Its dex is R8-shrunk to what Igniter.main reaches and shipped as lib<abi>/libaxreignite.so,
+// so it is in the manager's native lib dir with nothing to extract. ART goes by the dex magic,
+// not the name. Same as axsh's libaxshboot.so.
+
+val igniterAbis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+val igniterLibDir = layout.buildDirectory.dir("generated/igniterLib")
+val igniterDexDir = layout.buildDirectory.dir("intermediates/igniterDex")
+
+android.sourceSets.getByName("main").jniLibs.srcDir(igniterLibDir)
+
+fun classesJars(configuration: String) = configurations.getByName(configuration).incoming
+    .artifactView {
+        attributes { attribute(Attribute.of("artifactType", String::class.java), "android-classes-jar") }
+        lenient(true)
+    }.files
+
+val igniterDex = tasks.register<JavaExec>("igniterDex") {
+    val ownJar = tasks.named("bundleLibRuntimeToJarRelease")
+    val runtimeJars = classesJars("releaseRuntimeClasspath")
+    // Compile-only (hidden-api stubs): referenced, provided by the framework at runtime.
+    val libraryJars = classesJars("releaseCompileClasspath").minus(runtimeJars)
+    val bootClasspath = androidComponents.sdkComponents.bootClasspath
+    val rules = file("proguard-rules.pro")
+    val outDir = igniterDexDir
+
+    inputs.files(ownJar, runtimeJars, libraryJars, rules)
+    outputs.dir(outDir)
+
+    classpath = files(
+        android.sdkDirectory.resolve("build-tools/${android.buildToolsVersion}/lib/d8.jar")
+    )
+    mainClass.set("com.android.tools.r8.R8")
+    argumentProviders.add(CommandLineArgumentProvider {
+        outDir.get().asFile.mkdirs()
+        buildList {
+            addAll(listOf("--release", "--min-api", "26", "--output", outDir.get().asFile.path))
+            addAll(listOf("--pg-conf", rules.path))
+            bootClasspath.get().forEach { addAll(listOf("--lib", it.asFile.path)) }
+            libraryJars.forEach { addAll(listOf("--lib", it.path)) }
+            ownJar.get().outputs.files.filter { it.name.endsWith(".jar") }.forEach { add(it.path) }
+            runtimeJars.forEach { add(it.path) }
         }
-        debug {
-            multiDexEnabled = false
-        }
-    }
+    })
+}
 
-    applicationVariants.all {
-        outputs.all {
-            val outDir = File(rootDir, "out")
-            val mappingPath = File(outDir, "mapping").absolutePath
-            val dexPath = "${rootProject.project(":manager").projectDir}/src/main/assets/binaries"
-
-
-            assembleProvider.get().doLast {
-                // copy mapping.txt kalau minify aktif
-                if (buildType.isMinifyEnabled) {
-                    copy {
-                        from(mappingFileProvider.get())
-                        into(mappingPath)
-                        rename {
-                            "reignite-v${versionName}.txt"
-                        }
-                    }
-                }
-
-                // extract classes*.dex dari APK
-                copy {
-                    val dexFile = zipTree(file(outputFile))
-                        .matching { include("classes*.dex") }
-                        .singleFile
-
-                    from(dexFile)
-                    into(dexPath)
-                    rename {
-                        "ax_reignite.dex"
-                    }
-                }
-            }
+val igniterLib = tasks.register<Sync>("igniterLib") {
+    into(igniterLibDir)
+    igniterAbis.forEach { abi ->
+        from(igniterDex.map { it.outputs.files.singleFile.resolve("classes.dex") }) {
+            into(abi)
+            rename { "libaxreignite.so" }
         }
     }
 }
 
-dependencies {
-    implementation(libs.rikka.hidden.compat)
-    compileOnly(libs.rikka.hidden.stub)
+tasks.matching { it.name.matches(Regex("merge\\w*JniLibFolders")) }.configureEach {
+    dependsOn(igniterLib)
 }
