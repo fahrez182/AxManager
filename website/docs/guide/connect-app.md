@@ -1,6 +1,6 @@
 # <Icon name="link" /> Connect with an App
 
-An app can run commands with AxManager's shell or root access through [axsh](./axsh.md), the same way a terminal does. This page is for app developers: the two ways to connect, what each costs, and the demo app that tests both.
+An app can run commands with AxManager's shell or root access through [axsh](./axsh.md), the same way a terminal does. This page is for app developers: the two ways to connect, what each costs, running your own code as shell or root with `ShellService`, and the demo app that tests it all.
 
 [[toc]]
 
@@ -110,6 +110,104 @@ Changing it ends the helper running now; the next command starts one with the ne
 
 Your app needs AxManager's permission, set per app in **[Privilege](./app-tour.md#privilege)**. With **Ask** (the default), the first command shows AxManager's dialog and waits for your answer, up to 15 seconds. The command then runs, or stops with `AxManager permission required: allow this app in AxManager`.
 
+## Run your own code: ShellService {#shell-service}
+
+Commands are not always enough. `ShellService` runs a class of your app as shell or root, the way [libsu](https://github.com/topjohnwu/libsu)'s `RootService` does, but through axsh, so it works in shell mode too. It needs the `axsh` module (the broker is optional).
+
+Write an AIDL interface, as for any bound service, and turn AIDL on:
+
+```aidl
+// src/main/aidl/com/example/IMyService.aidl
+interface IMyService {
+    int getUid();
+    String exec(String command);
+}
+```
+
+```kotlin
+// build.gradle.kts
+android { buildFeatures { aidl = true } }
+```
+
+The service. Everything inside it runs as shell (uid 2000) or root (uid 0):
+
+```kotlin
+class MyService : ShellService() {
+    override fun onBind(intent: Intent): IBinder {
+        return object : IMyService.Stub() {
+            override fun getUid(): Int {
+                return Os.getuid()
+            }
+
+            override fun exec(command: String): String {
+                val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+                return process.inputStream.bufferedReader().readText()
+            }
+        }
+    }
+}
+```
+
+Bind it from your app, on the main thread:
+
+```kotlin
+val connection = object : ServiceConnection {
+    override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+        val service = IMyService.Stub.asInterface(binder)
+        // call it off the main thread: service.exec("id")
+    }
+
+    override fun onServiceDisconnected(name: ComponentName) {}
+}
+
+ShellService.bind(Intent(context, MyService::class.java), connection)
+// when done:
+ShellService.unbind(connection)
+```
+
+Nothing goes in the manifest.
+
+| | libsu `RootService` | `ShellService` |
+|---|---|---|
+| **Shell mode** | No | Yes |
+| **Callbacks** | `onCreate`, `onBind`, `onUnbind`, `onRebind`, `onDestroy` | The same |
+| **Calls** | `bind`, `unbind`, `stop` | The same |
+| **Processes** | One for all your services, gone with the app | The same |
+| **Daemon mode** | `CATEGORY_DAEMON_MODE` | `ShellService.CATEGORY_DAEMON_MODE` |
+| **`bindOrTask`** | Yes | Not yet |
+| **Users** | All | User 0 only |
+
+### Daemon mode {#daemon-mode}
+
+To keep a service running after your app closes, bind it with the daemon category and return `true` from `onUnbind`:
+
+```kotlin
+class MyDaemon : ShellService() {
+    override fun onUnbind(intent: Intent): Boolean {
+        return true
+    }
+
+    override fun onRebind(intent: Intent) {
+        // a later bind reached this same instance
+    }
+
+    override fun onBind(intent: Intent): IBinder { /* … */ }
+}
+
+val intent = Intent(context, MyDaemon::class.java)
+intent.addCategory(ShellService.CATEGORY_DAEMON_MODE)
+ShellService.bind(intent, connection)
+```
+
+It runs in a second process that outlives your app. The next bind, even after your app restarts, reaches the same instance. `ShellService.stop(intent)` ends it.
+
+::: tip Good to know
+- The service's Context reports the uid's own package (`com.android.shell` in shell mode), so system services that check it, such as the clipboard, accept it.
+- `getApplicationContext()` returns the service: no `Application` runs in its process.
+- In a debuggable app, Android Studio's **Attach Debugger** lists the process as `<package>:shell_shared` or `<package>:shell_daemon`.
+- When a bind fails, `ShellService.lastFailure(component)` says why.
+:::
+
 ## Demo app {#demo-app}
 
 `demo-axsh` in [Axeron API](https://github.com/fahrez182/Axeron-API) is a test bench for all of the above. Build it, install it with AxManager's server running, then tap **Run all**.
@@ -127,6 +225,9 @@ The tests:
 | **Shell** | Exit code; stdout and stderr apart; stdin up to its end; 100 000 lines of output; the server's environment |
 | **Privileges** | uid and SELinux context; `pm list packages`; `settings`; `dumpsys` |
 | **Test Function plugin** | Installed and enabled; `axtest` on `PATH` and callable from the app; not marked as a plugin process; its `system.prop`; plugin processes; every `[FAIL]` in its reports |
+| **libsu RootService** | libsu's own `RootService` through axsh, to compare (root mode only) |
+| **ShellService** | uid; `Runtime.exec` inside the service; two services in one process; a shared static; the clipboard from its Context; `getApplicationContext()` |
+| **ShellService daemon** | The same pid after an unbind and after closing the app; a new pid after `stop` |
 
 The last group needs the **Test Function** plugin (`plugins/test_function` in the AxManager repository) installed and re-ignited. It shows that a plugin's `system/bin` binaries can be called from any allowed app.
 

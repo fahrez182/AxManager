@@ -1,6 +1,6 @@
 # <Icon name="link" /> 与应用连接
 
-应用可以通过 [axsh](./axsh.md)，像终端一样以 AxManager 的 shell 或 root 权限运行命令。本页面向应用开发者：两种连接方式、各自的开销，以及用来测试两者的演示应用。
+应用可以通过 [axsh](./axsh.md)，像终端一样以 AxManager 的 shell 或 root 权限运行命令。本页面向应用开发者：两种连接方式、各自的开销、用 `ShellService` 以 shell 或 root 身份运行自己的代码，以及用来测试这一切的演示应用。
 
 [[toc]]
 
@@ -110,6 +110,104 @@ Shell.cmd("pm list packages").exec()
 
 应用需要 AxManager 的权限，在 **[特权](./app-tour.md#privilege)** 中按应用设置。设为 **Ask**（默认）时，第一条命令会显示 AxManager 的对话框并等待你的回答，最多 15 秒。之后命令会运行，或以 `AxManager permission required: allow this app in AxManager` 停止。
 
+## 运行自己的代码：ShellService {#shell-service}
+
+只运行命令有时不够。`ShellService` 以 shell 或 root 身份运行应用中的一个类，用法与 [libsu](https://github.com/topjohnwu/libsu) 的 `RootService` 相同，但它通过 axsh 启动，因此在 shell 模式下也能使用。需要 `axsh` 模块（broker 可选）。
+
+像普通绑定服务一样编写 AIDL 接口，并开启 AIDL：
+
+```aidl
+// src/main/aidl/com/example/IMyService.aidl
+interface IMyService {
+    int getUid();
+    String exec(String command);
+}
+```
+
+```kotlin
+// build.gradle.kts
+android { buildFeatures { aidl = true } }
+```
+
+服务本身。其中的所有代码都以 shell（uid 2000）或 root（uid 0）运行：
+
+```kotlin
+class MyService : ShellService() {
+    override fun onBind(intent: Intent): IBinder {
+        return object : IMyService.Stub() {
+            override fun getUid(): Int {
+                return Os.getuid()
+            }
+
+            override fun exec(command: String): String {
+                val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
+                return process.inputStream.bufferedReader().readText()
+            }
+        }
+    }
+}
+```
+
+在应用的主线程中绑定它：
+
+```kotlin
+val connection = object : ServiceConnection {
+    override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+        val service = IMyService.Stub.asInterface(binder)
+        // 不要在主线程调用：service.exec("id")
+    }
+
+    override fun onServiceDisconnected(name: ComponentName) {}
+}
+
+ShellService.bind(Intent(context, MyService::class.java), connection)
+// 用完后：
+ShellService.unbind(connection)
+```
+
+清单中无需添加任何内容。
+
+| | libsu `RootService` | `ShellService` |
+|---|---|---|
+| **shell 模式** | 否 | 是 |
+| **回调** | `onCreate`、`onBind`、`onUnbind`、`onRebind`、`onDestroy` | 相同 |
+| **调用** | `bind`、`unbind`、`stop` | 相同 |
+| **进程** | 所有服务共用一个，随应用退出 | 相同 |
+| **守护模式** | `CATEGORY_DAEMON_MODE` | `ShellService.CATEGORY_DAEMON_MODE` |
+| **`bindOrTask`** | 有 | 暂无 |
+| **用户** | 全部 | 仅用户 0 |
+
+### 守护模式 {#daemon-mode}
+
+要让服务在应用关闭后继续运行，绑定时加上守护类别，并在 `onUnbind` 中返回 `true`：
+
+```kotlin
+class MyDaemon : ShellService() {
+    override fun onUnbind(intent: Intent): Boolean {
+        return true
+    }
+
+    override fun onRebind(intent: Intent) {
+        // 之后的绑定到达了同一个实例
+    }
+
+    override fun onBind(intent: Intent): IBinder { /* … */ }
+}
+
+val intent = Intent(context, MyDaemon::class.java)
+intent.addCategory(ShellService.CATEGORY_DAEMON_MODE)
+ShellService.bind(intent, connection)
+```
+
+它运行在第二个进程中，该进程比应用活得更久。下一次绑定（即使应用已重启）会到达同一个实例。`ShellService.stop(intent)` 会结束它。
+
+::: tip 须知
+- 服务的 Context 报告的是该 uid 自己的包名（shell 模式下为 `com.android.shell`），因此会检查它的系统服务（例如剪贴板）会接受它。
+- `getApplicationContext()` 返回服务本身：其进程中没有运行 `Application`。
+- 在可调试的应用中，Android Studio 的 **Attach Debugger** 会将该进程列为 `<package>:shell_shared` 或 `<package>:shell_daemon`。
+- 绑定失败时，`ShellService.lastFailure(component)` 会说明原因。
+:::
+
 ## 演示应用 {#demo-app}
 
 [Axeron API](https://github.com/fahrez182/Axeron-API) 中的 `demo-axsh` 是以上所有内容的测试台。构建并安装它，在 AxManager 服务运行时点击 **Run all**。
@@ -127,6 +225,9 @@ Shell.cmd("pm list packages").exec()
 | **Shell** | 退出码；stdout 与 stderr 分开；stdin 直到结束；100 000 行输出；服务的环境变量 |
 | **Privileges** | uid 和 SELinux 上下文；`pm list packages`；`settings`；`dumpsys` |
 | **Test Function plugin** | 已安装并启用；`axtest` 在 `PATH` 中并可从应用调用；未被标记为插件进程；它的 `system.prop`；插件进程；其报告中的每个 `[FAIL]` |
+| **libsu RootService** | 通过 axsh 启动的 libsu `RootService`，用于对比（仅 root 模式） |
+| **ShellService** | uid；服务内的 `Runtime.exec`；两个服务在同一进程中；共享的静态变量；从其 Context 访问剪贴板；`getApplicationContext()` |
+| **ShellService daemon** | 解绑后、关闭应用后 pid 不变；`stop` 后 pid 改变 |
 
 最后一组需要安装 **Test Function** 插件（AxManager 仓库中的 `plugins/test_function`）并重新点燃。它说明插件 `system/bin` 中的程序可以被任何获准的应用调用。
 
