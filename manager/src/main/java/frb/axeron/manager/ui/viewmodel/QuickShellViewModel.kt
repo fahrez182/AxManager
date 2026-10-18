@@ -70,6 +70,10 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
                 onMain { commandInput.clearText() }
             }
 
+            override fun onProcessBackground(pids: IntArray) {
+                append(OutputType.TYPE_START, "[background] pid=${pids.joinToString(",")}")
+            }
+
             override fun onProcessFinished(exitCode: Int, lastOutput: String) {
                 Log.i("QuickShellViewModel", "onProcessFinished: $exitCode")
                 terminal.endStreams()
@@ -120,8 +124,13 @@ class QuickShellViewModel(application: Application) : AndroidViewModel(applicati
     )
         private set
 
+    init {
+        session.setRestrictBackground(isShellRestrictionEnabled)
+    }
+
     fun setShellRestriction(enable: Boolean) {
         isShellRestrictionEnabled = enable
+        session.setRestrictBackground(enable)
         prefs.edit {
             putBoolean("shell_restriction", enable)
         }
