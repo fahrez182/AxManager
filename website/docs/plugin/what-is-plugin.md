@@ -116,7 +116,7 @@ axeronPlugin=<int> <--- A field for targeting AxManager server version supported
   This is the **unique identifier** of your module. You should not change it once published.
   The installer refuses a module whose `id` does not match, since the id names the plugin's folder.
 - `versionCode` has to be an **integer**. This is used to compare versions.
-- `axeronPlugin` is **required** and has to be a **number** (e.g. `19100`). A module without it, or with a non-numeric value, is refused.
+- `axeronPlugin` is **required** and has to be a **number** (e.g. `20000`). A module without it, or with a non-numeric value, is refused.
 - Others that were not mentioned above can be any **single line string.**
 - Make sure to use the `UNIX (LF)` line break type and not the `Windows (CR+LF)` or `Macintosh (CR)`.
 
@@ -179,7 +179,7 @@ The customize.sh script runs in AxManager's BusyBox ash shell with Standalone Mo
 #### Variables
 
 - `AXERON` (bool): a variable to mark that the script is running in the AxManager environment, and the value of this variable will always be true. You can use it to distinguish between AxManager, KernelSU and Magisk.
-- `AXERONVER` (int): the version int of currently running AxManager Server (e.g. 19100).
+- `AXERONVER` (int): the version int of currently running AxManager Server (e.g. 20000).
 - `BOOTMODE` (bool): always be true in AxManager.
 - `MODPATH` (path): the path where your module files should be installed.
 - `TMPDIR` (path): a place where you can temporarily store files.

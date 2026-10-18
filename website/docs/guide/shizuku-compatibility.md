@@ -33,7 +33,7 @@ Some older Shizuku clients (for example older versions of ZArchiver) only try to
 
 If the Shizuku app is installed, it connects to AxManager too:
 
-- It shows the server as **running**, with version `13.<AxManager version code>` (for example `13.19100`). The part after the dot is AxManager's version code, so you can tell that AxManager is serving it.
+- It shows the server as **running**, with version `13.<AxManager version code>` (for example `13.20000`). The part after the dot is AxManager's version code, so you can tell that AxManager is serving it.
 - Because that number does not match a real Shizuku release, the Shizuku app shows an **update** note. This is expected; nothing needs updating.
 - Its app list shows the apps that already have a permission entry, plus apps built on Shizuku-API. AxManager itself is not listed; manage all other apps in AxManager's **Privilege** screen.
 

@@ -116,7 +116,7 @@ axeronPlugin=<int> <--- 用于定位支持的 AxManager 服务器版本的字段
   这是您模块的**唯一标识符**。一旦发布，您不应更改它。
   由于 id 用作插件文件夹的名称，`id` 不匹配的模块将被安装程序拒绝。
 - `versionCode` 必须是**整数**。这用于比较版本。
-- `axeronPlugin` 是**必需的**，且必须是**数字**（例如 `19100`）。缺少该字段或其值不是数字的模块将被拒绝。
+- `axeronPlugin` 是**必需的**，且必须是**数字**（例如 `20000`）。缺少该字段或其值不是数字的模块将被拒绝。
 - 上面未提到的其他内容可以是任何**单行字符串**。
 - 确保使用 `UNIX (LF)` 换行类型，而不是 `Windows (CR+LF)` 或 `Macintosh (CR)`。
 
@@ -179,7 +179,7 @@ customize.sh 脚本在启用独立模式的 AxManager BusyBox ash shell 中运�
 #### 变量
 
 - `AXERON` (bool)：一个标记脚本在 AxManager 环境中运行的变量，此变量的值将始终为 true。您可以使用它来区分 AxManager、KernelSU 和 Magisk。
-- `AXERONVER` (int)：当前运行的 AxManager 服务器的版本整数（例如 19100）。
+- `AXERONVER` (int)：当前运行的 AxManager 服务器的版本整数（例如 20000）。
 - `BOOTMODE` (bool)：在 AxManager 中始终为 true。
 - `MODPATH` (path)：应该安装模块文件的路径。
 - `TMPDIR` (path)：您可以临时存储文件的地方。

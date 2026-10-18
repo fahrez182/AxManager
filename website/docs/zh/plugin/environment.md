@@ -11,7 +11,7 @@ AxManager 运行插件脚本时脚本能看到什么、文件放在哪里，以�
 | 变量 | 值 |
 |---|---|
 | `AXERON` | `true`。可用于区分 AxManager 与 KernelSU、Magisk。 |
-| `AXERONVER` | 服务的版本号，例如 `19100`。`module.prop` 中的 `axeronPlugin` 就是与它比较。 |
+| `AXERONVER` | 服务的版本号，例如 `20000`。`module.prop` 中的 `axeronPlugin` 就是与它比较。 |
 | `AXERONDIR` | 当前模式下 AxManager 的[工作目录](#working-folder)。 |
 | `AXERONBIN` | `$AXERONDIR/bin`：BusyBox 和 AxManager 的工具。 |
 | `AXERONXBIN` | `$AXERONDIR/xbin`：指向每个已启用插件 `system/bin` 的链接。 |
