@@ -33,6 +33,7 @@ info "heartbeat daemon (expected: alive, marked)" "$(pid_state heartbeat)"
 info "clean-env child (expected: alive, no marker)" "$(pid_state clean-env)"
 info "install-time daemon (expected: gone after re-ignite)" "$(pid_state install-daemon)"
 info "WebUI daemon (expected: alive if started from the WebUI)" "$(pid_state webui-daemon)"
+info "WebUI background job, no setsid (expected: alive if started from the WebUI)" "$(pid_state webui-bg)"
 say "processes carrying AXERON_PLUGIN=$PLUGIN_ID:"
 marked_processes | while read -r line; do say "  $line"; done
 

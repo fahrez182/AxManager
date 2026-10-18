@@ -358,19 +358,28 @@ const tests = [
   {
     id: "marker",
     title: "Process marker and lifecycle",
-    desc: "Starts a daemon from the WebUI and lists every process carrying this plugin's marker. Disable the plugin and re-ignite: all of them must be gone.",
+    desc: "Starts two daemons from the WebUI, one in its own session (setsid) and one plain background job, and lists every process carrying this plugin's marker. Both must outlive the command that started them. Disable the plugin and re-ignite: all of them must be gone.",
     async run(log) {
       const dir = await getPluginDir();
       await execAsync(
         `setsid sh -c 'sleep 86400' </dev/null >/dev/null 2>&1 & echo \\$! > ${dir}/run/webui-daemon.pid`,
         { cwd: dir },
       );
+      // No setsid: it stays in the exec's session, which must not be killed once exec returns.
+      await execAsync(
+        `sh -c 'sleep 86400' </dev/null >/dev/null 2>&1 & echo \\$! > ${dir}/run/webui-bg.pid`,
+        { cwd: dir },
+      );
       const r = await execAsync(
-        `cat /proc/self/environ | tr '\\0' '\\n' | grep '^AXERON_PLUGIN='; echo; axtest procs`,
+        `cat /proc/self/environ | tr '\\0' '\\n' | grep '^AXERON_PLUGIN='; echo; ` +
+        `for n in webui-daemon webui-bg; do p=\\$(cat run/\\$n.pid); ` +
+        `[ -d /proc/\\$p ] && echo \\$n=alive || echo \\$n=gone; done; echo; axtest procs`,
         { cwd: dir },
       );
       log(fmt(r));
-      return r.stdout.includes(`AXERON_PLUGIN=${PLUGIN_ID}`);
+      return r.stdout.includes(`AXERON_PLUGIN=${PLUGIN_ID}`) &&
+        r.stdout.includes("webui-daemon=alive") &&
+        r.stdout.includes("webui-bg=alive");
     },
   },
   {

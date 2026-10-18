@@ -49,9 +49,10 @@ Install the zip with **+** on AxManager's Plugin page, then re-ignite.
 3. Tap **Action**: everything should be PASS; the install-time daemon should be gone, the heartbeat
    daemon alive and marked, the clean-env child alive without a marker.
 4. Open the WebUI, **Run all**. Then try the toast/full-screen card by hand.
-5. In the WebUI, run *Process marker and lifecycle*. Disable the plugin and re-ignite: `axtest procs`
-   in QuickShell should list nothing for `test_function` (the heartbeat, its clean-env child and the
-   WebUI daemon are all stopped).
+5. In the WebUI, run *Process marker and lifecycle*: both WebUI daemons (the `setsid` one and the
+   plain `&` job) must be alive after their command returned. Disable the plugin and re-ignite:
+   `axtest procs` in QuickShell should list nothing for `test_function` (the heartbeat, its
+   clean-env child and both WebUI daemons are all stopped).
 6. Turn on **Settings → Stop plugins with the server**, enable the plugin, re-ignite, then stop the
    server: after a restart, the old daemons must be gone.
 7. Uninstall and re-ignite: `logs/test_function.uninstall.log` and `logs/test_function.uninstalled`
