@@ -52,23 +52,12 @@ class ActivateViewModel : ViewModel() {
 
     }
 
-    var activateStatus by mutableStateOf<ActivateStatus>(run {
-        if (Axeron.pingBinder()) {
-            val axeronInfo = Axeron.getAxeronInfo()
-            val isNeedExtraStep = axeronInfo.isNeedExtraStep() || (axeronInfo.isRunning() && Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") != PackageManager.PERMISSION_GRANTED)
-            if (axeronInfo.isNeedUpdate()) {
-                ActivateStatus.Updating(axeronInfo)
-            } else if (isNeedExtraStep) {
-                ActivateStatus.NeedExtraStep(axeronInfo)
-            } else if (axeronInfo.isRunning()) {
-                ActivateStatus.Running(axeronInfo)
-            } else {
-                ActivateStatus.Disable
-            }
-        } else {
-            ActivateStatus.Disable
-        }
-    })
+    // As axeronObserve decides it: an Updating set here is kept through the Disable that a
+    // refused server's release sends (see isStillUpdating), so the card would wait forever.
+    var activateStatus by mutableStateOf<ActivateStatus>(
+        if (Axeron.pingBinder() && !releaseIfRefused()) getStatus(Axeron.getAxeronInfo())
+        else ActivateStatus.Disable
+    )
     private set
 
     var axeronInfo by mutableStateOf(AxeronInfo())
@@ -209,8 +198,22 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
+    /**
+     * A server that refuses us (left running across a reinstall, it knows our old uid) is taken
+     * as stopped: its binder is let go, nothing is updated through it, and the user starts the
+     * server again, which kills it. Its exit() refuses us too, so destroy() only lets go.
+     */
+    private fun releaseIfRefused(): Boolean {
+        if (!Axeron.isRefusedByServer()) return false
+        Log.w("AxManagerBinder", "server refuses the manager, taking it as stopped")
+        Axeron.destroy()
+        return true
+    }
+
     fun axeronObserve(): Flow<ActivateStatus> = callbackFlow {
-        if (Axeron.pingBinder()) {
+        if (Axeron.pingBinder() && releaseIfRefused()) {
+            trySend(ActivateStatus.Disable)
+        } else if (Axeron.pingBinder()) {
             val axeronInfo = Axeron.getAxeronInfo()
             val status = getStatus(axeronInfo)
             Log.i("AxManagerBinder", "Initial status determined: ${status::class.simpleName}")
@@ -224,6 +227,8 @@ class ActivateViewModel : ViewModel() {
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived listener triggered")
+            // destroy() tells the dead listener below, which sends Disable.
+            if (releaseIfRefused()) return@OnBinderReceivedListener
             val axeronInfo = Axeron.getAxeronInfo()
             val status = getStatus(axeronInfo)
             Log.i("AxManagerBinder", "New status after binder received: ${status::class.simpleName}")

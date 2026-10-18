@@ -4,6 +4,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Process
 import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -104,6 +105,16 @@ class RequestPermissionActivity : ComponentActivity() {
         } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra("applicationInfo")
+        }
+
+        // A server that doesn't take us for the manager (left running across a reinstall, so it
+        // knows our old uid) refuses our own axsh commands, and axsh asks for permission for
+        // us. Nothing to grant to ourselves: no dialog, and no answer, as a deny would revoke
+        // our own user services on a server that does know us.
+        if (uid == Process.myUid()) {
+            LOGGER.w("permission request for the manager itself, the server needs a restart")
+            finish()
+            return
         }
 
         if (uid == -1 || pid == -1 || ai == null || !waitForBinder()) {
