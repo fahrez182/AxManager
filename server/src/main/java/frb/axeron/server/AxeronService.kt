@@ -675,6 +675,7 @@ open class AxeronService :
     }
 
     override fun setNewEnvironment(env: Environment) {
+        enforceManagerPermission("setNewEnvironment")
         environmentManager.replaceAllBlocking(HashMap(env.envMap)) // manager needs mutability
         // invalidate cached refs deterministically
         cachedMergedEnv = null
@@ -684,6 +685,7 @@ open class AxeronService :
     }
 
     override fun setPreferSystemBinaries(prefer: Boolean) {
+        enforceManagerPermission("setPreferSystemBinaries")
         preferSystemBinaries = prefer
         // invalidate cached envs so the new PATH ordering takes effect
         cachedDefaultEnv = null
@@ -1055,6 +1057,8 @@ open class AxeronService :
     }
 
     override fun exit() {
+        // Before the release: a refused caller must not drop the wakelock on its way out.
+        enforceManagerPermission("exit")
         synchronized(lockToken) {
             if (wakeLockHeld && release()) wakeLockHeld = false
         }
