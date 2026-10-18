@@ -765,7 +765,8 @@ open class AxeronService :
         stdout: ParcelFileDescriptor?,
         stderr: ParcelFileDescriptor?,
         pty: Boolean,
-        size: Long
+        size: Long,
+        status: ParcelFileDescriptor?
     ): IAxshProcess {
         // The binder stub has already made these fds in this process. Until PtyHost takes them
         // they are ours to close: one left open (here a refusal, as before a permission prompt)
@@ -789,11 +790,13 @@ open class AxeronService :
             // attached until it asks for permission; its sessions end with their socket instead.
             val owner = clientManager.findClient(getCallingUid(), getCallingPid())?.client?.asBinder()
             return AxshProcess.start(
-                argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size, owner
+                argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size,
+                status, owner
             )
         } catch (e: Throwable) {
-            // Already detached ones (PtyHost failed later) close as a no-op.
-            for (fd in arrayOf(stdin, stdout, stderr)) {
+            // Already detached ones (PtyHost failed later) close as a no-op. Closing status tells
+            // the caller there is no exit code to wait for.
+            for (fd in arrayOf(stdin, stdout, stderr, status)) {
                 try {
                     fd?.close()
                 } catch (_: Exception) {
