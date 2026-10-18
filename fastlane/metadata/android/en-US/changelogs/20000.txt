@@ -1,0 +1,10 @@
+*What's new in 2.0.0?
+• Redesigned app: floating nav bar, new Home, per-app Privilege details
+• axsh: AxManager's shell for any terminal or app (replaces axerish/axrun)
+• ShellService: libsu's RootService, in ADB mode too
+• Allowed/Ask/Denied permission, app-ops editor
+• Activate over OTG
+• Plugins: background jobs survive, root world in /data/adb
+• QuickShell: snippets, find in output
+
+**Full Changelog**: https://github.com/fahrez182/AxManager/compare/v1.4.8...v2.0.0
