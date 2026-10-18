@@ -9,12 +9,15 @@
 #endif
 
 #ifndef NO_LOG
-#ifndef NO_DEBUG_LOG
+// Debug and verbose only in debug builds (CMake defines DEBUG there): release keeps the logcat
+// buffer for what matters.
+#if defined(DEBUG) && !defined(NO_DEBUG_LOG)
 #define LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
 #else
 #define LOGD(...)
+#define LOGV(...)
 #endif
-#define LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGW(...)  __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
