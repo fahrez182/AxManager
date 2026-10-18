@@ -51,7 +51,7 @@ public class BinderSender {
 
     private static boolean currentRuntime() {
         try {
-            return axeronService.getServerInfo().getPermission();
+            return axeronService.checkRuntime();
         } catch (Throwable e) {
             return managerRuntime;
         }

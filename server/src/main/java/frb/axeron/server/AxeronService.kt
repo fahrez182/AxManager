@@ -70,6 +70,7 @@ import frb.axeron.shell.host.AxshProcess
 import frb.axeron.shell.host.PtyHost
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.exitProcess
 
 
@@ -281,8 +282,11 @@ open class AxeronService :
                     if (retry) {
                         ActivityManagerApis.forceStopPackageNoThrow(packageName, userId)
                         LOGGER.e("kill %s in user %d and try again", packageName, userId)
-                        Thread.sleep(1000)
-                        sendBinderToUserApp(binder, packageName, userId, false)
+                        // Later, not by sleeping: callers are the main thread and the uid and
+                        // process observers, whose other events would wait behind it.
+                        Service.mainHandler.postDelayed({
+                            sendBinderToUserApp(binder, packageName, userId, false)
+                        }, 1000)
                     }
                     return
                 }
@@ -307,6 +311,7 @@ open class AxeronService :
             }
         }
 
+        @Volatile
         var cachedDefaultEnv: Environment? = null
 
         @Volatile
@@ -437,20 +442,28 @@ open class AxeronService :
         return AxeronConfigManager()
     }
 
+    // Volatile, not locked: every gated call and every axsh auth passes here. Two threads filling
+    // the cache at once look up, and store, the same uid.
+    @Volatile
     private var cachedManagerUid: Int = -1
+
+    @Volatile
     private var cachedShizukuManagerUid: Int = -1
 
-    @Synchronized
     fun checkCaller(callingUid: Int): Boolean {
-        if (cachedManagerUid == -1) {
-            cachedManagerUid = getManagerApplicationInfo()?.uid
+        var managerUid = cachedManagerUid
+        if (managerUid == -1) {
+            managerUid = getManagerApplicationInfo()?.uid
                 ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+            cachedManagerUid = managerUid
         }
-        if (cachedShizukuManagerUid == -1) {
-            cachedShizukuManagerUid = getShizukuManagerApplicationInfo()?.uid ?: cachedManagerUid
+        var shizukuManagerUid = cachedShizukuManagerUid
+        if (shizukuManagerUid == -1) {
+            shizukuManagerUid = getShizukuManagerApplicationInfo()?.uid ?: managerUid
+            cachedShizukuManagerUid = shizukuManagerUid
         }
         val appId = UserHandleCompat.getAppId(callingUid)
-        return appId == cachedManagerUid || appId == cachedShizukuManagerUid
+        return appId == managerUid || appId == shizukuManagerUid
     }
 
     override fun checkCallerManagerPermission(
@@ -677,20 +690,21 @@ open class AxeronService :
     override fun setNewEnvironment(env: Environment) {
         enforceManagerPermission("setNewEnvironment")
         environmentManager.replaceAllBlocking(HashMap(env.envMap)) // manager needs mutability
-        // invalidate cached refs deterministically
-        cachedMergedEnv = null
-        cachedNewEnv = null
-        userServiceManager.environment =
-            getEnvironment(TYPE_ENV)?.getEnv()
+        invalidateEnvironment()
     }
 
     override fun setPreferSystemBinaries(prefer: Boolean) {
         enforceManagerPermission("setPreferSystemBinaries")
         preferSystemBinaries = prefer
-        // invalidate cached envs so the new PATH ordering takes effect
+        invalidateEnvironment()
+    }
+
+    /** Drops every cached env, and hands user services the new one (the new PATH order too). */
+    private fun invalidateEnvironment() {
         cachedDefaultEnv = null
         cachedMergedEnv = null
         cachedNewEnv = null
+        userServiceManager.environment = getEnvironment(TYPE_ENV).getEnv()
     }
 
     /**
@@ -724,8 +738,12 @@ open class AxeronService :
         }
     }
 
+    // Not through checkPermission(): that one is gated, and getServerInfo is open to any caller.
     fun checkRuntime(): Boolean {
-        return checkPermission("android.permission.GRANT_RUNTIME_PERMISSIONS") == PackageManager.PERMISSION_GRANTED
+        if (isRoot) return true
+        return PermissionManagerApis.checkPermission(
+            "android.permission.GRANT_RUNTIME_PERMISSIONS", Os.getuid()
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     @Throws(RemoteException::class)
@@ -947,6 +965,8 @@ open class AxeronService :
         userServiceManager.removeUserServicesForPackage(packageName)
     }
 
+    private val managerGrantedUids: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
     override fun attachApplication(application: IShizukuApplication?, args: Bundle?) {
         if (application == null || args == null) {
             return
@@ -1030,15 +1050,19 @@ open class AxeronService :
             )
         } else {
             val userId = UserHandleCompat.getUserId(callingUid)
-            try {
-                PermissionManagerApis.grantRuntimePermission(
-                    MANAGER_APPLICATION_ID,
-                    WRITE_SECURE_SETTINGS, userId
-                )
-            } catch (e: Throwable) {
-                LOGGER.w(e, "grant WRITE_SECURE_SETTINGS")
+            // Once per manager uid for this server: they last, and every manager process
+            // attaches. By uid, so a reinstalled manager (new uid) is granted again.
+            if (managerGrantedUids.add(callingUid)) {
+                try {
+                    PermissionManagerApis.grantRuntimePermission(
+                        MANAGER_APPLICATION_ID,
+                        WRITE_SECURE_SETTINGS, userId
+                    )
+                } catch (e: Throwable) {
+                    LOGGER.w(e, "grant WRITE_SECURE_SETTINGS")
+                }
+                allowWriteSettings(userId)
             }
-            allowWriteSettings(userId)
         }
         try {
             application.bindApplication(reply)
@@ -1047,8 +1071,7 @@ open class AxeronService :
         }
     }
 
-    // Same lock as checkCaller, so a reset from BinderSender's thread is seen by binder threads.
-    @Synchronized
+    // The caches are volatile, so a reset from BinderSender's thread is seen by binder threads.
     @Throws(RemoteException::class)
     override fun dispatchPackageChanged(intent: Intent?) {
         // Manager / Shizuku-manager uid may have changed on (re)install.
@@ -1124,7 +1147,7 @@ open class AxeronService :
         return super.onTransact(code, data, reply, flags)
     }
 
-    @Synchronized
+    // configManager.find() takes the config's own lock.
     private fun getFlagsForUidInternal(uid: Int, mask: Int): Int {
         val entry: AxeronConfig.PackageEntry? = configManager.find(uid)
         if (entry != null) {
