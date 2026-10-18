@@ -63,7 +63,6 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import frb.axeron.manager.ui.screen.FlashIt
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
-import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
 import frb.axeron.manager.ui.component.AxCardShape
@@ -76,7 +75,7 @@ import frb.axeron.manager.ui.component.SettingsItemType
 import frb.axeron.manager.ui.component.SettingsRow
 import frb.axeron.manager.ui.component.formatSize
 import frb.axeron.manager.ui.component.rememberConfirmDialog
-import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.component.rememberReigniteSheet
 import frb.axeron.manager.ui.util.rememberPluginBanner
 import frb.axeron.manager.ui.viewmodel.PluginViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
@@ -228,7 +227,7 @@ fun PluginItem(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         val confirmDialog = rememberConfirmDialog()
-                        val reigniteLoading = rememberLoadingDialog()
+                        val reigniteSheet = rememberReigniteSheet()
                         val scope = rememberCoroutineScope()
 
                         val pluginVersion = stringResource(R.string.plugin_version)
@@ -283,9 +282,7 @@ fun PluginItem(
                                                     neutral = neutral
                                                 )
                                                 if (result == ConfirmResult.Neutral) {
-                                                    val success = reigniteLoading.withLoading {
-                                                        AxeronPluginService.igniteSuspendService()
-                                                    }
+                                                    val success = reigniteSheet.reignite()
 
                                                     if (success) {
                                                         viewModel.fetchModuleList()

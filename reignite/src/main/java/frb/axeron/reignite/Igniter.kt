@@ -173,9 +173,9 @@ object Igniter {
         val tag = "log.tag.props.$name"
 
         if (SystemProp.get(tag) != "-1") {
+            println(" - Applying system.prop of $name")
             SystemProp.set("-f", sProp.absolutePath)
             SystemProp.set(tag, "1")
-            println(" - applySetprop $name")
         }
     }
 
@@ -185,7 +185,6 @@ object Igniter {
         if (SystemProp.get(tag) != "1") {
             runScript(name, fsData, "post-fs-data")
             SystemProp.set(tag, "1")
-            println(" - postExecuted $name")
         }
     }
 
@@ -198,6 +197,8 @@ object Igniter {
     private fun runScript(name: String, script: File, kind: String) {
         val log = File(LOG_DIR, "$name.$kind.log")
         val out = if (LOG_DIR.isDirectory || LOG_DIR.mkdirs()) log else File("/dev/null")
+        // Before it runs: the line stays the current one (and its time runs) while it blocks.
+        println(" - Running $kind.sh of $name (up to ${SCRIPT_TIMEOUT_S}s)")
         try {
             val process = ProcessBuilder(*shellCommand(isStandalone(script), script))
                 .apply { environment()[MARKER] = name }

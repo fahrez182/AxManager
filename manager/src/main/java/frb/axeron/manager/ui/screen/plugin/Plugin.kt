@@ -63,7 +63,6 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.AxeronPluginService.ensureManageExternalStorageAllowed
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
@@ -75,7 +74,7 @@ import frb.axeron.manager.ui.component.OptionsSectionHeader
 import frb.axeron.manager.ui.component.OrderToggle
 import frb.axeron.manager.ui.component.SearchAppBar
 import frb.axeron.manager.ui.component.SettingsRow
-import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.component.rememberReigniteSheet
 import frb.axeron.manager.ui.screen.FlashIt
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.component.FloatingBarFab
@@ -211,7 +210,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                     pluginViewModel.markNeedRefresh()
                 }
 
-                val loadingDialog = rememberLoadingDialog()
+                val reigniteSheet = rememberReigniteSheet()
                 val scope = rememberCoroutineScope()
 
                 // Re-ignite stacks above the add button when needed.
@@ -228,9 +227,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
                             ),
                             onClick = {
                                 scope.launch {
-                                    val success = loadingDialog.withLoading {
-                                        AxeronPluginService.igniteSuspendService()
-                                    }
+                                    val success = reigniteSheet.reignite()
 
                                     if (success) {
                                         pluginViewModel.fetchModuleList()

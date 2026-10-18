@@ -104,7 +104,6 @@ import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDes
 import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.api.Axeron
-import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
@@ -120,7 +119,7 @@ import frb.axeron.manager.ui.component.InlineDivider
 import frb.axeron.manager.ui.component.NeedMoreStepDialog
 import frb.axeron.manager.ui.component.PowerDialog
 import frb.axeron.manager.ui.component.rememberConfirmDialog
-import frb.axeron.manager.ui.component.rememberLoadingDialog
+import frb.axeron.manager.ui.component.rememberReigniteSheet
 import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.component.FloatingBarFab
@@ -147,7 +146,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
 
     val isRunning = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Running
 
-    val loadingDialog = rememberLoadingDialog()
+    val reigniteSheet = rememberReigniteSheet()
     val scope = rememberCoroutineScope()
     var showPowerDialog by remember { mutableStateOf(false) }
 
@@ -156,9 +155,7 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
             onDismiss = { showPowerDialog = false },
             onReignite = {
                 scope.launch {
-                    val success = loadingDialog.withLoading {
-                        AxeronPluginService.igniteSuspendService()
-                    }
+                    val success = reigniteSheet.reignite()
 
                     if (success) {
                         pluginViewModel.fetchModuleList()
