@@ -32,11 +32,17 @@ import frb.axeron.manager.adb.AdbStarter.stopTcp
 import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -50,6 +56,8 @@ class ActivateViewModel : ViewModel() {
         const val ACTIVATE_PROCESS = 0
         const val ACTIVATE_SUCCESS = 1
 
+        /** How long an update may take, from the starter's run to the new server's binder. */
+        const val UPDATE_TIMEOUT = 15000L
     }
 
     // As axeronObserve decides it: an Updating set here is kept through the Disable that a
@@ -59,6 +67,9 @@ class ActivateViewModel : ViewModel() {
         else ActivateStatus.Disable
     )
     private set
+
+    /** The running update (see startUpdate); above init, whose collector may already set it. */
+    private var updateJob: Job? = null
 
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
@@ -218,12 +229,6 @@ class ActivateViewModel : ViewModel() {
             val status = getStatus(axeronInfo)
             Log.i("AxManagerBinder", "Initial status determined: ${status::class.simpleName}")
             trySend(status)
-            if (status is ActivateStatus.Updating) {
-                Log.i("AxManagerBinder", "Server needs update, starting update process")
-                setTryToActivate(true)
-                // A server from before axsh can't run the starter: it is stopped, to be started again.
-                Axeron.relaunchServer()
-            }
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
             Log.i("AxManagerBinder", "onBinderReceived listener triggered")
@@ -249,8 +254,10 @@ class ActivateViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             axeronObserve().collect { status ->
-                val isStillUpdating =
-                    status is ActivateStatus.Disable && activateStatus is ActivateStatus.Updating
+                // The old server dies as the starter replaces it: wait for the new one, but only
+                // while the update runs.
+                val isStillUpdating = status is ActivateStatus.Disable &&
+                        activateStatus is ActivateStatus.Updating && updateJob?.isActive == true
                 axeronInfo = when (status) {
                     is ActivateStatus.Running -> {
                         checkShizukuIntercept()
@@ -280,7 +287,44 @@ class ActivateViewModel : ViewModel() {
                 if (isStillUpdating) return@collect
                 Log.i("AxManagerBinder", "status: $status")
                 activateStatus = status
-                setTryToActivate(false)
+                if (status is ActivateStatus.Updating) startUpdate() else setTryToActivate(false)
+            }
+        }
+    }
+
+    /**
+     * Replaces a server that needs updating, wherever its Updating came from. Gives up at once
+     * when the starter can't be run (a server from before axsh hasn't the call for it), or when
+     * no new server comes within [UPDATE_TIMEOUT]: the card goes to Disable, the old server is
+     * let go, and the user starts the server again, which kills whatever is left of it.
+     */
+    private fun startUpdate() {
+        if (updateJob?.isActive == true) return
+        Log.i("AxManagerBinder", "Server needs update, starting update process")
+        setTryToActivate(true)
+        updateJob = viewModelScope.launch {
+            val failed = CompletableDeferred<Unit>()
+            Axeron.relaunchServer { failed.complete(Unit) }
+            val updated = withTimeoutOrNull(UPDATE_TIMEOUT) {
+                merge(
+                    snapshotFlow { activateStatus }
+                        .filter { it is ActivateStatus.Running || it is ActivateStatus.NeedExtraStep }
+                        .map { true },
+                    flow { failed.await(); emit(false) }
+                ).first()
+            } == true
+            if (updated) return@launch
+            Log.w(
+                "AxManagerBinder",
+                if (failed.isCompleted) "server can't be updated in place, giving up"
+                else "server update timed out after $UPDATE_TIMEOUT ms, giving up"
+            )
+            activateStatus = ActivateStatus.Disable
+            axeronInfo = AxeronInfo()
+            setTryToActivate(false)
+            // On a timeout the old server may live on; a new one that came just now is kept.
+            if (!failed.isCompleted) withContext(Dispatchers.IO) {
+                if (Axeron.pingBinder() && !Axeron.isUpdated()) Axeron.destroy()
             }
         }
     }
