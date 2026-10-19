@@ -192,11 +192,13 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
 
     // ======= Linux Env =======
 
-    private fun getAxeronEnv(key: String): String? = Axeron.getEnvironment().envMap[key]
+    private fun getAxeronEnv(key: String): String? = Axeron.getEnvironment()?.envMap?.get(key)
 
 
+    // Throws rather than reading as empty: set/unset write this map back whole, and an empty
+    // one would wipe every other variable.
     private val envMap: Map<String, String>
-        get() = Axeron.getEnvironment(TYPE_NEW_ENV).envMap
+        get() = checkNotNull(Axeron.getEnvironment(TYPE_NEW_ENV)) { "Server environment unavailable" }.envMap
 
     private fun setAxeronEnv(key: String, value: String): Boolean {
         val newEnvMap = HashMap(envMap) // mutable
@@ -223,7 +225,7 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
     }
 
     private fun getAllLinuxEnv(): Map<String, String> {
-        return Axeron.getEnvironment().envMap
+        return Axeron.getEnvironment()?.envMap.orEmpty()
     }
 
     private companion object {

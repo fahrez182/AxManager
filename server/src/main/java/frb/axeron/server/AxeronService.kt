@@ -431,7 +431,7 @@ open class AxeronService :
     override fun isWakeLockHeld(): Boolean = wakeLockHeld
 
     override fun onCreateUserServiceManager(): AxeronUserServiceManager {
-        return AxeronUserServiceManager(getEnvironment(TYPE_ENV)?.getEnv())
+        return AxeronUserServiceManager(getEnvironment(TYPE_ENV).env)
     }
 
     override fun onCreateClientManager(): AxeronClientManager {
@@ -704,7 +704,7 @@ open class AxeronService :
         cachedDefaultEnv = null
         cachedMergedEnv = null
         cachedNewEnv = null
-        userServiceManager.environment = getEnvironment(TYPE_ENV).getEnv()
+        userServiceManager.environment = getEnvironment(TYPE_ENV).env
     }
 
     /**
@@ -863,10 +863,11 @@ open class AxeronService :
                 packageEntry,
                 packageEntry?.packages
             )
-            if (packageEntry != null && !packageEntry.packages.isNullOrEmpty()) {
-                if (packageEntry.packages.size > 1) throw IllegalStateException("This uid should not have multiple packages")
+            val entryPackages = packageEntry?.packages
+            if (!entryPackages.isNullOrEmpty()) {
+                if (entryPackages.size > 1) throw IllegalStateException("This uid should not have multiple packages")
                 PackageManagerApis.getApplicationInfoNoThrow(
-                    packageEntry.packages.get(0),
+                    entryPackages[0],
                     0,
                     userId
                 )
@@ -1116,7 +1117,8 @@ open class AxeronService :
 
                 val entry = configManager.find(uid)
                 val flags = entry?.let {
-                    if (it.packages != null && !it.packages.contains(pi.packageName)) {
+                    val entryPackages = it.packages
+                    if (entryPackages != null && !entryPackages.contains(pi.packageName)) {
                         return@let 0 // entry belongs to another package of a shared uid
                     }
                     it.flags and ConfigManager.MASK_PERMISSION

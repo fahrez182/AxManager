@@ -30,7 +30,7 @@ fun loadPluginBannerData(plugin: PluginInfo): Any? {
             plugin.prop.id
         )
         Axeron.newFileService()
-            .setFileInputStream(File(pluginDir, banner).absolutePath)
+            ?.setFileInputStream(File(pluginDir, banner).absolutePath)
             ?.use { it.readBytes() }
     } catch (_: Exception) {
         null

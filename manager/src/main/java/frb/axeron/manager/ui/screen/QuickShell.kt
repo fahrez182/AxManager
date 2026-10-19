@@ -777,8 +777,11 @@ suspend fun saveLogsToDownload(
             .toSet()
         // Streamed line by line off the main thread: unlimited output can exceed the heap.
         withContext(Dispatchers.IO) {
-            Axeron.newFileService().getStreamSession(file.absolutePath, true, false)
-                .outputStream.use { terminal.writeTo(it) { type -> type in saved } }
+            val session = checkNotNull(
+                checkNotNull(Axeron.newFileService()) { "Server isn't running" }
+                    .getStreamSession(file.absolutePath, true, false)
+            ) { "Can't write ${file.absolutePath}" }
+            session.outputStream.use { terminal.writeTo(it) { type -> type in saved } }
         }
 
         snackbar.showSnackbar(logSaved.format(file.absolutePath))

@@ -46,10 +46,10 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
         class Handler : AxWebLoader.PathHandler {
             override fun handle(
                 context: Context,
-                view: WebView?,
-                request: WebResourceRequest?
+                view: WebView,
+                request: WebResourceRequest
             ): WebResourceResponse? {
-                val packageName = request!!.url.path.toString().substring(1) // buang leading "/"
+                val packageName = request.url.path.toString().substring(1) // buang leading "/"
                 val icon: Bitmap? = AppIconUtil.loadAppIconSync(packageName, 512)
                 if (icon != null) {
                     val stream = ByteArrayOutputStream()
