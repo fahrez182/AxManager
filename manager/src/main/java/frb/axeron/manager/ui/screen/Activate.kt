@@ -275,16 +275,20 @@ private fun MiuiNotificationWarning() {
  * A starter that ran isn't proof of success: only call it done once the server binds back,
  * otherwise report a failure that points at the log.
  */
-private suspend fun ActivateViewModel.awaitServer(success: String, timeout: String): ActivationStatus {
+private suspend fun ActivateViewModel.awaitServer(
+    success: String,
+    timeout: String,
+    timeoutMs: Long = 10_000
+): ActivationStatus {
     ActivationLog.info("Waiting for the AxManager server to connect…")
-    awaitRunning()
+    awaitRunning(timeoutMs)
     val up = activateStatus is ActivateViewModel.ActivateStatus.Running ||
             activateStatus is ActivateViewModel.ActivateStatus.NeedExtraStep
     return if (up) {
         ActivationLog.success("AxManager server connected")
         ActivationStatus.Success(success)
     } else {
-        ActivationLog.error("No connection from the AxManager server after 10 s")
+        ActivationLog.error("No connection from the AxManager server after ${timeoutMs / 1000} s")
         ActivationStatus.Failed(timeout)
     }
 }
@@ -395,7 +399,15 @@ fun WirelessDebuggingCard(activateViewModel: ActivateViewModel, runner: Activati
                 is AdbStateInfo.Failed -> if (pairOnFailure) {
                     ActivationLog.info("Not paired yet? Starting the pairing service — follow its notification")
                     activateViewModel.startPairingService(context)
-                    ActivationStatus.Failed("${ai.message}\n$pairingStarted")
+                    // The attempt goes on in the notification, which starts the server itself:
+                    // its outcome is this one's, so wait for the server as long as it can pair.
+                    // Other methods aren't held back meanwhile.
+                    activateViewModel.setTryToActivate(false)
+                    activateViewModel.awaitServer(
+                        success,
+                        "${ai.message}\n$pairingStarted",
+                        AdbPairingService.LIFETIME_MS
+                    )
                 } else {
                     ActivationStatus.Failed(ai.message)
                 }

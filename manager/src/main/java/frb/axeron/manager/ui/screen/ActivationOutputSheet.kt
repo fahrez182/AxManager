@@ -86,17 +86,22 @@ class ActivationRunner internal constructor(private val scope: CoroutineScope) {
 
     private var autoCloseJob: Job? = null
 
+    private var attemptJob: Job? = null
+
     val isRunning: Boolean get() = visible && status is ActivationStatus.Running
 
     fun run(title: String, block: suspend () -> ActivationStatus) {
         if (isRunning) return
         autoCloseJob?.cancel()
+        // One hidden with the sheet may still wait (for a pairing, minutes): it must not
+        // answer for this one.
+        attemptJob?.cancel()
         autoCloseIn = null
         this.title = title
         ActivationLog.begin(title)
         status = ActivationStatus.Running
         visible = true
-        scope.launch {
+        attemptJob = scope.launch {
             status = try {
                 block()
             } catch (e: CancellationException) {
@@ -239,6 +244,9 @@ private fun ActivationStatusCard(status: ActivationStatus, errorCount: Int, auto
             when {
                 status is ActivationStatus.Running ->
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+
+                // Errors on the way (a wireless attempt before pairing) don't undo a success.
+                status is ActivationStatus.Success -> StatusPill(text = "OK", color = primary)
 
                 errorCount > 0 -> StatusPill(
                     text = stringResource(R.string.activation_error_count, errorCount),

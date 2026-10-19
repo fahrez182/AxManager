@@ -63,6 +63,12 @@ class AdbPairingService : Service() {
         private const val CONNECT_TRIES_AFTER_PAIRING = 3
 
         /**
+         * How long a pairing can stay open: Android 14+ stops this short service after about
+         * 3 minutes (see [onTimeout]). The app waits that long for the server it starts.
+         */
+        const val LIFETIME_MS = 3 * 60_000L
+
+        /**
          * Starts the server through adbd on the given port. Set by the app, so activating from
          * this notification takes the same steps as from the app (TCP mode when it is on, the
          * launch mode for start on boot, the activation log) instead of a copy of them.
