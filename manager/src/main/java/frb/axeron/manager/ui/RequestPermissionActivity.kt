@@ -8,6 +8,8 @@ import android.os.Process
 import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import frb.axeron.manager.ui.component.AxTopPanelShape
+import frb.axeron.manager.ui.component.AxPanelShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -188,7 +189,7 @@ fun RequestPermissionDialog(
         onDismissRequest = { onDeny() },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = AxTopPanelShape,
         dragHandle = { }
     ) {
         Column(
@@ -208,7 +209,7 @@ fun RequestPermissionDialog(
                     pm = pm,
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(AxPanelShape)
                 )
 
                 Spacer(Modifier.width(12.dp))
@@ -254,7 +255,7 @@ fun RequestPermissionDialog(
                     onClick = {
                         scope.launch { sheetState.hide() }.invokeOnCompletion { onAllow(false) }
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = AxPanelShape
                 ) {
                     Text(stringResource(R.string.permission_allow_all_time))
                 }
@@ -263,7 +264,7 @@ fun RequestPermissionDialog(
                     onClick = {
                         scope.launch { sheetState.hide() }.invokeOnCompletion { onAllow(true) }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AxPanelShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -276,7 +277,7 @@ fun RequestPermissionDialog(
                     onClick = {
                         scope.launch { sheetState.hide() }.invokeOnCompletion { onDeny() }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AxPanelShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.error

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -56,7 +55,7 @@ fun VerticalSlideSeekbar(
         modifier = Modifier
             .width(65.dp)
             .height(height)
-            .background(Color(0xFF303030), RoundedCornerShape(46.dp))
+            .background(Color(0xFF303030), AxPanelShape)
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->

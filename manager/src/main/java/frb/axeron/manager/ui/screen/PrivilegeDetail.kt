@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -438,7 +437,7 @@ private fun HeaderCard(
                 contentDescription = appInfo.label,
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(AxPanelShape)
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -1128,7 +1127,7 @@ private fun KindTag(kind: Kind) {
         Kind.SIGNATURE, Kind.UNKNOWN -> MaterialTheme.colorScheme.outline
         else -> MaterialTheme.colorScheme.secondary
     }
-    Surface(shape = RoundedCornerShape(4.dp), color = color.copy(alpha = 0.12f)) {
+    Surface(shape = AxPanelShape, color = color.copy(alpha = 0.12f)) {
         Text(
             text = stringResource(kind.labelId()),
             style = MaterialTheme.typography.labelSmall,

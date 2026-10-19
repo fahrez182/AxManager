@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -604,7 +603,7 @@ private fun TerminalNavPill(
     onBottom: () -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = AxPanelShape,
         color = MaterialTheme.colorScheme.secondaryContainer,
         shadowElevation = 3.dp
     ) {
@@ -622,7 +621,7 @@ private fun TerminalNavPill(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .padding(horizontal = 4.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(AxPanelShape)
                     .clickable(onClick = onGoTo)
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {

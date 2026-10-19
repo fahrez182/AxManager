@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Card
@@ -39,7 +38,7 @@ fun LabelPreview() {
 @Composable
 fun ExtraLabel() {
     Card(
-        shape = RoundedCornerShape(3.dp),
+        shape = AxPanelShape,
     ) {
         Row(
             modifier = Modifier
@@ -112,7 +111,7 @@ object ExtraLabelDefaults {
         @Composable get() = ExtraLabelStyle(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = RoundedCornerShape(3.dp),
+            shape = AxPanelShape,
             textStyle = TextStyle(
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Medium,
@@ -138,7 +137,7 @@ fun ExtraLabel(
             .then(
                 if (onClick != null) Modifier.clickable { onClick() } else Modifier
             ),
-        shape = RoundedCornerShape(3.dp),
+        shape = AxPanelShape,
         colors = CardDefaults.cardColors().copy(
             containerColor = style.containerColor,
             contentColor = style.contentColor
