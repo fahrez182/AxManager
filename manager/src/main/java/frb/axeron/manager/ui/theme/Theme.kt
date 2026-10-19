@@ -3,6 +3,7 @@ package frb.axeron.manager.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -10,6 +11,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import frb.axeron.manager.ui.viewmodel.SettingsViewModel
+import frb.axeron.manager.ui.component.AxCardShape
+import frb.axeron.manager.ui.component.AxPanelShape
 
 fun hexToColor(hex: String): Color {
     val cleanHex = hex.removePrefix("#")
@@ -53,6 +56,13 @@ fun AxManagerTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        shapes = Shapes(
+            extraSmall = AxPanelShape,
+            small = AxPanelShape,
+            medium = AxPanelShape,
+            large = AxCardShape,
+            extraLarge = AxCardShape
+        ),
         typography = Typography
     ) {
         contentCompose(settingsViewModel)

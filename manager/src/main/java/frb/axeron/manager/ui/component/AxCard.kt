@@ -12,7 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CornerSize
+import com.kyant.capsule.ContinuousRoundedRectangle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,8 +32,22 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 // One card language for the whole app: a flat tonal surface, tinted panels inside instead of nested cards.
-val AxCardShape = RoundedCornerShape(16.dp)
-val AxPanelShape = RoundedCornerShape(12.dp)
+val AxCardShape = ContinuousRoundedRectangle(16.dp)
+val AxPanelShape = ContinuousRoundedRectangle(12.dp)
+
+/** A panel that remains square along the bottom edge (for modal bottom sheets). */
+val AxTopPanelShape = AxPanelShape.copy(
+    bottomEnd = CornerSize(0.dp),
+    bottomStart = CornerSize(0.dp)
+)
+
+/** Keep the scrollbar bubble's asymmetric corners, with continuous G2 curvature. */
+val AxScrollbarBubbleShape = AxPanelShape.copy(
+    topStart = CornerSize(50),
+    topEnd = CornerSize(50),
+    bottomEnd = CornerSize(8),
+    bottomStart = CornerSize(50)
+)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -100,7 +115,7 @@ fun IconBadge(
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(size * 0.28f))
+            .clip(AxPanelShape)
             .background(tint.copy(alpha = 0.12f)),
         contentAlignment = Alignment.Center
     ) {

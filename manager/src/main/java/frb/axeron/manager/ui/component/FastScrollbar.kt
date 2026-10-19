@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -104,7 +103,7 @@ fun FastScrollbar(
             ) {
                 Surface(
                     modifier = Modifier.size(BubbleSize),
-                    shape = RoundedCornerShape(50, 50, 8, 50),
+                    shape = AxScrollbarBubbleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     tonalElevation = 3.dp,
                     shadowElevation = 3.dp

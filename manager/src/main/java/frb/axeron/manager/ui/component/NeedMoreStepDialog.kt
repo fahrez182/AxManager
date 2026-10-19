@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Settings
@@ -101,7 +100,7 @@ fun NeedMoreStepDialog(
                         pm = pm,
                         modifier = Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(AxPanelShape)
                     )
 
                     Spacer(Modifier.width(12.dp))
@@ -166,7 +165,7 @@ fun NeedMoreStepDialog(
                 onClick = {
                     uriHandler.openUri("https://fahrez182.github.io/AxManager/guide/faq.html#start-via-wireless-debugging-start-by-connecting-to-a-computer-the-permission-of-adb-is-limited")
                 },
-                shape = RoundedCornerShape(12.dp),
+                shape = AxPanelShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -182,7 +181,7 @@ fun NeedMoreStepDialog(
                 onClick = {
                     scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 },
-                shape = RoundedCornerShape(12.dp)
+                shape = AxPanelShape
             ) {
                 Text(stringResource(R.string.close))
             }
