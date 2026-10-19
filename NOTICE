@@ -1,0 +1,97 @@
+AxManager
+Copyright 2025-2026 FahrezRB
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by third parties, listed below.
+
+========================================================================
+Derived and modified source code
+========================================================================
+
+Shizuku (https://github.com/RikkaApps/Shizuku)
+Copyright (c) RikkaApps
+Licensed under the Apache License, Version 2.0
+
+  Parts of this project are derived from Shizuku and have been MODIFIED
+  by the AxManager authors (renamed packages, restructured modules, and
+  changed behaviour). Affected areas include:
+    - adb/                      (ADB pairing and client, incl. native code)
+    - server/                   (privileged server and native starter)
+
+  Shizuku's visual assets (e.g. app icons) are excluded from
+  redistribution by its authors and are not included in this project.
+
+Axeron-API (api/, https://github.com/fahrez182/Axeron-API)
+Copyright (c) 2025-2026 FahrezRB
+Licensed under the MIT License (see api/LICENSE)
+
+  Includes code copied from or derived from Shizuku-API
+  (https://github.com/RikkaApps/Shizuku-API, Copyright (c) 2021 RikkaW,
+  MIT License) and two files derived from Shizuku that remain under the
+  Apache License, Version 2.0. The affected files and the full MIT
+  license text are listed in api/NOTICE.
+
+The Android Open Source Project (https://source.android.com)
+Copyright (C) 2009, 2023 The Android Open Source Project
+Licensed under the Apache License, Version 2.0
+
+  - manager/src/main/java/frb/axeron/manager/ui/util/HanziToPinyin.kt
+  - manager/src/main/java/frb/axeron/manager/ui/webui/MimeUtil.kt
+  These files have been MODIFIED (converted to Kotlin and adapted).
+
+========================================================================
+Bundled binaries
+========================================================================
+
+The following executables are shipped as separate programs inside the
+APK (server/src/main/jniLibs/*). They are not linked with this project's
+code and remain under their own licenses. Corresponding source code is
+available from the URLs below.
+
+BusyBox (Magisk build)
+  License: GNU General Public License, version 2
+  Source:  https://github.com/topjohnwu/ndk-busybox
+           https://busybox.net
+
+resetprop (from Magisk)
+  Copyright (c) topjohnwu
+  License: GNU General Public License, version 3
+  Source:  https://github.com/topjohnwu/Magisk
+
+========================================================================
+Third-party libraries
+========================================================================
+
+Apache License, Version 2.0
+  AndroidX libraries (annotation, core, lifecycle, webkit, appcompat,
+    Compose UI / Material 3 / material-icons-extended)
+                                 https://developer.android.com/jetpack/androidx
+  Material Components for Android  https://github.com/material-components/material-components-android
+  Gson                           https://github.com/google/gson
+  libsu                          https://github.com/topjohnwu/libsu
+  AndroidHiddenApiBypass         https://github.com/LSPosed/AndroidHiddenApiBypass
+  Coil                           https://github.com/coil-kt/coil
+  Compose Destinations           https://github.com/raamcosta/compose-destinations
+  ColorPicker Compose            https://github.com/skydoves/colorpicker-compose
+  Sheets Compose Dialogs         https://github.com/maxkeppeler/sheets-compose-dialogs
+  Markwon                        https://github.com/noties/Markwon
+  BoringSSL (io.github.vvb2060.ndk:boringssl)
+                                 https://boringssl.googlesource.com/boringssl
+
+Apache License, Version 2.0 with LLVM Exceptions
+  libc++ (org.lsposed.libcxx:libcxx)  https://github.com/llvm/llvm-project
+
+MIT License
+  RikkaX (core-ktx, compatibility, parcelablelist)
+                                 https://github.com/RikkaApps/RikkaX
+  HiddenApiRefine (refine runtime/annotation/processor)
+                                 https://github.com/RikkaApps/HiddenApiRefinePlugin
+  AndroidANSI                    https://github.com/Fox2Code/AndroidANSI
+  SDP - a scalable size unit     https://github.com/intuit/sdp
+
+Bouncy Castle Licence (MIT-style)
+  Bouncy Castle (bcpkix-jdk18on) https://www.bouncycastle.org
+
+None of the Apache-2.0 projects above publish a NOTICE file upstream at
+the time of writing; if one is added, its contents must be reproduced here.

@@ -132,12 +132,7 @@ Contributions are welcome. Open an issue, send a pull request, or start a discus
 - **[Shizuku](https://github.com/RikkaApps/Shizuku) / [Shizuku-API](https://github.com/RikkaApps/Shizuku-API)**: the starting point and reference for Android IPC and ADB-based permissions.
 - **[KernelSU](https://github.com/tiann/KernelSU) / [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next)**: inspiration for the UI and the WebUI.
 
-## Notices and legal disclaimer
-This project includes adapted portions of code from:
-- Shizuku Manager (© Rikka Apps), licensed under the Apache License, Version 2.0. Repository: https://github.com/RikkaApps/Shizuku
-- Other open-source projects as credited above.
-
-AxManager does not include or distribute any original Shizuku Manager visual assets and does not claim to be an official replacement. Adapted code is used with clear attribution and in compliance with the Apache License 2.0.
-
 ## License
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE). Third-party code, bundled binaries and libraries are listed with their licenses in [NOTICE](NOTICE).
+
+AxManager is not affiliated with Shizuku and does not claim to be an official replacement.
