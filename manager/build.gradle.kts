@@ -122,7 +122,6 @@ dependencies {
     implementation(project(":reignite"))
     implementation(libs.sdp.android)
     implementation(libs.material)
-    implementation(libs.mmrl.ui)
     implementation(libs.hiddenapibypass)
     implementation(libs.ansi.library)
     implementation(libs.ansi.library.ktx)
