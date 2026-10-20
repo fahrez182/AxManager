@@ -19,7 +19,9 @@ import java.io.File
 fun loadPluginBannerData(plugin: PluginInfo): Any? {
     val banner = plugin.prop.banner
     if (banner.isEmpty()) return null
-    if (banner.startsWith("http", ignoreCase = true)) return banner
+    if (banner.startsWith("http://", ignoreCase = true) ||
+        banner.startsWith("https://", ignoreCase = true)
+    ) return banner
 
     return try {
         val pluginDir = File(
