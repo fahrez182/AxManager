@@ -14,6 +14,7 @@ import frb.axeron.adb.PreferenceAdbKeyStore
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.adb.util.AdbWifiGate
 import frb.axeron.adb.util.WifiReadyGate
+import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
@@ -22,6 +23,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.EOFException
 import java.net.SocketException
@@ -29,6 +32,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object AdbStarter {
     private const val TAG = "AdbStarter"
+
+    /**
+     * The native starter kills a running axeron_server before starting a new one. Two
+     * activations at once (the pairing notification retrying while the UI starts the server)
+     * would then race and could leave no server at all, so only one runs the starter at a time.
+     */
+    private val starterMutex = Mutex()
 
     /**
      * This app's ADB identity: stored in its preferences, falling back to the copy a previous
@@ -243,29 +253,56 @@ object AdbStarter {
 
         ActivationLog.info("Connecting to adbd on 127.0.0.1:$activePort…")
 
-        runCatching {
-            withContext(Dispatchers.IO) {
-                AdbClient(
-                    key,
-                    activePort
-                ).use { client ->
-                    client.connect()
-                    ActivationLog.success("Connected to adbd")
-                    ActivationLog.info("Running the AxManager starter…")
-                    // The starter's own output is what explains a failed start.
-                    client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64())) { chunk ->
-                        ActivationLog.output(String(chunk, Charsets.UTF_8))
+        // The starter kills a running server before starting the new one: one at a time.
+        var starterRan = false
+        val attempt = starterMutex.withLock {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    AdbClient(
+                        key,
+                        activePort
+                    ).use { client ->
+                        client.connect()
+                        ActivationLog.success("Connected to adbd")
+                        ActivationLog.info("Running the AxManager starter…")
+                        starterRan = true
+                        // The starter's own output is what explains a failed start.
+                        client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64())) { chunk ->
+                            ActivationLog.output(String(chunk, Charsets.UTF_8))
+                        }
                     }
                 }
             }
-        }.onSuccess {
+        }
+        attempt.onSuccess {
             ActivationLog.success("Starter finished")
             AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
             result(AdbStateInfo.Success(context.getString(R.string.adb_client_connected)))
         }.onFailure {
-            ActivationLog.error("ADB connection failed", it)
-            result(AdbStateInfo.Failed(context.getString(R.string.failed_to_connect_adb_client)))
+            // The starter may have started the server and the connection dropped afterwards
+            // (adbd restarting, wireless debugging reconnecting). Retrying would run the
+            // starter again, and it kills a running server first: keep the one that is up.
+            if (starterRan && awaitServer()) {
+                ActivationLog.success("Starter ran; the new server is reachable")
+                AxeronSettings.setLastLaunchMode(AxeronSettings.LaunchMethod.ADB)
+                result(AdbStateInfo.Success(context.getString(R.string.adb_client_connected)))
+            } else {
+                ActivationLog.error("ADB connection failed", it)
+                result(AdbStateInfo.Failed(context.getString(R.string.failed_to_connect_adb_client)))
+            }
         }
+    }
+
+    /** How long the server started by the starter gets to push its binder. */
+    private const val SERVER_WAIT_MS = 5_000L
+
+    private suspend fun awaitServer(): Boolean = withContext(Dispatchers.IO) {
+        val deadline = System.currentTimeMillis() + SERVER_WAIT_MS
+        while (System.currentTimeMillis() < deadline) {
+            if (Axeron.pingBinder()) return@withContext true
+            delay(200)
+        }
+        Axeron.pingBinder()
     }
 
     suspend fun stopTcp(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
