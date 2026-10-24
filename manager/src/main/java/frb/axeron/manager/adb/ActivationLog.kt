@@ -62,9 +62,10 @@ object ActivationLog {
     val errorCount: Int get() = _lines.value.count { it.level == Level.ERROR }
 
     /** Plain-text copy for sharing, one timestamped line per entry. */
-    fun asText(): String {
+    /** [lines] defaults to this log; the OTG sheets pass their own. */
+    fun asText(lines: List<Line> = _lines.value): String {
         val format = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
-        return _lines.value.joinToString("\n") { line ->
+        return lines.joinToString("\n") { line ->
             "${format.format(Date(line.time))} ${line.level.name.padEnd(7)} ${line.text}"
         }
     }

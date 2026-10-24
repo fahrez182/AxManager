@@ -150,11 +150,9 @@ fun rememberActivationRunner(): ActivationRunner {
 
 @Composable
 private fun ActivationOutputSheet(runner: ActivationRunner) {
-    val context = LocalContext.current
     val lines by ActivationLog.lines.collectAsState()
     val status = runner.status
     val errorCount = lines.count { it.level == ActivationLog.Level.ERROR }
-    val copied = stringResource(R.string.copied)
 
     AxOptionsSheet(
         title = runner.title,
@@ -165,21 +163,7 @@ private fun ActivationOutputSheet(runner: ActivationRunner) {
         ActivationLogPanel(lines = lines, modifier = Modifier.heightIn(max = 320.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    // Android 13+ shows its own clipboard confirmation.
-                    if (ClipboardUtil.put(context, ActivationLog.asText()) &&
-                        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
-                    ) {
-                        Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            ) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.activation_copy_log))
-            }
+            CopyLogButton(lines = lines, modifier = Modifier.weight(1f))
             Button(modifier = Modifier.weight(1f), onClick = runner::dismiss) {
                 val countdown = runner.autoCloseIn
                 Text(
@@ -188,6 +172,28 @@ private fun ActivationOutputSheet(runner: ActivationRunner) {
                 )
             }
         }
+    }
+}
+
+/** Copies [lines] as plain text. Shared by the activation output sheet and the OTG sheet. */
+@Composable
+fun CopyLogButton(lines: List<ActivationLog.Line>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val copied = stringResource(R.string.copied)
+    FilledTonalButton(
+        modifier = modifier,
+        onClick = {
+            // Android 13+ shows its own clipboard confirmation.
+            if (ClipboardUtil.put(context, ActivationLog.asText(lines)) &&
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            ) {
+                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+            }
+        }
+    ) {
+        Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.activation_copy_log))
     }
 }
 

@@ -169,7 +169,8 @@ private fun ColumnScope.OtgComputerPane(onDismissRequest: () -> Unit) {
     }
 
     if (log.isNotEmpty()) {
-        ActivationLogPanel(lines = log, modifier = Modifier.heightIn(max = 200.dp))
+        ActivationLogPanel(lines = log, modifier = Modifier.heightIn(max = 320.dp))
+        CopyLogButton(lines = log, modifier = Modifier.fillMaxWidth())
     }
 
     val busy = state is State.Connecting || state is State.Activating
@@ -349,7 +350,8 @@ private fun ColumnScope.OtgTargetPane(onDismissRequest: () -> Unit) {
     }
 
     if (log.isNotEmpty()) {
-        ActivationLogPanel(lines = log, modifier = Modifier.heightIn(max = 200.dp))
+        ActivationLogPanel(lines = log, modifier = Modifier.heightIn(max = 320.dp))
+        CopyLogButton(lines = log, modifier = Modifier.fillMaxWidth())
     }
 
     Button(modifier = Modifier.fillMaxWidth(), onClick = onDismissRequest) {

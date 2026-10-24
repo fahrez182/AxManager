@@ -4,6 +4,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -55,6 +57,8 @@ fun AxOptionsSheet(
     description: String? = null,
     headerAction: (@Composable () -> Unit)? = null,
     overline: (@Composable () -> Unit)? = null,
+    /** False for sheets whose content is its own lazy list (it can't sit in a scrolling parent). */
+    scrollable: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ModalBottomSheet(
@@ -62,9 +66,11 @@ fun AxOptionsSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         onDismissRequest = onDismissRequest
     ) {
+        // Scrolls when the content is taller than the screen, instead of cutting the bottom off.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)

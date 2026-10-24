@@ -439,7 +439,8 @@ fun BookmarksSheet(
     AxOptionsSheet(
         title = stringResource(R.string.quickshell_bookmarks),
         description = stringResource(R.string.quickshell_bookmarks_desc),
-        onDismissRequest = onDismissRequest
+        onDismissRequest = onDismissRequest,
+        scrollable = false
     ) {
         if (bookmarks.isEmpty()) {
             EmptyState(

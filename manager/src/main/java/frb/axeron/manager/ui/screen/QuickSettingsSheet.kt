@@ -127,7 +127,8 @@ fun QuickSettingsSheet(
     AxOptionsSheet(
         title = stringResource(R.string.quick_settings),
         description = stringResource(R.string.quick_settings_desc),
-        onDismissRequest = onDismissRequest
+        onDismissRequest = onDismissRequest,
+        scrollable = false
     ) {
         if (items.isEmpty()) {
             EmptyState(
