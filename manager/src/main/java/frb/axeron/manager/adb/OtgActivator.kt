@@ -274,6 +274,7 @@ object OtgActivator {
         val mode = Regex("${AxManagerProvider.KEY_TCP_MODE}=(true|false)").find(text)?.groupValues?.get(1)
         val port = Regex("${AxManagerProvider.KEY_TCP_PORT}=(\\d+)").find(text)?.groupValues?.get(1)?.toIntOrNull()
         val activePort = Regex("$MARK_TCP_ACTIVE(\\d+)").find(text)?.groupValues?.get(1)?.toIntOrNull()
+        log("Target: TCP mode ${mode ?: "?"}, configured port ${port ?: "?"}, adbd on TCP port ${activePort ?: "none"}")
 
         when {
             mode == null -> {
@@ -297,7 +298,10 @@ object OtgActivator {
             }
         }
 
-        log("Target's TCP mode is on — switching its ADB to TCP port $port…")
+        log(
+            if (activePort != null) "Target's adbd is on TCP port $activePort, configured $port — switching it to $port…"
+            else "Target's TCP mode is on — switching its ADB to TCP port $port…"
+        )
         val ack = StringBuilder()
         try {
             client.command("tcpip:$port") {

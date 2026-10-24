@@ -201,6 +201,14 @@ object AdbStarter {
         var activePort = port
         val tcpMode = AxeronSettings.getTcpMode()
         val tcpPort = AxeronSettings.getTcpPort()
+        ActivationLog.info(
+            "TCP mode ${if (tcpMode) "on" else "off"}, configured port $tcpPort, adbd reached on port $activePort" +
+                    when {
+                        !tcpMode -> " — no switch"
+                        activePort == tcpPort -> " — already on the configured port"
+                        else -> " — switching first"
+                    }
+        )
         if (tcpMode && activePort != tcpPort) {
             ActivationLog.info("TCP mode is on — switching adbd to TCP port $tcpPort")
 

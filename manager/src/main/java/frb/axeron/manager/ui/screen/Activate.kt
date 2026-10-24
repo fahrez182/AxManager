@@ -310,6 +310,30 @@ fun TcpDebuggingCard(
     val success = stringResource(R.string.activate_success)
     val timeout = stringResource(R.string.activation_server_timeout)
 
+    // Connect over adbd's current TCP port; startAdbClient moves adbd to the configured port
+    // first when they differ, then runs the starter.
+    val connectTcp: () -> Unit = {
+        runner.run(tcpTitle) {
+            try {
+                val ai = activateViewModel.startAdbTcp(context)
+                if (ai is AdbStateInfo.Success) {
+                    activateViewModel.awaitServer(success, timeout)
+                } else {
+                    ActivationStatus.Failed(ai.message)
+                }
+            } finally {
+                activateViewModel.setTryToActivate(false)
+            }
+        }
+    }
+
+    // A config change applies at once: adbd on TCP at another port gets switched over and the
+    // server restarted on it, instead of waiting for the next activation.
+    val applyIfPortDiffers: () -> Unit = {
+        val configured = settings.tcpPortInt
+        if (settings.isTcpModeEnabled && tcpPort > 0 && configured != null && configured != tcpPort) connectTcp()
+    }
+
     ActivationMethodCard(
         icon = Icons.Outlined.Adb,
         title = tcpTitle,
@@ -318,12 +342,15 @@ fun TcpDebuggingCard(
         headerTrailing = {
             Switch(
                 checked = settings.isTcpModeEnabled,
-                onCheckedChange = { settings.setTcpMode(it) }
+                onCheckedChange = {
+                    settings.setTcpMode(it)
+                    applyIfPortDiffers()
+                }
             )
         }
     ) {
         AnimatedVisibility(settings.isTcpModeEnabled) {
-            TcpPortField(settings, tcpPort)
+            TcpPortField(settings, tcpPort, onApply = applyIfPortDiffers)
         }
 
         // TCP is up but TCP mode is off: the next wireless activation switches adbd back to USB.
@@ -351,20 +378,7 @@ fun TcpDebuggingCard(
 
             Button(
                 modifier = Modifier.weight(1f),
-                onClick = {
-                    runner.run(tcpTitle) {
-                        try {
-                            val ai = activateViewModel.startAdbTcp(context)
-                            if (ai is AdbStateInfo.Success) {
-                                activateViewModel.awaitServer(success, timeout)
-                            } else {
-                                ActivationStatus.Failed(ai.message)
-                            }
-                        } finally {
-                            activateViewModel.setTryToActivate(false)
-                        }
-                    }
-                }
+                onClick = connectTcp
             ) {
                 // Restart icon when adbd listens on a different port than the configured one.
                 ActionLabel(
@@ -685,10 +699,12 @@ fun ComputerCard() {
     }
 }
 
-/** The TCP mode port (moved here from Settings); its switch lives in the TCP card's header. */
+/**
+ * The TCP mode port (moved here from Settings); its switch lives in the TCP card's header.
+ * [onApply] runs after a save, and from the restart icon, to move adbd to the saved port.
+ */
 @Composable
-private fun TcpPortField(settings: SettingsViewModel, activeTcpPort: Int) {
-    val context = LocalContext.current
+private fun TcpPortField(settings: SettingsViewModel, activeTcpPort: Int, onApply: () -> Unit) {
     val focusManager = LocalFocusManager.current
     val reactivateToApply = stringResource(R.string.reactive_to_apply)
 
@@ -726,18 +742,15 @@ private fun TcpPortField(settings: SettingsViewModel, activeTcpPort: Int) {
                         portInt?.let {
                             settings.setTcpPort(it)
                             focusManager.clearFocus()
+                            onApply()
                         }
                     }
                 ) {
                     Icon(Icons.Default.Save, contentDescription = "Save TCP port")
                 }
             } else if (activeTcpPort > 0 && settings.tcpPortInt != activeTcpPort) {
-                // adbd still listens on the old port until the next activation.
-                IconButton(
-                    onClick = {
-                        Toast.makeText(context, reactivateToApply, Toast.LENGTH_SHORT).show()
-                    }
-                ) {
+                // adbd still listens on the old port (the switch failed or was left): retry it.
+                IconButton(onClick = onApply) {
                     Icon(Icons.Default.RestartAlt, contentDescription = reactivateToApply)
                 }
             }
