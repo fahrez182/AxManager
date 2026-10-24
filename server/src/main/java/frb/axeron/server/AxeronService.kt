@@ -78,6 +78,12 @@ open class AxeronService :
     Service<AxeronUserServiceManager, AxeronClientManager, AxeronConfigManager>() {
 
     companion object {
+        // checkCaller's cache states. Both lookup results are impossible uids, so no caller's
+        // appId can ever match them.
+        private const val MANAGER_UID_UNKNOWN = -1
+        private const val MANAGER_UID_MISSING = Int.MIN_VALUE
+        private const val MANAGER_UID_LOOKUP_FAILED = Int.MIN_VALUE + 1
+
         @JvmStatic
         fun main(args: Array<String>) {
             DdmHandleAppName.setAppName("axeron_server", 0)
@@ -361,7 +367,15 @@ open class AxeronService :
                 builder.put("AXERONLIB", managerInfo.nativeLibraryDir)
                 val systemLd = System.getenv("LD_LIBRARY_PATH")
                 if (systemLd.isNullOrEmpty()) {
-                    builder.put("LD_LIBRARY_PATH", "\$AXERONLIB")
+                    // A set LD_LIBRARY_PATH becomes a child VM's whole java.library.path, so the
+                    // linker defaults (this server's own java.library.path) must stay behind it:
+                    // without them a boot-class System.loadLibrary fails (MIUI's libmiuinative
+                    // on Android 9/10 kills every app_process child on its first binder call).
+                    val defaultLd = System.getProperty("java.library.path").orEmpty()
+                    builder.put(
+                        "LD_LIBRARY_PATH",
+                        if (defaultLd.isEmpty()) "\$AXERONLIB" else "\$AXERONLIB:$defaultLd"
+                    )
                 } else {
                     // Taruh AXERONLIB di depan agar binari kustom kita prioritas menemukan lib-nya sendiri
                     builder.put("LD_LIBRARY_PATH", "\$AXERONLIB:\$LD_LIBRARY_PATH")
@@ -442,24 +456,51 @@ open class AxeronService :
         return AxeronConfigManager()
     }
 
-    // Volatile, not locked: every gated call and every axsh auth passes here. Two threads filling
-    // the cache at once look up, and store, the same uid.
+    // Volatile, not locked: every gated call and every axsh auth passes here. Two threads
+    // filling the cache at once look up, and store, the same uid. attachApplication also seeds
+    // the manager's entry from the caller's validated uid, so the manager's first gated call
+    // normally needs no PackageManager look-up at all.
     @Volatile
-    private var cachedManagerUid: Int = -1
+    private var cachedManagerUid: Int = MANAGER_UID_UNKNOWN
 
     @Volatile
-    private var cachedShizukuManagerUid: Int = -1
+    private var cachedShizukuManagerUid: Int = MANAGER_UID_UNKNOWN
+
+    /**
+     * The manager's uid for [checkCaller], or [MANAGER_UID_MISSING] / [MANAGER_UID_LOOKUP_FAILED].
+     * The "no throw" helper collapses both into null, but they mean different things: only a
+     * manager that is really gone ends the server, while a look-up that failed (system_server
+     * restarting, a package transaction in flight, a busy device) says nothing about the caller
+     * and is retried on the next call.
+     */
+    private fun resolveManagerUid(): Int = try {
+        PackageManagerApis.getApplicationInfo(MANAGER_APPLICATION_ID, 0, 0)?.uid
+            ?: MANAGER_UID_MISSING
+    } catch (e: PackageManager.NameNotFoundException) {
+        MANAGER_UID_MISSING
+    } catch (e: Throwable) {
+        LOGGER.w(e, "can't look up the manager, denying this call")
+        MANAGER_UID_LOOKUP_FAILED
+    }
 
     fun checkCaller(callingUid: Int): Boolean {
         var managerUid = cachedManagerUid
-        if (managerUid == -1) {
-            managerUid = getManagerApplicationInfo()?.uid
-                ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+        if (managerUid == MANAGER_UID_UNKNOWN) {
+            val resolved = resolveManagerUid()
+            if (resolved == MANAGER_UID_MISSING) {
+                exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+            }
+            if (resolved == MANAGER_UID_LOOKUP_FAILED) return false
+            managerUid = UserHandleCompat.getAppId(resolved)
             cachedManagerUid = managerUid
         }
         var shizukuManagerUid = cachedShizukuManagerUid
-        if (shizukuManagerUid == -1) {
-            shizukuManagerUid = getShizukuManagerApplicationInfo()?.uid ?: managerUid
+        if (shizukuManagerUid == MANAGER_UID_UNKNOWN) {
+            // A failed look-up falls back to the manager's uid for this call; the next call
+            // tries again.
+            shizukuManagerUid = getShizukuManagerApplicationInfo()?.uid
+                ?.let { UserHandleCompat.getAppId(it) }
+                ?: managerUid
             cachedShizukuManagerUid = shizukuManagerUid
         }
         val appId = UserHandleCompat.getAppId(callingUid)
@@ -586,7 +627,19 @@ open class AxeronService :
         waitSystemService(Context.APP_OPS_SERVICE)
         waitSystemService(Context.POWER_SERVICE)
 
-        getManagerApplicationInfo() ?: exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+        // The manager must be there before anything is sent to it. A look-up that failed
+        // (PackageManager still starting at boot, a package transaction) is retried: only a
+        // manager that is really gone ends the server.
+        while (true) {
+            when (resolveManagerUid()) {
+                MANAGER_UID_MISSING -> exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+                MANAGER_UID_LOOKUP_FAILED -> {
+                    LOGGER.w("can't look up the manager yet, retrying in 1s")
+                    Thread.sleep(1000)
+                }
+                else -> break
+            }
+        }
 
         if (axCompanion.exists()) {
             shizuku = ShizukuServiceIntercept(this)
@@ -989,6 +1042,16 @@ open class AxeronService :
 
         val isManager: Boolean = MANAGER_APPLICATION_ID == requestPackageName
 
+        if (isManager) {
+            // Validated above: this uid owns the manager package. Seed the gate's cache from it,
+            // so the manager's first gated calls need no PackageManager look-up; a reinstalled
+            // manager (new uid, new process) refreshes it through this same path.
+            cachedManagerUid = UserHandleCompat.getAppId(callingUid)
+        } else if (SHIZUKU_MANAGER_APPLICATION_ID == requestPackageName) {
+            // Same for the Shizuku app, whose calls go through the intercept.
+            cachedShizukuManagerUid = UserHandleCompat.getAppId(callingUid)
+        }
+
         if (clientManager.findClient(callingUid, callingPid) == null) {
             synchronized(this) {
                 clientRecord = clientManager.addClient(
@@ -1075,9 +1138,10 @@ open class AxeronService :
     // The caches are volatile, so a reset from BinderSender's thread is seen by binder threads.
     @Throws(RemoteException::class)
     override fun dispatchPackageChanged(intent: Intent?) {
-        // Manager / Shizuku-manager uid may have changed on (re)install.
-        cachedManagerUid = -1
-        cachedShizukuManagerUid = -1
+        // Manager / Shizuku-manager uid may have changed on (re)install. The manager's own uid is
+        // seeded again by attachApplication, before it can make a gated call.
+        cachedManagerUid = MANAGER_UID_UNKNOWN
+        cachedShizukuManagerUid = MANAGER_UID_UNKNOWN
     }
 
     override fun exit() {
