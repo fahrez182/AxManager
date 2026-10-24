@@ -1,6 +1,7 @@
 package frb.axeron.manager
 
 import android.os.Binder
+import frb.axeron.manager.adb.OtgTargetMonitor
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
@@ -100,7 +101,14 @@ class AxManagerProvider : AxeronProvider() {
     /** Only adb's shell (or root) gets an answer; nothing secret, but no reason to widen it. */
     private fun tcpConfig(): Bundle? {
         val uid = Binder.getCallingUid()
-        if (uid != Process.SHELL_UID && uid != Process.ROOT_UID) return null
+        if (uid != Process.SHELL_UID && uid != Process.ROOT_UID) {
+            OtgTargetMonitor.note("TCP mode was asked by uid $uid — refused (only adb shell may ask)")
+            return null
+        }
+        OtgTargetMonitor.note(
+            "The other phone read this phone's TCP mode: " +
+                    "${if (AxeronSettings.getTcpMode()) "on" else "off"}, port ${AxeronSettings.getTcpPort()}"
+        )
         return bundleOf(
             KEY_TCP_MODE to AxeronSettings.getTcpMode(),
             KEY_TCP_PORT to AxeronSettings.getTcpPort()

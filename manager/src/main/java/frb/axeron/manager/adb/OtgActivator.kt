@@ -53,6 +53,7 @@ object OtgActivator {
     private const val MARK_NOT_INSTALLED = "AX_OTG_NOT_INSTALLED"
     private const val MARK_NO_STARTER = "AX_OTG_NO_STARTER"
     private const val MARK_EXIT = "AX_OTG_EXIT:"
+    private const val MARK_TCP_ACTIVE = "AX_OTG_TCP_ACTIVE="
 
     sealed interface State {
         data object Idle : State
@@ -111,9 +112,16 @@ object OtgActivator {
         }
 
         val usbManager = context.getSystemService(UsbManager::class.java)
-        val device = usbManager?.deviceList?.values?.firstOrNull { it.adbInterface() != null }
+        val attached = usbManager?.deviceList?.values.orEmpty()
+        // Tell "nothing on the bus" apart from "something there, but no adbd" — different fixes.
+        attached.forEach { log("Attached: ${it.describe()}") }
+        val device = attached.firstOrNull { it.adbInterface() != null }
         if (device == null) {
-            log("No device with USB debugging found", ActivationLog.Level.WARN)
+            log(
+                if (attached.isEmpty()) "No USB device attached — check the OTG adapter/cable, and the OTG switch in this phone's settings if it has one"
+                else "No attached device exposes USB debugging — turn it on in the other phone's Developer options",
+                ActivationLog.Level.WARN
+            )
             _state.value = State.NoDevice
             return
         }
@@ -166,39 +174,54 @@ object OtgActivator {
             return@withContext
         }
 
+        // One transport for the whole run: a second ADB session after a broken one reuses it.
+        val transport = UsbAdbTransport(connection, bulkIn, bulkOut)
+        val key = runCatching { AdbKey(AdbStarter.adbKeyStore(context), "axeron") }.getOrElse {
+            transport.close()
+            log("Couldn't load this app's ADB key: ${it.message}", ActivationLog.Level.ERROR)
+            _state.value = State.Failed(Reason.CONNECTION_FAILED)
+            return@withContext
+        }
+        fun connectClient() = AdbClient(key, transport).apply {
+            usbHandshakeLog = { log(it) }
+            connect()
+        }
+
         val output = StringBuilder()
+        var client: AdbClient? = null
         val result = runCatching {
-            val key = AdbKey(AdbStarter.adbKeyStore(context), "axeron")
-            AdbClient(key, UsbAdbTransport(connection, bulkIn, bulkOut)).use { client ->
-                client.usbHandshakeLog = { log(it) }
-                client.connect()
+            val session = connectClient().also { client = it }
 
-                _state.value = State.Activating
-                log("Starting AxManager on the target…")
-                client.shellCommand(targetStartScript(context.packageName)) { chunk ->
-                    val text = String(chunk, Charsets.UTF_8)
-                    output.append(text)
-                    text.lineSequence()
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() && !it.startsWith("AX_OTG_") }
-                        .forEach { log(it, ActivationLog.Level.OUTPUT) }
-                }
-
-                // TCP/IP follows the *target's* own TCP mode, asked while we still have its shell.
-                if (starterSucceeded(output.toString())) {
-                    applyTargetTcpMode(client, context.packageName)
-                }
+            _state.value = State.Activating
+            log("Starting AxManager on the target…")
+            session.shellCommand(targetStartScript(context.packageName)) { chunk ->
+                val text = String(chunk, Charsets.UTF_8)
+                output.append(text)
+                text.lineSequence()
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() && !it.startsWith("AX_OTG_") }
+                    .forEach { log(it, ActivationLog.Level.OUTPUT) }
             }
         }
 
+        // The starter's exit marker decides, not the link: it can break after the starter
+        // finished (a lost close), and the target is active then all the same.
         val text = output.toString()
-        _state.value = when {
-            result.isFailure -> {
-                Log.w(TAG, "OTG activation failed", result.exceptionOrNull())
-                log("Connection lost: ${result.exceptionOrNull()?.message ?: "unknown error"}", ActivationLog.Level.ERROR)
-                State.Failed(Reason.CONNECTION_FAILED)
+        if (starterSucceeded(text)) {
+            runCatching {
+                val session = if (result.isSuccess) client!! else {
+                    log("The link broke after the starter finished — reconnecting for the TCP step", ActivationLog.Level.WARN)
+                    connectClient()
+                }
+                // TCP/IP follows the *target's* own TCP mode.
+                applyTargetTcpMode(session, context.packageName)
+            }.onFailure {
+                log("Couldn't apply the target's TCP mode: ${it.message}", ActivationLog.Level.WARN)
             }
+        }
+        transport.close()
 
+        _state.value = when {
             MARK_NOT_INSTALLED in text || MARK_NO_STARTER in text -> {
                 log("AxManager isn't installed on the target", ActivationLog.Level.ERROR)
                 State.Failed(Reason.NOT_INSTALLED)
@@ -209,6 +232,14 @@ object OtgActivator {
                 State.Success
             }
 
+            result.isFailure -> {
+                Log.w(TAG, "OTG activation failed", result.exceptionOrNull())
+                log("Connection lost: ${result.exceptionOrNull()?.message ?: "unknown error"}", ActivationLog.Level.ERROR)
+                // Gone from the bus = the target dropped the link (e.g. adbd restarted); still here = host-side error.
+                log("Target still attached: ${usbManager.deviceList.containsKey(device.deviceName)}")
+                State.Failed(Reason.CONNECTION_FAILED)
+            }
+
             else -> {
                 log("The starter didn't finish successfully", ActivationLog.Level.ERROR)
                 State.Failed(Reason.START_FAILED)
@@ -216,27 +247,33 @@ object OtgActivator {
         }
     }
 
+    /** Ends the `tcpip:` read once adbd has said it's restarting. */
+    private class TcpSwitchAcknowledged : Exception()
+
     private fun starterSucceeded(output: String): Boolean =
         MARK_NOT_INSTALLED !in output && MARK_NO_STARTER !in output &&
                 output.substringAfter(MARK_EXIT, "").trim().startsWith("0")
 
     /**
      * Reads the target's TCP mode from its AxManager (AxManagerProvider answers adb's shell) and,
-     * if it's on, switches the target's adbd to TCP on the target's own port. The server we just
-     * started has detached from adbd, so the adbd restart this causes doesn't touch it.
+     * if it's on and adbd isn't on that port yet, switches the target's adbd to TCP on the
+     * target's own port. The server we just started has detached from adbd, so the adbd restart
+     * this causes doesn't touch it.
      */
     private fun applyTargetTcpMode(client: AdbClient, packageName: String) {
         val reply = StringBuilder()
         runCatching {
             client.shellCommand(
                 "content call --uri content://$packageName.server " +
-                        "--method ${AxManagerProvider.METHOD_GET_TCP_CONFIG} 2>&1"
+                        "--method ${AxManagerProvider.METHOD_GET_TCP_CONFIG} 2>&1; " +
+                        "echo $MARK_TCP_ACTIVE\$(getprop service.adb.tcp.port)"
             ) { reply.append(String(it, Charsets.UTF_8)) }
         }
 
         val text = reply.toString()
         val mode = Regex("${AxManagerProvider.KEY_TCP_MODE}=(true|false)").find(text)?.groupValues?.get(1)
         val port = Regex("${AxManagerProvider.KEY_TCP_PORT}=(\\d+)").find(text)?.groupValues?.get(1)?.toIntOrNull()
+        val activePort = Regex("$MARK_TCP_ACTIVE(\\d+)").find(text)?.groupValues?.get(1)?.toIntOrNull()
 
         when {
             mode == null -> {
@@ -253,14 +290,24 @@ object OtgActivator {
                 log("Target's TCP port isn't valid ($port) — leaving its ADB on USB", ActivationLog.Level.WARN)
                 return
             }
+
+            activePort == port -> {
+                log("Target's ADB already listens on TCP port $port", ActivationLog.Level.SUCCESS)
+                return
+            }
         }
 
         log("Target's TCP mode is on — switching its ADB to TCP port $port…")
         val ack = StringBuilder()
         try {
-            client.command("tcpip:$port") { ack.append(String(it, Charsets.UTF_8)) }
+            client.command("tcpip:$port") {
+                ack.append(String(it, Charsets.UTF_8))
+                // adbd restarts right after this and drops USB for a moment: no CLSE will come,
+                // so stop reading now instead of waiting on a link that's gone.
+                if (ack.contains("restarting", ignoreCase = true)) throw TcpSwitchAcknowledged()
+            }
         } catch (e: Exception) {
-            // adbd restarts right after acknowledging, which drops this USB link — expected.
+            // The acknowledgement above, or the link dropping as adbd restarts — both expected.
         }
         if (ack.contains("restarting", ignoreCase = true)) {
             log("Target's ADB now listens on TCP port $port", ActivationLog.Level.SUCCESS)
@@ -311,6 +358,15 @@ object OtgActivator {
             )
             usbManager.requestPermission(device, pending)
         }
+    }
+
+    /** "Vendor Product (VID:PID) [class/subclass/protocol, …]" — interfaces in hex. */
+    private fun UsbDevice.describe(): String {
+        val interfaces = (0 until interfaceCount).map { getInterface(it) }.joinToString {
+            "%02X/%02X/%02X".format(it.interfaceClass, it.interfaceSubclass, it.interfaceProtocol)
+        }
+        val name = listOfNotNull(manufacturerName, productName ?: deviceName).joinToString(" ")
+        return "$name (${"%04X:%04X".format(vendorId, productId)}) [$interfaces]"
     }
 
     private fun UsbDevice.adbInterface(): UsbInterface? =
