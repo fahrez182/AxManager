@@ -15,9 +15,11 @@ import frb.axeron.adb.AdbProtocol.A_STLS_VERSION
 import frb.axeron.adb.AdbProtocol.A_VERSION
 import frb.axeron.adb.AdbProtocol.A_WRTE
 import rikka.core.util.BuildUtils
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -25,6 +27,9 @@ import java.nio.ByteOrder
 import javax.net.ssl.SSLSocket
 
 private const val TAG = "AdbClient"
+
+/** adb's own payload ceiling; anything larger in a header is garbage, not data. */
+private const val MAX_PAYLOAD = 1024 * 1024
 
 /**
  * Minimal ADB host-side client. Talks to adbd over TCP ([host]:[port], TLS when adbd asks for it)
@@ -112,29 +117,40 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
     /**
      * USB handshake: RSA challenge only. If adbd doesn't trust our key yet it asks for the public
      * key and shows "Allow USB debugging?" on the target; the next read waits for that answer.
+     *
+     * Unlike TCP, a USB pipe outlives the session: adbd may still hold packets for a host that
+     * gave up (a CNXN sent after a late "Allow", a stray WRTE). Those are drained first, and
+     * anything else that isn't part of the handshake is skipped instead of taken as the reply.
      */
     private fun connectViaUsb() {
+        val usb = usbTransport!!
+        val stale = usb.drain()
+        if (stale > 0) usbLog("Discarded $stale stale bytes from an earlier session")
+
         usbLog("Sending connect request to the target…")
         write(A_CNXN, A_VERSION, A_MAXDATA, "host::")
 
-        var message = read()
-        if (message.command == A_STLS) error("Unexpected TLS negotiation over USB")
+        var signed = false
+        while (true) {
+            val message = read()
+            when (message.command) {
+                A_CNXN -> break
+                A_STLS -> error("Unexpected TLS negotiation over USB")
+                A_AUTH -> {
+                    if (message.arg0 != ADB_AUTH_TOKEN) error("USB auth: expected token, got ${message.arg0}")
+                    if (!signed) {
+                        write(A_AUTH, ADB_AUTH_SIGNATURE, 0, key.sign(message.data))
+                        signed = true
+                    } else {
+                        // A second token means our signature didn't match a trusted key.
+                        usbLog("Key not trusted yet — tap \"Allow\" on the target's USB debugging dialog")
+                        write(A_AUTH, ADB_AUTH_RSAPUBLICKEY, 0, key.adbPublicKey)
+                    }
+                }
 
-        if (message.command == A_AUTH) {
-            if (message.arg0 != ADB_AUTH_TOKEN) error("USB auth: expected token, got ${message.arg0}")
-            write(A_AUTH, ADB_AUTH_SIGNATURE, 0, key.sign(message.data))
-
-            message = read()
-            if (message.command != A_CNXN) {
-                usbLog("Key not trusted yet — tap \"Allow\" on the target's USB debugging dialog")
-                write(A_AUTH, ADB_AUTH_RSAPUBLICKEY, 0, key.adbPublicKey)
-                message = read()
-            } else {
-                usbLog("Key already trusted by the target")
+                else -> usbLog("Skipping a packet left from an earlier session")
             }
         }
-
-        if (message.command != A_CNXN) error("USB: expected A_CNXN")
         usbLog("Connected to the target's adbd")
     }
 
@@ -147,15 +163,35 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         command("shell:$cmd", listener)
     }
 
+    /** Local stream ids, one per [command]: lets a late packet of an earlier stream be told apart. */
+    private var lastLocalId = 0
+
     fun command(cmd: String, listener: ((ByteArray) -> Unit)? = null) {
-        val localId = 1
+        val localId = ++lastLocalId
         write(A_OPEN, localId, 0, cmd)
 
+        // adbd may still send a packet for the previous stream (e.g. a second CLSE after ours);
+        // it's addressed to that stream's id, not this one.
         var message = read()
+        while (message.command in intArrayOf(A_OKAY, A_WRTE, A_CLSE) && message.arg1 != localId) {
+            Log.d(TAG, "Ignoring a late packet for stream ${message.arg1}")
+            message = read()
+        }
         when (message.command) {
             A_OKAY -> {
+                val streamId = message.arg0
                 while (true) {
-                    message = read()
+                    message = try {
+                        read()
+                    } catch (e: OrphanPayload) {
+                        // Its header was lost: deliver the output anyway and acknowledge it, or
+                        // adbd waits for this OKAY forever.
+                        usbLog("Recovered ${e.payload.size} output bytes whose header was lost")
+                        listener?.invoke(e.payload)
+                        write(A_OKAY, localId, streamId)
+                        continue
+                    }
+                    if (message.arg1 != localId) continue
                     val remoteId = message.arg0
                     if (message.command == A_WRTE) {
                         if (message.data_length > 0) {
@@ -188,7 +224,14 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         val bytes = message.toByteArray()
         val usb = usbTransport
         if (usb != null) {
-            usb.write(bytes)
+            // Header and payload go as separate transfers, like adb's own host does: adbd before
+            // Android 10 reads exactly 24 header bytes per transfer, so a combined one loses the
+            // payload and adbd stalls waiting for it.
+            usb.write(bytes.copyOfRange(0, AdbMessage.HEADER_LENGTH))
+            if (bytes.size > AdbMessage.HEADER_LENGTH) {
+                usb.write(bytes.copyOfRange(AdbMessage.HEADER_LENGTH, bytes.size))
+            }
+            usbLog("→ ${message.toStringShort().substringBefore(", data=")}")
         } else {
             outputStream.write(bytes)
             outputStream.flush()
@@ -209,6 +252,16 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         val dataLength = buffer.int
         val checksum = buffer.int
         val magic = buffer.int
+        // Logged before the payload read, so a stalled payload still shows which header announced it.
+        if (usb != null) {
+            usbLog("← ${AdbMessage(command, arg0, arg1, dataLength, checksum, magic, null).toStringShort().substringBefore(", data=")}")
+        }
+        // A bad magic means we're reading payload bytes as a header; never allocate whatever
+        // "length" those bytes spell.
+        if (!isHeader(header)) {
+            if (usb != null) throw OrphanPayload(collectOrphanPayload(usb, header))
+            throw IOException("ADB stream out of sync: bad header (command=0x%08X, length=$dataLength)".format(command))
+        }
         val data: ByteArray?
         if (dataLength >= 0) {
             data = ByteArray(dataLength)
@@ -222,6 +275,35 @@ class AdbClient(private val key: AdbKey, private val port: Int, private val host
         Log.d(TAG, "read ${message.toStringShort()}")
         return message
     }
+
+    private fun isHeader(bytes: ByteArray): Boolean {
+        if (bytes.size < AdbMessage.HEADER_LENGTH) return false
+        val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val command = buffer.getInt(0)
+        val dataLength = buffer.getInt(12)
+        return buffer.getInt(20) == command.inv() && dataLength in 0..MAX_PAYLOAD
+    }
+
+    /**
+     * Over USB some host/adbd pairs lose a WRTE header while its payload still arrives (seen
+     * on the first output of a shell, Android 9 target). adbd sends every header as its own
+     * packet, so what we took for a header starts that payload: gather it up to its last
+     * (short) packet, stopping early if the next packet is a real header.
+     */
+    private fun collectOrphanPayload(usb: UsbAdbTransport, start: ByteArray): ByteArray {
+        val payload = ByteArrayOutputStream()
+        payload.write(start)
+        payload.write(usb.takeRestOfPacket())
+        while (usb.lastPacketFull) {
+            val next = usb.peek(AdbMessage.HEADER_LENGTH, 200) ?: break
+            if (isHeader(next)) break
+            payload.write(usb.takeRestOfPacket())
+        }
+        return payload.toByteArray()
+    }
+
+    /** Stream payload that reached us without its WRTE header (USB only). */
+    private class OrphanPayload(val payload: ByteArray) : IOException("ADB payload without a header")
 
     override fun close() {
         usbTransport?.let {
