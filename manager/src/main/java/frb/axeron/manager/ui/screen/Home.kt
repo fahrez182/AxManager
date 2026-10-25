@@ -102,7 +102,6 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.api.Axeron
 import frb.axeron.manager.BuildConfig
 import frb.axeron.manager.R
 import frb.axeron.manager.ui.component.AxCard
@@ -127,6 +126,8 @@ import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.Mode
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
 import frb.axeron.shared.AxeronApiConstant.server.VERSION_CODE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -146,6 +147,8 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
     val isRunning = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Running
 
     val reigniteSheet = rememberReigniteSheet()
+    val shutdownTitle = stringResource(R.string.server_shutdown)
+    val restartTitle = stringResource(R.string.server_restart)
     val scope = rememberCoroutineScope()
     var showPowerDialog by remember { mutableStateOf(false) }
 
@@ -161,8 +164,21 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                     }
                 }
             },
-            onShutdown = { Axeron.destroy() },
-            onRestart = { Axeron.relaunchServer() }
+            onShutdown = {
+                scope.launch {
+                    reigniteSheet.run(shutdownTitle) { activateViewModel.shutdownServer(it) }
+                }
+            },
+            onRestart = {
+                scope.launch {
+                    val success = reigniteSheet.run(restartTitle) {
+                        activateViewModel.restartServer(it)
+                    }
+                    if (success) {
+                        pluginViewModel.fetchModuleList()
+                    }
+                }
+            }
         )
     }
 
@@ -416,7 +432,10 @@ fun StatusCard(
                             // Every state gets a badge, like the server mode while running.
                             val colors = MaterialTheme.colorScheme
                             when {
-                                isRunning -> ModeBadge(axeronInfo.serverInfo.getMode())
+                                isRunning -> ModeBadge(
+                                    axeronInfo.serverInfo.getMode(),
+                                    axeronInfo.serverInfo.uid
+                                )
                                 isUpdating -> StatusBadge(
                                     text = "v${axeronInfo.getVersionCode()} → v$VERSION_CODE",
                                     container = colors.primary,
@@ -474,10 +493,12 @@ fun StatusCard(
                         }
                     }
 
-                    WakeLockStrip(
-                        held = activateViewModel.wakeLockHeld,
-                        onChange = activateViewModel::setWakeLock
-                    )
+                    if (activateViewModel.wakeLockUsable) {
+                        WakeLockStrip(
+                            held = activateViewModel.wakeLockHeld,
+                            onChange = activateViewModel::setWakeLock
+                        )
+                    }
                     ServiceInfoStrip(
                         uptime = formatUptime(
                             time,
@@ -485,7 +506,6 @@ fun StatusCard(
                             stringResource(R.string.day_plural)
                         ),
                         pid = axeronInfo.serverInfo.pid.toString(),
-                        uid = axeronInfo.serverInfo.uid.toString(),
                         version = axeronInfo.getVersionCode().toString()
                     )
                 }
@@ -542,11 +562,11 @@ private fun HeaderActionsPill(showPower: Boolean, onPowerClick: () -> Unit) {
 }
 
 /**
- * Filled pill for the server mode. Also hosts the hidden crash test (tap 8x quickly),
- * since tapping the card itself now opens the activation screen.
+ * Filled pill with the server's uid, colored by its mode. Also hosts the hidden crash test (tap
+ * 8x quickly), since tapping the card itself now opens the activation screen.
  */
 @Composable
-private fun ModeBadge(mode: Mode) {
+private fun ModeBadge(mode: Mode, uid: Int) {
     val scope = rememberCoroutineScope()
     var debugClickCount by remember { mutableIntStateOf(0) }
     var debugJob: Job? by remember { mutableStateOf(null) }
@@ -555,8 +575,8 @@ private fun ModeBadge(mode: Mode) {
         Mode.ROOT -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
         else -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
     }
-    StatusBadge(
-        text = mode.label,
+    UidBadge(
+        uid = uid,
         container = container,
         content = content,
         modifier = Modifier.clickable(
@@ -574,6 +594,54 @@ private fun ModeBadge(mode: Mode) {
             }
         }
     )
+}
+
+/**
+ * Two-part pill: a tinted "UID" label segment, a hairline, then the uid itself in bold
+ * monospace, so the number reads as the value and the label as its caption.
+ */
+@Composable
+private fun UidBadge(uid: Int, container: Color, content: Color, modifier: Modifier = Modifier) {
+    Row(
+        modifier = Modifier
+            .height(IntrinsicSize.Min)
+            .clip(CircleShape)
+            .background(container)
+            .then(modifier),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .background(content.copy(alpha = 0.16f))
+                .padding(start = 10.dp, end = 7.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "UID",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.8.sp,
+                color = content.copy(alpha = 0.8f),
+                maxLines = 1
+            )
+        }
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .fillMaxHeight()
+                .background(content.copy(alpha = 0.35f))
+        )
+        Text(
+            text = uid.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = FontFamily.Monospace,
+            color = content,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 7.dp, end = 10.dp, top = 3.dp, bottom = 3.dp)
+        )
+    }
 }
 
 /** Filled pill next to the status title (server mode, "Stopped", version change…). */
@@ -788,16 +856,14 @@ private fun WakeLockStrip(held: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** AXGC-style sub card: uptime, PID, UID and server version in one strip with dividers. */
+/** AXGC-style sub card: uptime, PID and server version in one strip with dividers. */
 @Composable
-private fun ServiceInfoStrip(uptime: String, pid: String, uid: String, version: String) {
+private fun ServiceInfoStrip(uptime: String, pid: String, version: String) {
     StatusStrip {
         StripIconText(icon = Icons.Outlined.Timer, text = uptime, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.weight(1f))
         InlineDivider(height = 12.dp)
         StripItem(label = "PID", value = pid)
-        InlineDivider(height = 12.dp)
-        StripItem(label = "UID", value = uid)
         InlineDivider(height = 12.dp)
         StripItem(label = "Ver", value = version)
     }

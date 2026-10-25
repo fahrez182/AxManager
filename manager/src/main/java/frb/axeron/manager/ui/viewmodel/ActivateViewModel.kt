@@ -23,6 +23,7 @@ import frb.axeron.adb.AdbPairingService
 import frb.axeron.adb.util.AdbEnvironment
 import frb.axeron.api.Axeron
 import frb.axeron.api.AxeronInfo
+import frb.axeron.api.AxeronPluginService
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
@@ -30,6 +31,7 @@ import frb.axeron.manager.adb.ActivationLog
 import frb.axeron.manager.adb.AdbStarter
 import frb.axeron.manager.adb.AdbStarter.stopTcp
 import frb.axeron.manager.adb.AdbStateInfo
+import frb.axeron.manager.ui.component.ActionLog
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.CompletableDeferred
@@ -84,12 +86,21 @@ class ActivateViewModel : ViewModel() {
         applyWakeLock(enabled)
     }
 
+    /**
+     * False once the server was asked to hold its wakelock and doesn't: its acquire failed (a
+     * ROM or mode that refuses it), so the toggle has nothing to switch. While it is off there
+     * is no way to tell, and the toggle stays.
+     */
+    var wakeLockUsable by mutableStateOf(true)
+        private set
+
     private fun applyWakeLock(enabled: Boolean) {
         viewModelScope.launch {
             wakeLockHeld = withContext(Dispatchers.IO) {
                 Axeron.setWakeLock(enabled)
                 Axeron.isWakeLockHeld()
             }
+            wakeLockUsable = !enabled || wakeLockHeld
         }
     }
 
@@ -131,6 +142,73 @@ class ActivateViewModel : ViewModel() {
                     .getOrDefault(false)
             }
         }
+    }
+
+    /** The flag as it is on disk now, not as last shown. */
+    private fun readStopPluginsFlag(): Boolean =
+        runCatching { Axeron.newFileService()?.exists(stopPluginsFlag()) == true }.getOrDefault(false)
+
+    /**
+     * Stops the server from the power menu. With the stop-plugins setting on, the plugins are
+     * stopped first, in [log] and cancellable, which leaves the death watchdog nothing to do.
+     */
+    suspend fun shutdownServer(log: ActionLog): Boolean = withContext(Dispatchers.IO) {
+        if (readStopPluginsFlag() && !AxeronPluginService.stopAllPlugins(log::out, log::err)) {
+            return@withContext false
+        }
+        log.setCancellable(false)
+        log.out("- Stopping the server\n")
+        Axeron.destroy()
+        log.out("- Server stopped\n")
+        true
+    }
+
+    /**
+     * Restarts the server from the power menu, then ignites in [log]. With the stop-plugins
+     * setting on, the plugins are stopped before the old server goes: left to its death
+     * watchdog, they would be killed while the new server's igniter already skips them as
+     * running, and stay stopped. Cancel is off while the server is replaced, as a starter cut
+     * short after killing the old server leaves none.
+     */
+    suspend fun restartServer(log: ActionLog): Boolean = withContext(Dispatchers.IO) {
+        if (readStopPluginsFlag() && !AxeronPluginService.stopAllPlugins(log::out, log::err)) {
+            return@withContext false
+        }
+
+        log.setCancellable(false)
+        val old = Axeron.getBinder()
+        val received = CompletableDeferred<Unit>()
+        val failed = CompletableDeferred<Unit>()
+        // A new binder, not the old server pushing its own again.
+        val listener = Axeron.OnBinderReceivedListener {
+            if (Axeron.getBinder() !== old) received.complete(Unit)
+        }
+        Axeron.addBinderReceivedListener(listener)
+        // The ignite below runs in view instead of the one the new binder would start.
+        Axeron.suppressAutoIgnite = true
+        val up = try {
+            Axeron.relaunchServer({ failed.complete(Unit) }) { line, error ->
+                if (error) log.err(line) else log.out(line)
+            }
+            withTimeoutOrNull(UPDATE_TIMEOUT) {
+                merge(flow { received.await(); emit(true) }, flow { failed.await(); emit(false) })
+                    .first()
+            } == true
+        } finally {
+            Axeron.removeBinderReceivedListener(listener)
+        }
+        if (!up) {
+            Axeron.suppressAutoIgnite = false
+            log.err(
+                if (failed.isCompleted) "! The starter can't be run from here: start the server again\n"
+                else "! No new server within ${UPDATE_TIMEOUT / 1000}s\n"
+            )
+            return@withContext false
+        }
+        log.out("- Server is up\n")
+
+        log.setCancellable(true)
+        AxeronPluginService.igniteSuspendService(onStdout = log::out, onStderr = log::err)
     }
 
     fun updateStopPluginsWithServer(enable: Boolean) {

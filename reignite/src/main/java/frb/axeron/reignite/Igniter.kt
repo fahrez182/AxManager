@@ -51,7 +51,10 @@ object Igniter {
     fun main(args: Array<String>) {
         if (args.firstOrNull() == ARG_STOP_ALL) {
             DdmHandleAppName.setAppName("axeron_plugin_stopper", 0)
-            stopAllPlugins()
+            println("AXERON Plugin Manager ($VERSION)")
+            println("- Stopping all plugins")
+            if (!stopAllPlugins()) println(" - none running")
+            println("- Completed")
             kotlin.system.exitProcess(0)
         }
 
@@ -271,9 +274,10 @@ object Igniter {
      */
     private fun stopAllPlugins() = stopProcesses("all plugins", confine = true) { allPluginPids() }
 
-    private fun stopProcesses(label: String, confine: Boolean = false, scan: () -> List<Int>) {
+    /** False when there was nothing to stop. */
+    private fun stopProcesses(label: String, confine: Boolean = false, scan: () -> List<Int>): Boolean {
         var pids = scan()
-        if (pids.isEmpty()) return
+        if (pids.isEmpty()) return false
         val known = HashSet(pids)
         println(" - stopping $label: ${pids.joinToString(" ")}")
         pids.forEach { signal(it, OsConstants.SIGTERM) }
@@ -282,11 +286,12 @@ object Igniter {
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(100)
             pids = if (confine) confined(scan(), known) else scan()
-            if (pids.isEmpty()) return
+            if (pids.isEmpty()) return true
         }
 
         println(" - killing $label: ${pids.joinToString(" ")}")
         pids.forEach { signal(it, OsConstants.SIGKILL) }
+        return true
     }
 
     /**
