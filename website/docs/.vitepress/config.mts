@@ -60,7 +60,7 @@ export default defineConfig({
           { text: "Activate", link: "/activate" },
           {
             text: "Download",
-            link: "https://github.com/fahrez182/AxManager/releases",
+            link: "/download",
           },
         ],
         sidebar: [
@@ -117,7 +117,7 @@ export default defineConfig({
           { text: "插件", link: "/zh/plugin/what-is-plugin" },
           {
             text: "下载",
-            link: "https://github.com/fahrez182/AxManager/releases",
+            link: "/zh/download",
           },
         ],
         sidebar: [
