@@ -14,6 +14,9 @@ hero:
       text: Get Started
       link: /guide/what-is-axeron-manager
     - theme: alt
+      text: Activate
+      link: /activate
+    - theme: alt
       text: View on GitHub
       link: https://github.com/fahrez182/AxManager
     - theme: alt

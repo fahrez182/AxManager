@@ -57,12 +57,19 @@ export default defineConfig({
         nav: [
           { text: "Guide", link: "/guide/what-is-axeron-manager" },
           { text: "Plugin", link: "/plugin/what-is-plugin" },
+          { text: "Activate", link: "/activate" },
           {
             text: "Download",
             link: "https://github.com/fahrez182/AxManager/releases",
           },
         ],
         sidebar: [
+          {
+            text: "Activation",
+            items: [
+              { text: withIcon("usb", "Activate from the Browser"), link: "/activate" },
+            ],
+          },
           {
             text: "Guide",
             items: [
