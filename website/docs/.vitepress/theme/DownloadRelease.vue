@@ -3,31 +3,10 @@
 // in the browser, so the download starts here instead of on GitHub's release page.
 import { computed, onMounted, ref } from "vue";
 import { useData } from "vitepress";
+import { RELEASES_PAGE, latestOf, releases as fetchReleases, type Asset, type Release } from "./github";
 
-const REPO = "fahrez182/AxManager";
-const RELEASES_PAGE = `https://github.com/${REPO}/releases`;
-// body_html is the release notes as GitHub renders (and sanitizes) them.
-const API = `https://api.github.com/repos/${REPO}/releases?per_page=15`;
-// Unauthenticated calls get 60 an hour per IP; reloads within this window reuse the last answer.
-const CACHE_KEY = "ax-releases";
-const CACHE_MS = 10 * 60 * 1000;
-
-interface Asset {
-  name: string;
-  size: number;
-  download_count: number;
-  browser_download_url: string;
-}
-interface Release {
-  tag_name: string;
-  name: string;
-  html_url: string;
-  prerelease: boolean;
-  draft: boolean;
-  published_at: string;
-  body_html?: string;
-  assets: Asset[];
-}
+// Older releases listed below the latest one.
+const OLDER_SHOWN = 15;
 
 // In the order the list shows them.
 const ABIS = ["arm64-v8a", "armeabi-v7a", "x86_64", "universal"];
@@ -83,8 +62,8 @@ const t = computed(() => (lang.value.startsWith("zh") ? STRINGS.zh : STRINGS.en)
 const releases = ref<Release[]>([]);
 const state = ref<"loading" | "ready" | "failed">("loading");
 
-const latest = computed(() => releases.value.find((r) => !r.prerelease) ?? releases.value[0]);
-const older = computed(() => releases.value.filter((r) => r !== latest.value));
+const latest = computed(() => latestOf(releases.value));
+const older = computed(() => releases.value.filter((r) => r !== latest.value).slice(0, OLDER_SHOWN));
 
 // The app's own APKs are AxManager_<version>-release[-<abi>]_<build>.apk; anything else
 // attached to a release (demo apps, sample plugins) goes under Extras.
@@ -119,33 +98,11 @@ function totalDownloads(r: Release) {
   return r.assets.reduce((sum, a) => sum + a.download_count, 0);
 }
 
-function readCache(): Release[] | undefined {
-  try {
-    const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) ?? "null");
-    if (cached && Date.now() - cached.at < CACHE_MS) return cached.releases;
-  } catch {}
-  return undefined;
-}
-function writeCache(list: Release[]) {
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), releases: list }));
-  } catch {}
-}
-
 onMounted(async () => {
-  const cached = readCache();
-  if (cached) {
-    releases.value = cached;
-    state.value = "ready";
-    return;
-  }
   try {
-    const res = await fetch(API, { headers: { Accept: "application/vnd.github.html+json" } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const list = ((await res.json()) as Release[]).filter((r) => !r.draft);
+    const list = await fetchReleases();
     if (!list.length) throw new Error("no releases");
     releases.value = list;
-    writeCache(list);
     state.value = "ready";
   } catch {
     state.value = "failed";
