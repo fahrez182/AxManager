@@ -357,11 +357,7 @@ open class AxeronService :
 
             // Pastikan PATH sistem tetap ada sebagai fallback
             val systemPath = System.getenv("PATH") ?: "/sbin:/system/bin:/system/xbin"
-            val axeronPath = "\$AXERONXBIN:\$AXERONBIN"
-            builder.put(
-                "PATH",
-                if (preferSystemBinaries) "$systemPath:$axeronPath" else "$axeronPath:$systemPath"
-            )
+            builder.put("PATH", orderPath((axeronBinDirs() + systemPath).joinToString(":")))
 
             if (managerInfo != null) {
                 builder.put("AXERONLIB", managerInfo.nativeLibraryDir)
@@ -385,6 +381,25 @@ open class AxeronService :
             val built = builder.build()
             cachedDefaultEnv = built
             return built
+        }
+
+        /** AXERONXBIN and AXERONBIN, in their default order. */
+        private fun axeronBinDirs(): List<String> = listOf(
+            PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_EXTERNAL_BINARY).absolutePath,
+            PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_BINARY).absolutePath
+        )
+
+        /**
+         * [path] with AxManager's bin dirs in front of the rest, or behind it when system binaries
+         * are preferred; each entry kept once. Also run on the user's env: a PATH saved there (often
+         * a copy of the composed one) must not undo the setting, and one inherited from a server
+         * started inside an AxManager shell already holds these dirs.
+         */
+        private fun orderPath(path: String): String {
+            val ours = axeronBinDirs()
+            val rest = path.split(':').filter { it.isNotEmpty() && it !in ours }.distinct()
+            val present = ours.filter { it in path.split(':') }
+            return (if (preferSystemBinaries) rest + present else present + rest).joinToString(":")
         }
     }
 
@@ -640,6 +655,9 @@ open class AxeronService :
                 else -> break
             }
         }
+        // Service's init already built the env, before PackageManager was waited for: at boot it
+        // found no manager, so it lacks AXERONLIB and LD_LIBRARY_PATH. Built again now.
+        invalidateEnvironment()
 
         if (axCompanion.exists()) {
             shizuku = ShizukuServiceIntercept(this)
@@ -716,9 +734,13 @@ open class AxeronService :
             // plugin's, so stopping it would stop them all. Only plugin code gets it.
             .remove("AXERON_PLUGIN")
             .build()
+        // The user's PATH wins over the composed one, but not over preferSystemBinaries.
+        val ordered = merged.envMap["PATH"]?.let {
+            Environment(HashMap(merged.envMap).apply { put("PATH", orderPath(it)) }, merged.isNewEnv)
+        } ?: merged
 
-        cachedMergedEnv = merged
-        return merged
+        cachedMergedEnv = ordered
+        return ordered
     }
 
     private fun getNewEnvironment(): Environment {
