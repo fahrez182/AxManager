@@ -84,6 +84,9 @@ open class AxeronService :
         private const val MANAGER_UID_MISSING = Int.MIN_VALUE
         private const val MANAGER_UID_LOOKUP_FAILED = Int.MIN_VALUE + 1
 
+        // In AXERONDIR. Must match START_ENV_FILE in starter.cpp.
+        private const val START_ENV_FILE = "server_env"
+
         @JvmStatic
         fun main(args: Array<String>) {
             DdmHandleAppName.setAppName("axeron_server", 0)
@@ -94,6 +97,7 @@ open class AxeronService :
             // Before the service exists: its constructor already reads the root world's configs.
             if (Os.getuid() == 0) migrateRootWorld()
             ensureCacheDir(Os.getuid() == 0)
+            saveStartEnv(Os.getuid() == 0)
             val service = AxeronService()
             service.startAxsh()
             Looper.loop()
@@ -107,6 +111,33 @@ open class AxeronService :
             val cache = PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT_CACHE)
             if (!cache.isDirectory && !cache.mkdirs()) {
                 LOGGER.w("can't create %s, plugins get a missing TMPDIR", cache)
+            }
+        }
+
+        /**
+         * The env this server was started with, for the starter: run again from inside AxManager
+         * (a relaunch, the manager's root shell, a plugin's script) it has the env the server
+         * gives its children, and takes this one instead. The boot id comes first, on a line of
+         * its own, so one from before a reboot is left alone; then each `KEY=value`, NUL-ended.
+         */
+        private fun saveStartEnv(isRoot: Boolean) {
+            val dir = PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT)
+            try {
+                val bootId = File("/proc/sys/kernel/random/boot_id").readText().trim()
+                val data = buildString {
+                    append(bootId).append('\n')
+                    for ((key, value) in System.getenv()) {
+                        append(key).append('=').append(value).append('\u0000')
+                    }
+                }
+                // Written whole, then renamed: a starter never reads half of one.
+                val tmp = File(dir, "$START_ENV_FILE.tmp")
+                tmp.writeText(data)
+                if (!tmp.renameTo(File(dir, START_ENV_FILE))) {
+                    LOGGER.w("can't save the start env in %s", dir)
+                }
+            } catch (e: Throwable) {
+                LOGGER.w(e, "can't save the start env in %s", dir)
             }
         }
 
