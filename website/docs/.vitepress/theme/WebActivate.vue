@@ -33,6 +33,8 @@ const MAX_ATTEMPTS = 3;
 const REAPPEAR_MS = 15000;
 // Silence from the starter before the log says it is still waiting.
 const QUIET_MS = 15000;
+// How long the first command of a new session may take before it counts as dead.
+const PROBE_MS = 10000;
 
 function log(line: string) {
   lines.value.push(line);
@@ -44,6 +46,14 @@ function log(line: string) {
 // right after Allow is tapped, so it is common during authorization.
 function isUsbDrop(e: unknown): boolean {
   return e instanceof Error && (e.name === "NetworkError" || /transfer error/i.test(e.message));
+}
+
+// The session is gone and a reconnect may bring it back: the link dropped, or adbd restarted
+// and asked to authenticate again. That AUTH packet (0x48545541, "AUTH") arriving after the
+// handshake is what the library reports as "Unknown command: 48545541".
+function isSessionLost(e: unknown): boolean {
+  return isUsbDrop(e) ||
+    (e instanceof Error && (/Unknown command: 48545541/.test(e.message) || /USB connection lost/.test(e.message)));
 }
 
 // Polls for the device with [serial] until it is back (a dropped device returns as a new
@@ -81,7 +91,7 @@ async function connect() {
       state.value = "idle";
       return;
     }
-    log(`Selected ${device.name} (${device.serial})`);
+    log(`Selected ${device.name || "device"} (${device.serial})`);
     selected = device;
     await open(device);
   } catch (e) {
@@ -109,6 +119,7 @@ async function copyKillServer() {
 }
 
 async function open(device: AdbDaemonWebUsbDevice, attempt = 1) {
+  let candidate: Adb | undefined;
   try {
     const { AdbDaemonWebUsbDevice } = await import("@yume-chan/adb-daemon-webusb");
     const { Adb, AdbDaemonTransport } = await import("@yume-chan/adb");
@@ -118,14 +129,19 @@ async function open(device: AdbDaemonWebUsbDevice, attempt = 1) {
     try {
       connection = await device.connect();
     } catch (e) {
-      if (e instanceof AdbDaemonWebUsbDevice.DeviceBusyError) {
-        log(`The device is in use by another program, usually adb from Android Studio. Close Android Studio and other ADB tools, run \`${KILL_SERVER}\` on this computer, then try again.`);
+      if (!(e instanceof AdbDaemonWebUsbDevice.DeviceBusyError)) throw e;
+      // Any NetworkError while claiming reads as busy, including our own claim from a failed
+      // attempt on this page. Release it and claim once more before blaming another program.
+      await device.raw.close().catch(() => {});
+      try {
+        connection = await device.connect();
+      } catch (again) {
+        if (!(again instanceof AdbDaemonWebUsbDevice.DeviceBusyError)) throw again;
+        log(`Another program holds this phone's ADB interface: an adb server (Android Studio, scrcpy, a phone suite such as Mi PC Suite), or this page open in another tab. Close it, or run \`${KILL_SERVER}\` on this computer, then try again.`);
         deviceBusy.value = true;
-      } else {
-        log(`Can't open the device: ${e}`);
+        state.value = "failed";
+        return;
       }
-      state.value = "failed";
-      return;
     }
 
     log("Waiting for you to allow USB debugging on the device...");
@@ -134,22 +150,29 @@ async function open(device: AdbDaemonWebUsbDevice, attempt = 1) {
       connection,
       credentialStore: new AdbWebCredentialStore("AxManager Web"),
     });
-    adb.value = new Adb(transport);
-    deviceName.value = device.name;
-    log(`Connected to ${device.name}`);
+    candidate = new Adb(transport);
+    // Some phones reset adbd once more after saving the key, without the USB link going away:
+    // the session then dies on its first command. Find out now rather than at Activate.
+    await probe(candidate);
+
+    adb.value = candidate;
+    deviceName.value = device.name || device.serial;
+    log(`Connected to ${deviceName.value}`);
     state.value = "connected";
 
     transport.disconnected.then(() => {
       if (adb.value?.transport !== transport) return;
       adb.value = undefined;
       log("Device disconnected.");
-      if (state.value !== "done") state.value = "idle";
+      if (state.value !== "done" && state.value !== "activating") state.value = "idle";
     });
   } catch (e) {
-    adb.value?.close();
-    adb.value = undefined;
-    if (isUsbDrop(e) && attempt < MAX_ATTEMPTS) {
-      log(`The USB connection dropped (${e}). Phones often restart USB debugging right after Allow; waiting for it to come back...`);
+    await candidate?.close().catch(() => {});
+    if (adb.value === candidate) adb.value = undefined;
+    // Let go of the interface, or the next attempt (or Try again) finds it claimed.
+    await device.raw.close().catch(() => {});
+    if (isSessionLost(e) && attempt < MAX_ATTEMPTS) {
+      log(`The connection to the phone was reset (${e}). Phones often restart USB debugging right after Allow; waiting for it to come back...`);
       const again = await reappear(device.serial);
       if (again) {
         selected = again;
@@ -157,13 +180,24 @@ async function open(device: AdbDaemonWebUsbDevice, attempt = 1) {
         return open(again, attempt + 1);
       }
       log("The device didn't come back. Unplug and replug the cable, keep the phone unlocked, then press Connect again.");
-    } else if (isUsbDrop(e)) {
-      log(`The USB connection keeps dropping (${e}). Try another cable or port, keep both screens on, then press Connect again.`);
+    } else if (isSessionLost(e)) {
+      log(`The connection keeps getting reset (${e}). Try another cable or port, keep both screens on, then press Connect again.`);
     } else {
       log(`Connect failed: ${e}`);
     }
     state.value = "failed";
   }
+}
+
+// One harmless command through the new session; throws if the phone reset it meanwhile.
+async function probe(device: Adb) {
+  const reset = device.disconnected.then(() => {
+    throw new Error("USB connection lost");
+  });
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("USB connection lost: the phone stopped answering")), PROBE_MS),
+  );
+  await Promise.race([device.subprocess.noneProtocol.spawnWaitText("echo ok"), reset, timeout]);
 }
 
 async function disconnect() {
@@ -174,7 +208,7 @@ async function disconnect() {
   state.value = "idle";
 }
 
-async function activate() {
+async function activate(retried = false) {
   const device = adb.value;
   if (!device) return;
   state.value = "activating";
@@ -257,8 +291,19 @@ async function activate() {
       state.value = "failed";
     }
   } catch (e) {
-    if (lost || isUsbDrop(e)) {
-      log(`The USB connection dropped during activation (${e}). The server may have started anyway: press Connect, then Activate again, or open AxManager to check.`);
+    clearInterval(quiet);
+    if ((lost || isSessionLost(e)) && !retried && selected) {
+      // Running the starter again is safe: it kills an old server before starting a new one.
+      log(`The connection to the phone was reset during activation (${e}). Reconnecting to run it again...`);
+      await device.close().catch(() => {});
+      if (adb.value === device) adb.value = undefined;
+      state.value = "connecting";
+      await open(selected);
+      if (adb.value) return activate(true);
+      return;
+    }
+    if (lost || isSessionLost(e)) {
+      log(`The connection to the phone was reset during activation again (${e}). The server may have started anyway: open AxManager to check, or press Connect and Activate once more.`);
     } else {
       log(`Activate failed: ${e}`);
     }
@@ -290,7 +335,7 @@ async function activate() {
           Connect
         </button>
         <template v-else>
-          <button class="ax-activate-btn brand" :disabled="busy" @click="activate">Activate</button>
+          <button class="ax-activate-btn brand" :disabled="busy" @click="activate()">Activate</button>
           <button class="ax-activate-btn alt" :disabled="busy" @click="disconnect">Disconnect</button>
         </template>
       </div>
