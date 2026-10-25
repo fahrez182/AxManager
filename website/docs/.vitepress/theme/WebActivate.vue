@@ -27,9 +27,37 @@ let selected: AdbDaemonWebUsbDevice | undefined;
 const busy = computed(() => state.value === "connecting" || state.value === "activating");
 const connected = computed(() => adb.value !== undefined && state.value !== "idle" && state.value !== "connecting");
 
+// Reconnects after the USB link drops while authorizing, before giving up.
+const MAX_ATTEMPTS = 3;
+// How long a dropped device gets to come back.
+const REAPPEAR_MS = 15000;
+// Silence from the starter before the log says it is still waiting.
+const QUIET_MS = 15000;
+
 function log(line: string) {
   lines.value.push(line);
   nextTick(() => logEl.value?.scrollTo({ top: logEl.value.scrollHeight }));
+}
+
+// Chrome reports a USB link that went away mid-transfer as a NetworkError ("A transfer error
+// has occurred"), sometimes before any disconnect event. Many phones restart USB debugging
+// right after Allow is tapped, so it is common during authorization.
+function isUsbDrop(e: unknown): boolean {
+  return e instanceof Error && (e.name === "NetworkError" || /transfer error/i.test(e.message));
+}
+
+// Polls for the device with [serial] until it is back (a dropped device returns as a new
+// USBDevice, which Chrome still lets us open without the picker).
+async function reappear(serial: string): Promise<AdbDaemonWebUsbDevice | undefined> {
+  const { AdbDaemonWebUsbDeviceManager } = await import("@yume-chan/adb-daemon-webusb");
+  const deadline = Date.now() + REAPPEAR_MS;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const devices = await AdbDaemonWebUsbDeviceManager.BROWSER!.getDevices();
+    const found = devices.find((d) => d.serial === serial);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 onMounted(() => {
@@ -80,7 +108,7 @@ async function copyKillServer() {
   }
 }
 
-async function open(device: AdbDaemonWebUsbDevice) {
+async function open(device: AdbDaemonWebUsbDevice, attempt = 1) {
   try {
     const { AdbDaemonWebUsbDevice } = await import("@yume-chan/adb-daemon-webusb");
     const { Adb, AdbDaemonTransport } = await import("@yume-chan/adb");
@@ -118,9 +146,22 @@ async function open(device: AdbDaemonWebUsbDevice) {
       if (state.value !== "done") state.value = "idle";
     });
   } catch (e) {
-    log(`Connect failed: ${e}`);
     adb.value?.close();
     adb.value = undefined;
+    if (isUsbDrop(e) && attempt < MAX_ATTEMPTS) {
+      log(`The USB connection dropped (${e}). Phones often restart USB debugging right after Allow; waiting for it to come back...`);
+      const again = await reappear(device.serial);
+      if (again) {
+        selected = again;
+        log(`Reconnecting (attempt ${attempt + 1} of ${MAX_ATTEMPTS})...`);
+        return open(again, attempt + 1);
+      }
+      log("The device didn't come back. Unplug and replug the cable, keep the phone unlocked, then press Connect again.");
+    } else if (isUsbDrop(e)) {
+      log(`The USB connection keeps dropping (${e}). Try another cable or port, keep both screens on, then press Connect again.`);
+    } else {
+      log(`Connect failed: ${e}`);
+    }
     state.value = "failed";
   }
 }
@@ -134,13 +175,24 @@ async function disconnect() {
 }
 
 async function activate() {
-  if (!adb.value) return;
+  const device = adb.value;
+  if (!device) return;
   state.value = "activating";
-  const shell = adb.value.subprocess.noneProtocol;
+  const shell = device.subprocess.noneProtocol;
+  // A dropped USB link ends the shell's output without an exit code, or leaves a read waiting
+  // forever; racing every step against it says what happened instead.
+  let lost = false;
+  const disconnected = device.disconnected.then(() => {
+    lost = true;
+    throw new Error("USB connection lost");
+  });
+  disconnected.catch(() => {});
+  const step = <T,>(work: Promise<T>) => Promise.race([work, disconnected]);
+  let quiet: ReturnType<typeof setInterval> | undefined;
   try {
     // Same path the app shows under View Command: <apk dir>/lib/<abi>/libaxeron.so
-    const pmPath = (await shell.spawnWaitText(`pm path ${PACKAGE}`)).trim();
     log(`$ pm path ${PACKAGE}`);
+    const pmPath = (await step(shell.spawnWaitText(`pm path ${PACKAGE}`))).trim();
     log(pmPath || "(nothing)");
     const apk = pmPath.split("\n")[0]?.replace(/^package:/, "").trim();
     if (!apk) {
@@ -149,7 +201,7 @@ async function activate() {
       return;
     }
     const apkDir = apk.substring(0, apk.lastIndexOf("/"));
-    const starter = (await shell.spawnWaitText(`ls ${apkDir}/lib/*/libaxeron.so`)).trim().split("\n")[0];
+    const starter = (await step(shell.spawnWaitText(`ls ${apkDir}/lib/*/libaxeron.so`))).trim().split("\n")[0];
     if (!starter || !starter.endsWith("libaxeron.so")) {
       log(`Can't find libaxeron.so under ${apkDir}/lib. Try reinstalling AxManager.`);
       state.value = "failed";
@@ -157,34 +209,46 @@ async function activate() {
     }
 
     log(`$ ${starter}`);
-    const process = await shell.spawn(`${starter} 2>&1; echo "__AX_EXIT=$?"`);
+    const process = await step(shell.spawn(`${starter} 2>&1; echo "__AX_EXIT=$?"`));
     const reader = process.output.getReader();
     const decoder = new TextDecoder();
     let pending = "";
     let exitCode: number | undefined;
+    let lastOutput = Date.now();
+    quiet = setInterval(() => {
+      const seconds = Math.round((Date.now() - lastOutput) / 1000);
+      if (seconds >= QUIET_MS / 1000) log(`(no output from the starter for ${seconds} s, still waiting)`);
+    }, QUIET_MS);
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await step(reader.read());
       if (done) break;
+      lastOutput = Date.now();
       pending += decoder.decode(value, { stream: true });
       const parts = pending.split("\n");
       pending = parts.pop()!;
-      for (const line of parts) {
+      for (const raw of parts) {
+        // Older adbd runs the command on a PTY, which ends lines with \r\n.
+        const line = raw.replace(/\r$/, "");
         const exit = line.match(/^__AX_EXIT=(\d+)/);
         if (exit) exitCode = Number(exit[1]);
         else log(line);
       }
     }
-    if (pending) log(pending);
+    clearInterval(quiet);
+    if (pending) log(pending.replace(/\r$/, ""));
 
     if (exitCode !== 0) {
-      log(`Starter exited with ${exitCode ?? "no exit code"}.`);
+      log(exitCode === undefined
+        ? "The starter's output ended without an exit code."
+        : `Starter exited with ${exitCode}.`);
       state.value = "failed";
       return;
     }
 
     // The starter exits once it forked the server; check that the server stayed up.
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    const pid = (await shell.spawnWaitText(`pidof ${SERVER_NAME}`)).trim();
+    log(`$ pidof ${SERVER_NAME}`);
+    const pid = (await step(shell.spawnWaitText(`pidof ${SERVER_NAME}`))).trim();
     if (pid) {
       log(`${SERVER_NAME} is running (pid ${pid}).`);
       state.value = "done";
@@ -193,8 +257,14 @@ async function activate() {
       state.value = "failed";
     }
   } catch (e) {
-    log(`Activate failed: ${e}`);
+    if (lost || isUsbDrop(e)) {
+      log(`The USB connection dropped during activation (${e}). The server may have started anyway: press Connect, then Activate again, or open AxManager to check.`);
+    } else {
+      log(`Activate failed: ${e}`);
+    }
     state.value = "failed";
+  } finally {
+    clearInterval(quiet);
   }
 }
 </script>
