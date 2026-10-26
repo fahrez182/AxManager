@@ -1,0 +1,13 @@
+* Process manager
+* Shutdown, restart and reignite run in a log sheet you can copy; UID badge
+* Terminal: selection that survives scrolling, auto-scroll switch, overscroll
+* WebUI: KSU Next's API (file read/write/copy/move/remove, file streams, enableInsets, createShortcut, exit); back goes through the page's history
+* WebUI: app lists and labels load in plugins that ask for one app at a time
+* OTG: activation and TCP mode finish on the target; copyable OTG logs
+* A changed TCP port applies right away
+* Env: default env is locked, your env adds to PATH / LD_LIBRARY_PATH via $KEY, and now really saves
+* Fixes: ADB over USB with Android 9 targets, one starter at a time, server follows a reinstalled manager, axsh uses the PATH it's given, QuickShell no longer runs out of memory on output floods, App Detail UID stays visible
+* Website: activate from the browser over WebUSB, following AxManager's TCP mode; downloads page
+* Add G2 continuous corners to latest AxManager by @ItosEO in https://github.com/fahrez182/AxManager/pull/263
+* fix(updater): select a compatible release APK by device ABI by @ItosEO in https://github.com/fahrez182/AxManager/pull/264
+* fix(ui): treat only HTTP(S) banner URLs as remote images by @ItosEO in https://github.com/fahrez182/AxManager/pull/266
