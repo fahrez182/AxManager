@@ -238,7 +238,7 @@ const tests = [
   {
     id: "kernelsu-module",
     title: "kernelsu.js helper (ax://kernelsu.js/)",
-    desc: "Dynamic import of the bundled module, then exec(), spawn(cmd, args) and spawn(cmd, options).",
+    desc: "Dynamic import of the bundled module, then exec(), spawn(cmd, args) and spawn(cmd, options), moduleInfo(), listPackages() and getPackagesInfo().",
     async run(log) {
       let mod;
       try {
@@ -263,9 +263,22 @@ const tests = [
       text += `\nspawn(cmd, [args]): ${withArgs}` +
         `\nspawn(cmd, options): ${withOptions}` +
         `\nspawn(cmd, [args], options): ${withBoth}`;
+      // Parsed for the caller: arrays, not JSON strings.
+      const info = JSON.parse(mod.moduleInfo());
+      const users = mod.listPackages("user");
+      const pkgs = mod.getPackagesInfo(users.slice(0, 2));
+      const single = mod.getPackagesInfo(JSON.stringify(users.slice(0, 1)));
+      text += `\nmoduleInfo().id: ${info.id}` +
+        `\nlistPackages("user"): ${users.length} apps` +
+        `\ngetPackagesInfo([2 apps]): ${pkgs.map((p) => p.appLabel).join(", ")}` +
+        `\ngetPackagesInfo(JSON string): ${single.map((p) => p.appLabel).join(", ")}` +
+        `\nexports: ${["enableEdgeToEdge", "exit"].map((n) => `${n}=${typeof mod[n]}`).join(", ")}` +
+        `\nksu.exit: ${typeof ksu.exit}`;
       log(text);
       return r.errno === 0 && r.stdout.includes("from-module") &&
-        withArgs.includes("args-ok") && withOptions.includes("/system") && withBoth.includes("both-ok");
+        withArgs.includes("args-ok") && withOptions.includes("/system") && withBoth.includes("both-ok") &&
+        info.id === PLUGIN_ID && Array.isArray(users) && users.length > 0 &&
+        pkgs.length === 2 && pkgs.every((p) => p.appLabel) && single.length === 1;
     },
   },
   {
@@ -328,14 +341,12 @@ const tests = [
     async run(log, card) {
       const user = JSON.parse(ksu.listPackages("user"));
       const system = JSON.parse(ksu.listPackages("system"));
-      const all = JSON.parse(ksu.listAllPackages());
+      const all = JSON.parse(ksu.listPackages("all"));
       const sample = user.slice(0, 3);
       const info = JSON.parse(ksu.getPackagesInfo(JSON.stringify(sample)));
       const icons = JSON.parse(ksu.getPackagesIcons(JSON.stringify(sample), 96));
       log(
         `user: ${user.length}, system: ${system.length}, all: ${all.length}\n` +
-        `listUserPackages: ${JSON.parse(ksu.listUserPackages()).length}, ` +
-        `listSystemPackages: ${JSON.parse(ksu.listSystemPackages()).length}\n` +
         `getPackagesInfo:\n${JSON.stringify(info, null, 2)}`,
       );
       const box = card.querySelector(".icons");
@@ -351,9 +362,112 @@ const tests = [
         add(`ax://package.icon/${pkg}`, "ax://");
         add(`ksu://icon/${pkg}`, "ksu://");
       });
-      return all.length === user.length + system.length && info.every((p) => !p.error);
+      const unlabeled = info.filter((p) => !p.appLabel || p.appLabel === "null");
+      if (unlabeled.length) log(`${card.querySelector("pre").textContent}\n\nno label: ${unlabeled.map((p) => p.packageName).join(", ")}`);
+      return all.length === user.length + system.length && info.every((p) => !p.error) && unlabeled.length === 0;
     },
     extra: '<div class="icons"></div>',
+  },
+  {
+    id: "packages-loop",
+    title: "getPackagesInfo, one call per app",
+    desc: "How app-list pages often use it: one synchronous call per package, for every user app. Each call must be cheap (the list is fetched once per page), and every app needs a label.",
+    blocking: true,
+    async run(log) {
+      const user = JSON.parse(ksu.listPackages("user"));
+      const start = performance.now();
+      const infos = user.map((pkg) => JSON.parse(ksu.getPackagesInfo(JSON.stringify([pkg])))[0]);
+      const ms = Math.round(performance.now() - start);
+      const unlabeled = infos.filter((p) => p.error || !p.appLabel || p.appLabel === "null");
+      const perCall = user.length ? (ms / user.length).toFixed(1) : "0";
+      log(
+        `${user.length} calls in ${ms} ms (${perCall} ms per call)\n` +
+        `no label: ${unlabeled.length ? unlabeled.map((p) => p.packageName).join(", ") : "none"}\n\n` +
+        infos.slice(0, 10).map((p) => `${p.appLabel}  (${p.packageName})`).join("\n"),
+      );
+      return unlabeled.length === 0;
+    },
+  },
+  {
+    id: "files",
+    title: "ksu.writeFile / readFile / listFile / copyFile / moveFile / removeFile",
+    desc: "Synchronous file API, run as the server: writes a file in run/, reads it back, copies, moves, lists and removes it.",
+    blocking: true,
+    async run(log) {
+      const dir = `${await getPluginDir()}/run`;
+      const text = "line 1\nquote ' and $HOME stay literal\nno newline at the end";
+      const lines = [];
+      const step = (name, value) => { lines.push(`${name}: ${JSON.stringify(value)}`); return value; };
+      const wrote = step("writeFile", ksu.writeFile(`${dir}/tf-file.txt`, text));
+      const same = step("readFile matches", ksu.readFile(`${dir}/tf-file.txt`) === text);
+      const copied = step("copyFile", ksu.copyFile(`${dir}/tf-file.txt`, `${dir}/tf-copy.txt`));
+      const moved = step("moveFile", ksu.moveFile(`${dir}/tf-copy.txt`, `${dir}/tf-moved.txt`));
+      const listed = step("listFile", JSON.parse(ksu.listFile(dir)).filter((n) => n.startsWith("tf-")).sort());
+      const removed = step("removeFile", ksu.removeFile(`${dir}/tf-file.txt`) && ksu.removeFile(`${dir}/tf-moved.txt`));
+      const gone = step("listFile after", JSON.parse(ksu.listFile(dir)).filter((n) => n.startsWith("tf-")));
+      step("readFile of a missing file", ksu.readFile(`${dir}/tf-missing.txt`));
+      log(lines.join("\n"));
+      return wrote && same && copied && moved && removed &&
+        listed.join() === "tf-file.txt,tf-moved.txt" && gone.length === 0;
+    },
+  },
+  {
+    id: "file-output-stream",
+    title: "ksu.fileOutputStream()",
+    desc: "open / write (base64) / writeByte / flush / close, then open(path, true) to append. close() returns once the server has the whole file.",
+    blocking: true,
+    async run(log) {
+      const path = `${await getPluginDir()}/run/tf-stream.txt`;
+      const fos = ksu.fileOutputStream();
+      const lines = [];
+      const step = (name, value) => { lines.push(`${name}: ${JSON.stringify(value)}`); return value; };
+      const id = step("open", fos.open(path));
+      const wrote = step("write", fos.write(id, btoa("chunk-1;"))) &&
+        step("write", fos.write(id, btoa("chunk-2;"))) &&
+        step("writeByte '!'", fos.writeByte(id, 33)) &&
+        step("flush", fos.flush(id));
+      const closed = step("close", fos.close(id));
+      step("close again", fos.close(id));
+      const appendId = step("open(path, true)", fos.open(path, true));
+      const appended = step("write", fos.write(appendId, btoa("+appended"))) && step("close", fos.close(appendId));
+      const content = step("readFile", ksu.readFile(path));
+      ksu.removeFile(path);
+      log(lines.join("\n"));
+      return id !== "" && wrote && closed && appended && content === "chunk-1;chunk-2;!+appended";
+    },
+  },
+  {
+    id: "insets",
+    title: "ksu.enableInsets / kernelsu.js enableEdgeToEdge",
+    desc: "ksu.enableInsets(false) keeps the page clear of the system bars for 3 seconds, then the helper's enableEdgeToEdge() draws under them again.",
+    async run(log) {
+      const mod = await import("ax://kernelsu.js/");
+      ksu.enableInsets(false);
+      await new Promise((r) => setTimeout(r, 3000));
+      mod.enableEdgeToEdge();
+      log("Did the page move off the status and navigation bars, then back under them?");
+    },
+  },
+  {
+    id: "exit",
+    title: "ksu.exit() / kernelsu.js exit()",
+    desc: "Closes this WebUI through the helper's exit(), which calls ksu.exit(). It should leave recents too.",
+    async run(log) {
+      const mod = await import("ax://kernelsu.js/");
+      log("Closing in 1 second…");
+      await new Promise((r) => setTimeout(r, 1000));
+      mod.exit();
+    },
+  },
+  {
+    id: "shortcut",
+    title: "ksu.createShortcut()",
+    desc: "Asks the launcher to pin a home-screen shortcut to this WebUI (banner icon). Returns at once.",
+    async run(log) {
+      const ok = ksu.createShortcut();
+      log(`createShortcut(): ${ok}\nDid the launcher ask to add the shortcut (or say it was updated)?`);
+      return ok;
+    },
   },
   {
     id: "marker",
@@ -509,9 +623,10 @@ async function runTest(t, card) {
 document.getElementById("run-all").onclick = async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
-  // The UI test hides the bars and the slow toggle changes state: both stay manual.
+  // The UI, insets and shortcut tests need eyes, exit closes the page, the slow toggle changes
+  // state: all stay manual.
   for (const t of tests) {
-    if (t.id === "ui" || t.id === "slow") continue;
+    if (["ui", "insets", "exit", "shortcut", "slow"].includes(t.id)) continue;
     await runTest(t, t.card);
   }
   button.disabled = false;

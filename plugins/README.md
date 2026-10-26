@@ -37,7 +37,7 @@ Install the zip with **+** on AxManager's Plugin page, then re-ignite.
 | `system/bin/axtest` | Linked into `$AXERONXBIN`: `axtest ping \| env \| marker \| procs` from QuickShell or anywhere |
 | `action.sh` | Full diagnostics: env, working dir and `PATH` order, boot stages, which processes are alive and marked, server settings (stop-with-server, Shizuku intercept), and every `[FAIL]` from all reports |
 | `uninstall.sh` | Runs on removal; writes `logs/test_function.uninstalled`, leaves a `sleep` running that AxManager must stop |
-| `webroot/` | Every `ksu` and `Axeron` method (sync and callback), streaming `spawn` and its event order, the `kernelsu.js`/`axeron.js` helpers (`spawn` with args and/or options), quoting, app icons, insets/colors CSS, a daemon started from the WebUI, reports and logs. Each test shows how long it froze the page: synchronous calls are expected to, callback ones must not |
+| `webroot/` | Every `ksu` and `Axeron` method (sync and callback), streaming `spawn` and its event order, the `kernelsu.js`/`axeron.js` helpers (`spawn` with args and/or options), quoting, app icons and labels (also one `getPackagesInfo` call per app), the file API (`writeFile`/`readFile`/`listFile`/`copyFile`/`moveFile`/`removeFile`, `fileOutputStream()`), `enableInsets`, `exit`, `createShortcut`, insets/colors CSS, a daemon started from the WebUI, reports and logs. Each test shows how long it froze the page: synchronous calls are expected to, callback ones must not |
 | `banner.png` | `banner=` in `module.prop` |
 | `README.md` | Deleted by the installer after `customize.sh` (checked there) |
 | `extras/` | Read straight from `ZIPFILE` in `customize.sh`, then removed from the plugin folder |
