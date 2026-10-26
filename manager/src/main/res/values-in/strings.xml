@@ -244,6 +244,10 @@
     <string name="terminal_search_hint">Cari di output</string>
     <string name="terminal_search_previous">Hasil sebelumnya</string>
     <string name="terminal_search_next">Hasil berikutnya</string>
+    <string name="terminal_select_all">Pilih semua</string>
+    <string name="terminal_auto_scroll">Gulir otomatis</string>
+    <string name="terminal_auto_scroll_desc">Ikuti output baru saat berada di paling bawah</string>
+    <string name="terminal_copy_truncated">Disalin %d karakter pertama</string>
     <string name="terminal_view_options">Tampilan output</string>
     <string name="terminal_line_numbers">Nomor baris</string>
     <string name="terminal_line_numbers_desc">Tampilkan nomor di samping setiap baris</string>

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.TextDecrease
 import androidx.compose.material.icons.outlined.TextIncrease
+import androidx.compose.material.icons.outlined.VerticalAlignBottom
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
@@ -31,6 +32,14 @@ fun TerminalOptionsCard(modifier: Modifier = Modifier) {
             iconVector = Icons.AutoMirrored.Outlined.FormatListBulleted,
             checked = TerminalPrefs.lineNumbers,
             onSwitchChange = { TerminalPrefs.lineNumbers = it }
+        )
+        SettingsDivider()
+        SettingsRow(
+            label = stringResource(R.string.terminal_auto_scroll),
+            description = stringResource(R.string.terminal_auto_scroll_desc),
+            iconVector = Icons.Outlined.VerticalAlignBottom,
+            checked = TerminalPrefs.autoScroll,
+            onSwitchChange = { TerminalPrefs.autoScroll = it }
         )
         SettingsDivider()
         val scale = TerminalPrefs.textScale

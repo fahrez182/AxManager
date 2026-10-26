@@ -245,6 +245,10 @@
     <string name="terminal_search_hint">Find in output</string>
     <string name="terminal_search_previous">Previous match</string>
     <string name="terminal_search_next">Next match</string>
+    <string name="terminal_select_all">Select all</string>
+    <string name="terminal_auto_scroll">Auto-scroll</string>
+    <string name="terminal_auto_scroll_desc">Follow new output while at the bottom</string>
+    <string name="terminal_copy_truncated">Copied the first %d characters</string>
     <string name="terminal_view_options">Output view</string>
     <string name="terminal_line_numbers">Line numbers</string>
     <string name="terminal_line_numbers_desc">Show the line number beside each line</string>

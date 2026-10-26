@@ -553,10 +553,8 @@ fun QuickSettingConfigSheet(
         description = key,
         onDismissRequest = onDismissRequest
     ) {
-        Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        // No scroll of its own: AxOptionsSheet already scrolls.
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },

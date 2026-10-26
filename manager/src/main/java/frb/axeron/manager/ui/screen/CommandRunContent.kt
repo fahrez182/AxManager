@@ -105,7 +105,9 @@ fun CommandRunOutput(
             filter = filter,
             color = { it.color() },
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPadding),
-            jumpButtonPadding = PaddingValues(bottom = (bottomPadding - 12.dp).coerceAtLeast(0.dp)),
+            jumpButtonPadding = PaddingValues(
+                start = 12.dp, top = 12.dp, end = 12.dp, bottom = bottomPadding.coerceAtLeast(12.dp)
+            ),
             modifier = Modifier.fillMaxSize()
         )
         if (runner.terminal.isEmpty && runner.isRunning) {

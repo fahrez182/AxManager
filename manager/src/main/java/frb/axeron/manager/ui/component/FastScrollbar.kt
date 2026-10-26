@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,8 @@ fun FastScrollbar(
     var trackPx by remember { mutableIntStateOf(0) }
     var dragging by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(0f) }
+    val currentCount by rememberUpdatedState(count)
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
 
     val scrollFraction by remember(count) {
         derivedStateOf {
@@ -128,17 +131,19 @@ fun FastScrollbar(
                 .fillMaxHeight()
                 .width(TrackWidth)
                 .onSizeChanged { trackPx = it.height }
-                .pointerInput(count) {
+                // Not keyed on count: streaming output changes it every batch, and a restart
+                // cancels the drag in progress.
+                .pointerInput(Unit) {
                     fun jump(y: Float) {
                         val range = (trackPx - thumbPx).coerceAtLeast(1f)
                         dragFraction = ((y - thumbPx / 2) / range).coerceIn(0f, 1f)
-                        val target = (dragFraction * (count - 1)).roundToInt().coerceAtLeast(0)
+                        val target = (dragFraction * (currentCount - 1)).roundToInt().coerceAtLeast(0)
                         scope.launch { state.scrollToItem(target) }
                     }
                     detectVerticalDragGestures(
                         onDragStart = {
                             dragging = true
-                            onDragStart()
+                            currentOnDragStart()
                             jump(it.y)
                         },
                         onDragEnd = { dragging = false },

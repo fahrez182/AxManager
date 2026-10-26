@@ -42,8 +42,37 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.DisableSelection
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import android.os.Build
+import android.widget.Toast
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
+import frb.axeron.manager.ui.util.ClipboardUtil
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
@@ -127,7 +156,7 @@ fun <K : Any> TerminalOutput(
     wrap: Boolean = true,
     filter: ((K) -> Boolean)? = null,
     color: @Composable (K) -> Color = { MaterialTheme.colorScheme.onSurfaceVariant },
-    jumpButtonPadding: PaddingValues = PaddingValues(0.dp),
+    jumpButtonPadding: PaddingValues = PaddingValues(12.dp),
     state: LazyListState = rememberLazyListState(),
 ) {
     val showLineNumbers = TerminalPrefs.lineNumbers
@@ -142,14 +171,52 @@ fun <K : Any> TerminalOutput(
     }
     val version = buffer.snapshot.version
 
+    // ---- overscroll ----
+    // Past the end, like an editor: the last line can scroll up to the top, so at the very end
+    // the line indicator (the top line) shows it and the scroll thumb sits at the bottom.
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    var containerHeight by remember { mutableIntStateOf(0) }
+    val bottomPaddingPx = with(density) { contentPadding.calculateBottomPadding().toPx() }
+    val lineHeightPx = with(density) { style.lineHeight.toPx() }
+    // Between the top and bottom padding: where the lines are read.
+    val areaPx = (containerHeight - with(density) { contentPadding.calculateTopPadding().toPx() } -
+            bottomPaddingPx).coerceAtLeast(0f)
+    val overscrollPx = (areaPx - lineHeightPx).coerceAtLeast(0f)
+    val listPadding = PaddingValues(
+        start = contentPadding.calculateStartPadding(layoutDirection),
+        top = contentPadding.calculateTopPadding(),
+        end = contentPadding.calculateEndPadding(layoutDirection),
+        bottom = contentPadding.calculateBottomPadding() + with(density) { overscrollPx.toDp() }
+    )
+    val currentArea by rememberUpdatedState(areaPx)
+    val currentLineHeight by rememberUpdatedState(lineHeightPx)
+
+    /**
+     * The last line at the bottom of the screen, not past it: where following keeps it. One
+     * scroll with a negative offset (the list fills the lines above it), not a jump to the very
+     * end and back: that drops every line on screen and composes them all again, on each
+     * batch of a flood.
+     */
+    suspend fun scrollToEnd() {
+        val info = state.layoutInfo
+        val total = info.totalItemsCount
+        if (total == 0) return
+        // A wrapped last line can be taller than one line; its height is known once it is shown.
+        val lastHeight = info.visibleItemsInfo.lastOrNull()
+            ?.takeIf { it.index == total - 1 }?.size?.toFloat() ?: currentLineHeight
+        state.scrollToItem(total - 1, -(currentArea - lastHeight).coerceAtLeast(0f).roundToInt())
+    }
+
     // ---- follow mode ----
     var follow by remember { mutableStateOf(true) }
-    val atBottom by remember {
+    // The last line at the screen bottom or above it, scrolled into the overscroll.
+    val atBottom by remember(bottomPaddingPx) {
         derivedStateOf {
             val info = state.layoutInfo
             val last = info.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf true
             last.index == info.totalItemsCount - 1 &&
-                    last.offset + last.size <= info.viewportEndOffset + 8
+                    last.offset + last.size <= info.viewportEndOffset - bottomPaddingPx + 8
         }
     }
     val dragged by state.interactionSource.collectIsDraggedAsState()
@@ -157,11 +224,20 @@ fun <K : Any> TerminalOutput(
         if (atBottom) follow = true
         else if (dragged) follow = false
     }
+    // The side pill shrinks to its line number while the user scrolls; a tap opens it again.
+    var navExpanded by remember { mutableStateOf(true) }
+    LaunchedEffect(dragged) { if (dragged) navExpanded = false }
     // Once per published snapshot (throttled by the buffer), not per chunk. Jump instantly:
     // rapid output would keep cancelling an animated scroll.
+    // Keyed on the list's own item count, not the buffer's: a new snapshot reaches this before
+    // the list recomposes, and scrolling to an item it doesn't have yet lands on its old last
+    // item, one batch short of the end, for good once the output stops. The version still
+    // counts: an open line can grow (wrap) without adding items.
     LaunchedEffect(state, buffer) {
-        snapshotFlow { view to follow }.collect { (shown, following) ->
-            if (following && shown.count > 0) state.scrollToItem(shown.count - 1, Int.MAX_VALUE)
+        snapshotFlow {
+            Triple(state.layoutInfo.totalItemsCount, buffer.snapshot.version, follow && TerminalPrefs.autoScroll)
+        }.collect { (total, _, following) ->
+            if (following && total > 0) scrollToEnd()
         }
     }
 
@@ -178,7 +254,6 @@ fun <K : Any> TerminalOutput(
     }
 
     // ---- gutter ----
-    val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
     val charWidth = remember(style, density) { measurer.measure("0", style).size.width }
     val digits = maxOf(3, buffer.snapshot.tail.toString().length)
@@ -264,81 +339,207 @@ fun <K : Any> TerminalOutput(
     }
     BackHandler(enabled = searchOpen) { closeSearch() }
 
-    val canScroll by remember {
-        derivedStateOf { state.canScrollBackward || state.canScrollForward }
+    // ---- text selection ----
+    // Anchored to buffer positions, not to composed lines (a SelectionContainer only knows the
+    // lines on screen and breaks when its anchors scroll away): it survives any scroll, and Copy
+    // reads every line in between from the buffer, composed or not.
+    var selection by remember { mutableStateOf<TextSelection?>(null) }
+    val registry = remember { LineRegistry() }
+    val drag = remember { SelectionDrag(scope, state, registry) }
+    val selectionColors = LocalTextSelectionColors.current
+    SideEffect {
+        with(density) {
+            drag.topEdge = (contentPadding.calculateTopPadding() + 32.dp).toPx()
+            drag.bottomInset = (contentPadding.calculateBottomPadding() + 32.dp).toPx()
+        }
     }
-    val showScrollbar = canScroll && view.count > SCROLLBAR_MIN_LINES
+    // Positions are reused after a clear or screen clear.
+    LaunchedEffect(buffer) {
+        snapshotFlow { buffer.snapshot.generation }.collect { selection = null }
+    }
+    BackHandler(enabled = selection != null) { selection = null }
 
-    Box(modifier) {
-        SelectionContainer(Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = state,
-                contentPadding = contentPadding,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(
-                        if (wrap) Modifier
-                        else Modifier.scrollable(panState, Orientation.Horizontal)
-                    )
-            ) {
-                val shown = view
-                items(
-                    count = shown.count,
-                    key = { shown.positionAt(it) },
-                    contentType = { 0 }
-                ) { i ->
-                    val position = shown.positionAt(i)
-                    // Re-read on every publish: an open line (progress bar) changes in place.
-                    val line = remember(position, version) { buffer.lineAt(position) }
-                    if (line == null) {
-                        // Gone before the next snapshot (clear, screen clear): keep one line's
-                        // height. A zero-height item makes a scrolling list compose every
-                        // remaining item in one frame to fill the viewport (ANR on big output).
-                        BasicText("", style = style)
-                        return@items
-                    }
-                    val mark = highlight?.takeIf { it.line == line.number }
-                    val currentStart = matches.getOrNull(current)
-                        ?.takeIf { it.position == position }?.start ?: -1
-                    val parsed = remember(line.text) { line.text.toAnsiString() }
-                    val text = remember(parsed, mark, query, currentStart) {
-                        var t = parsed
-                        if (mark?.column != null) t = t.withColumnMark(mark.column - 1, columnHighlight)
-                        if (query.isNotEmpty()) {
-                            t = t.withMatches(
-                                query, matchHighlight, currentStart,
-                                SpanStyle(background = currentHighlight, color = onCurrentHighlight)
-                            )
+    /** Starts dragging one end of the selection; the other end stays put. */
+    fun beginHandleDrag(isStart: Boolean, finger: Offset): Offset? {
+        val sel = selection ?: return null
+        val mine = if (isStart) sel.start else sel.end
+        val other = if (isStart) sel.end else sel.start
+        val cursor = registry.cursorAt(mine) ?: return null
+        drag.start(cursor.center) { selection = TextSelection(other, it) }
+        // Keep the finger's distance to the cursor, so the hit point stays on the line itself.
+        return cursor.center - finger
+    }
+
+    val context = LocalContext.current
+    val copied = stringResource(R.string.copied)
+    val truncatedText = stringResource(R.string.terminal_copy_truncated, COPY_LIMIT)
+    fun copySelection() {
+        val sel = selection ?: return
+        val v = view
+        val start = sel.start
+        val end = sel.end
+        var truncated = false
+        val text = buildString {
+            var first = true
+            var i = v.indexOf(start.position)
+            while (i < v.count) {
+                val position = v.positionAt(i++)
+                if (position > end.position) break
+                val line = buffer.lineAt(position)?.text?.toAnsiString()?.text ?: continue
+                if (!first) append('\n')
+                first = false
+                sel.rangeIn(position, line.length)?.let { append(line, it.start, it.end) }
+                if (length >= COPY_LIMIT) {
+                    setLength(COPY_LIMIT)
+                    truncated = true
+                    break
+                }
+            }
+        }
+        if (!ClipboardUtil.put(context, text)) return
+        selection = null
+        when {
+            truncated -> Toast.makeText(context, truncatedText, Toast.LENGTH_LONG).show()
+            // Android 13+ shows its own clipboard confirmation.
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ->
+                Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Always there once there is output, however short.
+    val showScrollbar = view.count > 0
+    // The track ends above the side pill, so the thumb at the bottom isn't under it.
+    var pillHeight by remember { mutableIntStateOf(0) }
+
+    Box(
+        modifier
+            .onPlaced { registry.container = it }
+            .onSizeChanged { containerHeight = it.height }
+    ) {
+        LazyColumn(
+            state = state,
+            contentPadding = listPadding,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (wrap) Modifier
+                    else Modifier.scrollable(panState, Orientation.Horizontal)
+                )
+                // A tap clears the selection; a long press is only there so it isn't a tap.
+                .pointerInput(registry) {
+                    detectTapGestures(onLongPress = {}, onTap = { selection = null })
+                }
+                // Long press selects the word under it, dragging on extends it.
+                .pointerInput(registry) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val press = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+                        val word = registry.anchorAt(press.position)?.let(registry::wordAt)
+                            ?: return@awaitEachGesture
+                        follow = false
+                        selection = word
+                        drag.start(press.position) {
+                            selection = if (it < word.start) TextSelection(word.end, it)
+                            else TextSelection(word.start, it)
                         }
-                        t
-                    }
-                    val marked = mark != null || currentStart >= 0
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (marked) Modifier.background(rowHighlight) else Modifier)
-                    ) {
-                        if (showLineNumbers) {
-                            DisableSelection {
-                                BasicText(
-                                    text = line.number.toString(),
-                                    style = gutterStyle,
-                                    maxLines = 1,
-                                    modifier = Modifier.width(gutterWidth)
-                                )
-                            }
-                            Spacer(Modifier.width(10.dp))
+                        // Ours from here, read before the list sees it so it doesn't scroll.
+                        while (true) {
+                            val change = awaitPointerEvent(PointerEventPass.Initial).changes
+                                .firstOrNull { it.id == down.id } ?: break
+                            change.consume()
+                            if (!change.pressed) break
+                            drag.moveTo(change.position)
                         }
-                        BasicText(
-                            text = text,
-                            style = style.copy(color = color(line.kind)),
-                            softWrap = wrap,
-                            modifier = Modifier
-                                .weight(1f)
-                                .then(if (wrap) Modifier else Modifier.horizontalPan(pan))
-                        )
+                        drag.stop()
                     }
                 }
+        ) {
+            val shown = view
+            items(
+                count = shown.count,
+                key = { shown.positionAt(it) },
+                contentType = { 0 }
+            ) { i ->
+                val position = shown.positionAt(i)
+                // Re-read on every publish: an open line (progress bar) changes in place.
+                val line = remember(position, version) { buffer.lineAt(position) }
+                if (line == null) {
+                    // Gone before the next snapshot (clear, screen clear): keep one line's
+                    // height. A zero-height item makes a scrolling list compose every
+                    // remaining item in one frame to fill the viewport (ANR on big output).
+                    BasicText("", style = style)
+                    return@items
+                }
+                // Where this line is laid out, for mapping touches to columns.
+                val entry = remember(position) { LineRegistry.Entry() }
+                DisposableEffect(position) {
+                    registry.lines[position] = entry
+                    onDispose { if (registry.lines[position] === entry) registry.lines.remove(position) }
+                }
+                val mark = highlight?.takeIf { it.line == line.number }
+                val currentStart = matches.getOrNull(current)
+                    ?.takeIf { it.position == position }?.start ?: -1
+                val parsed = remember(line.text) { line.text.toAnsiString() }
+                val selected = selection?.rangeIn(position, parsed.length)
+                val text = remember(parsed, mark, query, currentStart, selected) {
+                    var t = parsed
+                    if (mark?.column != null) t = t.withColumnMark(mark.column - 1, columnHighlight)
+                    if (query.isNotEmpty()) {
+                        t = t.withMatches(
+                            query, matchHighlight, currentStart,
+                            SpanStyle(background = currentHighlight, color = onCurrentHighlight)
+                        )
+                    }
+                    if (selected != null) t = t.withSelection(selected, selectionColors.backgroundColor)
+                    t
+                }
+                val marked = mark != null || currentStart >= 0
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (marked) Modifier.background(rowHighlight) else Modifier)
+                ) {
+                    if (showLineNumbers) {
+                        BasicText(
+                            text = line.number.toString(),
+                            style = gutterStyle,
+                            maxLines = 1,
+                            modifier = Modifier.width(gutterWidth)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    BasicText(
+                        text = text,
+                        style = style.copy(color = color(line.kind)),
+                        softWrap = wrap,
+                        onTextLayout = { entry.layout = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(if (wrap) Modifier else Modifier.horizontalPan(pan))
+                            // After the pan: these coordinates move with the text.
+                            .onPlaced { entry.coords = it }
+                    )
+                }
+            }
+        }
+
+        if (selection != null) {
+            listOf(true, false).forEach { isStart ->
+                var grab by remember { mutableStateOf(Offset.Zero) }
+                SelectionHandle(
+                    isStart = isStart,
+                    color = selectionColors.handleColor,
+                    container = { registry.container },
+                    cursor = {
+                        // Read while placing, so the handle follows scrolling and panning.
+                        state.layoutInfo
+                        pan.offset
+                        selection?.let { registry.cursorAt(if (isStart) it.start else it.end) }
+                    },
+                    onDown = { finger -> beginHandleDrag(isStart, finger)?.let { grab = it } },
+                    onMove = { finger -> drag.moveTo(finger + grab) },
+                    onUp = { drag.stop() }
+                )
             }
         }
 
@@ -346,12 +547,20 @@ fun <K : Any> TerminalOutput(
             FastScrollbar(
                 state = state,
                 count = view.count,
-                onDragStart = { follow = false },
+                onDragStart = {
+                    follow = false
+                    navExpanded = false
+                },
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(contentPadding.let {
-                        PaddingValues(top = it.calculateTopPadding(), bottom = it.calculateBottomPadding())
-                    })
+                    .padding(
+                        top = contentPadding.calculateTopPadding(),
+                        bottom = maxOf(
+                            contentPadding.calculateBottomPadding(),
+                            jumpButtonPadding.calculateBottomPadding() +
+                                    with(density) { pillHeight.toDp() } + 8.dp
+                        )
+                    )
             )
         }
 
@@ -363,7 +572,32 @@ fun <K : Any> TerminalOutput(
             }
         }
         AnimatedVisibility(
-            visible = searchOpen,
+            visible = selection != null,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = contentPadding.calculateTopPadding())
+                .padding(horizontal = 12.dp)
+        ) {
+            TerminalSelectionBar(
+                onCopy = { copySelection() },
+                onSelectAll = {
+                    val v = view
+                    if (v.count > 0) {
+                        selection = TextSelection(
+                            Anchor(v.positionAt(0), 0),
+                            Anchor(v.positionAt(v.count - 1), Int.MAX_VALUE)
+                        )
+                    }
+                },
+                onClose = { selection = null }
+            )
+        }
+
+        // The selection bar takes its place while text is selected.
+        AnimatedVisibility(
+            visible = searchOpen && selection == null,
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
@@ -391,13 +625,13 @@ fun <K : Any> TerminalOutput(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(jumpButtonPadding)
-                .padding(12.dp)
-                // Stay clear of the scrollbar thumb.
-                .padding(end = if (showScrollbar) 14.dp else 0.dp)
+                .onSizeChanged { pillHeight = it.height }
         ) {
             TerminalNavPill(
                 currentLine = currentLine,
-                following = follow,
+                following = follow && TerminalPrefs.autoScroll,
+                expanded = navExpanded,
+                onExpand = { navExpanded = true },
                 canScrollUp = state.canScrollBackward,
                 onSearch = { searchOpen = true },
                 onTop = {
@@ -407,7 +641,7 @@ fun <K : Any> TerminalOutput(
                 onGoTo = { showGoTo = true },
                 onBottom = {
                     follow = true
-                    scope.launch { state.scrollToItem((view.count - 1).coerceAtLeast(0), Int.MAX_VALUE) }
+                    scope.launch { scrollToEnd() }
                 }
             )
         }
@@ -438,10 +672,252 @@ fun <K : Any> TerminalOutput(
     }
 }
 
-private const val SCROLLBAR_MIN_LINES = 200
-
 /** Matches kept per search; enough to step through, bounded for million-line output. */
 private const val SEARCH_LIMIT = 10_000
+
+/** Longest copy: the clipboard goes over binder, which fails past about 1 MB. */
+private const val COPY_LIMIT = 200_000
+
+/** Shown while text is selected: copy / select all / clear. */
+@Composable
+private fun TerminalSelectionBar(
+    onCopy: () -> Unit,
+    onSelectAll: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val content = MaterialTheme.colorScheme.onSecondaryContainer
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = content,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .height(44.dp)
+                .padding(horizontal = 2.dp)
+        ) {
+            TextButton(onClick = onCopy) {
+                Icon(Icons.Outlined.ContentCopy, null, tint = content, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.copy), color = content)
+            }
+            TextButton(onClick = onSelectAll) {
+                Icon(Icons.Filled.SelectAll, null, tint = content, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.terminal_select_all), color = content)
+            }
+            IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close))
+            }
+        }
+    }
+}
+
+/**
+ * One end of the selection, hanging under its cursor; dragged to move that end. Not placed
+ * while its line is off screen (the selection itself stays).
+ */
+@Composable
+private fun SelectionHandle(
+    isStart: Boolean,
+    color: Color,
+    container: () -> LayoutCoordinates?,
+    /** The cursor of this end in container coordinates; read while placing. */
+    cursor: () -> Rect?,
+    onDown: (finger: Offset) -> Unit,
+    onMove: (finger: Offset) -> Unit,
+    onUp: () -> Unit,
+) {
+    val down by rememberUpdatedState(onDown)
+    val move by rememberUpdatedState(onMove)
+    val up by rememberUpdatedState(onUp)
+    var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    // The point sits at the cursor: top-end corner for the start, top-start for the end.
+    val shape = if (isStart) RoundedCornerShape(50, 0, 50, 50) else RoundedCornerShape(0, 50, 50, 50)
+
+    fun toContainer(local: Offset): Offset? {
+        val box = container()?.takeIf { it.isAttached } ?: return null
+        val self = coords?.takeIf { it.isAttached } ?: return null
+        return box.localPositionOf(self, local)
+    }
+
+    Box(
+        Modifier
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                layout(placeable.width, placeable.height) {
+                    val at = cursor() ?: return@layout
+                    val bounds = container()?.size ?: return@layout
+                    if (at.bottom < 0 || at.bottom > bounds.height || at.left < 0 || at.left > bounds.width) {
+                        return@layout
+                    }
+                    val x = if (isStart) at.left - placeable.width else at.left
+                    placeable.place(x.roundToInt(), at.bottom.roundToInt())
+                }
+            }
+            .onPlaced { coords = it }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val first = awaitFirstDown()
+                    first.consume()
+                    toContainer(first.position)?.let(down)
+                    drag(first.id) { change ->
+                        change.consume()
+                        toContainer(change.position)?.let(move)
+                    }
+                    up()
+                }
+            }
+            .size(22.dp)
+            .background(color, shape)
+    )
+}
+
+/** A column in a line; [offset] counts the text without ANSI codes, as it is laid out. */
+@Immutable
+private data class Anchor(val position: Long, val offset: Int) : Comparable<Anchor> {
+    override fun compareTo(other: Anchor): Int =
+        compareValuesBy(this, other, { it.position }, { it.offset })
+}
+
+/** From [fixed] to [moving], in either order: dragging one end past the other just flips it. */
+@Immutable
+private data class TextSelection(val fixed: Anchor, val moving: Anchor) {
+    val start: Anchor get() = minOf(fixed, moving)
+    val end: Anchor get() = maxOf(fixed, moving)
+
+    /** The selected part of the line at [position] of [length] characters, if any. */
+    fun rangeIn(position: Long, length: Int): TextRange? {
+        val s = start
+        val e = end
+        if (position < s.position || position > e.position) return null
+        val from = if (position == s.position) s.offset.coerceIn(0, length) else 0
+        val to = if (position == e.position) e.offset.coerceIn(0, length) else length
+        return if (from < to) TextRange(from, to) else null
+    }
+}
+
+/** Where the composed lines are laid out, so a touch point maps to a buffer position and column. */
+private class LineRegistry {
+    class Entry {
+        var coords: LayoutCoordinates? = null
+        var layout: TextLayoutResult? = null
+    }
+
+    /** Composed lines only, by buffer position. */
+    val lines = HashMap<Long, Entry>()
+    var container: LayoutCoordinates? = null
+
+    /** The column under [point] (container coordinates) in the nearest composed line. */
+    fun anchorAt(point: Offset): Anchor? {
+        val box = container?.takeIf { it.isAttached } ?: return null
+        var best: Anchor? = null
+        var bestDistance = Float.MAX_VALUE
+        for ((position, entry) in lines) {
+            val coords = entry.coords?.takeIf { it.isAttached } ?: continue
+            val layout = entry.layout ?: continue
+            val local = coords.localPositionOf(box, point)
+            val height = coords.size.height.toFloat()
+            val distance = when {
+                local.y < 0 -> -local.y
+                local.y > height -> local.y - height
+                else -> 0f
+            }
+            if (distance < bestDistance) {
+                bestDistance = distance
+                val y = local.y.coerceIn(0f, (height - 1).coerceAtLeast(0f))
+                best = Anchor(position, layout.getOffsetForPosition(Offset(local.x, y)))
+            }
+        }
+        return best
+    }
+
+    /** The cursor at [anchor] in container coordinates, or null when its line isn't composed. */
+    fun cursorAt(anchor: Anchor): Rect? {
+        val box = container?.takeIf { it.isAttached } ?: return null
+        val entry = lines[anchor.position] ?: return null
+        val coords = entry.coords?.takeIf { it.isAttached } ?: return null
+        val layout = entry.layout ?: return null
+        val rect = layout.getCursorRect(anchor.offset.coerceIn(0, layout.layoutInput.text.length))
+        return Rect(box.localPositionOf(coords, rect.topLeft), rect.size)
+    }
+
+    /** The word at [anchor], or the one character there when it isn't in a word. */
+    fun wordAt(anchor: Anchor): TextSelection {
+        val layout = lines[anchor.position]?.layout
+        val length = layout?.layoutInput?.text?.length ?: 0
+        if (layout == null || length == 0) return TextSelection(anchor, anchor)
+        val word = layout.getWordBoundary(anchor.offset.coerceIn(0, length - 1))
+        val start = word.start
+        val end = if (word.end > start) word.end else (start + 1).coerceAtMost(length)
+        return TextSelection(Anchor(anchor.position, start), Anchor(anchor.position, end))
+    }
+}
+
+/**
+ * Moves one end of the selection to the finger, scrolling the list while the finger rests near
+ * its top or bottom edge, so a selection can run past the screen.
+ */
+private class SelectionDrag(
+    private val scope: CoroutineScope,
+    private val state: LazyListState,
+    private val registry: LineRegistry,
+) {
+    /** Scrolling starts above [topEdge] and within [bottomInset] of the bottom, in px. */
+    var topEdge = 0f
+    var bottomInset = 0f
+
+    private var point: Offset? = null
+    private var mover: ((Anchor) -> Unit)? = null
+    private var job: Job? = null
+
+    fun start(at: Offset, move: (Anchor) -> Unit) {
+        point = at
+        mover = move
+        job?.cancel()
+        job = scope.launch {
+            while (true) {
+                withFrameNanos { }
+                val p = point ?: break
+                val height = registry.container?.size?.height ?: break
+                val bottomEdge = height - bottomInset
+                val over = when {
+                    p.y < topEdge -> p.y - topEdge
+                    p.y > bottomEdge -> p.y - bottomEdge
+                    else -> 0f
+                }
+                if (over != 0f) {
+                    state.scrollBy((over / 2).coerceIn(-MAX_STEP, MAX_STEP))
+                    update()
+                }
+            }
+        }
+    }
+
+    fun moveTo(at: Offset) {
+        point = at
+        update()
+    }
+
+    fun stop() {
+        point = null
+        mover = null
+        job?.cancel()
+        job = null
+    }
+
+    private fun update() {
+        val p = point ?: return
+        registry.anchorAt(p)?.let { mover?.invoke(it) }
+    }
+
+    private companion object {
+        /** Fastest auto-scroll, px per frame. */
+        const val MAX_STEP = 60f
+    }
+}
 
 /** Find bar: query, "current/total" and previous / next / close. */
 @Composable
@@ -596,6 +1072,8 @@ private class FilterIndex<K : Any>(private val filter: (K) -> Boolean) {
 private fun TerminalNavPill(
     currentLine: Long?,
     following: Boolean,
+    expanded: Boolean,
+    onExpand: () -> Unit,
     canScrollUp: Boolean,
     onSearch: () -> Unit,
     onTop: () -> Unit,
@@ -608,22 +1086,27 @@ private fun TerminalNavPill(
         shadowElevation = 3.dp
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(onClick = onSearch) {
-                Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.terminal_search))
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    IconButton(onClick = onSearch) {
+                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.terminal_search))
+                    }
+                    IconButton(onClick = onTop, enabled = canScrollUp) {
+                        Icon(
+                            Icons.Filled.KeyboardDoubleArrowUp,
+                            contentDescription = stringResource(R.string.terminal_scroll_top)
+                        )
+                    }
+                }
             }
-            IconButton(onClick = onTop, enabled = canScrollUp) {
-                Icon(
-                    Icons.Filled.KeyboardDoubleArrowUp,
-                    contentDescription = stringResource(R.string.terminal_scroll_top)
-                )
-            }
+            // Collapsed, the line number is all that is left and a tap brings the buttons back.
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .padding(horizontal = 4.dp)
+                    .padding(horizontal = 4.dp, vertical = if (expanded) 0.dp else 4.dp)
                     .clip(AxPanelShape)
-                    .clickable(onClick = onGoTo)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .clickable(onClick = if (expanded) onGoTo else onExpand)
+                    .padding(horizontal = 6.dp, vertical = if (expanded) 2.dp else 6.dp)
             ) {
                 Text(
                     text = stringResource(R.string.terminal_line_short),
@@ -636,14 +1119,16 @@ private fun TerminalNavPill(
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
-            IconButton(onClick = onBottom) {
-                Icon(
-                    Icons.Filled.KeyboardDoubleArrowDown,
-                    contentDescription = stringResource(R.string.terminal_scroll_bottom),
-                    // Highlighted while new output is not being followed.
-                    tint = if (following) MaterialTheme.colorScheme.onSecondaryContainer
-                    else MaterialTheme.colorScheme.primary
-                )
+            AnimatedVisibility(visible = expanded) {
+                IconButton(onClick = onBottom) {
+                    Icon(
+                        Icons.Filled.KeyboardDoubleArrowDown,
+                        contentDescription = stringResource(R.string.terminal_scroll_bottom),
+                        // Highlighted while new output is not being followed.
+                        tint = if (following) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
@@ -761,6 +1246,14 @@ private fun AnnotatedString.withMatches(
             addStyle(style, i, i + query.length)
             i = source.text.indexOf(query, i + query.length, ignoreCase = true)
         }
+    }
+}
+
+private fun AnnotatedString.withSelection(range: TextRange, color: Color): AnnotatedString {
+    val source = this
+    return buildAnnotatedString {
+        append(source)
+        addStyle(SpanStyle(background = color), range.start, range.end)
     }
 }
 

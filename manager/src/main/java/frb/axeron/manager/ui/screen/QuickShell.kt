@@ -159,33 +159,12 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
     val listState = rememberLazyListState()
     val hasLogs by remember { derivedStateOf { !viewModel.terminal.isEmpty } }
 
-    var previousIndex by remember { mutableIntStateOf(0) }
-    var previousScrollOffset by remember { mutableIntStateOf(0) }
-
-    // FAB visibility
-    var fabVisible by remember { mutableStateOf(true) }
-
     val view = LocalView.current
     DisposableEffect(running) {
         view.keepScreenOn = running
         onDispose {
             view.keepScreenOn = false
         }
-    }
-
-    LaunchedEffect(listState, viewModel.isRunning) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) ->
-                if (!viewModel.isRunning) {  // hanya update FAB kalau sedang tidak running
-                    if (index > previousIndex || (index == previousIndex && offset > previousScrollOffset)) {
-                        fabVisible = false
-                    } else if (index < previousIndex || offset < previousScrollOffset) {
-                        fabVisible = true
-                    }
-                }
-                previousIndex = index
-                previousScrollOffset = offset
-            }
     }
 
     val scope = rememberCoroutineScope()
@@ -246,7 +225,7 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
             // Rendered beside the nav pill; only registered once there is a log to save.
             if (hasLogs) {
                 val context = LocalContext.current
-                FloatingBarFab(visible = fabVisible) {
+                FloatingBarFab(visible = true) {
                     FloatingActionButton(shape = CircleShape, onClick = {
                         scope.launch {
                             saveLogsToDownload(context, viewModel.terminal, snackBarHost)
@@ -326,7 +305,8 @@ fun QuickShellScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewMode
                     top = 70.dp,
                     bottom = 22.dp + floatingInset
                 ),
-                jumpButtonPadding = PaddingValues(bottom = 12.dp + floatingInset),
+                // Close to the edge: the screen's own 16dp margin already insets it.
+                jumpButtonPadding = PaddingValues(top = 12.dp, end = 2.dp, bottom = 24.dp + floatingInset),
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -441,10 +421,9 @@ fun ExtraSettings(
         title = stringResource(R.string.quickshell_settings),
         onDismissRequest = onDismissRequest
     ) {
-        Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        // No scroll of its own: AxOptionsSheet already scrolls, and a second one inside it
+        // fights it once the content is taller than the screen.
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // ---- snippets ----
             AxCard {
                 SettingsRow(
