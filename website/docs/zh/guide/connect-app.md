@@ -13,7 +13,7 @@
 | **每条命令开始时** | shell 模式下：每次都会启动一个短暂的助手向 AxManager 请求服务 | 连接到应用自己的 broker |
 | **需要 AxManager 运行** | 是：每次都由它响应助手 | 仅第一条命令需要 |
 
-两者运行的是同一个 `libaxsh.so` 客户端，也都需要 AxManager 的[权限](./axsh.md#permission)。区别在于另一端等待的是什么：为这一条命令启动的助手，还是已经在应用中运行的 broker。
+两者都需要 AxManager 的[权限](./axsh.md#permission)。AxManager 的 `libaxsh.so` 与应用自己的副本是同一个客户端；区别在于另一端等待的是什么：为这一条命令启动的助手，还是已经在应用中运行的 broker。使用模块时，`Axsh` 还可以跳过该客户端，直接向 broker 持有的服务发起请求。
 
 ### AxManager 的 `libaxsh.so` {#manager-binary}
 
@@ -36,7 +36,7 @@ val process = ProcessBuilder(axsh.path, "-c", "id").start()
 
 ### `axsh` 模块 {#axsh-module}
 
-从 [JitPack](https://jitpack.io/#fahrez182/Axeron-API) 添加该模块，以及它所依赖的 `aidl` 和 `shared`，三者版本相同（也可以从 Maven local 引入或作为 Gradle 项目，参见 [Axeron API 的 README](https://github.com/fahrez182/Axeron-API#using-it)）。并保持原生库解压，因为 `libaxsh.so` 是作为程序运行的：
+从 [JitPack](https://jitpack.io/#fahrez182/Axeron-API) 添加该模块（也可以从 Maven local 引入或作为 Gradle 项目，参见 [Axeron API 的 README](https://github.com/fahrez182/Axeron-API#using-it)）：
 
 ```kotlin
 // settings.gradle.kts
@@ -53,15 +53,15 @@ dependencyResolutionManagement {
 // build.gradle.kts
 dependencies {
     implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
-    implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
-    implementation("com.github.fahrez182.Axeron-API:shared:2.1.0")
-}
-android {
-    packaging { jniLibs { useLegacyPackaging = true } }
+    // axsh 会在运行时自动带上这两个模块，而且它自己的 API（Broker、Axsh、ShellService）
+    // 不使用它们的任何类型。只有在需要直接使用其中的类（IAxeronService、AxeronApiConstant 等）
+    // 时，才以相同版本添加：
+    // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
+    // implementation("com.github.fahrez182.Axeron-API:shared:2.1.0")
 }
 ```
 
-在 `Application` 中启动 broker，并运行应用自己的 `libaxsh.so`：
+在 `Application` 中启动 broker：
 
 ```kotlin
 import frb.axeron.shell.Broker
@@ -72,11 +72,36 @@ class App : Application() {
         Broker.start(this)
     }
 }
+```
 
+broker 在应用的进程内监听。它只向 AxManager 请求一次服务并保留下来，之后的每条命令都由它处理。之后可以用以下两种方式运行命令。
+
+**`Axsh`，在应用自己的进程中。** 通过一次 binder 调用，在服务上得到一个作为 `java.lang.Process` 的 shell。不会执行任何程序，因此无需解压原生库。请在主线程之外调用：
+
+```kotlin
+import frb.axeron.shell.Axsh
+
+val process = Axsh.newProcess("-c", "id")             // sh 的参数；不带参数则为读取 stdin 的 shell
+val run = Axsh.exec(arrayOf("ls", "-l"), dir = "/")   // 直接运行程序，外面不套 shell
+val term = Axsh.newTerminal(rows = 24, cols = 80)     // 在 PTY 上运行：尺寸变化时调用 setWindowSize()
+```
+
+用于 libsu：`Shell.Builder.create().build(Axsh.newProcess())`。
+
+**应用自己的 `libaxsh.so`，作为程序运行。** 适用于需要一个可执行文件而不是 `Process` 的场景：终端模拟器、libsu 的 `setCommands`、其他进程。它从应用的原生库文件夹中运行，因此需要保持原生库解压：
+
+```kotlin
+// build.gradle.kts：仅在自己运行 libaxsh.so 时需要
+android {
+    packaging { jniLibs { useLegacyPackaging = true } }
+}
+```
+
+```kotlin
 val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
 ```
 
-broker 在应用的进程内监听。它只向 AxManager 请求一次服务并保留下来，之后的每条命令都由它处理。
+[ShellService](#shell-service) 同样不需要 `useLegacyPackaging`：它通过 `Axsh` 启动进程；broker 未运行时则通过 AxManager 的 `libaxsh.so`，从不使用应用自己的副本。
 
 ## 运行命令 {#running-commands}
 

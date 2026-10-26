@@ -13,7 +13,7 @@ An app can run commands with AxManager's shell or root access through [axsh](./a
 | **Start of a command** | In shell mode: a short-lived helper asks AxManager for the server each time | A connect to your app's own broker |
 | **Needs AxManager running** | Yes: it answers the helper (each time) | Only for the first command |
 
-Both run the same `libaxsh.so` client, and both need AxManager's [permission](./axsh.md#permission). The difference is what waits on the other side: a helper started for that one command, or a broker already running in your app.
+Both need AxManager's [permission](./axsh.md#permission). AxManager's `libaxsh.so` and your own copy are the same client; the difference is what waits on the other side: a helper started for that one command, or a broker already running in your app. With the module, `Axsh` also skips the client and asks the broker's server directly.
 
 ### AxManager's `libaxsh.so` {#manager-binary}
 
@@ -36,7 +36,7 @@ val process = ProcessBuilder(axsh.path, "-c", "id").start()
 
 ### The `axsh` module {#axsh-module}
 
-Add the module from [JitPack](https://jitpack.io/#fahrez182/Axeron-API) together with `aidl` and `shared`, which it runs on, all at the same version (or from Maven local or as Gradle projects, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it)). Keep native libraries extracted, since `libaxsh.so` is run as a program:
+Add the module from [JitPack](https://jitpack.io/#fahrez182/Axeron-API) (or from Maven local or as Gradle projects, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it)):
 
 ```kotlin
 // settings.gradle.kts
@@ -53,15 +53,15 @@ dependencyResolutionManagement {
 // build.gradle.kts
 dependencies {
     implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
-    implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
-    implementation("com.github.fahrez182.Axeron-API:shared:2.1.0")
-}
-android {
-    packaging { jniLibs { useLegacyPackaging = true } }
+    // axsh brings these two along at runtime, and its own API (Broker, Axsh, ShellService) uses
+    // none of their types. Add them, at the same version, only to use their classes directly
+    // (IAxeronService, AxeronApiConstant, …).
+    // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
+    // implementation("com.github.fahrez182.Axeron-API:shared:2.1.0")
 }
 ```
 
-Start the broker in your `Application` and run your own copy of `libaxsh.so`:
+Start the broker in your `Application`:
 
 ```kotlin
 import frb.axeron.shell.Broker
@@ -72,11 +72,36 @@ class App : Application() {
         Broker.start(this)
     }
 }
+```
 
+The broker listens inside your app's process. It asks AxManager for the server once, keeps it, and serves every later command from there. Then run commands one of two ways.
+
+**`Axsh`, in your app's process.** A shell on the server as a `java.lang.Process`, from one binder call. Nothing is exec'd, so there is nothing to extract. Call it off the main thread:
+
+```kotlin
+import frb.axeron.shell.Axsh
+
+val process = Axsh.newProcess("-c", "id")             // sh's arguments; none for a shell on stdin
+val run = Axsh.exec(arrayOf("ls", "-l"), dir = "/")   // a program as it is, no shell around it
+val term = Axsh.newTerminal(rows = 24, cols = 80)     // on a PTY: setWindowSize() when it resizes
+```
+
+For libsu: `Shell.Builder.create().build(Axsh.newProcess())`.
+
+**Your own `libaxsh.so`, as a program.** For what takes a binary rather than a `Process`: a terminal emulator, libsu's `setCommands`, another process. It is run from your app's native library folder, so keep native libraries extracted there:
+
+```kotlin
+// build.gradle.kts: only when you run libaxsh.so yourself
+android {
+    packaging { jniLibs { useLegacyPackaging = true } }
+}
+```
+
+```kotlin
 val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
 ```
 
-The broker listens inside your app's process. It asks AxManager for the server once, keeps it, and serves every later command from there.
+[ShellService](#shell-service) doesn't need `useLegacyPackaging` either: it starts its process through `Axsh`, or through AxManager's `libaxsh.so` while the broker isn't running, never through your own.
 
 ## Running commands {#running-commands}
 
