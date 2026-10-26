@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import frb.axeron.manager.R
 import frb.axeron.manager.adb.ActivationLog
 import frb.axeron.manager.ui.component.AxCard
+import frb.axeron.manager.ui.component.containScroll
 import frb.axeron.manager.ui.component.AxOptionsSheet
 import frb.axeron.manager.ui.component.IconBadge
 import frb.axeron.manager.ui.component.StatusPill
@@ -294,6 +295,7 @@ fun ActivationLogPanel(
             state = listState,
             modifier = modifier
                 .fillMaxWidth()
+                .containScroll()
                 .axPanel(colors.surfaceContainerHigh)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)

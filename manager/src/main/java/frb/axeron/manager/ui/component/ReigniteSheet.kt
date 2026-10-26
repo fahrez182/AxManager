@@ -45,11 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -289,9 +284,7 @@ private fun ReigniteSheet(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
-                        // The log's scroll stays in the log: what it leaves at either end
-                        // would otherwise reach the sheet and drag it.
-                        .nestedScroll(KeepScrollInside)
+                        .containScroll()
                         .fillMaxWidth()
                         .heightIn(min = 160.dp, max = 360.dp)
                         .horizontalScroll(rememberScrollState())
@@ -417,13 +410,6 @@ private fun StepDuration(millis: Long, modifier: Modifier = Modifier) {
         fontWeight = if (slow) FontWeight.Bold else null,
         modifier = modifier
     )
-}
-
-/** Takes all scroll and fling its child leaves over, so none goes on to its parents. */
-private object KeepScrollInside : NestedScrollConnection {
-    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = available
-
-    override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
 }
 
 /** A step this long stands out. */

@@ -67,7 +67,7 @@ fun LanguageSheet(onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                LazyColumn(modifier = Modifier.heightIn(max = 420.dp).containScroll()) {
                     item {
                         LanguageRow(
                             title = stringResource(R.string.system_default),
