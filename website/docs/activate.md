@@ -21,6 +21,8 @@ Start AxManager from this page over USB. It runs the same command as [Start by c
 
 The steps need to be performed again after each reboot, like starting from a computer.
 
+If **TCP mode** is on in AxManager (the switch on its **TCP Debugging** card), the page first switches the device's ADB to TCP on that card's port, then starts the server, as the app does. ADB restarts for the switch, so the USB connection drops for a moment and the page reconnects by itself (allow USB debugging again if asked). Until the next reboot, the card's **Connect to TCP** can then start AxManager again without a computer.
+
 ## Requirements
 
 - A Chromium browser with WebUSB: Chrome or Edge on a computer, or Chrome on Android. Firefox and Safari can't use USB devices.
@@ -35,8 +37,9 @@ Chrome on Android works too: connect the device to another phone with an OTG cab
 
 After you allow USB debugging, the page:
 
-1. Runs `pm path frb.axeron.manager` to find where AxManager is installed.
-2. Runs `libaxeron.so` from that install, the same starter the app shows under **View Command**.
-3. Checks that `axeron_server` is running.
+1. Asks AxManager for its TCP mode and port (`content call --uri content://frb.axeron.manager.server --method getTcpConfig`). When TCP mode is on and ADB isn't on that port yet, it switches ADB to it (`adb tcpip <port>`) and reconnects over USB, which ADB keeps serving.
+2. Runs `pm path frb.axeron.manager` to find where AxManager is installed.
+3. Runs `libaxeron.so` from that install, the same starter the app shows under **View Command**.
+4. Checks that `axeron_server` is running.
 
 Everything runs in your browser. The key the browser uses for USB debugging is stored in this browser only.

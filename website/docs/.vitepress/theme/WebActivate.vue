@@ -35,6 +35,9 @@ const REAPPEAR_MS = 15000;
 const QUIET_MS = 15000;
 // How long the first command of a new session may take before it counts as dead.
 const PROBE_MS = 10000;
+// How long adbd gets to say it is restarting on TCP, or to drop the USB link doing it.
+const TCP_SWITCH_MS = 5000;
+const TCP_ACTIVE_MARK = "__AX_TCP_ACTIVE=";
 
 function log(line: string) {
   lines.value.push(line);
@@ -200,6 +203,99 @@ async function probe(device: Adb) {
   await Promise.race([device.subprocess.noneProtocol.spawnWaitText("echo ok"), reset, timeout]);
 }
 
+type TcpOutcome = "switched" | "unchanged" | "unconfirmed";
+
+// Like the app's OTG activation: ADB goes to TCP only when AxManager's TCP mode is on (its
+// provider answers adb's shell), on the port set there. Not raced against the USB link like
+// activate's steps: the link dropping here is adbd restarting, not a failure.
+async function applyTcpMode(device: Adb): Promise<TcpOutcome> {
+  const text = await device.subprocess.noneProtocol.spawnWaitText(
+    `content call --uri content://${PACKAGE}.server --method getTcpConfig 2>&1; ` +
+      `echo ${TCP_ACTIVE_MARK}$(getprop service.adb.tcp.port)`,
+  );
+  const mode = text.match(/tcp_mode=(true|false)/)?.[1];
+  const port = Number(text.match(/tcp_port=(\d+)/)?.[1]) || undefined;
+  // service.adb.tcp.port is "" or "0" while adbd is on USB.
+  const activePort = Number(text.match(new RegExp(`${TCP_ACTIVE_MARK}(\\d+)`))?.[1]) || undefined;
+  log(`TCP mode ${mode ?? "?"}, configured port ${port ?? "?"}, ADB on TCP port ${activePort ?? "none"}`);
+
+  if (mode === undefined) {
+    log("Couldn't read AxManager's TCP mode. ADB stays on USB.");
+    return "unchanged";
+  }
+  if (mode !== "true") {
+    log("TCP mode is off in AxManager. ADB stays on USB.");
+    return "unchanged";
+  }
+  if (port === undefined || port < 1024 || port > 65535) {
+    log(`AxManager's TCP port isn't valid (${port}). ADB stays on USB.`);
+    return "unchanged";
+  }
+  if (activePort === port) {
+    log(`ADB already listens on TCP port ${port}.`);
+    return "unchanged";
+  }
+
+  log(activePort !== undefined
+    ? `ADB is on TCP port ${activePort}, AxManager wants ${port}: switching it to ${port}...`
+    : `TCP mode is on: switching ADB to TCP port ${port}...`);
+  // setPort waits for adbd to close the socket, which a restarting adbd may never do over USB.
+  const outcome = await Promise.race([
+    device.tcpip.setPort(port).then(
+      () => "switched",
+      (e) => (/restarting/i.test(String(e?.message ?? e)) ? "switched" : `error: ${e?.message ?? e}`),
+    ),
+    device.disconnected.then(() => "dropped"),
+    new Promise<string>((resolve) => setTimeout(() => resolve("timeout"), TCP_SWITCH_MS)),
+  ]);
+  if (outcome === "switched" || outcome === "dropped") {
+    log(`ADB is restarting on TCP port ${port}.`);
+    return "switched";
+  }
+  if (outcome === "timeout") {
+    log(`Couldn't confirm the switch to TCP port ${port}. Going on over this connection.`);
+    return "unconfirmed";
+  }
+  log(`Couldn't switch ADB to TCP port ${port} (${outcome.slice("error: ".length)}). ADB stays on USB.`);
+  return "unchanged";
+}
+
+// Before the starter, as the app does: with TCP mode on, adbd moves to its TCP port first, so its
+// restart happens before there is a server to take down. The browser can't reach adbd over TCP,
+// but adbd keeps serving USB in TCP mode: the page reconnects over USB and starts the server from
+// there. Returns the session to start it on, or undefined when the phone didn't come back.
+async function switchToTcpFirst(device: Adb): Promise<Adb | undefined> {
+  let outcome: TcpOutcome;
+  try {
+    outcome = await applyTcpMode(device);
+  } catch (e) {
+    log(`Couldn't apply AxManager's TCP mode (${e}). ADB stays on USB.`);
+    return device;
+  }
+  if (outcome !== "switched") return device;
+
+  // Let the old session finish dropping, or the old USB device is still listed and gets reopened.
+  await Promise.race([
+    device.disconnected,
+    new Promise((resolve) => setTimeout(resolve, TCP_SWITCH_MS)),
+  ]);
+  await device.close().catch(() => {});
+  if (adb.value === device) adb.value = undefined;
+
+  log("Waiting for the phone to come back over USB...");
+  const again = selected && await reappear(selected.serial);
+  if (!again) {
+    log("The phone didn't come back over USB. ADB now listens on TCP: start AxManager from its TCP Debugging card, or replug the cable and press Connect again.");
+    return undefined;
+  }
+  selected = again;
+  state.value = "connecting";
+  await open(again);
+  if (!adb.value) return undefined;
+  state.value = "activating";
+  return adb.value;
+}
+
 async function disconnect() {
   const current = adb.value;
   adb.value = undefined;
@@ -209,9 +305,14 @@ async function disconnect() {
 }
 
 async function activate(retried = false) {
-  const device = adb.value;
-  if (!device) return;
+  if (!adb.value) return;
   state.value = "activating";
+  // Once is enough: a retry reconnects after the starter's session was lost, ADB is already set.
+  const device = retried ? adb.value : await switchToTcpFirst(adb.value);
+  if (!device) {
+    state.value = "failed";
+    return;
+  }
   const shell = device.subprocess.noneProtocol;
   // A dropped USB link ends the shell's output without an exit code, or leaves a read waiting
   // forever; racing every step against it says what happened instead.
