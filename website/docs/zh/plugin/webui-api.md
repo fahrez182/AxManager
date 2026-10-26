@@ -62,14 +62,28 @@ WebUI 运行的每条命令都由 AxManager 的服务启动，拥有服务的权
 |---|---|
 | `ksu.toast(message)` | 显示一条 Toast。 |
 | `ksu.fullScreen(enable)` | 隐藏或显示系统栏。 |
+| `ksu.exit()` | 关闭 WebUI。 |
+| `ksu.enableInsets(enable)` | `true`（默认）让页面绘制在系统栏下方，由 `/internal/insets.css` 提供内边距；`false` 则让页面避开系统栏。 |
 | `ksu.moduleInfo()` | JSON 字符串：插件的 `module.prop` 字段和状态，以及 `moduleDir`（插件文件夹）。 |
+| `ksu.createShortcut()` | 请求启动器将此 WebUI 固定为主屏幕快捷方式（以插件横幅为图标）。 |
 | `ksu.listPackages(type)` | 包名组成的 JSON 数组：`"user"`、`"system"`，其他值则为全部。 |
-| `ksu.listUserPackages()`、`ksu.listSystemPackages()`、`ksu.listAllPackages()` | 同上，作为单独的方法。 |
 | `ksu.getPackagesInfo(packages)` | `packages` 为 JSON 数组字符串。返回 `{packageName, versionName, versionCode, appLabel, isSystem, uid}` 组成的 JSON 数组；找不到的包返回 `{packageName, error}`。 |
 | `ksu.getPackagesIcons(packages, size)` | `{packageName, icon}` 组成的 JSON 数组，`icon` 为 `data:image/png;base64,…` URL（无法获取时为空）。 |
 | `ksu.cacheAllPackageIcons(size)` | 预先加载所有应用图标，供 `getPackagesIcons` 使用。 |
 
-包列表只包含设备的主用户（用户 0）。
+包列表只包含设备的主用户（用户 0），每个页面只读取一次：WebUI 打开期间安装的应用，需重新打开后才会出现。
+
+### 文件 {#files}
+
+以服务端身份运行，可访问范围与 `exec` 相同。所有方法在返回前都会阻塞页面。
+
+| 方法 | 返回 |
+|---|---|
+| `ksu.readFile(path)` | 文件内容；无法读取时为 `""`。 |
+| `ksu.writeFile(path, content)` | 用 `content` 替换文件内容；完整写入后返回 `true`。所在文件夹必须已存在。 |
+| `ksu.listFile(path)` | 文件夹内名称组成的 JSON 数组。 |
+| `ksu.copyFile(src, dest)`、`ksu.moveFile(src, dest)`、`ksu.removeFile(path)` | 分别为 `cp -a`、`mv` 和 `rm -rf`；命令成功时返回 `true`。 |
+| `ksu.fileOutputStream()` | 分块写入文件的对象：`open(path)` 或 `open(path, append)` 返回一个 id（失败时为 `""`），然后使用 `write(id, base64)`、`writeByte(id, byte)`、`flush(id)` 和 `close(id)`；`close` 在文件完整写入后返回 `true`。 |
 
 ## `Axeron` 对象 {#the-axeron-object}
 
@@ -84,6 +98,8 @@ WebUI 运行的每条命令都由 AxManager 的服务启动，拥有服务的权
 AxManager 提供两个小型 ES 模块，用 Promise 封装上述对象。
 
 **`kernelsu.js`**（地址 `ax://kernelsu.js/`），与 KernelSU 的 `kernelsu` npm 包提供相同的函数：
+
+包括 `exec`、`spawn`、`toast`、`fullScreen`、`enableEdgeToEdge`（调用 `ksu.enableInsets`）、`moduleInfo`，返回已解析数组（出错时为 `[]`）的 `listPackages` / `getPackagesInfo`，以及 `exit`（`ksu.exit()`）。
 
 ```js
 import { exec, spawn, toast, fullScreen } from "kernelsu";

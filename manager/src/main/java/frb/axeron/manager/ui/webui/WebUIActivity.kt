@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
+import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.MimeTypeMap
 import android.webkit.ValueCallback
@@ -20,6 +21,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +87,17 @@ class WebUIActivity : ComponentActivity() {
     private var pendingDownloadSuggestedFilename: String? = null
 
     private var insetsContinuation: CancellableContinuation<Unit>? = null
+
+    /** ksu.enableInsets(): true draws under the system bars (the default), false keeps clear of them. */
+    private var insetsEnabled = true
+
+    private lateinit var ksuInterface: KsuWebInterface
+
+    fun enableInsets(enable: Boolean) = runOnUiThread {
+        if (insetsEnabled == enable) return@runOnUiThread
+        insetsEnabled = enable
+        if (::webView.isInitialized) ViewCompat.requestApplyInsets(webView)
+    }
 
     fun erudaConsole(context: android.content.Context): String {
         return context.assets.open("js/eruda.min.js").bufferedReader().use { it.readText() }
@@ -184,8 +197,14 @@ class WebUIActivity : ComponentActivity() {
         webView = WebView(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             val density = resources.displayMetrics.density
-            ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
+            ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInsets ->
                 val inset = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                // Margins, not padding: a WebView draws its content under its own padding.
+                (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let { params ->
+                    val margin = if (insetsEnabled) androidx.core.graphics.Insets.NONE else inset
+                    params.setMargins(margin.left, margin.top, margin.right, margin.bottom)
+                    view.layoutParams = params
+                }
                 insets = Insets(
                     top = (inset.top / density).toInt(),
                     bottom = (inset.bottom / density).toInt(),
@@ -239,7 +258,19 @@ class WebUIActivity : ComponentActivity() {
             .addDomain("mui.kernelsu.org").addPathHandler("/", axPathHandler).done()
             .build()
 
+        ksuInterface = KsuWebInterface(this@WebUIActivity, webView, pluginDir)
+
+        // Back walks the page's own history first; only enabled while there is some.
+        val backCallback = onBackPressedDispatcher.addCallback(this, enabled = false) {
+            ksuInterface.goBack()
+        }
+
         val webViewClient = object : WebViewClient() {
+            override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                super.doUpdateVisitedHistory(view, url, isReload)
+                backCallback.isEnabled = ksuInterface.canGoBack()
+            }
+
             override fun shouldInterceptRequest(
                 view: WebView,
                 request: WebResourceRequest
@@ -266,7 +297,7 @@ class WebUIActivity : ComponentActivity() {
             settings.allowFileAccess = false
 
             addJavascriptInterface(AxWebInterface(this@WebUIActivity, this, pluginDir), "Axeron")
-            addJavascriptInterface(KsuWebInterface(this@WebUIActivity, this, pluginDir), "ksu")
+            addJavascriptInterface(ksuInterface, "ksu")
 
             webChromeClient = object : WebChromeClient() {
                 override fun onShowFileChooser(
@@ -511,6 +542,10 @@ class WebUIActivity : ComponentActivity() {
                 removeAllViews()
                 destroy()
             }
+        }
+        if (::ksuInterface.isInitialized) {
+            // Closing a stream waits for the server to finish the file: not on the main thread.
+            Thread { ksuInterface.destroy() }.start()
         }
         super.onDestroy()
     }

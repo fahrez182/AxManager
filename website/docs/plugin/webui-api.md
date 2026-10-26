@@ -62,14 +62,28 @@ Starts `command` with `args` (a JSON array string, appended to the command) and 
 |---|---|
 | `ksu.toast(message)` | Shows a toast. |
 | `ksu.fullScreen(enable)` | Hides or shows the system bars. |
+| `ksu.exit()` | Closes the WebUI. |
+| `ksu.enableInsets(enable)` | `true` (the default) draws the page under the system bars, padded by `/internal/insets.css`; `false` keeps it clear of them. |
 | `ksu.moduleInfo()` | JSON string: the plugin's `module.prop` fields and state, plus `moduleDir` (its folder). |
+| `ksu.createShortcut()` | Asks the launcher to pin a home-screen shortcut to this WebUI (the plugin's banner as its icon). |
 | `ksu.listPackages(type)` | JSON array of package names: `"user"`, `"system"`, or anything else for all. |
-| `ksu.listUserPackages()`, `ksu.listSystemPackages()`, `ksu.listAllPackages()` | The same, as separate methods. |
 | `ksu.getPackagesInfo(packages)` | `packages` is a JSON array string. Returns a JSON array of `{packageName, versionName, versionCode, appLabel, isSystem, uid}`, or `{packageName, error}` for a package that isn't found. |
 | `ksu.getPackagesIcons(packages, size)` | JSON array of `{packageName, icon}`, `icon` being a `data:image/png;base64,…` URL (empty when unavailable). |
 | `ksu.cacheAllPackageIcons(size)` | Loads every app icon ahead of time for `getPackagesIcons`. |
 
-Package lists cover the device's main user (user 0).
+Package lists cover the device's main user (user 0), read once per page: an app installed while the WebUI is open shows up after it is reopened.
+
+### Files
+
+Run as the server, so they reach what `exec` reaches. All of them block the page until they return.
+
+| Method | Returns |
+|---|---|
+| `ksu.readFile(path)` | The file's content, or `""` when it can't be read. |
+| `ksu.writeFile(path, content)` | Replaces the file with `content`; `true` once it is fully written. The folder must exist. |
+| `ksu.listFile(path)` | JSON array of the names in a folder. |
+| `ksu.copyFile(src, dest)`, `ksu.moveFile(src, dest)`, `ksu.removeFile(path)` | `cp -a`, `mv` and `rm -rf`; `true` when the command succeeds. |
+| `ksu.fileOutputStream()` | An object for writing a file in chunks: `open(path)` or `open(path, append)` returns an id (`""` on failure), then `write(id, base64)`, `writeByte(id, byte)`, `flush(id)` and `close(id)`, which returns `true` once the file is fully written. |
 
 ## The `Axeron` object
 
@@ -84,6 +98,8 @@ Package lists cover the device's main user (user 0).
 AxManager serves two small ES modules that wrap these objects in promises:
 
 **`kernelsu.js`** (served at `ax://kernelsu.js/`), the same functions as KernelSU's `kernelsu` npm package:
+
+`exec`, `spawn`, `toast`, `fullScreen`, `enableEdgeToEdge` (calls `ksu.enableInsets`), `moduleInfo`, and `listPackages` / `getPackagesInfo`, which return parsed arrays (`[]` on error), and `exit` (`ksu.exit()`).
 
 ```js
 import { exec, spawn, toast, fullScreen } from "kernelsu";
