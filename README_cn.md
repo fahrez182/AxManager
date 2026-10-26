@@ -2,6 +2,8 @@
 
 > 一个运行在 **ADB（shell）权限**上的 Android 特权环境，如果设备已 root，也可以使用 **root** 运行。AxManager 会在后台保持一个服务进程运行，并在此基础上提供：带 WebUI 的 Magisk 风格插件、按应用的权限控制、兼容 Shizuku 的 API、Shell 以及系统设置编辑器。
 
+**官方网站：[axmanager.app](https://axmanager.app)**，包含下载、通过浏览器激活、使用指南和插件文档。
+
 [Switch to English 切换到英文](README.md)
 
 ## 💡 这是什么
@@ -15,11 +17,12 @@ AxManager 以 `shell` 用户（通过无线调试、电脑或另一台手机经 
 - **无线调试**（Android 11+）：在设备本机上配对并启动，无需电脑。
 - **TCP 调试**和**电脑（adb）**：经典的启动方式。
 - **OTG**：把这台手机当作"电脑"，通过 USB 线在另一台手机上启动 AxManager。
+- **浏览器**：在 Chrome 或 Edge 中打开 [axmanager.app/activate](https://axmanager.app/activate)，通过 USB 启动，无需安装 `adb`。
 - **以 Shell 启动**：即使设备已 root，也以 shell 模式运行。
 - 实时输出的激活日志会显示每一步发生了什么。
 
 ### 🧩 插件（无需 root 的模块）
-采用熟悉的 Magisk/KernelSU 结构的模块，由 AxManager 的服务运行，而不是 root 守护进程。[插件文档](https://fahrez182.github.io/AxManager/zh/plugin/what-is-plugin.html)
+采用熟悉的 Magisk/KernelSU 结构的模块，由 AxManager 的服务运行，而不是 root 守护进程。[插件文档](https://axmanager.app/zh/plugin/what-is-plugin.html)
 - `module.prop`、`customize.sh`、`post-fs-data.sh`、`service.sh`、`system.prop`、`action.sh`、`uninstall.sh`，以及 `system/bin`（链接到位于 `PATH` 中的 `$AXERONXBIN`）。
 - 完整的 **BusyBox**（支持独立模式），以及 `AXERON`、`AXERONVER`、`AXERONDIR`、`AXERONBIN`、`TMPDIR` 环境变量。
 - **WebUI**：兼容 KernelSU 的 `ksu` JavaScript API，加上 AxManager 自己的 `Axeron` API，并可为插件的 WebUI 创建桌面快捷方式。
@@ -56,7 +59,7 @@ Root 模式和 shell 模式各自使用独立的文件夹，因此以 root 创�
 - 无线调试激活需要 Android 11 或更高版本。
 
 ## 📦 安装
-从 [Releases](https://github.com/fahrez182/AxManager/releases) 下载最新的 APK，然后按照[用户手册](https://fahrez182.github.io/AxManager/zh/guide/user-manual.html)启动它。
+从 [Releases](https://github.com/fahrez182/AxManager/releases) 下载最新的 APK，然后按照[用户手册](https://axmanager.app/zh/guide/user-manual.html)启动它。
 
 ## 🔧 构建
 API 位于一个 git 子模块中，因此克隆时请一并获取：
@@ -84,11 +87,11 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 | `api`（子模块） | AIDL、客户端 API、共享的服务端代码、Shizuku 兼容层、`axsh` |
 
 ## 📖 文档
-- [什么是 Axeron 管理器？](https://fahrez182.github.io/AxManager/zh/guide/what-is-axeron-manager.html)
-- [用户手册](https://fahrez182.github.io/AxManager/zh/guide/user-manual.html)
-- [插件](https://fahrez182.github.io/AxManager/zh/plugin/what-is-plugin.html)
-- [Re-ignite](https://fahrez182.github.io/AxManager/zh/plugin/re-ignite.html)
-- [常见问题](https://fahrez182.github.io/AxManager/zh/guide/faq.html)
+- [什么是 Axeron 管理器？](https://axmanager.app/zh/guide/what-is-axeron-manager.html)
+- [用户手册](https://axmanager.app/zh/guide/user-manual.html)
+- [插件](https://axmanager.app/zh/plugin/what-is-plugin.html)
+- [Re-ignite](https://axmanager.app/zh/plugin/re-ignite.html)
+- [常见问题](https://axmanager.app/zh/guide/faq.html)
 
 ## 🤝 贡献
 欢迎贡献！您可以提交 **issue**、发送 **pull request** 或发起讨论。

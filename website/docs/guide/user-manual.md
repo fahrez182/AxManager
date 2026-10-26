@@ -18,6 +18,7 @@ The Activate screen is split in two:
 | [TCP debugging](#start-with-tcp-debugging) | ADB already listening on TCP | No |
 | [OTG](#start-from-another-phone-otg) | A second phone and an OTG cable | No |
 | [Computer](#start-by-connecting-to-a-computer) | A computer with `adb` | No |
+| [Browser](#start-from-the-browser) | Chrome or Edge on a computer, or Chrome on another phone; a USB cable | No |
 
 ### The activation log
 
@@ -146,13 +147,25 @@ adb shell /data/app/~~…/frb.axeron.manager-…/lib/arm64/libaxeron.so
 
 The exact path depends on your installation, so always copy it from the app (**Copy**, or **Send** to share it to your computer). Paste it into the terminal. If there is no problem, AxManager shows that it has started.
 
+### Start from the browser
+
+[Activate from the browser](../activate.md) does what the computer method does, from a web page over USB: no `adb` to install. It works in Chrome or Edge on a computer, or in Chrome on another phone connected with an OTG cable.
+
+1. Enable **USB Debugging** on the device ([how](#setting-adb)) and connect it with a USB cable.
+2. Open [axmanager.app/activate](https://axmanager.app/activate), click **Connect** and pick the device.
+3. Allow USB debugging on the device, then click **Activate**.
+
+The page shows the same log as the app's activation and turns green once the server runs. With **TCP mode** on (the switch on the **TCP Debugging** card), it first switches ADB to TCP on that card's port, as Wireless Debugging activation does, so [TCP debugging](#start-with-tcp-debugging) can start AxManager again until the next reboot.
+
+Close anything else using ADB first (an `adb` server, Android Studio, scrcpy): only one program can hold the device. See the page for [requirements](../activate.md#requirements) such as the Windows USB driver.
+
 ## Activate on Boot
 
 **Settings → Activate on Boot** (on by default) starts AxManager again after a reboot, using the method it was last started with:
 
 - **Root** or **Start as Shell**: started again through root.
 - **ADB** (Wireless Debugging, TCP or OTG), Android 11+ only, **experimental**: AxManager turns Wireless Debugging on and connects to it. This needs the `WRITE_SECURE_SETTINGS` permission, which the server grants AxManager when it runs, and Wi-Fi at boot.
-- Started from a computer, never started, or ADB below Android 11: not started on boot.
+- Started from a computer or the browser, never started, or ADB below Android 11: not started on boot.
 
 Nothing is started in safe mode. While AxManager is stopped, the Home status card shows the last method used and whether boot start is on.
 

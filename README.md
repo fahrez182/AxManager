@@ -2,6 +2,8 @@
 
 A privileged environment for Android that runs on **ADB (shell) permissions**, or on **root** when you have it. AxManager keeps a background server alive and builds on it: Magisk-style plugins with a WebUI, per-app privilege control, a Shizuku-compatible API, a shell, and a system settings editor.
 
+**Website: [axmanager.app](https://axmanager.app)**, the official site and documentation. Download, activate from the browser, guides and the plugin docs.
+
 [Switch to Chinese translation 切换到中文翻译](README_cn.md)
 
 ## What it is
@@ -15,6 +17,7 @@ AxManager starts its own server process, either as the `shell` user (through Wir
 - **Wireless Debugging** (Android 11+): pair and start on the device itself, without a computer.
 - **TCP debugging**, with a configurable port.
 - **Computer**: start it with one `adb shell` command.
+- **Browser**: start it over USB from [axmanager.app/activate](https://axmanager.app/activate) in Chrome or Edge, without installing `adb`.
 - **OTG**: use this phone as the computer and start AxManager on another phone over a USB cable.
 - **Start as Shell**: run in shell mode even on a rooted device.
 - **Start on boot**: root, or ADB on Android 11+ (experimental).
@@ -37,7 +40,7 @@ AxManager starts its own server process, either as the `shell` user (through Wir
   - The page refreshes when you come back, so changes made elsewhere show up.
 
 ### Plugins (unrooted modules)
-Modules in the familiar Magisk/KernelSU layout, run by AxManager's server instead of a root daemon. See the [plugin docs](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html).
+Modules in the familiar Magisk/KernelSU layout, run by AxManager's server instead of a root daemon. See the [plugin docs](https://axmanager.app/plugin/what-is-plugin.html).
 - `module.prop`, `customize.sh`, `post-fs-data.sh`, `service.sh`, `system.prop`, `action.sh`, `uninstall.sh`, and `system/bin` (linked into `$AXERONXBIN`, which is on `PATH`).
 - A full BusyBox (with Standalone Mode), `resetprop`, and the `AXERON`, `AXERONVER`, `AXERONDIR`, `AXERONBIN`, `AXERONXBIN` and `TMPDIR` environment variables.
 - **WebUI** with a KernelSU-compatible `ksu` JavaScript API and AxManager's own `Axeron` API. Any plugin's WebUI can be pinned to the home screen with its own name and icon.
@@ -90,7 +93,7 @@ Root mode used to live in `/data/user_de/0/android/axeron`; it moves to `/data/a
 - Wireless Debugging activation needs Android 11 or newer.
 
 ## Install
-Download the latest APK from [Releases](https://github.com/fahrez182/AxManager/releases), then follow the [user manual](https://fahrez182.github.io/AxManager/guide/user-manual.html) to start it.
+Download the latest APK from [Releases](https://github.com/fahrez182/AxManager/releases), then follow the [user manual](https://axmanager.app/guide/user-manual.html) to start it.
 
 ## Build
 The API lives in a git submodule, so clone with it:
@@ -118,11 +121,12 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 | `api` (submodule) | AIDL, client API, shared server code, Shizuku compatibility, `axsh` |
 
 ## Documentation
-- [What is Axeron Manager?](https://fahrez182.github.io/AxManager/guide/what-is-axeron-manager.html)
-- [User manual](https://fahrez182.github.io/AxManager/guide/user-manual.html)
-- [Plugins](https://fahrez182.github.io/AxManager/plugin/what-is-plugin.html)
-- [Re-ignite](https://fahrez182.github.io/AxManager/plugin/re-ignite.html)
-- [FAQ](https://fahrez182.github.io/AxManager/guide/faq.html)
+Everything is on [axmanager.app](https://axmanager.app):
+- [What is Axeron Manager?](https://axmanager.app/guide/what-is-axeron-manager.html)
+- [User manual](https://axmanager.app/guide/user-manual.html)
+- [Plugins](https://axmanager.app/plugin/what-is-plugin.html)
+- [Re-ignite](https://axmanager.app/plugin/re-ignite.html)
+- [FAQ](https://axmanager.app/guide/faq.html)
 
 ## Contributing
 Contributions are welcome. Open an issue, send a pull request, or start a discussion.

@@ -22,6 +22,7 @@ AxManager 通过一个后台服务完成所有工作。在做其他事情之前�
 | [TCP 调试](#start-with-tcp-debugging) | ADB 已在 TCP 端口上监听 | 否 |
 | [OTG](#start-from-another-phone-otg) | 另一台手机和 OTG 线 | 否 |
 | [电脑](#start-by-connecting-to-a-computer) | 装有 `adb` 的电脑 | 否 |
+| [浏览器](#start-from-the-browser) | 电脑上的 Chrome 或 Edge，或另一台手机上的 Chrome；一根 USB 线 | 否 |
 
 ### 激活日志 {#the-activation-log}
 
@@ -150,13 +151,25 @@ adb shell /data/app/~~…/frb.axeron.manager-…/lib/arm64/libaxeron.so
 
 具体路径取决于您的安装，因此请始终从应用中复制（**复制**，或通过**分享**发送到电脑）。将其粘贴到终端中。如果没有问题，AxManager 会显示已成功启动。
 
+### 通过浏览器启动 {#start-from-the-browser}
+
+[通过浏览器激活](/activate)与电脑方法的作用相同，只是通过网页经 USB 完成，无需安装 `adb`。可在电脑上的 Chrome 或 Edge 中使用，也可在用 OTG 线连接的另一台手机上的 Chrome 中使用。
+
+1. 在设备上开启 **USB 调试**（[方法](#setting-adb)），并用 USB 线连接。
+2. 打开 [axmanager.app/activate](https://axmanager.app/activate)，点击 **Connect** 并选择该设备。
+3. 在设备上允许 USB 调试，然后点击 **Activate**。
+
+页面会显示与应用激活相同的日志，服务运行后状态变为绿色。如果开启了 **TCP 模式**（**TCP Debugging** 卡片上的开关），页面会先把 ADB 切换到该卡片设置的 TCP 端口（与无线调试激活相同），这样在下次重启前，都可以通过 [TCP 调试](#start-with-tcp-debugging)再次启动 AxManager。
+
+请先关闭其他正在使用 ADB 的程序（`adb` 服务、Android Studio、scrcpy）：同一时间只能有一个程序占用设备。Windows USB 驱动等[要求](/activate#requirements)请参见该页面。
+
 ## 开机自启 {#activate-on-boot}
 
 **设置 → 开机自启**（默认开启）会在重启后使用上次的启动方式再次启动 AxManager：
 
 - **Root** 或**以 Shell 身份启动**：通过 root 再次启动。
 - **ADB**（无线调试、TCP 或 OTG），仅限 Android 11+，**实验性**：AxManager 会打开无线调试并连接。这需要 `WRITE_SECURE_SETTINGS` 权限（服务运行时会授予 AxManager），并且开机时需要 Wi-Fi。
-- 通过电脑启动、从未启动过，或 Android 11 以下的 ADB：开机时不会启动。
+- 通过电脑或浏览器启动、从未启动过，或 Android 11 以下的 ADB：开机时不会启动。
 
 安全模式下不会启动任何东西。AxManager 停止时，主页状态卡片会显示上次使用的方式（**Last: …**）以及是否开启了开机启动（**Boot**）。
 

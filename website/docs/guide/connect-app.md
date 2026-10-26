@@ -36,7 +36,7 @@ val process = ProcessBuilder(axsh.path, "-c", "id").start()
 
 ### The `axsh` module {#axsh-module}
 
-Add the module from [JitPack](https://jitpack.io/#fahrez182/Axeron-API) (or as a Gradle project, see the Axeron API README), and keep native libraries extracted, since `libaxsh.so` is run as a program:
+Add the module from [JitPack](https://jitpack.io/#fahrez182/Axeron-API) together with `aidl` and `shared`, which it runs on, all at the same version (or from Maven local or as Gradle projects, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it)). Keep native libraries extracted, since `libaxsh.so` is run as a program:
 
 ```kotlin
 // settings.gradle.kts
@@ -53,6 +53,8 @@ dependencyResolutionManagement {
 // build.gradle.kts
 dependencies {
     implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
+    implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
+    implementation("com.github.fahrez182.Axeron-API:shared:2.1.0")
 }
 android {
     packaging { jniLibs { useLegacyPackaging = true } }
