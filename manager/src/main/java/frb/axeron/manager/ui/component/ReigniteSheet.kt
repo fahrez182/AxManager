@@ -1,6 +1,11 @@
 package frb.axeron.manager.ui.component
 
+import android.os.Build
 import android.os.SystemClock
+import android.widget.Toast
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.ui.platform.LocalContext
+import frb.axeron.manager.ui.util.ClipboardUtil
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -331,28 +336,51 @@ private fun ReigniteSheet(
 
             // Cancel while the action runs (its process is killed: plugins it hadn't reached stay
             // as they were), unless the step now must not be cut short; Close once it is done.
-            if (running) {
+            // Copy log beside it either way, so a stuck run can be reported too.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (running) {
+                    OutlinedButton(
+                        onClick = {
+                            cancelling = true
+                            onCancel()
+                        },
+                        enabled = !cancelling && cancellable,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text(stringResource(R.string.cancel), fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Button(
+                        onClick = onClose,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text(stringResource(R.string.close), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                val context = LocalContext.current
+                val copied = stringResource(R.string.copied)
                 OutlinedButton(
                     onClick = {
-                        cancelling = true
-                        onCancel()
+                        val text = buildString {
+                            appendLine(title)
+                            lines.forEach { appendLine("[${seconds(it.atMillis)}] ${it.text}") }
+                        }
+                        // Android 13+ shows its own clipboard confirmation.
+                        if (ClipboardUtil.put(context, text) && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+                        }
                     },
-                    enabled = !cancelling && cancellable,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
+                    enabled = lines.isNotEmpty(),
+                    modifier = Modifier.height(50.dp)
                 ) {
-                    Text(stringResource(R.string.cancel), fontWeight = FontWeight.SemiBold)
-                }
-            } else {
-                Button(
-                    onClick = onClose,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                ) {
-                    Text(stringResource(R.string.close), fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.activation_copy_log), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
