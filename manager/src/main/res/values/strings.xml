@@ -327,8 +327,21 @@
     <string name="plugin_dev_info_hint">Tap a value to copy it. Every process a plugin starts carries the marker, so it is stopped with the plugin.</string>
     <string name="stop_plugins_with_server">Stop plugins with the server</string>
     <string name="stop_plugins_with_server_desc">When the server stops or dies, every plugin is stopped too. Shutdown and Restart from AxManager stop them first, shown in their log; Restart then ignites them again. If the server dies any other way, they are stopped right after. Off: plugins keep running on their own.</string>
-    <string name="settings_env_locked">Set by AxManager or Android. It can\'t be changed here.</string>
-    <string name="settings_env_append">The default stays. Add entries before or after $%1$s, separated by \":\".</string>
+    <string name="settings_env_locked">Set by AxManager or Android. It is shown here, but can\'t be changed.</string>
+    <string name="settings_env_ref_kept">Always kept</string>
+    <string name="settings_env_ref_desc">$%1$s stands for the default %1$s that AxManager and Android set, listed below in order. It can\'t be removed: your entries only go before or after it.</string>
+    <string name="settings_env_before">Before $%1$s</string>
+    <string name="settings_env_before_hint">Looked in first, ahead of the default. Separate entries with \":\".</string>
+    <string name="settings_env_after">After $%1$s</string>
+    <string name="settings_env_after_hint">Looked in last, after the default. Separate entries with \":\".</string>
+    <string name="settings_env_badge_locked">Locked</string>
+    <string name="settings_env_badge_before">+%d before</string>
+    <string name="settings_env_badge_after">+%d after</string>
+    <string name="settings_env_nothing_added">Nothing added: $%1$s is used as it is.</string>
+    <plurals name="settings_env_added">
+        <item quantity="one">%d entry added to the default</item>
+        <item quantity="other">%d entries added to the default</item>
+    </plurals>
     <string name="server_shutdown">Stopping the server</string>
     <string name="server_restart">Restarting the server</string>
     <string name="axeron_permission_shizuku_missing">Some older Shizuku apps (e.g. old ZArchiver) only connect when the Shizuku app is installed. Install it if such an app can\'t find Shizuku; it doesn\'t need to be started.</string>

@@ -423,9 +423,8 @@ open class AxeronService :
 
         /**
          * [path] with AxManager's bin dirs in front of the rest, or behind it when system binaries
-         * are preferred; each entry kept once. Also run on the user's env: a PATH saved there (often
-         * a copy of the composed one) must not undo the setting, and one inherited from a server
-         * started inside an AxManager shell already holds these dirs.
+         * are preferred; each entry kept once. A system PATH inherited from a server started inside
+         * an AxManager shell may already hold these dirs.
          */
         private fun orderPath(path: String): String {
             val ours = axeronBinDirs()
@@ -777,11 +776,13 @@ open class AxeronService :
         // A plugin's process marker set in the user's env would tag every process as that
         // plugin's, so stopping it would stop them all. Only plugin code gets it.
         val merged = HashMap(builder.remove("AXERON_PLUGIN").build().envMap)
-        // Entries added twice (a copy of the default) kept once; PATH also in the order
-        // preferSystemBinaries asks for.
-        merged["PATH"]?.let { merged["PATH"] = orderPath(it) }
-        merged["LD_LIBRARY_PATH"]?.let { ld ->
-            merged["LD_LIBRARY_PATH"] = ld.split(':').filter { it.isNotEmpty() }.distinct().joinToString(":")
+        // Entries added twice (a copy of the default) kept once, at their first place. Not
+        // reordered: the default PATH is already in preferSystemBinaries' order inside $PATH,
+        // and the user's entries stay where they were put, before or after it.
+        for (key in APPEND_ONLY_ENV) {
+            merged[key]?.let { list ->
+                merged[key] = list.split(':').filter { it.isNotEmpty() }.distinct().joinToString(":")
+            }
         }
         val built = Environment(merged, true)
 
@@ -812,10 +813,21 @@ open class AxeronService :
         }
     }
 
+    /**
+     * A failed write reaches the caller as an IllegalStateException, which the binder carries
+     * (a checked IOException it doesn't: the call returned as if it worked). The cached envs are
+     * dropped either way, so what is served matches what the file holds.
+     */
     override fun setNewEnvironment(env: Environment) {
         enforceManagerPermission("setNewEnvironment")
-        environmentManager.replaceAllBlocking(HashMap(env.envMap)) // manager needs mutability
-        invalidateEnvironment()
+        try {
+            environmentManager.replaceAllBlocking(HashMap(env.envMap)) // manager needs mutability
+        } catch (e: Throwable) {
+            LOGGER.w(e, "setNewEnvironment")
+            throw IllegalStateException("can't save the env: ${e.message ?: e.javaClass.simpleName}")
+        } finally {
+            invalidateEnvironment()
+        }
     }
 
     override fun setPreferSystemBinaries(prefer: Boolean) {

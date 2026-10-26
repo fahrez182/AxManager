@@ -99,9 +99,12 @@ class SettingsEditorViewModel(application: Application) : AndroidViewModel(appli
         LOCKED
     }
 
-    // As loaded with AXERON_ENV: the default env's keys, and the user's own env.
-    private var envDefaults by mutableStateOf(emptySet<String>())
+    // As loaded with AXERON_ENV: the default env, and the user's own env.
+    private var envDefaults by mutableStateOf(emptyMap<String, String>())
     private var envUser by mutableStateOf(emptyMap<String, String>())
+
+    /** What `$KEY` stands for: the default env's value, as the server built it. */
+    fun envDefaultValue(key: String): String = envDefaults[key].orEmpty()
 
     fun envLock(key: String): EnvLock = when (key) {
         !in envDefaults -> EnvLock.NONE
@@ -114,18 +117,65 @@ class SettingsEditorViewModel(application: Application) : AndroidViewModel(appli
 
     /**
      * What the editor starts from for env [key]: the user's own value as saved, never the merged
-     * one (saving that would copy the default into the user's env); `$KEY:` for an empty list.
+     * one (saving that would copy the default into the user's env); for a locked key, the
+     * default it shows; for a path list, `$KEY` alone.
      */
-    fun envEditValue(key: String): String =
-        envUser[key] ?: if (envLock(key) == EnvLock.APPEND) "\$$key:" else ""
+    fun envEditValue(key: String): String = when (envLock(key)) {
+        EnvLock.NONE -> envUser[key].orEmpty()
+        EnvLock.LOCKED -> envDefaultValue(key)
+        EnvLock.APPEND -> composeAppend(key, splitAppend(key, envUser[key] ?: "\$$key"))
+    }
+
+    /**
+     * A path-list value split around `$KEY`: the user's entries before the default, and after
+     * it. Without `$KEY` (saved before the default was locked) they all come after it, as the
+     * server puts them.
+     */
+    fun splitAppend(key: String, value: String): Pair<String, String> {
+        val entries = value.split(':').filter { it.isNotEmpty() }
+        val at = entries.indexOf("\$$key")
+        return if (at < 0) "" to entries.joinToString(":")
+        else entries.take(at).joinToString(":") to entries.drop(at + 1).joinToString(":")
+    }
+
+    /** [parts] around `$KEY` again; a `$KEY` typed into either part is dropped, it is there once. */
+    fun composeAppend(key: String, parts: Pair<String, String>): String {
+        fun entries(text: String) = text.split(':').map { it.trim() }.filter { it.isNotEmpty() && it != "\$$key" }
+        return (entries(parts.first) + "\$$key" + entries(parts.second)).joinToString(":")
+    }
+
+    /** The user's saved entries before and after `$KEY`, counted; 0 to 0 when it has none. */
+    fun envAdditions(key: String): Pair<Int, Int> {
+        val saved = envUser[key] ?: return 0 to 0
+        val (before, after) = splitAppend(key, saved)
+        fun count(text: String) = text.split(':').count { it.isNotEmpty() }
+        return count(before) to count(after)
+    }
+
+    /** How many entries the user adds around `$KEY` in [value]. */
+    fun appendCount(key: String, value: String): Int = value.split(':').count { it.isNotEmpty() && it != "\$$key" }
+
+    /** Why the last [put] or [delete] failed, for its toast; null when it gave no reason. */
+    var lastError: String? = null
+        private set
 
     suspend fun put(type: SettingType, key: String, value: String): Boolean =
-        withContext(Dispatchers.IO) { repository.putValue(type, key, value) }
-            .also { if (it) load(type) }
+        write(type) { repository.putValue(type, key, value) }
 
     suspend fun delete(type: SettingType, key: String): Boolean =
-        withContext(Dispatchers.IO) { repository.deleteValue(type, key) }
-            .also { if (it) load(type) }
+        write(type) { repository.deleteValue(type, key) }
+
+    private suspend fun write(type: SettingType, block: () -> Boolean): Boolean {
+        lastError = null
+        val ok = withContext(Dispatchers.IO) {
+            runCatching(block).getOrElse {
+                lastError = it.message ?: it.javaClass.simpleName
+                false
+            }
+        }
+        if (ok) load(type)
+        return ok
+    }
 
     private fun types(type: SettingType?) = if (type == null) SettingType.entries else listOf(type)
 
@@ -135,7 +185,7 @@ class SettingsEditorViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             val list = withContext(Dispatchers.IO) {
                 if (type == SettingType.AXERON_ENV) {
-                    val defaults = runCatching { repository.getDefaultEnvKeys() }.getOrDefault(emptySet())
+                    val defaults = runCatching { repository.getDefaultEnv() }.getOrDefault(emptyMap())
                     val user = repository.getUserEnv()
                     withContext(Dispatchers.Main) {
                         envDefaults = defaults

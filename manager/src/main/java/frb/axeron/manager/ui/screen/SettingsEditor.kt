@@ -4,6 +4,10 @@ import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -92,6 +96,7 @@ import frb.axeron.manager.ui.component.AxDropdownMenu
 import androidx.compose.material.icons.outlined.Key
 import frb.axeron.manager.ui.component.AxCardShape
 import frb.axeron.manager.ui.component.ScrollableTextField
+import frb.axeron.manager.ui.component.containScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
@@ -293,6 +298,7 @@ fun SettingsEditorScreen(
                     onRefresh = { viewModel.refresh(type) },
                     onOpen = { editing = EditTarget(it.type, it.key, it.value, isNew = false) },
                     onPin = { pinning = it },
+                    envNote = { envNote(viewModel, it) },
                     onOpenSource = { target ->
                         scope.launch { pagerState.animateScrollToPage(pages.indexOf(target)) }
                     }
@@ -385,6 +391,7 @@ private fun SettingsPage(
     onRefresh: () -> Unit,
     onOpen: (Entry) -> Unit,
     onPin: (Entry) -> Unit,
+    envNote: @Composable (Entry) -> EnvNote?,
     onOpenSource: (SettingType) -> Unit
 ) {
     val floatingInset = LocalFloatingBarInset.current
@@ -435,6 +442,7 @@ private fun SettingsPage(
                     entry = entry,
                     query = query,
                     showSource = type == null,
+                    envNote = envNote(entry),
                     onClick = { onOpen(entry) },
                     onPin = { onPin(entry) }
                 )
@@ -454,6 +462,35 @@ private fun SettingsPage(
                     .align(Alignment.CenterEnd)
                     .padding(top = 4.dp, bottom = bottomPadding)
             )
+        }
+    }
+}
+
+/** A pill on an env row: what the user's env adds to it, or that it is locked. */
+@Immutable
+private class EnvNote(val text: String, val color: Color)
+
+/**
+ * The note for [entry]: "+1 before · +2 after" for a path list the user adds to, "Locked" for
+ * the server's and the system's own; none for the user's own variables or other sources.
+ */
+@Composable
+private fun envNote(viewModel: SettingsEditorViewModel, entry: Entry): EnvNote? {
+    if (entry.type != SettingType.AXERON_ENV) return null
+    return when (viewModel.envLock(entry.key)) {
+        EnvLock.NONE -> null
+        EnvLock.LOCKED -> EnvNote(
+            stringResource(R.string.settings_env_badge_locked),
+            MaterialTheme.colorScheme.outline
+        )
+        EnvLock.APPEND -> {
+            val (before, after) = viewModel.envAdditions(entry.key)
+            if (before + after == 0) return null
+            val parts = listOfNotNull(
+                before.takeIf { it > 0 }?.let { stringResource(R.string.settings_env_badge_before, it) },
+                after.takeIf { it > 0 }?.let { stringResource(R.string.settings_env_badge_after, it) }
+            )
+            EnvNote(parts.joinToString(" · "), MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -502,6 +539,7 @@ private fun SettingRow(
     entry: Entry,
     query: String,
     showSource: Boolean,
+    envNote: EnvNote?,
     onClick: () -> Unit,
     onPin: () -> Unit
 ) {
@@ -547,6 +585,10 @@ private fun SettingRow(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
+                    if (envNote != null) {
+                        Spacer(Modifier.width(8.dp))
+                        StatusPill(text = envNote.text, color = envNote.color)
+                    }
                     if (showSource) {
                         Spacer(Modifier.width(8.dp))
                         StatusPill(
@@ -651,7 +693,29 @@ private fun SettingEditorSheet(
     }
     // TextFieldState: its field exposes the scroll state the long-value indicator needs.
     val valueState = remember(target) { TextFieldState(initialValue) }
-    val value = valueState.text.toString()
+    // A path list is edited as the user's entries before and after `$KEY`, which itself can't
+    // be removed: it is not in either field.
+    val appendParts = remember(target) { viewModel.splitAppend(target.key, initialValue) }
+    var appendBefore by remember(target) { mutableStateOf(appendParts.first) }
+    var appendAfter by remember(target) { mutableStateOf(appendParts.second) }
+    val value = if (envLock == EnvLock.APPEND) {
+        viewModel.composeAppend(key.trim(), appendBefore to appendAfter)
+    } else {
+        valueState.text.toString()
+    }
+    // A new env entry for a key the user's env already holds, or a path list, starts from what
+    // is saved for it: started empty, its saved entries didn't show, and saving dropped them.
+    // Only then, so a value typed before an unrelated key isn't cleared.
+    val envKey = key.trim()
+    LaunchedEffect(envKey, envLock) {
+        if (!target.isNew || !isEnv) return@LaunchedEffect
+        if (!viewModel.hasUserEnv(envKey) && envLock != EnvLock.APPEND) return@LaunchedEffect
+        val saved = viewModel.envEditValue(envKey)
+        valueState.setTextAndPlaceCursorAtEnd(saved)
+        val (before, after) = viewModel.splitAppend(envKey, saved)
+        appendBefore = before
+        appendAfter = after
+    }
     var busy by remember { mutableStateOf(false) }
 
     // The list's search query: highlight it in the key and step through it in the value.
@@ -702,7 +766,7 @@ private fun SettingEditorSheet(
                 toast(done)
                 onDismiss()
             } else {
-                toast(failed)
+                toast(viewModel.lastError?.let { "$failed: $it" } ?: failed)
             }
         }
     }
@@ -806,11 +870,26 @@ private fun SettingEditorSheet(
 
         // Scrolls inside past its visible lines, with an indicator; the hint below says how much.
         val valueScroll = rememberScrollState()
-        val scrollsInside = valueScroll.maxValue > 0
-        ScrollableTextField(
+        val scrollsInside = envLock == EnvLock.NONE && valueScroll.maxValue > 0
+        when (envLock) {
+            EnvLock.APPEND -> EnvAppendEditor(
+                key = key.trim(),
+                defaultValue = viewModel.envDefaultValue(key.trim()),
+                before = appendBefore,
+                onBefore = { appendBefore = it },
+                after = appendAfter,
+                onAfter = { appendAfter = it },
+                added = viewModel.appendCount(key.trim(), value),
+                modified = !target.isNew && modified,
+                enabled = !busy
+            )
+
+            EnvLock.LOCKED -> EnvLockedValue(value = viewModel.envDefaultValue(key.trim()))
+
+            EnvLock.NONE -> ScrollableTextField(
             state = valueState,
             label = stringResource(R.string.settings_value),
-            enabled = !busy && envLock != EnvLock.LOCKED,
+            enabled = !busy,
             minLines = 3,
             maxLines = VALUE_FIELD_MAX_LINES,
             scrollState = valueScroll,
@@ -829,16 +908,8 @@ private fun SettingEditorSheet(
             fieldModifier = Modifier.focusRequester(valueFocus),
             modifier = Modifier.fillMaxWidth()
         )
-        if (envLock != EnvLock.NONE) {
-            Text(
-                text = if (envLock == EnvLock.LOCKED) stringResource(R.string.settings_env_locked)
-                else stringResource(R.string.settings_env_append, key.trim()),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
         }
-        if (valueMatches.isNotEmpty()) {
+        if (envLock == EnvLock.NONE && valueMatches.isNotEmpty()) {
             MatchNavigator(
                 query = query,
                 current = currentMatch,
@@ -848,7 +919,7 @@ private fun SettingEditorSheet(
                 onNext = { selectMatch(currentMatch + 1) }
             )
         }
-        if (scrollsInside || (!target.isNew && modified)) {
+        if (scrollsInside || (envLock == EnvLock.NONE && !target.isNew && modified)) {
             Column(
                 modifier = Modifier.padding(horizontal = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -878,7 +949,14 @@ private fun SettingEditorSheet(
                 modifier = Modifier.weight(1f),
                 enabled = !busy,
                 onClick = {
-                    if (canReset) valueState.setTextAndPlaceCursorAtEnd(initialValue) else onDismiss()
+                    when {
+                        !canReset -> onDismiss()
+                        envLock == EnvLock.APPEND -> {
+                            appendBefore = appendParts.first
+                            appendAfter = appendParts.second
+                        }
+                        else -> valueState.setTextAndPlaceCursorAtEnd(initialValue)
+                    }
                 }
             ) {
                 Text(stringResource(if (canReset) R.string.settings_reset_value else R.string.cancel))
@@ -953,6 +1031,168 @@ private fun MatchNavigator(
                 )
             }
         }
+    }
+}
+
+/**
+ * A path list of the default env (PATH, LD_LIBRARY_PATH): the user's entries before and after
+ * `$KEY`, and between them `$KEY` itself with what it stands for, kept and not editable.
+ */
+@Composable
+private fun EnvAppendEditor(
+    key: String,
+    defaultValue: String,
+    before: String,
+    onBefore: (String) -> Unit,
+    after: String,
+    onAfter: (String) -> Unit,
+    added: Int,
+    modified: Boolean,
+    enabled: Boolean
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        EnvAppendField(
+            label = stringResource(R.string.settings_env_before, key),
+            hint = stringResource(R.string.settings_env_before_hint),
+            value = before,
+            onValueChange = onBefore,
+            enabled = enabled
+        )
+        Surface(shape = AxPanelShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "\$$key",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_env_ref_kept),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_env_ref_desc, key),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                // One entry per line: a PATH is long, and its order is what matters.
+                EnvValueText(defaultValue.split(':').filter { it.isNotEmpty() }.joinToString("\n"))
+            }
+        }
+        EnvAppendField(
+            label = stringResource(R.string.settings_env_after, key),
+            hint = stringResource(R.string.settings_env_after_hint),
+            value = after,
+            onValueChange = onAfter,
+            enabled = enabled
+        )
+        Column(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = if (added == 0) stringResource(R.string.settings_env_nothing_added, key)
+                else pluralStringResource(R.plurals.settings_env_added, added, added),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (added == 0) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.primary
+            )
+            if (modified) {
+                Text(
+                    text = stringResource(R.string.settings_value_modified),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EnvAppendField(
+    label: String,
+    hint: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        supportingText = { Text(hint) },
+        enabled = enabled,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+        shape = AxPanelShape,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/** A locked env variable's value: shown and selectable, not editable. */
+@Composable
+private fun EnvLockedValue(value: String) {
+    Surface(shape = AxPanelShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.settings_value),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            EnvValueText(value.ifEmpty { stringResource(R.string.settings_empty_value) })
+            Text(
+                text = stringResource(R.string.settings_env_locked),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** A read-only value in monospace, selectable, scrolling inside past a few lines. */
+@Composable
+private fun EnvValueText(text: String) {
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier
+                .heightIn(max = 160.dp)
+                .containScroll()
+                .verticalScroll(rememberScrollState())
+        )
     }
 }
 

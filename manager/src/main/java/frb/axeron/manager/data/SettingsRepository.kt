@@ -48,6 +48,8 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
      * app's own WRITE_SECURE_SETTINGS / WRITE_SETTINGS (see [SettingsAccess]).
      */
     fun putValue(type: SettingType, key: String, value: String): Boolean {
+        // The env lives in the server alone: without it there is nothing to fall back on.
+        if (type == SettingType.AXERON_ENV) return setAxeronEnv(key, value)
         if (!Axeron.pingBinder()) return putDirect(type, key, value)
         return when (type) {
             SettingType.GLOBAL,
@@ -204,30 +206,29 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
     private fun setAxeronEnv(key: String, value: String): Boolean {
         val newEnvMap = HashMap(envMap) // mutable
         newEnvMap[key] = value
-        return try {
-            Axeron.setNewEnvironment(Environment(newEnvMap, true))
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
+        return writeAxeronEnv(newEnvMap) { it[key] == value }
     }
 
     private fun unsetAxeronEnv(key: String): Boolean {
         val newEnvMap = HashMap(envMap) // mutable
         newEnvMap.remove(key)
-        return try {
-            Axeron.setNewEnvironment(Environment(newEnvMap, true))
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
+        return writeAxeronEnv(newEnvMap) { key !in it }
     }
 
-    /** Keys of the server's default env: the user's env can't replace them (see EnvLock). */
-    fun getDefaultEnvKeys(): Set<String> =
-        Axeron.getEnvironment(TYPE_DEFAULT_ENV)?.envMap?.keys.orEmpty()
+    /**
+     * Writes the user's env straight to the service, then reads it back. Not through
+     * Axeron.setNewEnvironment: that one logs a refused or failed call and returns as if it
+     * worked. Here a failure throws, with the server's reason, for the editor to show.
+     */
+    private fun writeAxeronEnv(map: Map<String, String>, written: (Map<String, String>) -> Boolean): Boolean {
+        Axeron.requireService().setNewEnvironment(Environment(map, true))
+        check(written(envMap)) { "the server didn't keep the change" }
+        return true
+    }
+
+    /** The server's default env: the user's env can't replace its variables (see EnvLock). */
+    fun getDefaultEnv(): Map<String, String> =
+        Axeron.getEnvironment(TYPE_DEFAULT_ENV)?.envMap.orEmpty()
 
     /** The user's own env as saved, `$VAR`s unexpanded; empty when the server can't be reached. */
     fun getUserEnv(): Map<String, String> = runCatching { envMap }.getOrDefault(emptyMap())
