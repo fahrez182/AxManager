@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -336,8 +337,31 @@ private fun ReigniteSheet(
 
             // Cancel while the action runs (its process is killed: plugins it hadn't reached stay
             // as they were), unless the step now must not be cut short; Close once it is done.
-            // Copy log beside it either way, so a stuck run can be reported too.
+            // Copy log before it either way (on the left, like the other log sheets), so a stuck
+            // run can be reported too.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val context = LocalContext.current
+                val copied = stringResource(R.string.copied)
+                FilledTonalButton(
+                    onClick = {
+                        val text = buildString {
+                            appendLine(title)
+                            lines.forEach { appendLine("[${seconds(it.atMillis)}] ${it.text}") }
+                        }
+                        // Android 13+ shows its own clipboard confirmation.
+                        if (ClipboardUtil.put(context, text) && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    enabled = lines.isNotEmpty(),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp)
+                ) {
+                    Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.activation_copy_log), fontWeight = FontWeight.SemiBold)
+                }
                 if (running) {
                     OutlinedButton(
                         onClick = {
@@ -361,26 +385,6 @@ private fun ReigniteSheet(
                     ) {
                         Text(stringResource(R.string.close), fontWeight = FontWeight.SemiBold)
                     }
-                }
-                val context = LocalContext.current
-                val copied = stringResource(R.string.copied)
-                OutlinedButton(
-                    onClick = {
-                        val text = buildString {
-                            appendLine(title)
-                            lines.forEach { appendLine("[${seconds(it.atMillis)}] ${it.text}") }
-                        }
-                        // Android 13+ shows its own clipboard confirmation.
-                        if (ClipboardUtil.put(context, text) && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                            Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    enabled = lines.isNotEmpty(),
-                    modifier = Modifier.height(50.dp)
-                ) {
-                    Icon(Icons.Outlined.ContentCopy, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.activation_copy_log), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
