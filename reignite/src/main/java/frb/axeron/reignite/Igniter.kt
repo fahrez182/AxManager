@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 
 object Igniter {
 
-    private var VERSION = "v1.1"
+    private var VERSION = "v1.2"
 
     private val AXERONDIR = System.getenv("AXERONDIR")
     private val PLUGINS_DIR = File("$AXERONDIR/plugins")
@@ -53,7 +53,15 @@ object Igniter {
             DdmHandleAppName.setAppName("axeron_plugin_stopper", 0)
             println("AXERON Plugin Manager ($VERSION)")
             println("- Stopping all plugins")
-            if (!stopAllPlugins()) println(" - none running")
+            if (otherServerRunning()) {
+                // The death watchdog of a replaced server (a restart from a plugin's script):
+                // the starter starts the next one right after the kill, and its igniter finds
+                // these plugins running and skips them. Stopping them now would leave them
+                // stopped. Run from a live server, the server is an ancestor and doesn't count.
+                println(" - a new server is up, plugins left to it")
+            } else if (!stopAllPlugins()) {
+                println(" - none running")
+            }
             println("- Completed")
             kotlin.system.exitProcess(0)
         }
@@ -364,6 +372,14 @@ object Igniter {
             pid = readStat(pid)?.ppid ?: break
         }
         return chain
+    }
+
+    /** A live server that isn't above the igniter: one that replaced the server it ran for. */
+    private fun otherServerRunning(): Boolean {
+        val protected = selfAndAncestors()
+        return File("/proc").list().orEmpty()
+            .mapNotNull { it.toIntOrNull() }
+            .any { pid -> pid !in protected && isServer(pid) && readStat(pid)?.state.let { it != null && it != 'Z' } }
     }
 
     private fun isServer(pid: Int): Boolean = try {
