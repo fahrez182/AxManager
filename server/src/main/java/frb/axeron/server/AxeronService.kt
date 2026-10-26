@@ -759,18 +759,21 @@ open class AxeronService :
         if (cached != null) return cached
 
         val defaults = getDefaultEnvironment().envMap
-        val builder = Environment.Builder(true).putAll(defaults)
+        // Raw: the defaults are built already, a `$` left in one isn't to be replaced again.
+        val builder = Environment.Builder(true).putAllRaw(defaults)
         // The default env is locked: the user's env adds variables of its own, and only adds to
         // the path lists of APPEND_ONLY_ENV. A copy of a composed or system value saved in the
         // editor (an LD_LIBRARY_PATH without the system's paths, a stale AXERONLIB, a broken
         // BOOTCLASSPATH) can't replace it for every child.
+        val user = HashMap<String, String>()
         for ((key, value) in environmentManager.getAll()) {
             when (key) {
-                !in defaults -> builder.put(key, value)
-                in APPEND_ONLY_ENV -> builder.put(key, withDefault(key, value))
+                !in defaults -> user[key] = value
+                in APPEND_ONLY_ENV -> user[key] = withDefault(key, value)
                 else -> {} // the server's or the system's own
             }
         }
+        builder.putAll(user)
         // A plugin's process marker set in the user's env would tag every process as that
         // plugin's, so stopping it would stop them all. Only plugin code gets it.
         val merged = HashMap(builder.remove("AXERON_PLUGIN").build().envMap)
@@ -1116,6 +1119,12 @@ open class AxeronService :
             // so the manager's first gated calls need no PackageManager look-up; a reinstalled
             // manager (new uid, new process) refreshes it through this same path.
             cachedManagerUid = UserHandleCompat.getAppId(callingUid)
+            // A reinstall moves the manager's lib dir, even at the same version (no update, no
+            // restart): AXERONLIB, and LD_LIBRARY_PATH with it, follow it for new processes.
+            val libDir = getManagerApplicationInfo()?.nativeLibraryDir
+            if (libDir != null && libDir != cachedDefaultEnv?.envMap?.get("AXERONLIB")) {
+                invalidateEnvironment()
+            }
         } else if (SHIZUKU_MANAGER_APPLICATION_ID == requestPackageName) {
             // Same for the Shizuku app, whose calls go through the intercept.
             cachedShizukuManagerUid = UserHandleCompat.getAppId(callingUid)
