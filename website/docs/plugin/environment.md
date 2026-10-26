@@ -24,6 +24,8 @@ Every process the server starts (plugin scripts, `action.sh`, WebUI commands, Qu
 
 `customize.sh` gets more variables during installation (`MODPATH`, `ZIPFILE`, `ARCH`, `API`, …); see [Customize](./what-is-plugin.md#customize).
 
+These are locked: the user's own env, from Settings Editor, can add variables and entries to `PATH` / `LD_LIBRARY_PATH`, but can't replace them. See [Environment](../guide/app-tour.md#environment-editor).
+
 ::: tip
 In developer mode, the **Developer info** card on the Plugin page shows these values as your scripts see them. Tap one to copy it.
 :::

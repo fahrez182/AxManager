@@ -136,6 +136,8 @@ A terminal that runs commands with the server's privileges: shell, or root when 
 - A leading `adb shell` is dropped, so commands copied from guides work as they are.
 - **Find in output**, go to a line, line numbers, word wrap and text size are in the output toolbar.
 - The output is not cut off, however long it gets. Saved logs can be filtered by output kind.
+- Long-press the output to select a word, then drag or move either handle; the selection holds while you scroll, and **Copy** takes every line in between. **Select all** takes the whole output.
+- New output is followed while you are at the bottom; turn **Auto-scroll** off under **Output** to stay where you are. The last line can scroll up to the top of the screen.
 
 **Shell settings** (the settings button):
 
@@ -153,9 +155,18 @@ A terminal that runs commands with the server's privileges: shell, or root when 
 |---|---|---|
 | **Global**, **Secure**, **System** | Android settings (`settings` command) | Yes |
 | **Props** | Android system properties (through `resetprop`) | As far as the server's mode allows |
-| **Environment** | The environment of AxManager's server | Yes |
+| **Environment** | The environment of AxManager's server | Your own variables, and additions to `PATH` / `LD_LIBRARY_PATH` |
 
 **All** shows every source together, with an overview of how many entries each has. Search by key or value. Tap an entry to edit it, add new keys, or remove them.
+
+#### Environment {#environment-editor}
+
+The variables AxManager and Android set (see [Environment variables](../plugin/environment.md#environment-variables)) are marked **Locked**: shown, but not changeable, so a saved copy can't go stale or drop the system's own paths. Your env only adds to them:
+
+- Any variable of your own, which you can edit or delete.
+- `PATH` and `LD_LIBRARY_PATH` are edited as entries **before** and **after** `$PATH` (or `$LD_LIBRARY_PATH`), which stands for the default and can't be removed; what it stands for is listed below it. Entries before it are looked in first. Rows show **+N before** / **+N after**.
+
+Saved changes apply to processes the server starts from then on. If a save fails, the toast says why.
 
 ### Quick Settings
 
@@ -167,6 +178,16 @@ Long-press a setting in Settings Editor and choose **Add to Quick Settings** to 
 - **Slider**: a number between a minimum and maximum, with a step.
 
 Open Quick Settings from the bolt button next to Settings Editor. Global, Secure and System quick settings also work while the server is off, through the settings permissions AxManager was granted while it ran.
+
+## Process Manager
+
+**Settings → Process Manager** (while the server runs) lists every process on the device, refreshed live while the screen is open.
+
+- Tabs for all processes, apps, system, kernel threads and the processes AxManager started.
+- Search by name, PID, user, package or SELinux label; sort by PID, name, RSS, VSZ, CPU or UID; filter by PID, PPID, PGID, UID, memory range and state; or show them as a tree by parent.
+- Tap a process for its usage, identity, command line, environment, open files, limits and cgroup, each explained. From there, send it (or its group) a signal, or force stop its app.
+
+A process belongs to an app only when its name is the app's package (or `package:suffix`). Nothing is checked up front: what the kernel or SELinux refuses, for example in shell mode, shows as its own error.
 
 ## Settings
 

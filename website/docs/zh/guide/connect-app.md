@@ -52,7 +52,7 @@ dependencyResolutionManagement {
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("com.github.fahrez182.Axeron-API:axsh:2.0.0")
+    implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
 }
 android {
     packaging { jniLibs { useLegacyPackaging = true } }

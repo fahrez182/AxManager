@@ -24,6 +24,8 @@ AxManager 运行插件脚本时脚本能看到什么、文件放在哪里，以�
 
 `customize.sh` 在安装期间还会获得更多变量（`MODPATH`、`ZIPFILE`、`ARCH`、`API` 等），参见[自定义](./what-is-plugin.md#自定义)。
 
+这些变量是锁定的：用户在设置编辑器中的环境变量可以添加变量，以及向 `PATH` / `LD_LIBRARY_PATH` 添加条目，但不能替换它们。参见[环境变量](../guide/app-tour.md#environment-editor)。
+
 ::: tip
 开启开发者模式后，插件页的**开发者信息**卡片会显示脚本看到的这些值。点击某个值即可复制。
 :::

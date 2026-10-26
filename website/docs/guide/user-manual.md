@@ -75,7 +75,7 @@ The switch next to the card's title (TCP mode) changes how Wireless Debugging ac
 - **On** (default): after connecting over Wireless Debugging, AxManager switches ADB to TCP on the **TCP Port** (1024–65535, 5555 unless the device already sets another). Later activations can then reuse that port, even without Wi-Fi, until the next reboot.
 - **Off**: if ADB is on TCP, the next Wireless Debugging activation switches it back to USB first.
 
-A changed port applies at the next activation. **Stop TCP** switches ADB back to USB.
+A changed port applies right away: saving it, or turning TCP mode on, while ADB listens on another TCP port moves ADB to the new port and restarts the server on it. If that switch fails, the restart icon in the port field tries it again. **Stop TCP** switches ADB back to USB.
 
 ### Start from another phone (OTG)
 
@@ -163,5 +163,9 @@ While AxManager runs, the power button on the Home status card opens a power men
 - The **flame** button re-ignites plugins, see [Re-ignite](../plugin/re-ignite.md).
 - Slide the switch **up** to shut the server down.
 - Slide the switch **down** to restart the server.
+
+Re-ignite, shutdown and restart each run in a sheet with a live log. **Copy log** copies it with each line's time, also while the action is still running, so one that hangs can be reported. **Cancel** stops it, except while the server is being replaced.
+
+With **Stop plugins with the server** on, shutdown and restart stop every plugin first and show it in the log; a restart then re-ignites them in the same sheet.
 
 After you update the app, the Home status card shows the old server being replaced with the new version.
