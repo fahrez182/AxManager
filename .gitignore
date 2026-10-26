@@ -10,3 +10,4 @@ local.properties
 /out
 /signing.properties
 /docs
+/.claude
