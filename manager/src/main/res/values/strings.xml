@@ -327,6 +327,8 @@
     <string name="plugin_dev_info_hint">Tap a value to copy it. Every process a plugin starts carries the marker, so it is stopped with the plugin.</string>
     <string name="stop_plugins_with_server">Stop plugins with the server</string>
     <string name="stop_plugins_with_server_desc">When the server stops or dies, every plugin is stopped too. Shutdown and Restart from AxManager stop them first, shown in their log; Restart then ignites them again. If the server dies any other way, they are stopped right after. Off: plugins keep running on their own.</string>
+    <string name="settings_env_locked">Set by AxManager or Android. It can\'t be changed here.</string>
+    <string name="settings_env_append">The default stays. Add entries before or after $%1$s, separated by \":\".</string>
     <string name="server_shutdown">Stopping the server</string>
     <string name="server_restart">Restarting the server</string>
     <string name="axeron_permission_shizuku_missing">Some older Shizuku apps (e.g. old ZArchiver) only connect when the Shizuku app is installed. Install it if such an app can\'t find Shizuku; it doesn\'t need to be started.</string>

@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import frb.axeron.manager.data.SettingsRepository
 import frb.axeron.manager.data.SettingsRepository.SettingType
+import frb.axeron.shared.AxeronApiConstant.server.APPEND_ONLY_ENV
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,6 +87,38 @@ class SettingsEditorViewModel(application: Application) : AndroidViewModel(appli
 
     fun refresh(type: SettingType?) = types(type).forEach(::load)
 
+    /** How the user's env may set a key; mirrors the server's merge (APPEND_ONLY_ENV). */
+    enum class EnvLock {
+        /** The user's own variable. */
+        NONE,
+
+        /** A default path list: the user's value keeps `$KEY` and only adds entries. */
+        APPEND,
+
+        /** The server's or the system's: can't be changed. */
+        LOCKED
+    }
+
+    // As loaded with AXERON_ENV: the default env's keys, and the user's own env.
+    private var envDefaults by mutableStateOf(emptySet<String>())
+    private var envUser by mutableStateOf(emptyMap<String, String>())
+
+    fun envLock(key: String): EnvLock = when (key) {
+        !in envDefaults -> EnvLock.NONE
+        in APPEND_ONLY_ENV -> EnvLock.APPEND
+        else -> EnvLock.LOCKED
+    }
+
+    /** Whether the user's env holds [key]; only then is there something of the user's to delete. */
+    fun hasUserEnv(key: String): Boolean = key in envUser
+
+    /**
+     * What the editor starts from for env [key]: the user's own value as saved, never the merged
+     * one (saving that would copy the default into the user's env); `$KEY:` for an empty list.
+     */
+    fun envEditValue(key: String): String =
+        envUser[key] ?: if (envLock(key) == EnvLock.APPEND) "\$$key:" else ""
+
     suspend fun put(type: SettingType, key: String, value: String): Boolean =
         withContext(Dispatchers.IO) { repository.putValue(type, key, value) }
             .also { if (it) load(type) }
@@ -101,6 +134,14 @@ class SettingsEditorViewModel(application: Application) : AndroidViewModel(appli
         loading[type] = true
         viewModelScope.launch {
             val list = withContext(Dispatchers.IO) {
+                if (type == SettingType.AXERON_ENV) {
+                    val defaults = runCatching { repository.getDefaultEnvKeys() }.getOrDefault(emptySet())
+                    val user = repository.getUserEnv()
+                    withContext(Dispatchers.Main) {
+                        envDefaults = defaults
+                        envUser = user
+                    }
+                }
                 runCatching { repository.getAll(type) }.getOrDefault(emptyMap())
                     .map { (key, value) -> Entry(type, key, value) }
                     .sortedWith(ORDER)

@@ -175,6 +175,8 @@
     <string name="plugin_dev_info_hint">点击值即可复制。插件启动的每个进程都带有此标记，因此会随插件一起停止。</string>
     <string name="stop_plugins_with_server">随服务停止插件</string>
     <string name="stop_plugins_with_server_desc">服务停止或退出时，所有插件也会随之停止。从 AxManager 关闭或重启服务时会先停止插件，过程显示在日志中；重启后会重新启动插件。若服务以其他方式退出，插件会随后被停止。关闭时，插件将独立继续运行。</string>
+    <string name="settings_env_locked">由 AxManager 或 Android 设置，无法在此修改。</string>
+    <string name="settings_env_append">默认值会保留。可在 $%1$s 之前或之后添加条目，以 \":\" 分隔。</string>
     <string name="server_shutdown">正在停止服务</string>
     <string name="server_restart">正在重启服务</string>
     <string name="axeron_permission_shizuku_missing">部分旧版 Shizuku 应用（如旧版 ZArchiver）只有在安装了 Shizuku 应用时才会连接。如果此类应用找不到 Shizuku，请安装 Shizuku，无需启动它。</string>

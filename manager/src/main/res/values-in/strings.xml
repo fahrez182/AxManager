@@ -326,6 +326,8 @@
     <string name="plugin_dev_info_hint">Ketuk nilai untuk menyalin. Setiap proses yang dijalankan plugin membawa penanda ini, jadi ikut dihentikan bersama plugin-nya.</string>
     <string name="stop_plugins_with_server">Hentikan plugin bersama server</string>
     <string name="stop_plugins_with_server_desc">Saat server berhenti atau mati, semua plugin ikut dihentikan. Shutdown dan Restart dari AxManager menghentikannya lebih dulu, terlihat di lognya; Restart lalu meng-ignite-nya lagi. Kalau server mati dengan cara lain, plugin dihentikan sesudahnya. Nonaktif: plugin tetap berjalan sendiri.</string>
+    <string name="settings_env_locked">Diatur oleh AxManager atau Android. Tidak bisa diubah di sini.</string>
+    <string name="settings_env_append">Nilai default tetap ada. Tambahkan entri sebelum atau sesudah $%1$s, dipisah \":\".</string>
     <string name="server_shutdown">Menghentikan server</string>
     <string name="server_restart">Me-restart server</string>
     <string name="axeron_permission_shizuku_missing">Beberapa aplikasi Shizuku lawas (mis. ZArchiver versi lama) hanya mau terhubung bila aplikasi Shizuku terpasang. Pasang Shizuku jika aplikasi seperti itu tidak menemukan Shizuku; tidak perlu dijalankan.</string>

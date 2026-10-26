@@ -130,6 +130,7 @@ import frb.axeron.manager.ui.util.ClipboardUtil
 import frb.axeron.manager.ui.util.LocalFloatingBarInset
 import frb.axeron.manager.ui.viewmodel.SettingsEditorViewModel
 import frb.axeron.manager.ui.viewmodel.SettingsEditorViewModel.Entry
+import frb.axeron.manager.ui.viewmodel.SettingsEditorViewModel.EnvLock
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import kotlinx.coroutines.launch
 
@@ -640,8 +641,16 @@ private fun SettingEditorSheet(
 
     var type by remember(target) { mutableStateOf(target.type) }
     var key by remember(target) { mutableStateOf(target.key) }
+    // An env key is edited as the user's own value, not the merged one; the server's and the
+    // system's variables are locked, and their path lists only take additions (EnvLock).
+    val isEnv = type == SettingType.AXERON_ENV
+    val envLock = if (isEnv) viewModel.envLock(key.trim()) else EnvLock.NONE
+    val initialValue = remember(target) {
+        if (target.type == SettingType.AXERON_ENV && !target.isNew) viewModel.envEditValue(target.key)
+        else target.value
+    }
     // TextFieldState: its field exposes the scroll state the long-value indicator needs.
-    val valueState = remember(target) { TextFieldState(target.value) }
+    val valueState = remember(target) { TextFieldState(initialValue) }
     val value = valueState.text.toString()
     var busy by remember { mutableStateOf(false) }
 
@@ -667,8 +676,8 @@ private fun SettingEditorSheet(
         }
     }
 
-    val modified = value != target.value
-    val canSave = !busy && key.isNotBlank() && (target.isNew || modified)
+    val modified = value != initialValue
+    val canSave = !busy && key.isNotBlank() && (target.isNew || modified) && envLock != EnvLock.LOCKED
 
     val keyCopied = stringResource(R.string.key_copied)
     val valueCopied = stringResource(R.string.value_copied)
@@ -702,7 +711,8 @@ private fun SettingEditorSheet(
         title = stringResource(if (target.isNew) R.string.settings_add_title else R.string.settings_edit_title),
         description = stringResource(type.stringId),
         onDismissRequest = { if (!busy) onDismiss() },
-        headerAction = if (target.isNew) null else {
+        // An env entry has something to delete only in the user's own env.
+        headerAction = if (target.isNew || (isEnv && !viewModel.hasUserEnv(target.key))) null else {
             {
                 IconButton(
                     enabled = !busy,
@@ -800,7 +810,7 @@ private fun SettingEditorSheet(
         ScrollableTextField(
             state = valueState,
             label = stringResource(R.string.settings_value),
-            enabled = !busy,
+            enabled = !busy && envLock != EnvLock.LOCKED,
             minLines = 3,
             maxLines = VALUE_FIELD_MAX_LINES,
             scrollState = valueScroll,
@@ -819,6 +829,15 @@ private fun SettingEditorSheet(
             fieldModifier = Modifier.focusRequester(valueFocus),
             modifier = Modifier.fillMaxWidth()
         )
+        if (envLock != EnvLock.NONE) {
+            Text(
+                text = if (envLock == EnvLock.LOCKED) stringResource(R.string.settings_env_locked)
+                else stringResource(R.string.settings_env_append, key.trim()),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
         if (valueMatches.isNotEmpty()) {
             MatchNavigator(
                 query = query,
@@ -859,7 +878,7 @@ private fun SettingEditorSheet(
                 modifier = Modifier.weight(1f),
                 enabled = !busy,
                 onClick = {
-                    if (canReset) valueState.setTextAndPlaceCursorAtEnd(target.value) else onDismiss()
+                    if (canReset) valueState.setTextAndPlaceCursorAtEnd(initialValue) else onDismiss()
                 }
             ) {
                 Text(stringResource(if (canReset) R.string.settings_reset_value else R.string.cancel))

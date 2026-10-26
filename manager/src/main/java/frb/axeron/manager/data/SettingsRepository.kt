@@ -7,6 +7,7 @@ import frb.axeron.shell.Axsh
 import frb.axeron.api.AxeronPluginService
 import frb.axeron.manager.R
 import frb.axeron.server.Environment
+import frb.axeron.shared.AxeronApiConstant.server.TYPE_DEFAULT_ENV
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_NEW_ENV
 
 
@@ -223,6 +224,13 @@ class SettingsRepository(private val contentResolver: ContentResolver) {
             false
         }
     }
+
+    /** Keys of the server's default env: the user's env can't replace them (see EnvLock). */
+    fun getDefaultEnvKeys(): Set<String> =
+        Axeron.getEnvironment(TYPE_DEFAULT_ENV)?.envMap?.keys.orEmpty()
+
+    /** The user's own env as saved, `$VAR`s unexpanded; empty when the server can't be reached. */
+    fun getUserEnv(): Map<String, String> = runCatching { envMap }.getOrDefault(emptyMap())
 
     private fun getAllLinuxEnv(): Map<String, String> {
         return Axeron.getEnvironment()?.envMap.orEmpty()

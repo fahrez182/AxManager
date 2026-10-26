@@ -35,6 +35,7 @@ import frb.axeron.server.util.IContentProviderCompat
 import frb.axeron.server.util.OsUtils
 import frb.axeron.server.util.UserHandleCompat
 import frb.axeron.shared.AxeronApiConstant
+import frb.axeron.shared.AxeronApiConstant.server.APPEND_ONLY_ENV
 import frb.axeron.shared.AxeronApiConstant.server.BINDER_DESCRIPTOR
 import frb.axeron.shared.AxeronApiConstant.server.TYPE_ENV
 import frb.axeron.shared.MiuiAppOps
@@ -757,22 +758,37 @@ open class AxeronService :
         val cached = cachedMergedEnv
         if (cached != null) return cached
 
-        // avoid extra temporary HashMap allocations — rely on Builder to copy if needed
-        val merged = Environment.Builder(true)
-            .putAll(getDefaultEnvironment().envMap) // prefer to pass the map directly
-            .putAll(environmentManager.getAll())    // avoid new HashMap(...)
-            // A plugin's process marker set in the user's env would tag every process as that
-            // plugin's, so stopping it would stop them all. Only plugin code gets it.
-            .remove("AXERON_PLUGIN")
-            .build()
-        // The user's PATH wins over the composed one, but not over preferSystemBinaries.
-        val ordered = merged.envMap["PATH"]?.let {
-            Environment(HashMap(merged.envMap).apply { put("PATH", orderPath(it)) }, merged.isNewEnv)
-        } ?: merged
+        val defaults = getDefaultEnvironment().envMap
+        val builder = Environment.Builder(true).putAll(defaults)
+        // The default env is locked: the user's env adds variables of its own, and only adds to
+        // the path lists of APPEND_ONLY_ENV. A copy of a composed or system value saved in the
+        // editor (an LD_LIBRARY_PATH without the system's paths, a stale AXERONLIB, a broken
+        // BOOTCLASSPATH) can't replace it for every child.
+        for ((key, value) in environmentManager.getAll()) {
+            when (key) {
+                !in defaults -> builder.put(key, value)
+                in APPEND_ONLY_ENV -> builder.put(key, withDefault(key, value))
+                else -> {} // the server's or the system's own
+            }
+        }
+        // A plugin's process marker set in the user's env would tag every process as that
+        // plugin's, so stopping it would stop them all. Only plugin code gets it.
+        val merged = HashMap(builder.remove("AXERON_PLUGIN").build().envMap)
+        // Entries added twice (a copy of the default) kept once; PATH also in the order
+        // preferSystemBinaries asks for.
+        merged["PATH"]?.let { merged["PATH"] = orderPath(it) }
+        merged["LD_LIBRARY_PATH"]?.let { ld ->
+            merged["LD_LIBRARY_PATH"] = ld.split(':').filter { it.isNotEmpty() }.distinct().joinToString(":")
+        }
+        val built = Environment(merged, true)
 
-        cachedMergedEnv = ordered
-        return ordered
+        cachedMergedEnv = built
+        return built
     }
+
+    /** [value] with `$key` for the default value, in front when the user's entries lack it. */
+    private fun withDefault(key: String, value: String): String =
+        if ("\$$key" in value.split(':')) value else "\$$key:$value"
 
     private fun getNewEnvironment(): Environment {
         val cached = cachedNewEnv
