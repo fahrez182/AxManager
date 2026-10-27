@@ -241,6 +241,26 @@ val shell = Shell.Builder.create().build(Axsh.newProcess())               // opt
 
 Commands then queue on that one shell, and `cd` and variables carry over between them, unless you run each in `( … )`.
 
+### From Java {#java}
+
+The `axsh` module works from Java too: `AxBroker`, `Axsh` and `AxShellService` are called statically, and `Axsh`'s calls throw a checked `IOException`.
+
+```java
+// in your Application's onCreate()
+AxBroker.start(this);
+
+Process process = Axsh.newProcess("-c", "pm list packages");
+
+public class MyService extends AxShellService {
+    @Override
+    public IBinder onBind(Intent intent) { /* … */ }
+}
+
+AxShellService.bind(new Intent(context, MyService.class), connection);
+```
+
+The names up to 2.1.0 (`Broker`, `ShellService`) are Kotlin-only aliases, so Java uses the `Ax` ones. Java isn't stopped from calling axsh's other public classes, but they are AxManager's own and change without notice.
+
 ### AxShellService {#shell-service-tips}
 
 - The service's Context reports the uid's own package (`com.android.shell` in shell mode), so system services that check it, such as the clipboard, accept it.

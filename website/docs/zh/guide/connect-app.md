@@ -241,6 +241,26 @@ val shell = Shell.Builder.create().build(Axsh.newProcess())               // 方
 
 这样命令会在这一个 shell 上排队，`cd` 和变量会在命令之间延续，除非每条命令都在 `( … )` 中运行。
 
+### 在 Java 中使用 {#java}
+
+`axsh` 模块同样可以在 Java 中使用：`AxBroker`、`Axsh` 和 `AxShellService` 都以静态方式调用，`Axsh` 的方法会抛出受检异常 `IOException`。
+
+```java
+// 在 Application 的 onCreate() 中
+AxBroker.start(this);
+
+Process process = Axsh.newProcess("-c", "pm list packages");
+
+public class MyService extends AxShellService {
+    @Override
+    public IBinder onBind(Intent intent) { /* … */ }
+}
+
+AxShellService.bind(new Intent(context, MyService.class), connection);
+```
+
+2.1.0 及之前的名称（`Broker`、`ShellService`）只是 Kotlin 的别名，因此 Java 中请使用 `Ax` 开头的名称。Java 不会阻止调用 axsh 的其他公开类，但它们属于 AxManager 自身，可能随时变化。
+
 ### AxShellService {#shell-service-tips}
 
 - 服务的 Context 报告的是该 uid 自己的包名（shell 模式下为 `com.android.shell`），因此会检查它的系统服务（例如剪贴板）会接受它。
