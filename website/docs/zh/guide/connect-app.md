@@ -20,7 +20,9 @@
 
 然后像 `sh` 一样运行 AxManager 的 `libaxsh.so`。它的路径会随每次 AxManager 更新而变化，因此请在应用每次启动时重新获取：
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val dir = packageManager.getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir
 val axsh = File(dir, "libaxsh.so")
 
@@ -28,6 +30,18 @@ val process = Runtime.getRuntime().exec(arrayOf(axsh.path, "-c", "pm list packag
 val output = process.inputStream.bufferedReader().readText()
 val code = process.waitFor()
 ```
+
+```java [Java]
+String dir = getPackageManager().getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir;
+File axsh = new File(dir, "libaxsh.so");
+
+Process process = Runtime.getRuntime().exec(new String[]{axsh.getPath(), "-c", "pm list packages"});
+String output = new BufferedReader(new InputStreamReader(process.getInputStream()))
+        .lines().collect(Collectors.joining("\n"));
+int code = process.waitFor();
+```
+
+:::
 
 ### 方式二：`axsh` 模块 {#axsh-module}
 
@@ -47,17 +61,19 @@ dependencyResolutionManagement {
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
+    implementation("com.github.fahrez182.Axeron-API:axsh:2.1.1")
     // axsh 会在运行时自动带上 aidl，而且它自己的 API（AxBroker、Axsh、AxShellService）
     // 不使用其中的任何类型。只有在需要直接调用服务的 binder 接口（IAxeronService 等）时，
     // 才以相同版本添加：
-    // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
+    // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.1")
 }
 ```
 
 在 `Application` 中启动 broker，然后用 `Axsh` 运行命令：
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -69,6 +85,23 @@ val process = Axsh.newProcess("-c", "pm list packages")
 val output = process.inputStream.bufferedReader().readText()
 val code = process.waitFor()
 ```
+
+```java [Java]
+public class App extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        AxBroker.start(this);
+    }
+}
+
+Process process = Axsh.newProcess("-c", "pm list packages");   // 会抛出 IOException
+String output = new BufferedReader(new InputStreamReader(process.getInputStream()))
+        .lines().collect(Collectors.joining("\n"));
+int code = process.waitFor();
+```
+
+:::
 
 也可以从 Maven local 引入或作为 Gradle 项目使用，参见 [Axeron API 的 README](https://github.com/fahrez182/Axeron-API#using-it)。
 
@@ -97,7 +130,9 @@ android { buildFeatures { aidl = true } }
 
 服务本身。其中的所有代码都以 shell（uid 2000）或 root（uid 0）运行：
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 class MyService : AxShellService() {
     override fun onBind(intent: Intent): IBinder {
         return object : IMyService.Stub() {
@@ -114,9 +149,38 @@ class MyService : AxShellService() {
 }
 ```
 
+```java [Java]
+public class MyService extends AxShellService {
+    @Override
+    public IBinder onBind(Intent intent) {
+        return new IMyService.Stub() {
+            @Override
+            public int getUid() {
+                return Os.getuid();
+            }
+
+            @Override
+            public String exec(String command) throws RemoteException {
+                try {
+                    Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+                    return new BufferedReader(new InputStreamReader(process.getInputStream()))
+                            .lines().collect(Collectors.joining("\n"));
+                } catch (IOException e) {
+                    throw new RemoteException(e.getMessage());
+                }
+            }
+        };
+    }
+}
+```
+
+:::
+
 在应用的主线程中绑定它：
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val connection = object : ServiceConnection {
     override fun onServiceConnected(name: ComponentName, binder: IBinder) {
         val service = IMyService.Stub.asInterface(binder)
@@ -131,13 +195,34 @@ AxShellService.bind(Intent(context, MyService::class.java), connection)
 AxShellService.unbind(connection)
 ```
 
+```java [Java]
+ServiceConnection connection = new ServiceConnection() {
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder binder) {
+        IMyService service = IMyService.Stub.asInterface(binder);
+        // 不要在主线程调用：service.exec("id")
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {}
+};
+
+AxShellService.bind(new Intent(context, MyService.class), connection);
+// 用完后：
+AxShellService.unbind(connection);
+```
+
+:::
+
 清单中无需添加任何内容。
 
 ### 守护模式 {#daemon-mode}
 
 要让服务在应用关闭后继续运行，绑定时加上守护类别，并在 `onUnbind` 中返回 `true`：
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 class MyDaemon : AxShellService() {
     override fun onUnbind(intent: Intent): Boolean {
         return true
@@ -154,6 +239,29 @@ val intent = Intent(context, MyDaemon::class.java)
 intent.addCategory(AxShellService.CATEGORY_DAEMON_MODE)
 AxShellService.bind(intent, connection)
 ```
+
+```java [Java]
+public class MyDaemon extends AxShellService {
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return true;
+    }
+
+    @Override
+    public void onRebind(Intent intent) {
+        // 之后的绑定到达了同一个实例
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) { /* … */ }
+}
+
+Intent intent = new Intent(context, MyDaemon.class);
+intent.addCategory(AxShellService.CATEGORY_DAEMON_MODE);
+AxShellService.bind(intent, connection);
+```
+
+:::
 
 它运行在第二个进程中，该进程比应用活得更久。下一次绑定（即使应用已重启）会到达同一个实例。`AxShellService.stop(intent)` 会结束它。
 
@@ -208,10 +316,19 @@ AxShellService.bind(intent, connection)
 
 ### `Axsh` 的更多用法 {#run-axsh}
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val run = Axsh.exec(arrayOf("ls", "-l"), dir = "/")   // 直接运行程序，外面不套 shell
 val term = Axsh.newTerminal(rows = 24, cols = 80)     // 在 PTY 上运行：尺寸变化时调用 setWindowSize()
 ```
+
+```java [Java]
+Process run = Axsh.exec(new String[]{"ls", "-l"}, null, "/");   // 直接运行程序，外面不套 shell
+Axsh.Terminal term = Axsh.newTerminal(24, 80);                 // 在 PTY 上运行：尺寸变化时调用 setWindowSize()
+```
+
+:::
 
 ### 应用自己的 `libaxsh.so` {#run-libaxsh}
 
@@ -224,9 +341,17 @@ android {
 }
 ```
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
 ```
+
+```java [Java]
+File axsh = new File(getApplicationInfo().nativeLibraryDir, "libaxsh.so");
+```
+
+:::
 
 `Axsh` 和 AxShellService 不需要这个：它们不会从该文件夹运行任何东西。
 
@@ -234,32 +359,25 @@ val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
 
 如果你已经在使用 [libsu](https://github.com/topjohnwu/libsu)，它可以保持一个 axsh shell 打开，并把每条命令都发送给它：
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 Shell.setDefaultBuilder(Shell.Builder.create().setCommands(axsh.path))   // 方式一
 val shell = Shell.Builder.create().build(Axsh.newProcess())               // 方式二
 ```
+
+```java [Java]
+Shell.setDefaultBuilder(Shell.Builder.create().setCommands(axsh.getPath()));   // 方式一
+Shell shell = Shell.Builder.create().build(Axsh.newProcess());                 // 方式二
+```
+
+:::
 
 这样命令会在这一个 shell 上排队，`cd` 和变量会在命令之间延续，除非每条命令都在 `( … )` 中运行。
 
 ### 在 Java 中使用 {#java}
 
-`axsh` 模块同样可以在 Java 中使用：`AxBroker`、`Axsh` 和 `AxShellService` 都以静态方式调用，`Axsh` 的方法会抛出受检异常 `IOException`。
-
-```java
-// 在 Application 的 onCreate() 中
-AxBroker.start(this);
-
-Process process = Axsh.newProcess("-c", "pm list packages");
-
-public class MyService extends AxShellService {
-    @Override
-    public IBinder onBind(Intent intent) { /* … */ }
-}
-
-AxShellService.bind(new Intent(context, MyService.class), connection);
-```
-
-2.1.0 及之前的名称（`Broker`、`ShellService`）只是 Kotlin 的别名，因此 Java 中请使用 `Ax` 开头的名称。Java 不会阻止调用 axsh 的其他公开类，但它们属于 AxManager 自身，可能随时变化。
+每个示例都有 Java 标签页。`AxBroker`、`Axsh` 和 `AxShellService` 都以静态方式调用，`Axsh` 的方法会抛出受检异常 `IOException`。2.1.0 及之前的名称（`Broker`、`ShellService`）只是 Kotlin 的别名，因此 Java 中请使用 `Ax` 开头的名称。Java 不会阻止调用 axsh 的其他公开类，但它们属于 AxManager 自身，可能随时变化。
 
 ### AxShellService {#shell-service-tips}
 

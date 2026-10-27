@@ -20,7 +20,9 @@ Nothing to add to your app. Let it see AxManager in the manifest:
 
 Then run AxManager's `libaxsh.so` like `sh`. Look its path up each time your app starts, since it changes with every AxManager update:
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val dir = packageManager.getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir
 val axsh = File(dir, "libaxsh.so")
 
@@ -28,6 +30,18 @@ val process = Runtime.getRuntime().exec(arrayOf(axsh.path, "-c", "pm list packag
 val output = process.inputStream.bufferedReader().readText()
 val code = process.waitFor()
 ```
+
+```java [Java]
+String dir = getPackageManager().getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir;
+File axsh = new File(dir, "libaxsh.so");
+
+Process process = Runtime.getRuntime().exec(new String[]{axsh.getPath(), "-c", "pm list packages"});
+String output = new BufferedReader(new InputStreamReader(process.getInputStream()))
+        .lines().collect(Collectors.joining("\n"));
+int code = process.waitFor();
+```
+
+:::
 
 ### Option 2: the `axsh` module {#axsh-module}
 
@@ -47,17 +61,19 @@ dependencyResolutionManagement {
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
+    implementation("com.github.fahrez182.Axeron-API:axsh:2.1.1")
     // axsh brings aidl along at runtime, and its own API (AxBroker, Axsh, AxShellService) uses
     // none of its types. Add it, at the same version, only to call the server's binder
     // interfaces directly (IAxeronService, …).
-    // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
+    // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.1")
 }
 ```
 
 Start the broker in your `Application`, then run commands with `Axsh`:
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -69,6 +85,23 @@ val process = Axsh.newProcess("-c", "pm list packages")
 val output = process.inputStream.bufferedReader().readText()
 val code = process.waitFor()
 ```
+
+```java [Java]
+public class App extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        AxBroker.start(this);
+    }
+}
+
+Process process = Axsh.newProcess("-c", "pm list packages");   // throws IOException
+String output = new BufferedReader(new InputStreamReader(process.getInputStream()))
+        .lines().collect(Collectors.joining("\n"));
+int code = process.waitFor();
+```
+
+:::
 
 Maven local and Gradle projects work too, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it).
 
@@ -97,7 +130,9 @@ android { buildFeatures { aidl = true } }
 
 The service. Everything inside it runs as shell (uid 2000) or root (uid 0):
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 class MyService : AxShellService() {
     override fun onBind(intent: Intent): IBinder {
         return object : IMyService.Stub() {
@@ -114,9 +149,38 @@ class MyService : AxShellService() {
 }
 ```
 
+```java [Java]
+public class MyService extends AxShellService {
+    @Override
+    public IBinder onBind(Intent intent) {
+        return new IMyService.Stub() {
+            @Override
+            public int getUid() {
+                return Os.getuid();
+            }
+
+            @Override
+            public String exec(String command) throws RemoteException {
+                try {
+                    Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+                    return new BufferedReader(new InputStreamReader(process.getInputStream()))
+                            .lines().collect(Collectors.joining("\n"));
+                } catch (IOException e) {
+                    throw new RemoteException(e.getMessage());
+                }
+            }
+        };
+    }
+}
+```
+
+:::
+
 Bind it from your app, on the main thread:
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val connection = object : ServiceConnection {
     override fun onServiceConnected(name: ComponentName, binder: IBinder) {
         val service = IMyService.Stub.asInterface(binder)
@@ -131,13 +195,34 @@ AxShellService.bind(Intent(context, MyService::class.java), connection)
 AxShellService.unbind(connection)
 ```
 
+```java [Java]
+ServiceConnection connection = new ServiceConnection() {
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder binder) {
+        IMyService service = IMyService.Stub.asInterface(binder);
+        // call it off the main thread: service.exec("id")
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {}
+};
+
+AxShellService.bind(new Intent(context, MyService.class), connection);
+// when done:
+AxShellService.unbind(connection);
+```
+
+:::
+
 Nothing goes in the manifest.
 
 ### Daemon mode {#daemon-mode}
 
 To keep a service running after your app closes, bind it with the daemon category and return `true` from `onUnbind`:
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 class MyDaemon : AxShellService() {
     override fun onUnbind(intent: Intent): Boolean {
         return true
@@ -154,6 +239,29 @@ val intent = Intent(context, MyDaemon::class.java)
 intent.addCategory(AxShellService.CATEGORY_DAEMON_MODE)
 AxShellService.bind(intent, connection)
 ```
+
+```java [Java]
+public class MyDaemon extends AxShellService {
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return true;
+    }
+
+    @Override
+    public void onRebind(Intent intent) {
+        // a later bind reached this same instance
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) { /* … */ }
+}
+
+Intent intent = new Intent(context, MyDaemon.class);
+intent.addCategory(AxShellService.CATEGORY_DAEMON_MODE);
+AxShellService.bind(intent, connection);
+```
+
+:::
 
 It runs in a second process that outlives your app. The next bind, even after your app restarts, reaches the same instance. `AxShellService.stop(intent)` ends it.
 
@@ -208,10 +316,19 @@ Changing it ends the helper running now; the next command starts one with the ne
 
 ### More from `Axsh` {#run-axsh}
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val run = Axsh.exec(arrayOf("ls", "-l"), dir = "/")   // a program as it is, no shell around it
 val term = Axsh.newTerminal(rows = 24, cols = 80)     // on a PTY: setWindowSize() when it resizes
 ```
+
+```java [Java]
+Process run = Axsh.exec(new String[]{"ls", "-l"}, null, "/");   // a program as it is, no shell around it
+Axsh.Terminal term = Axsh.newTerminal(24, 80);                 // on a PTY: setWindowSize() when it resizes
+```
+
+:::
 
 ### Your own `libaxsh.so` {#run-libaxsh}
 
@@ -224,9 +341,17 @@ android {
 }
 ```
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
 ```
+
+```java [Java]
+File axsh = new File(getApplicationInfo().nativeLibraryDir, "libaxsh.so");
+```
+
+:::
 
 `Axsh` and AxShellService don't need this: they run nothing from that folder.
 
@@ -234,32 +359,25 @@ val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
 
 If you already use [libsu](https://github.com/topjohnwu/libsu), it can keep one axsh shell open and send every command to it:
 
-```kotlin
+::: code-group
+
+```kotlin [Kotlin]
 Shell.setDefaultBuilder(Shell.Builder.create().setCommands(axsh.path))   // option 1
 val shell = Shell.Builder.create().build(Axsh.newProcess())               // option 2
 ```
+
+```java [Java]
+Shell.setDefaultBuilder(Shell.Builder.create().setCommands(axsh.getPath()));   // option 1
+Shell shell = Shell.Builder.create().build(Axsh.newProcess());                 // option 2
+```
+
+:::
 
 Commands then queue on that one shell, and `cd` and variables carry over between them, unless you run each in `( … )`.
 
 ### From Java {#java}
 
-The `axsh` module works from Java too: `AxBroker`, `Axsh` and `AxShellService` are called statically, and `Axsh`'s calls throw a checked `IOException`.
-
-```java
-// in your Application's onCreate()
-AxBroker.start(this);
-
-Process process = Axsh.newProcess("-c", "pm list packages");
-
-public class MyService extends AxShellService {
-    @Override
-    public IBinder onBind(Intent intent) { /* … */ }
-}
-
-AxShellService.bind(new Intent(context, MyService.class), connection);
-```
-
-The names up to 2.1.0 (`Broker`, `ShellService`) are Kotlin-only aliases, so Java uses the `Ax` ones. Java isn't stopped from calling axsh's other public classes, but they are AxManager's own and change without notice.
+Every example has a Java tab. `AxBroker`, `Axsh` and `AxShellService` are called statically, and `Axsh`'s calls throw a checked `IOException`. The names up to 2.1.0 (`Broker`, `ShellService`) are Kotlin-only aliases, so Java uses the `Ax` ones. Java isn't stopped from calling axsh's other public classes, but they are AxManager's own and change without notice.
 
 ### AxShellService {#shell-service-tips}
 
