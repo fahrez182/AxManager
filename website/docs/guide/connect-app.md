@@ -1,23 +1,16 @@
 # <Icon name="link" /> Connect with an App
 
-An app can run commands with AxManager's shell or root access through [axsh](./axsh.md), the same way a terminal does. This page is for app developers: the two ways to connect, what each costs, running your own code as shell or root with `ShellService`, and the demo app that tests it all.
+Your app can run commands as AxManager's shell or root through [axsh](./axsh.md), like a terminal does. This page is for app developers.
 
 [[toc]]
 
-## Two ways to connect {#two-ways}
+## How to connect {#connect}
 
-| | AxManager's `libaxsh.so` | The `axsh` module |
-|---|---|---|
-| **In your app** | Nothing to bundle | The `axsh` library from [Axeron API](https://github.com/fahrez182/Axeron-API) |
-| **Version** | Always matches the installed AxManager | The one you built with |
-| **Start of a command** | In shell mode: a short-lived helper asks AxManager for the server each time | A connect to your app's own broker |
-| **Needs AxManager running** | Yes: it answers the helper (each time) | Only for the first command |
+Pick one of two ways. Either way, run commands off the main thread, and allow your app in AxManager first (see [Permission](#permission)).
 
-Both need AxManager's [permission](./axsh.md#permission). AxManager's `libaxsh.so` and your own copy are the same client; the difference is what waits on the other side: a helper started for that one command, or a broker already running in your app. With the module, `Axsh` also skips the client and asks the broker's server directly.
+### Option 1: AxManager's `libaxsh.so` {#manager-binary}
 
-### AxManager's `libaxsh.so` {#manager-binary}
-
-Declare AxManager in the manifest, so Android 11+ lets your app see it:
+Nothing to add to your app. Let it see AxManager in the manifest:
 
 ```xml
 <queries>
@@ -25,18 +18,20 @@ Declare AxManager in the manifest, so Android 11+ lets your app see it:
 </queries>
 ```
 
-Then run `libaxsh.so` from AxManager's library folder. The folder changes with every AxManager update, so look it up each time your app starts:
+Then run AxManager's `libaxsh.so` like `sh`. Look its path up each time your app starts, since it changes with every AxManager update:
 
 ```kotlin
 val dir = packageManager.getApplicationInfo("frb.axeron.manager", 0).nativeLibraryDir
 val axsh = File(dir, "libaxsh.so")
 
-val process = ProcessBuilder(axsh.path, "-c", "id").start()
+val process = Runtime.getRuntime().exec(arrayOf(axsh.path, "-c", "pm list packages"))
+val output = process.inputStream.bufferedReader().readText()
+val code = process.waitFor()
 ```
 
-### The `axsh` module {#axsh-module}
+### Option 2: the `axsh` module {#axsh-module}
 
-Add the module from [JitPack](https://jitpack.io/#fahrez182/Axeron-API) (or from Maven local or as Gradle projects, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it)):
+Add the library from [JitPack](https://jitpack.io/#fahrez182/Axeron-API):
 
 ```kotlin
 // settings.gradle.kts
@@ -53,104 +48,37 @@ dependencyResolutionManagement {
 // build.gradle.kts
 dependencies {
     implementation("com.github.fahrez182.Axeron-API:axsh:2.1.0")
-    // axsh brings these two along at runtime, and its own API (Broker, Axsh, ShellService) uses
-    // none of their types. Add them, at the same version, only to use their classes directly
-    // (IAxeronService, AxeronApiConstant, …).
+    // axsh brings aidl along at runtime, and its own API (AxBroker, Axsh, AxShellService) uses
+    // none of its types. Add it, at the same version, only to call the server's binder
+    // interfaces directly (IAxeronService, …).
     // implementation("com.github.fahrez182.Axeron-API:aidl:2.1.0")
-    // implementation("com.github.fahrez182.Axeron-API:shared:2.1.0")
 }
 ```
 
-Start the broker in your `Application`:
+Start the broker in your `Application`, then run commands with `Axsh`:
 
 ```kotlin
-import frb.axeron.shell.Broker
-
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
-        Broker.start(this)
+        AxBroker.start(this)
     }
 }
+
+val process = Axsh.newProcess("-c", "pm list packages")
+val output = process.inputStream.bufferedReader().readText()
+val code = process.waitFor()
 ```
 
-The broker listens inside your app's process. It asks AxManager for the server once, keeps it, and serves every later command from there. Then run commands one of two ways.
+Maven local and Gradle projects work too, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it).
 
-**`Axsh`, in your app's process.** A shell on the server as a `java.lang.Process`, from one binder call. Nothing is exec'd, so there is nothing to extract. Call it off the main thread:
+### Permission {#permission}
 
-```kotlin
-import frb.axeron.shell.Axsh
+Your app needs AxManager's permission, set per app in **[Privilege](./app-tour.md#privilege)**. With **Ask** (the default), the first command shows AxManager's dialog and waits up to 15 seconds. Denied, the command stops with `AxManager permission required: allow this app in AxManager`.
 
-val process = Axsh.newProcess("-c", "id")             // sh's arguments; none for a shell on stdin
-val run = Axsh.exec(arrayOf("ls", "-l"), dir = "/")   // a program as it is, no shell around it
-val term = Axsh.newTerminal(rows = 24, cols = 80)     // on a PTY: setWindowSize() when it resizes
-```
+## Run your own code: AxShellService {#shell-service}
 
-For libsu: `Shell.Builder.create().build(Axsh.newProcess())`.
-
-**Your own `libaxsh.so`, as a program.** For what takes a binary rather than a `Process`: a terminal emulator, libsu's `setCommands`, another process. It is run from your app's native library folder, so keep native libraries extracted there:
-
-```kotlin
-// build.gradle.kts: only when you run libaxsh.so yourself
-android {
-    packaging { jniLibs { useLegacyPackaging = true } }
-}
-```
-
-```kotlin
-val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
-```
-
-[ShellService](#shell-service) doesn't need `useLegacyPackaging` either: it starts its process through `Axsh`, or through AxManager's `libaxsh.so` while the broker isn't running, never through your own.
-
-## Running commands {#running-commands}
-
-`libaxsh.so` takes the same arguments as `sh`. Run from an app, it has no terminal, so:
-
-- what you write to it goes to the shell's input;
-- stdout and stderr come back separately;
-- the exit code is the shell's.
-
-You can start one process per command, or keep one shell open with [libsu](https://github.com/topjohnwu/libsu):
-
-```kotlin
-Shell.setDefaultBuilder(Shell.Builder.create().setCommands(axsh.path))
-
-Shell.cmd("pm list packages").exec()
-```
-
-| | One process per command | libsu |
-|---|---|---|
-| **Each command** | A new axsh session | A write to the open shell |
-| **Several at once** | Each gets its own shell | They queue on the one shell |
-| **State** (`cd`, variables) | Never carries over | Carries over unless you run each command in `( … )` |
-
-## Speed {#speed}
-
-What a command costs before it runs depends on the way you connect and, for AxManager's `libaxsh.so`, on how the server was started:
-
-| Server | AxManager's `libaxsh.so` | The `axsh` module |
-|---|---|---|
-| **Root** | Straight to the server | Straight to the server |
-| **Shell** | Helper started, AxManager asked, every command | Broker in your app: AxManager asked once |
-
-::: tip Keep axsh ready
-With AxManager's `libaxsh.so` in shell mode, the helper started by your app's first command leaves a small native process behind (about 3 MB), and the next commands connect to it like to a broker. Set it per app in AxManager (**Privilege → your app → Keep axsh ready**, under the Axeron permission):
-
-- **Smart** (default): stays while your app uses axsh, and leaves after 5 minutes without a command.
-- **No limit**: stays until the server stops or AxManager updates.
-- **Off**: every command starts a new helper.
-
-Changing it ends the helper running now; the next command starts one with the new setting.
-:::
-
-## Permission {#permission}
-
-Your app needs AxManager's permission, set per app in **[Privilege](./app-tour.md#privilege)**. With **Ask** (the default), the first command shows AxManager's dialog and waits for your answer, up to 15 seconds. The command then runs, or stops with `AxManager permission required: allow this app in AxManager`.
-
-## Run your own code: ShellService {#shell-service}
-
-Commands are not always enough. `ShellService` runs a class of your app as shell or root, the way [libsu](https://github.com/topjohnwu/libsu)'s `RootService` does, but through axsh, so it works in shell mode too. It needs the `axsh` module (the broker is optional).
+`AxShellService` runs a class of your app as shell or root, like [libsu](https://github.com/topjohnwu/libsu)'s `RootService`, but through axsh, so it works in shell mode too. It needs the `axsh` module ([option 2](#axsh-module); the broker is optional).
 
 Write an AIDL interface, as for any bound service, and turn AIDL on:
 
@@ -170,7 +98,7 @@ android { buildFeatures { aidl = true } }
 The service. Everything inside it runs as shell (uid 2000) or root (uid 0):
 
 ```kotlin
-class MyService : ShellService() {
+class MyService : AxShellService() {
     override fun onBind(intent: Intent): IBinder {
         return object : IMyService.Stub() {
             override fun getUid(): Int {
@@ -198,29 +126,19 @@ val connection = object : ServiceConnection {
     override fun onServiceDisconnected(name: ComponentName) {}
 }
 
-ShellService.bind(Intent(context, MyService::class.java), connection)
+AxShellService.bind(Intent(context, MyService::class.java), connection)
 // when done:
-ShellService.unbind(connection)
+AxShellService.unbind(connection)
 ```
 
 Nothing goes in the manifest.
-
-| | libsu `RootService` | `ShellService` |
-|---|---|---|
-| **Shell mode** | No | Yes |
-| **Callbacks** | `onCreate`, `onBind`, `onUnbind`, `onRebind`, `onDestroy` | The same |
-| **Calls** | `bind`, `unbind`, `stop` | The same |
-| **Processes** | One for all your services, gone with the app | The same |
-| **Daemon mode** | `CATEGORY_DAEMON_MODE` | `ShellService.CATEGORY_DAEMON_MODE` |
-| **Start the process yourself** | `bindOrTask`, per bind | `ShellService.setLauncher`, once for all |
-| **Users** | All | User 0 only |
 
 ### Daemon mode {#daemon-mode}
 
 To keep a service running after your app closes, bind it with the daemon category and return `true` from `onUnbind`:
 
 ```kotlin
-class MyDaemon : ShellService() {
+class MyDaemon : AxShellService() {
     override fun onUnbind(intent: Intent): Boolean {
         return true
     }
@@ -233,18 +151,102 @@ class MyDaemon : ShellService() {
 }
 
 val intent = Intent(context, MyDaemon::class.java)
-intent.addCategory(ShellService.CATEGORY_DAEMON_MODE)
-ShellService.bind(intent, connection)
+intent.addCategory(AxShellService.CATEGORY_DAEMON_MODE)
+AxShellService.bind(intent, connection)
 ```
 
-It runs in a second process that outlives your app. The next bind, even after your app restarts, reaches the same instance. `ShellService.stop(intent)` ends it.
+It runs in a second process that outlives your app. The next bind, even after your app restarts, reaches the same instance. `AxShellService.stop(intent)` ends it.
 
-::: tip Good to know
+## What's the difference {#difference}
+
+### Option 1 or option 2 {#two-ways}
+
+| | AxManager's `libaxsh.so` | The `axsh` module |
+|---|---|---|
+| **In your app** | Nothing | The `axsh` library |
+| **Version** | Always matches the installed AxManager | The one you built with |
+| **Each command, in shell mode** | A short-lived helper asks AxManager for the server | Your app's broker, which asked once |
+| **Needs AxManager running** | For every command | Only for the first one |
+| **AxShellService** | No | Yes |
+
+### Speed {#speed}
+
+What a command costs before it runs:
+
+| Server | AxManager's `libaxsh.so` | The `axsh` module |
+|---|---|---|
+| **Root** | Straight to the server | Straight to the server |
+| **Shell** | Helper started, AxManager asked, every command | AxBroker in your app: AxManager asked once |
+
+### AxShellService and libsu's RootService {#rootservice}
+
+| | libsu `RootService` | `AxShellService` |
+|---|---|---|
+| **Shell mode** | No | Yes |
+| **Callbacks** | `onCreate`, `onBind`, `onUnbind`, `onRebind`, `onDestroy` | The same |
+| **Calls** | `bind`, `unbind`, `stop` | The same |
+| **Processes** | One for all your services, gone with the app | The same |
+| **Daemon mode** | `CATEGORY_DAEMON_MODE` | `AxShellService.CATEGORY_DAEMON_MODE` |
+| **Start the process yourself** | `bindOrTask`, per bind | `AxShellService.setLauncher`, once for all |
+| **Users** | All | User 0 only |
+
+## Tips {#tips}
+
+### Keep axsh ready {#keep-axsh-ready}
+
+With option 1 in shell mode, the helper started by your app's first command leaves a small native process behind (about 3 MB), and the next commands connect to it like to a broker. Set it per app in AxManager (**Privilege → your app → Keep axsh ready**, under the Axeron permission):
+
+- **Smart** (default): stays while your app uses axsh, and leaves after 5 minutes without a command.
+- **No limit**: stays until the server stops or AxManager updates.
+- **Off**: every command starts a new helper.
+
+Changing it ends the helper running now; the next command starts one with the new setting.
+
+### What `libaxsh.so` gives you {#running-commands}
+
+`libaxsh.so` takes the same arguments as `sh`. Run from an app, it has no terminal, so what you write to it goes to the shell's input, stdout and stderr come back separately, and the exit code is the shell's. `Axsh.newProcess` behaves the same.
+
+### More from `Axsh` {#run-axsh}
+
+```kotlin
+val run = Axsh.exec(arrayOf("ls", "-l"), dir = "/")   // a program as it is, no shell around it
+val term = Axsh.newTerminal(rows = 24, cols = 80)     // on a PTY: setWindowSize() when it resizes
+```
+
+### Your own `libaxsh.so` {#run-libaxsh}
+
+With option 2 you can also run the module's own `libaxsh.so` as in option 1, for something that needs a program rather than a `Process`, such as a terminal emulator. Its commands then go through your broker. It is run from your app's native library folder, so keep native libraries extracted:
+
+```kotlin
+// build.gradle.kts: only when you run your own libaxsh.so
+android {
+    packaging { jniLibs { useLegacyPackaging = true } }
+}
+```
+
+```kotlin
+val axsh = File(applicationInfo.nativeLibraryDir, "libaxsh.so")
+```
+
+`Axsh` and AxShellService don't need this: they run nothing from that folder.
+
+### One open shell with libsu {#libsu}
+
+If you already use [libsu](https://github.com/topjohnwu/libsu), it can keep one axsh shell open and send every command to it:
+
+```kotlin
+Shell.setDefaultBuilder(Shell.Builder.create().setCommands(axsh.path))   // option 1
+val shell = Shell.Builder.create().build(Axsh.newProcess())               // option 2
+```
+
+Commands then queue on that one shell, and `cd` and variables carry over between them, unless you run each in `( … )`.
+
+### AxShellService {#shell-service-tips}
+
 - The service's Context reports the uid's own package (`com.android.shell` in shell mode), so system services that check it, such as the clipboard, accept it.
 - `getApplicationContext()` returns the service: no `Application` runs in its process.
 - In a debuggable app, Android Studio's **Attach Debugger** lists the process as `<package>:shell_shared` or `<package>:shell_daemon`.
-- When a bind fails, `ShellService.lastFailure(component)` says why.
-:::
+- When a bind fails, `AxShellService.lastFailure(component)` says why.
 
 ## Demo app {#demo-app}
 
@@ -264,8 +266,8 @@ The tests:
 | **Privileges** | uid and SELinux context; `pm list packages`; `settings`; `dumpsys` |
 | **Test Function plugin** | Installed and enabled; `axtest` on `PATH` and callable from the app; not marked as a plugin process; its `system.prop`; plugin processes; every `[FAIL]` in its reports |
 | **libsu RootService** | libsu's own `RootService` through axsh, to compare (root mode only) |
-| **ShellService** | uid; `Runtime.exec` inside the service; two services in one process; a shared static; the clipboard from its Context; `getApplicationContext()` |
-| **ShellService daemon** | The same pid after an unbind and after closing the app; a new pid after `stop` |
+| **AxShellService** | uid; `Runtime.exec` inside the service; two services in one process; a shared static; the clipboard from its Context; `getApplicationContext()` |
+| **AxShellService daemon** | The same pid after an unbind and after closing the app; a new pid after `stop` |
 
 The last group needs the **Test Function** plugin (`plugins/test_function` in the AxManager repository) installed and re-ignited. It shows that a plugin's `system/bin` binaries can be called from any allowed app.
 
