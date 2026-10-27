@@ -67,7 +67,7 @@ import rikka.hidden.compat.UserManagerApis
 import rikka.hidden.compat.util.SystemServiceBinder
 import rikka.parcelablelist.ParcelableListSlice
 import frb.axeron.shell.KeepAlive
-import frb.axeron.shell.host.AxshProcess
+import frb.axeron.shell.host.ShellProcess
 import frb.axeron.shell.host.PtyHost
 import java.io.File
 import java.io.IOException
@@ -946,7 +946,7 @@ open class AxeronService :
             // As newProcess: an attached app's shells end with it. A broker or bootstrap isn't
             // attached until it asks for permission; its sessions end with their socket instead.
             val owner = clientManager.findClient(getCallingUid(), getCallingPid())?.client?.asBinder()
-            return AxshProcess.start(
+            return ShellProcess.start(
                 argv, env?.filterNotNull()?.toTypedArray(), dir, stdin, stdout, stderr, pty, size,
                 status, owner
             )

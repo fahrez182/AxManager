@@ -9,7 +9,7 @@ import com.topjohnwu.superuser.Shell
 import frb.axeron.adb.AdbPairingService
 import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
-import frb.axeron.shell.Broker
+import frb.axeron.shell.AxBroker
 import frb.axeron.manager.adb.AdbStarter
 import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.data.AxshLauncher
@@ -48,7 +48,7 @@ class AxeronApplication : Engine() {
         // The default shell runs our libaxsh.so (found through applicationInfo, so not before
         // this point). Its broker hands out the binder we already hold, never a broadcast to
         // ourselves, which could wait behind a main thread blocked on that same shell.
-        Broker.start(this) { Axeron.getBinder() }
+        AxBroker.start(this) { Axeron.getBinder() }
         Shell.setDefaultBuilder(createShellBuilder())
         // The server writes /sdcard/axeron/axsh for us; with it back after an update, the
         // launcher gets the new libaxsh.so path before anyone opens the card that offers it.

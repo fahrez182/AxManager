@@ -86,6 +86,8 @@ subprojects {
         extensions.configure<KotlinAndroidProjectExtension> {
             compilerOptions {
                 jvmTarget.set(JvmTarget.JVM_21)
+                // Every module here is AxManager's own; apps building on the api don't get this.
+                optIn.add("frb.axeron.shell.InternalAxeronApi")
             }
         }
     }

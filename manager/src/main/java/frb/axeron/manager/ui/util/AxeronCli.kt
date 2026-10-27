@@ -7,7 +7,7 @@ import java.io.File
 
 private const val TAG = "AxeronCli"
 
-/** The manager's own axsh client; it reaches the server through the in-process Broker. */
+/** The manager's own axsh client; it reaches the server through the in-process AxBroker. */
 private val axshPath: String
     get() = File(axeronApp.applicationInfo.nativeLibraryDir, "libaxsh.so").absolutePath
 
