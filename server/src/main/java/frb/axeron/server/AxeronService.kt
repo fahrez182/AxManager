@@ -88,6 +88,10 @@ open class AxeronService :
         // In AXERONDIR. Must match START_ENV_FILE in starter.cpp.
         private const val START_ENV_FILE = "server_env"
 
+        // The sticky broadcast holding this server's binder (see publishBinder). Mirrored in
+        // AxBroker.
+        private const val SERVER_BINDER_ACTION = "AxRuntime.SERVER_BINDER"
+
         @JvmStatic
         fun main(args: Array<String>) {
             DdmHandleAppName.setAppName("axeron_server", 0)
@@ -695,6 +699,7 @@ open class AxeronService :
         }
 
         BinderSender.register(this)
+        publishBinder()
 
         mainHandler.post {
             sendBinderToClient()
@@ -705,6 +710,34 @@ open class AxeronService :
         synchronized(lockToken) { wakeLockHeld = acquire() }
 
         startDeathWatchdog()
+    }
+
+    /**
+     * Leaves this server's binder in system_server as a sticky broadcast, for every user, so an
+     * app with a Context reads it with registerReceiver(null, …) — nothing is delivered and nobody
+     * is woken — instead of waiting for BinderSender to push it. Each start replaces the last; a
+     * stale sticky holds a dead binder the reader drops on pingBinder. Who reads it needn't be
+     * known: every call on the binder is gated by the caller's uid. The binder can't be registered
+     * as a receiver instead (AMS ignores receivers with no app process) nor added to ServiceManager
+     * (the shell domain may not), and an app_process client (axsh in a bare terminal) can't read a
+     * sticky either, so [BinderSender]'s push and the manager's AxRuntime.REQUEST_BINDER relay stay.
+     */
+    private fun publishBinder() {
+        val intent = Intent(SERVER_BINDER_ACTION)
+            .putExtra("data", Bundle().apply {
+                putBinder("binder", this@AxeronService)
+                putLong("version", VERSION_CODE)
+                putString("libDir", getManagerApplicationInfo()?.nativeLibraryDir)
+            })
+        try {
+            ActivityManagerApis.broadcastIntent(
+                intent, null, null, 0, null, null, null, -1, null,
+                false, true, -1 /* UserHandle.USER_ALL */
+            )
+            LOGGER.i("server binder published as sticky")
+        } catch (e: Throwable) {
+            LOGGER.w(e, "can't publish the server binder as sticky")
+        }
     }
 
     fun sendBinderToClient() {
