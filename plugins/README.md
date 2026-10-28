@@ -24,7 +24,7 @@ Install the zip with **+** on AxManager's Plugin page, then re-ignite.
 
 ## Test Function
 
-`id=test_function`, `axeronPlugin=19100`. Every stage writes what it saw to
+`id=test_function`, `axeronPlugin=30000` (AxManager 3.0 or later). Every stage writes what it saw to
 `$AXERONDIR/plugins/test_function/reports/<stage>.txt` (and to its own output), with
 `[PASS]`/`[FAIL]` checks and `[INFO]` values.
 
@@ -37,7 +37,7 @@ Install the zip with **+** on AxManager's Plugin page, then re-ignite.
 | `system/bin/axtest` | Linked into `$AXERONXBIN`: `axtest ping \| env \| marker \| procs` from QuickShell or anywhere |
 | `action.sh` | Full diagnostics: env, working dir and `PATH` order, boot stages, which processes are alive and marked, server settings (stop-with-server, Shizuku intercept), and every `[FAIL]` from all reports |
 | `uninstall.sh` | Runs on removal; writes `logs/test_function.uninstalled`, leaves a `sleep` running that AxManager must stop |
-| `webroot/` | Every `ksu` and `Axeron` method (sync and callback), streaming `spawn` and its event order, the `kernelsu.js`/`axeron.js` helpers (`spawn` with args and/or options), quoting, app icons and labels (also one `getPackagesInfo` call per app), the file API (`writeFile`/`readFile`/`listFile`/`copyFile`/`moveFile`/`removeFile`, `fileOutputStream()`), `enableInsets`, `exit`, `createShortcut`, insets/colors CSS, a daemon started from the WebUI, reports and logs. Each test shows how long it froze the page: synchronous calls are expected to, callback ones must not |
+| `webroot/` | Every `ksu` and `Axeron` method (sync and callback), streaming `spawn` and its event order, the `kernelsu.js`/`axeron.js` helpers (`spawn` with args and/or options), quoting, app icons and labels (also one `getPackagesInfo` call per app), the file API (`writeFile`/`readFile`/`listFile`/`copyFile`/`moveFile`/`removeFile`, `fileOutputStream()`), `enableInsets`, `exit`, `createShortcut`, insets/colors CSS, a daemon started from the WebUI, reports and logs; and what keeps other sites off the page: the CSP header on the plugin's files, an `<iframe>` of another site and a form posting to one (both must be refused), a link to another site (opens in the browser, by hand). Each test shows how long it froze the page: synchronous calls are expected to, callback ones must not |
 | `banner.png` | `banner=` in `module.prop` |
 | `README.md` | Deleted by the installer after `customize.sh` (checked there) |
 | `extras/` | Read straight from `ZIPFILE` in `customize.sh`, then removed from the plugin folder |
@@ -48,7 +48,7 @@ Install the zip with **+** on AxManager's Plugin page, then re-ignite.
 2. Re-ignite (flame button, or Home → power → flame).
 3. Tap **Action**: everything should be PASS; the install-time daemon should be gone, the heartbeat
    daemon alive and marked, the clean-env child alive without a marker.
-4. Open the WebUI, **Run all**. Then try the toast/full-screen card by hand.
+4. Open the WebUI, **Run all**. Then try the toast/full-screen card by hand, and tap the link in *A link to another site opens outside*: example.com must open in the browser while the WebUI stays.
 5. In the WebUI, run *Process marker and lifecycle*: both WebUI daemons (the `setsid` one and the
    plain `&` job) must be alive after their command returned. Disable the plugin and re-ignite:
    `axtest procs` in QuickShell should list nothing for `test_function` (the heartbeat, its

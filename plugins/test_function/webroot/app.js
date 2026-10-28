@@ -561,7 +561,86 @@ const tests = [
     },
     extra: '<div class="swatches"></div>',
   },
+  // ---------- security (AxManager 3.0) ----------
+  // ksu and Axeron run commands for whatever code is on the page, so other sites must never get
+  // onto it. These check what AxManager sends with the plugin's files.
+  {
+    id: "csp-header",
+    title: "Content-Security-Policy on the plugin's files",
+    desc: "AxManager sends a CSP with every file of the plugin: frames and form posts only to the plugin's own pages.",
+    async run(log) {
+      const r = await fetch("index.html");
+      const csp = r.headers.get("Content-Security-Policy");
+      log(`Content-Security-Policy: ${csp ?? "<none>"}`);
+      return csp !== null && csp.includes("frame-src") && csp.includes("form-action");
+    },
+  },
+  {
+    id: "csp-iframe",
+    title: "An <iframe> of another site is blocked",
+    desc: "Loads https://example.com in a hidden frame. It must be refused (frame-src), or that site would get ksu and Axeron.",
+    async run(log) {
+      const violation = waitForViolation("frame-src");
+      const frame = document.createElement("iframe");
+      frame.hidden = true;
+      frame.src = "https://example.com/";
+      document.body.appendChild(frame);
+      const v = await violation;
+      frame.remove();
+      log(v ? `refused: ${v.violatedDirective}, ${v.blockedURI}` : "no violation within 3s: the frame was let in");
+      return v !== null;
+    },
+  },
+  {
+    id: "csp-form",
+    title: "A <form> posting to another site is blocked",
+    desc: "Posts a form to https://example.com into a hidden frame of this page. It must be refused (form-action): a POST isn't caught by the WebUI's navigation check.",
+    async run(log) {
+      const violation = waitForViolation("form-action");
+      const sink = document.createElement("iframe");
+      sink.hidden = true;
+      sink.name = "tf_form_sink";
+      document.body.appendChild(sink);
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = "https://example.com/";
+      form.target = "tf_form_sink";
+      document.body.appendChild(form);
+      form.submit();
+      const v = await violation;
+      form.remove();
+      sink.remove();
+      log(v ? `refused: ${v.violatedDirective}, ${v.blockedURI}` : "no violation within 3s: the post went out");
+      return v !== null;
+    },
+  },
+  {
+    id: "outside-link",
+    title: "A link to another site opens outside (by hand)",
+    desc: "Tap the link below: example.com must open in the browser, and this page must stay where it is.",
+    async run(log) {
+      log("Tap the link below; nothing to check automatically.");
+    },
+    extra: '<p><a href="https://example.com/">https://example.com/</a></p>',
+  },
 ];
+
+/** The first CSP violation of [directive] on this page within 3s, or null. */
+function waitForViolation(directive) {
+  return new Promise((resolve) => {
+    const onViolation = (e) => {
+      if (!e.violatedDirective.startsWith(directive)) return;
+      done(e);
+    };
+    const timer = setTimeout(() => done(null), 3000);
+    function done(e) {
+      clearTimeout(timer);
+      document.removeEventListener("securitypolicyviolation", onViolation);
+      resolve(e);
+    }
+    document.addEventListener("securitypolicyviolation", onViolation);
+  });
+}
 
 // ---------- page ----------
 
