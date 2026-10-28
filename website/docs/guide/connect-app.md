@@ -43,6 +43,10 @@ int code = process.waitFor();
 
 :::
 
+::: warning Tied to AxManager's package name
+This option finds AxManager by its package name, so your app knows it. If AxManager is later installed under a different, even randomized, package name, a lookup by `frb.axeron.manager` will not find it. Relying on that name is therefore not recommended in the long run; [option 2](#axsh-module) names no package.
+:::
+
 ### Option 2: the `axsh` module {#axsh-module}
 
 Add the library from [JitPack](https://jitpack.io/#fahrez182/Axeron-API):
@@ -103,6 +107,8 @@ int code = process.waitFor();
 
 :::
 
+The broker reads the server's binder itself, from a broadcast the server leaves for apps to read, so AxManager is neither woken nor asked and your app needs no package name. AxManager only has to be installed, because the server runs from it, and the server has to be running. The first command still shows AxManager's [permission](#permission) dialog.
+
 Maven local and Gradle projects work too, see the [Axeron API README](https://github.com/fahrez182/Axeron-API#using-it).
 
 ### Permission {#permission}
@@ -111,7 +117,7 @@ Your app needs AxManager's permission, set per app in **[Privilege](./app-tour.m
 
 ## Run your own code: AxShellService {#shell-service}
 
-`AxShellService` runs a class of your app as shell or root, like [libsu](https://github.com/topjohnwu/libsu)'s `RootService`, but through axsh, so it works in shell mode too. It needs the `axsh` module ([option 2](#axsh-module); the broker is optional).
+`AxShellService` runs a class of your app as shell or root, like [libsu](https://github.com/topjohnwu/libsu)'s `RootService`, but through axsh, so it works in shell mode too. It needs the `axsh` module ([option 2](#axsh-module)) and starts its process through your app's broker, so call `AxBroker.start` first. An app without a broker gives `AxShellService.setLauncher` its own way to start the process, such as running AxManager's `libaxsh.so` with `-c`.
 
 Write an AIDL interface, as for any bound service, and turn AIDL on:
 
@@ -274,7 +280,8 @@ It runs in a second process that outlives your app. The next bind, even after yo
 | **In your app** | Nothing | The `axsh` library |
 | **Version** | Always matches the installed AxManager | The one you built with |
 | **Each command, in shell mode** | A short-lived helper asks AxManager for the server | Your app's broker, which asked once |
-| **Needs AxManager running** | For every command | Only for the first one |
+| **Needs AxManager running** | For every command | No: installed is enough, with the server running |
+| **Needs AxManager's package name** | Yes | No |
 | **AxShellService** | No | Yes |
 
 ### Speed {#speed}
@@ -284,7 +291,7 @@ What a command costs before it runs:
 | Server | AxManager's `libaxsh.so` | The `axsh` module |
 |---|---|---|
 | **Root** | Straight to the server | Straight to the server |
-| **Shell** | Helper started, AxManager asked, every command | AxBroker in your app: AxManager asked once |
+| **Shell** | Helper started, AxManager asked, every command | AxBroker in your app: reads the server's binder once, AxManager not asked |
 
 ### AxShellService and libsu's RootService {#rootservice}
 
@@ -392,13 +399,14 @@ Every example has a Java tab. `AxBroker`, `Axsh` and `AxShellService` are called
 
 | Setting | Choices |
 |---|---|
-| **`axsh_direct_connection`** | On: its own `libaxsh.so` with the broker (the `axsh` module). Off: AxManager's `libaxsh.so` without a broker, as Termux runs it. Switching restarts the app. |
+| **`axsh_direct_connection`** | On: its own `libaxsh.so` with the broker (the `axsh` module). Off: AxManager's `libaxsh.so` without a broker, as Termux runs it (AxShellService then starts through that `libaxsh.so`, set with `setLauncher`). Switching restarts the app. Cold start tests that use `Axsh.exec` only run with it on. |
 | **Runner** | `axsh -c` per command, or libsu's cached shell, which can be closed to time its start again. |
 
 The tests:
 
 | Group | What they check |
 |---|---|
+| **Cold start** | The first command against the next ones; `Axsh.exec` against a local `Runtime.exec`; reading the server's binder from its broadcast against AxManager's relay |
 | **Connection** | The server answers; latency over five runs; four commands at once; nothing carried over between commands |
 | **Shell** | Exit code; stdout and stderr apart; stdin up to its end; 100 000 lines of output; the server's environment |
 | **Privileges** | uid and SELinux context; `pm list packages`; `settings`; `dumpsys` |

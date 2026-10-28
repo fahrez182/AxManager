@@ -40,6 +40,8 @@ AxManager can start again automatically after a reboot, see [Activate on Boot](#
 
 Starting with wireless debugging works on Android 11 or above. This startup method does not require a connection to a computer. Due to system limitations, the startup steps need to be performed again after each reboot, unless [Activate on Boot](#activate-on-boot) does it for you.
 
+It needs a Wi-Fi network. If Wi-Fi is off, AxManager opens the Wi-Fi panel and waits until a network is up, because an app can't turn Wi-Fi on itself. It always goes through Wireless Debugging, even when ADB already listens on a TCP port; to start from that port without Wi-Fi, use [TCP debugging](#start-with-tcp-debugging).
+
 #### Enable Wireless Debugging
 
 1. Search how to enable "**Developer Options**" for your device model
@@ -50,6 +52,8 @@ Starting with wireless debugging works on Android 11 or above. This startup meth
 ::: tip
 On the Activate screen, **Instruction** → **Developer** opens the Wireless Debugging settings for you.
 :::
+
+A line at the top of the Activate screen shows whether AxManager can write the **Secure** and **System** settings (**Granted** or **Not granted**). When it can, it switches Developer options, USB debugging and Wireless Debugging on together each time it activates, so the steps above are only needed while it says **Not granted**.
 
 #### Start & Pairing (only needs once)
 
@@ -73,7 +77,7 @@ When ADB already listens on a TCP port (for example after `adb tcpip 5555` from 
 
 The switch next to the card's title (TCP mode) changes how Wireless Debugging activation behaves:
 
-- **On** (default): after connecting over Wireless Debugging, AxManager switches ADB to TCP on the **TCP Port** (1024–65535, 5555 unless the device already sets another). Later activations can then reuse that port, even without Wi-Fi, until the next reboot.
+- **On** (default): after connecting over Wireless Debugging, AxManager switches ADB to TCP on the **TCP Port** (1024–65535, 5555 unless the device already sets another). **Connect to TCP** can then start AxManager on that port, even without Wi-Fi, until the next reboot. AxManager only switches ADB when it is not on that port already.
 - **Off**: if ADB is on TCP, the next Wireless Debugging activation switches it back to USB first.
 
 A changed port applies right away: saving it, or turning TCP mode on, while ADB listens on another TCP port moves ADB to the new port and restarts the server on it. If that switch fails, the restart icon in the port field tries it again. **Stop TCP** switches ADB back to USB.
@@ -168,6 +172,8 @@ Close anything else using ADB first (an `adb` server, Android Studio, scrcpy): o
 - Started from a computer or the browser, never started, or ADB below Android 11: not started on boot.
 
 Nothing is started in safe mode. While AxManager is stopped, the Home status card shows the last method used and whether boot start is on.
+
+An ADB start after a reboot shows one **Starting AxManager** notification that follows each step, with a step counter: waiting for Wi-Fi, turning on Wireless Debugging, looking up its port, connecting to adbd, starting the server, and waiting for the server to connect. While it waits for Wi-Fi the notification has an **Open Wi-Fi** button, since an app can't switch Wi-Fi on. If a step fails or times out, it says so and offers **Retry**. The notification stays until the device is unlocked, then goes away. If the notification can't be started, AxManager activates without it.
 
 ## Stop or restart
 

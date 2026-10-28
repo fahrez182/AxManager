@@ -30,6 +30,20 @@ While stopped, the card shows how AxManager was last started (**Last: ADB / Root
 
 A floating button opens [QuickShell](#quickshell) while the server runs. If the server is off but AxManager still holds its settings permissions, a **Quick Settings** card lets you use your [Quick Settings](#quick-settings) anyway.
 
+### Signature card {#signature}
+
+Under the status card, while the server runs. AxManager does not rely on its own package name to know the server: the server identifies the manager that started it by the signing certificate of the app it ran from, and the card shows whether that matches this app.
+
+| Badge | Meaning |
+|---|---|
+| **Match** | The server was started by a manager signed with the same certificate as this app. |
+| **Mismatch** | The server was started by a manager with another signature. Restart it from this app. |
+| **Unverified** | The binder has not called back as root or shell, so nothing it reports is trusted. |
+
+The rows show **Server binder** (whether it called back as root or shell, and with which uid), **Server trusts** (the certificate the server pinned) and **This manager** (this app's certificate). Tap a signature to copy it.
+
+If a different manager (another install, signed differently) starts the server later, it replaces the one that was running. A server that cannot identify its manager stops.
+
 ### Device Information
 
 Device model, Android version, security patch, kernel, ABI and the server's SELinux context. Tap a value to copy it.

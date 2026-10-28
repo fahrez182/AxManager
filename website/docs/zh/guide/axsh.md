@@ -60,10 +60,14 @@ axsh script.sh      # 一个脚本文件
 | **Root** | 直接连接到服务。 |
 | **Shell**（无线调试、电脑等） | Android 不允许应用直接与 shell 进程通信，因此 `axsh` 会在您的终端应用中，从 AxManager 的应用里启动一个小助手。助手从 AxManager 获取服务并交接会话。启动时会多一点延迟。 |
 
-内置了 axsh 的应用（参见[与应用连接](./connect-app.md)）会跳过这个助手。对于终端应用，**保持 axsh 就绪**（在 AxManager 的**特权 → 该应用**中，Axeron 权限下方）会在第一条命令后保留助手，之后的命令会立即启动。
+内置了 axsh 的应用（参见[与应用连接](./connect-app.md)）会跳过这个助手，也不会询问 AxManager：服务会把它的 binder 留成一条广播，应用自己读取。对于终端应用，**保持 axsh 就绪**（在 AxManager 的**特权 → 该应用**中，Axeron 权限下方）会在第一条命令后保留助手，之后的命令会立即启动。
 
 ::: info MIUI / HyperOS
-在 shell 模式下，助手会向 AxManager 请求服务。MIUI 会杀死从最近任务中划掉的应用，并默认阻止其他应用再次启动它们，因此 AxManager 无法响应。为此，AxManager 每次连接到服务时都会为自己允许**自启动**（以及桌面快捷方式和后台弹出界面权限）。如果划掉 AxManager 后 `axsh` 仍提示服务未运行，请在系统设置中检查 AxManager 的**自启动**。
+在 shell 模式下，助手会向 AxManager 请求服务。MIUI 会杀死从最近任务中划掉的应用，并默认阻止其他应用再次启动它们，因此 AxManager 无法响应。为此，AxManager 每次连接到服务时都会为自己允许**自启动**（以及桌面快捷方式和后台弹出界面权限）。如果划掉 AxManager 后 `axsh` 仍提示服务未运行，请在系统设置中检查 AxManager 的**自启动**。内置了 axsh 的应用不会询问 AxManager，因此不受影响。
+:::
+
+::: info 它真的是服务吗？
+应用无论从广播还是从 AxManager 得到 binder，都不会立刻信任它。应用会先连接到该 binder，只有当服务以自己的 uid（root 或 shell）回调时才接受，应用无法伪造这一点。不以这种方式回调的 binder 会被拒绝。
 :::
 
 ## 权限 {#permission}
@@ -80,11 +84,15 @@ axsh script.sh      # 一个脚本文件
 
 ## 提示信息 {#messages}
 
+前两条提示的末尾可能带有方括号中的原因，例如 `AxManager server is not running [the manager didn't answer (is AxManager running?)]`。它说明 `axsh` 停在了哪一步。
+
 | 提示 | 含义 |
 |---|---|
 | `AxManager permission required: allow this app in AxManager` | 终端应用未获允许：被设为 **Denied**，或对话框被拒绝、未回答。 |
 | `AxManager server is not running` | AxManager 没有交出服务：服务未运行，或 AxManager 无法在后台启动（参见上方 MIUI 说明）。 |
-| `AxManager server is not reachable (…), and there is no broker to fall back on (…)` | `axsh` 找不到连接服务的方式。当 `libaxsh.so` 被复制到 AxManager 文件夹之外时会出现这种情况；请改用启动器。 |
+| `AxManager server is not running [no way to reach the server (…)]` | 助手找不到可以询问的 AxManager。当 `libaxsh.so` 被复制到 AxManager 文件夹之外时会出现这种情况；请改用启动器。 |
+| `AxManager server is not reachable […]` | 自己运行 `Axsh` 的应用找不到连接服务的方式。原因会说明是 broker 从未启动，还是服务没有留下 binder（服务未运行，或版本太旧无法发布）。 |
+| `… [the binder never called back …]` 或 `[… isn't the server's …]` | 找到了一个 binder，但无法确认它属于服务，因此被拒绝。 |
 | `axsh: can't exec app_process (…)` | shell 模式的助手无法启动。 |
 
 ## 面向应用开发者 {#for-app-developers}

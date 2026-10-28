@@ -43,6 +43,10 @@ int code = process.waitFor();
 
 :::
 
+::: warning 与 AxManager 的包名绑定
+这种方式通过包名查找 AxManager，因此应用必须知道这个包名。如果日后 AxManager 以不同的、甚至随机化的包名安装，按 `frb.axeron.manager` 查找将找不到它。因此长期来看不建议依赖这个包名；[方式二](#axsh-module)不需要指定任何包名。
+:::
+
 ### 方式二：`axsh` 模块 {#axsh-module}
 
 从 [JitPack](https://jitpack.io/#fahrez182/Axeron-API) 添加该库：
@@ -103,6 +107,8 @@ int code = process.waitFor();
 
 :::
 
+broker 会自己读取服务的 binder：它来自服务留给应用读取的一条广播，因此既不会唤醒也不会询问 AxManager，应用也不需要知道包名。AxManager 只需已安装（服务从它运行），且服务必须在运行。第一条命令仍会显示 AxManager 的[权限](#permission)对话框。
+
 也可以从 Maven local 引入或作为 Gradle 项目使用，参见 [Axeron API 的 README](https://github.com/fahrez182/Axeron-API#using-it)。
 
 ### 权限 {#permission}
@@ -111,7 +117,7 @@ int code = process.waitFor();
 
 ## 运行自己的代码：AxShellService {#shell-service}
 
-`AxShellService` 以 shell 或 root 身份运行应用中的一个类，用法与 [libsu](https://github.com/topjohnwu/libsu) 的 `RootService` 相同，但它通过 axsh 启动，因此在 shell 模式下也能使用。需要 `axsh` 模块（[方式二](#axsh-module)；broker 可选）。
+`AxShellService` 以 shell 或 root 身份运行应用中的一个类，用法与 [libsu](https://github.com/topjohnwu/libsu) 的 `RootService` 相同，但它通过 axsh 启动，因此在 shell 模式下也能使用。需要 `axsh` 模块（[方式二](#axsh-module)），并通过应用的 broker 启动进程，因此请先调用 `AxBroker.start`。没有 broker 的应用可以用 `AxShellService.setLauncher` 提供自己启动进程的方式，例如用 `-c` 运行 AxManager 的 `libaxsh.so`。
 
 像普通绑定服务一样编写 AIDL 接口，并开启 AIDL：
 
@@ -274,7 +280,8 @@ AxShellService.bind(intent, connection);
 | **应用中需要** | 无 | `axsh` 库 |
 | **版本** | 始终与已安装的 AxManager 匹配 | 构建时使用的版本 |
 | **shell 模式下的每条命令** | 启动一个短暂的助手向 AxManager 请求服务 | 应用的 broker，只请求过一次 |
-| **需要 AxManager 运行** | 每条命令都需要 | 仅第一条命令需要 |
+| **需要 AxManager 运行** | 每条命令都需要 | 不需要：已安装即可，且服务在运行 |
+| **需要 AxManager 的包名** | 是 | 否 |
 | **AxShellService** | 否 | 是 |
 
 ### 速度 {#speed}
@@ -284,7 +291,7 @@ AxShellService.bind(intent, connection);
 | 服务 | AxManager 的 `libaxsh.so` | `axsh` 模块 |
 |---|---|---|
 | **Root** | 直接连接服务 | 直接连接服务 |
-| **Shell** | 每条命令都启动助手并请求 AxManager | 应用内的 broker：只请求 AxManager 一次 |
+| **Shell** | 每条命令都启动助手并请求 AxManager | 应用内的 broker：只读取一次服务的 binder，不询问 AxManager |
 
 ### AxShellService 与 libsu 的 RootService {#rootservice}
 
@@ -392,13 +399,14 @@ Shell shell = Shell.Builder.create().build(Axsh.newProcess());                 /
 
 | 设置 | 选项 |
 |---|---|
-| **`axsh_direct_connection`** | 开：使用自己的 `libaxsh.so` 和 broker（`axsh` 模块）。关：使用 AxManager 的 `libaxsh.so`，不使用 broker，与 Termux 的运行方式相同。切换会重启应用。 |
+| **`axsh_direct_connection`** | 开：使用自己的 `libaxsh.so` 和 broker（`axsh` 模块）。关：使用 AxManager 的 `libaxsh.so`，不使用 broker，与 Termux 的运行方式相同（此时 AxShellService 通过用 `setLauncher` 设置的那个 `libaxsh.so` 启动）。切换会重启应用。使用 `Axsh.exec` 的 Cold start 测试只在开启时运行。 |
 | **Runner** | 每条命令一个 `axsh -c`，或 libsu 缓存的 shell（可以关闭它以重新计时启动）。 |
 
 测试：
 
 | 分组 | 检查内容 |
 |---|---|
+| **Cold start** | 第一条命令与之后命令的耗时；`Axsh.exec` 与本地 `Runtime.exec` 的对比；从广播读取服务 binder 与 AxManager 中继的对比 |
 | **Connection** | 服务有响应；五次运行的延迟；同时运行四条命令；命令之间不延续任何状态 |
 | **Shell** | 退出码；stdout 与 stderr 分开；stdin 直到结束；100 000 行输出；服务的环境变量 |
 | **Privileges** | uid 和 SELinux 上下文；`pm list packages`；`settings`；`dumpsys` |
