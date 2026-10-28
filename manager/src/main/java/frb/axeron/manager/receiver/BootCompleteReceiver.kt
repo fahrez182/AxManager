@@ -13,7 +13,7 @@ import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.adb.AdbStarter
-import frb.axeron.manager.adb.AdbStateInfo
+import frb.axeron.manager.adb.BootWatchdogService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -44,18 +44,24 @@ class BootCompleteReceiver : BroadcastReceiver() {
             return
         }
 
-        // goAsync() only defers finishing the broadcast; the work itself must leave the main
-        // thread (waiting for Wi-Fi/mDNS or a su shell there risks an ANR at boot).
+        // The wait for Wi-Fi can take minutes, which a broadcast can't: a foreground service
+        // does it and shows the steps (it ignores the second of the two boot broadcasts).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED &&
             AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ADB
         ) {
-            val pending = goAsync()
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    AdbStarter.startAdbWireless(context.applicationContext)
-                } finally {
-                    safeFinish(pending)
+            try {
+                BootWatchdogService.start(context)
+            } catch (e: Throwable) {
+                // The start matters more than showing it: go on without the notification.
+                Log.e(TAG, "Couldn't start the boot watchdog, starting directly", e)
+                val pending = goAsync()
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        AdbStarter.startAdbWireless(context.applicationContext)
+                    } finally {
+                        safeFinish(pending)
+                    }
                 }
             }
         } else if (AxeronSettings.getLastLaunchMode() == AxeronSettings.LaunchMethod.ROOT ||

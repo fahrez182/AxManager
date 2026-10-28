@@ -184,6 +184,16 @@
             android:name=".receiver.ShortcutPinnedReceiver"
             android:exported="false" />
 
+        <!-- Started by the boot receiver only: shows the start after a reboot, step by step.
+             Direct boot aware, as the receiver is: the locked boot broadcast comes before the
+             unlock, when the system won't start a service that isn't. -->
+        <service
+            android:name=".adb.BootWatchdogService"
+            android:directBootAware="true"
+            android:exported="false"
+            android:foregroundServiceType="shortService"
+            tools:ignore="NewApi" />
+
         <service
             android:name=".features.quicksettings.AxeronTileService"
             android:exported="true"
