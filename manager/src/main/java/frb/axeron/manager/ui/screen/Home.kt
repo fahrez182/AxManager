@@ -940,13 +940,15 @@ private fun SignaturePill(
     icon: ImageVector,
     text: String,
     tint: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
             .clip(CircleShape)
             .background(tint.copy(alpha = 0.14f))
             .border(1.dp, tint.copy(alpha = 0.35f), CircleShape)
+            .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -974,9 +976,9 @@ private fun SignatureBadge(
         icon = icon,
         text = stringResource(verdict),
         tint = tint,
+        onClick = onClick,
         modifier = Modifier
             .padding(end = 8.dp)
-            .clickable(onClick = onClick)
     )
 }
 
