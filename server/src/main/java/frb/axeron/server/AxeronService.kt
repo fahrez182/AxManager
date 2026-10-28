@@ -25,7 +25,6 @@ import android.os.SystemProperties
 import android.os.ServiceManager
 import android.os.SystemClock
 import android.system.Os
-import frb.axeron.server.ServerConstants.MANAGER_APPLICATION_ID
 import frb.axeron.server.ServerConstants.PERMISSION
 import frb.axeron.server.ServerConstants.SHIZUKU_MANAGER_APPLICATION_ID
 import frb.axeron.server.api.RemoteProcessHolder
@@ -71,6 +70,7 @@ import frb.axeron.shell.host.ShellProcess
 import frb.axeron.shell.host.PtyHost
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.exitProcess
 
@@ -84,6 +84,13 @@ open class AxeronService :
         private const val MANAGER_UID_UNKNOWN = -1
         private const val MANAGER_UID_MISSING = Int.MIN_VALUE
         private const val MANAGER_UID_LOOKUP_FAILED = Int.MIN_VALUE + 1
+
+        // The manager's package is there, but signed by someone else than the manager this
+        // server started from.
+        private const val MANAGER_UID_FOREIGN = Int.MIN_VALUE + 2
+
+        // How long init waits (a second each) for the package manager to name the manager.
+        private const val MANAGER_RESOLVE_TRIES = 30
 
         // In AXERONDIR. Must match START_ENV_FILE in starter.cpp.
         private const val START_ENV_FILE = "server_env"
@@ -219,6 +226,62 @@ open class AxeronService :
             }
         }
 
+        /** The manager this server was started from, and the certificate it was signed with. */
+        class RunningManager(val packageName: String, val uid: Int, val certDigest: String)
+
+        /**
+         * The manager is whoever started this server, not a package name: the starter runs the
+         * server from that manager's APK, and a later manager that starts a server replaces this
+         * one with it. Set in init once the package manager is up; a server that can't find its
+         * manager exits instead, so after init this is never null.
+         */
+        @Volatile
+        private var runningManager: RunningManager? = null
+
+        /** The manager's package. Only once the server has found its manager (see init). */
+        @get:JvmStatic
+        val managerPackage: String
+            get() = checkNotNull(runningManager) { "the manager isn't known yet" }.packageName
+
+        /**
+         * SHA-256 of [packageName]'s signing certificate(s), or null when it can't be read. A
+         * package of the manager's name signed by someone else is not the manager.
+         */
+        fun certDigest(packageName: String): String? {
+            val signing = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                PackageManager.GET_SIGNING_CERTIFICATES
+            } else {
+                @Suppress("DEPRECATION")
+                PackageManager.GET_SIGNATURES
+            }
+            val info = PackageManagerApis.getPackageInfoNoThrow(packageName, signing.toLong(), 0)
+                ?: return null
+            val signers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.signingInfo?.apkContentsSigners
+            } else {
+                @Suppress("DEPRECATION")
+                info.signatures
+            }
+            if (signers.isNullOrEmpty()) return null
+            return signers.joinToString(",") { signer ->
+                MessageDigest.getInstance("SHA-256").digest(signer.toByteArray())
+                    .joinToString("") { "%02x".format(it) }
+            }
+        }
+
+        /**
+         * The package owning the APK this server runs from (-Djava.class.path, set by the
+         * starter), with its certificate. Null when no package owns the file or the certificate
+         * can't be read.
+         */
+        fun resolveRunningManager(): RunningManager? {
+            val apk = System.getProperty("java.class.path")?.substringBefore(':') ?: return null
+            val owner = PackageManagerApis.getInstalledPackagesNoThrow(0, 0)
+                .firstOrNull { it?.applicationInfo?.sourceDir == apk } ?: return null
+            val digest = certDigest(owner.packageName) ?: return null
+            return RunningManager(owner.packageName, owner.applicationInfo!!.uid, digest)
+        }
+
         val powerManager: SystemServiceBinder<IPowerManager> by lazy {
             SystemServiceBinder<IPowerManager>(
                 "power", IPowerManager.Stub::asInterface
@@ -227,7 +290,9 @@ open class AxeronService :
 
         @JvmStatic
         fun getManagerApplicationInfo(): ApplicationInfo? {
-            return PackageManagerApis.getApplicationInfoNoThrow(MANAGER_APPLICATION_ID, 0, 0)
+            // Null before the manager is found: the env Service's init builds at boot.
+            val manager = runningManager ?: return null
+            return PackageManagerApis.getApplicationInfoNoThrow(manager.packageName, 0, 0)
         }
 
         private fun getShizukuManagerApplicationInfo(): ApplicationInfo? {
@@ -270,7 +335,7 @@ open class AxeronService :
 
         @JvmStatic
         fun sendBinderToManager(binder: IBinder, userId: Int) {
-            sendBinderToUserApp(binder, MANAGER_APPLICATION_ID, userId)
+            sendBinderToUserApp(binder, managerPackage, userId)
         }
 
         @JvmStatic
@@ -301,7 +366,7 @@ open class AxeronService :
 
             var name: String
             var extraBinder: String
-            if (packageName == MANAGER_APPLICATION_ID) {
+            if (packageName == runningManager?.packageName) {
                 name = "$packageName.server"
                 extraBinder = "AxServer.BINDER"
             } else {
@@ -523,26 +588,62 @@ open class AxeronService :
      * restarting, a package transaction in flight, a busy device) says nothing about the caller
      * and is retried on the next call.
      */
-    private fun resolveManagerUid(): Int = try {
-        PackageManagerApis.getApplicationInfo(MANAGER_APPLICATION_ID, 0, 0)?.uid
-            ?: MANAGER_UID_MISSING
-    } catch (e: PackageManager.NameNotFoundException) {
-        MANAGER_UID_MISSING
-    } catch (e: Throwable) {
-        LOGGER.w(e, "can't look up the manager, denying this call")
-        MANAGER_UID_LOOKUP_FAILED
+    private fun resolveManagerUid(): Int {
+        val manager = runningManager ?: return MANAGER_UID_LOOKUP_FAILED
+        return try {
+            val uid = PackageManagerApis.getApplicationInfo(manager.packageName, 0, 0)?.uid
+            when {
+                uid == null -> MANAGER_UID_MISSING
+                else -> when (certDigest(manager.packageName)) {
+                    manager.certDigest -> uid
+                    null -> MANAGER_UID_LOOKUP_FAILED
+                    else -> MANAGER_UID_FOREIGN
+                }
+            }
+        } catch (e: PackageManager.NameNotFoundException) {
+            MANAGER_UID_MISSING
+        } catch (e: Throwable) {
+            LOGGER.w(e, "can't look up the manager, denying this call")
+            MANAGER_UID_LOOKUP_FAILED
+        }
+    }
+
+    /** Whether the manager's package still has the certificate the server started under. */
+    private fun managerCertMatches(): Boolean {
+        val manager = runningManager ?: return false
+        return certDigest(manager.packageName) == manager.certDigest
+    }
+
+    /**
+     * The manager's appId from the cache or a look-up, or the MANAGER_UID_* state it couldn't be
+     * had in (always negative, as no appId is). Only a real appId is cached.
+     */
+    private fun managerAppId(): Int {
+        val cached = cachedManagerUid
+        if (cached != MANAGER_UID_UNKNOWN) return cached
+        val resolved = resolveManagerUid()
+        if (resolved < 0) return resolved
+        return UserHandleCompat.getAppId(resolved).also { cachedManagerUid = it }
+    }
+
+    /**
+     * Whether [uid] is the manager's own. [checkCaller] lets the Shizuku app in too, and exits
+     * the server when the manager is gone; this does neither, for callers that only ask.
+     */
+    fun isManagerUid(uid: Int): Boolean {
+        val managerUid = managerAppId()
+        return managerUid >= 0 && UserHandleCompat.getAppId(uid) == managerUid
     }
 
     fun checkCaller(callingUid: Int): Boolean {
-        var managerUid = cachedManagerUid
-        if (managerUid == MANAGER_UID_UNKNOWN) {
-            val resolved = resolveManagerUid()
-            if (resolved == MANAGER_UID_MISSING) {
-                exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
-            }
-            if (resolved == MANAGER_UID_LOOKUP_FAILED) return false
-            managerUid = UserHandleCompat.getAppId(resolved)
-            cachedManagerUid = managerUid
+        val managerUid = managerAppId()
+        if (managerUid == MANAGER_UID_MISSING) {
+            exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+        }
+        if (managerUid == MANAGER_UID_LOOKUP_FAILED) return false
+        if (managerUid == MANAGER_UID_FOREIGN) {
+            LOGGER.w("%s isn't signed like the manager this server started from, denying", managerPackage)
+            return false
         }
         var shizukuManagerUid = cachedShizukuManagerUid
         if (shizukuManagerUid == MANAGER_UID_UNKNOWN) {
@@ -680,7 +781,20 @@ open class AxeronService :
         // The manager must be there before anything is sent to it. A look-up that failed
         // (PackageManager still starting at boot, a package transaction) is retried: only a
         // manager that is really gone ends the server.
+        var unresolved = 0
         while (true) {
+            // The manager is the package this server's APK belongs to. A server that can't find
+            // it doesn't guess a name: it exits, and the manager starts it again.
+            if (runningManager == null) runningManager = resolveRunningManager()
+            if (runningManager == null) {
+                if (++unresolved > MANAGER_RESOLVE_TRIES) {
+                    LOGGER.e("no package owns the APK this server runs from, exiting")
+                    exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
+                }
+                LOGGER.w("can't tell the manager yet, retrying in 1s")
+                Thread.sleep(1000)
+                continue
+            }
             when (resolveManagerUid()) {
                 MANAGER_UID_MISSING -> exitProcess(ServerConstants.MANAGER_APP_NOT_FOUND)
                 MANAGER_UID_LOOKUP_FAILED -> {
@@ -693,6 +807,8 @@ open class AxeronService :
         // Service's init already built the env, before PackageManager was waited for: at boot it
         // found no manager, so it lacks AXERONLIB and LD_LIBRARY_PATH. Built again now.
         invalidateEnvironment()
+
+        LOGGER.i("manager: %s uid=%d cert=%s", managerPackage, runningManager!!.uid, runningManager!!.certDigest)
 
         if (axCompanion.exists()) {
             shizuku = ShizukuServiceIntercept(this)
@@ -894,17 +1010,19 @@ open class AxeronService :
         }.start()
     }
 
+    // Both levels: the mode of the uid is read before the mode of the package, so one set only
+    // at the package can be shadowed by the system's own mode for the uid.
     private fun allowManagerAppOp(userId: Int, op: String) {
-        try {
-            val code = Runtime.getRuntime().exec(
-                arrayOf(
-                    "cmd", "appops", "set", "--user", userId.toString(),
-                    MANAGER_APPLICATION_ID, op, "allow"
-                )
-            ).waitFor()
-            if (code != 0) LOGGER.w("allow %s exited with %d", op, code)
-        } catch (e: Throwable) {
-            LOGGER.w(e, "allow %s", op)
+        for (byUid in listOf(true, false)) {
+            try {
+                val command = mutableListOf("cmd", "appops", "set", "--user", userId.toString())
+                if (byUid) command.add("--uid")
+                command.addAll(listOf(managerPackage, op, "allow"))
+                val code = Runtime.getRuntime().exec(command.toTypedArray()).waitFor()
+                if (code != 0) LOGGER.w("allow %s (%s) exited with %d", op, if (byUid) "uid" else "package", code)
+            } catch (e: Throwable) {
+                LOGGER.w(e, "allow %s (%s)", op, if (byUid) "uid" else "package")
+            }
         }
     }
 
@@ -1010,7 +1128,12 @@ open class AxeronService :
             Os.getpid(),
             SELinux.getContext(),
             starting,
-            checkRuntime()
+            checkRuntime(),
+            runningManager?.certDigest.orEmpty(),
+            // Open to any caller, like the rest of the info: it only says whether *this* caller is
+            // the manager. A transaction's caller can't be forged; a local call (the Shizuku
+            // intercept) is the server's own uid, which is not the manager's.
+            isManagerUid(getCallingUid())
         )
     }
 
@@ -1046,7 +1169,7 @@ open class AxeronService :
         }
         LOGGER.i("showPermissionConfirmation: %s", ai)
 
-        val pi = PackageManagerApis.getPackageInfoNoThrow(MANAGER_APPLICATION_ID, 0, userId)
+        val pi = PackageManagerApis.getPackageInfoNoThrow(managerPackage, 0, userId)
         val userInfo = UserManagerApis.getUserInfo(userId)
         var isWorkProfileUser = (userInfo.flags and UserInfo.FLAG_MANAGED_PROFILE) != 0
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -1063,7 +1186,7 @@ open class AxeronService :
 
         LOGGER.i("Requesting Permission")
         val intent = Intent(ServerConstants.REQUEST_PERMISSION_ACTION)
-            .setPackage(MANAGER_APPLICATION_ID)
+            .setPackage(managerPackage)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
             .putExtra("uid", callingUid)
             .putExtra("pid", callingPid)
@@ -1157,7 +1280,9 @@ open class AxeronService :
             throw SecurityException("Request package " + requestPackageName + "does not belong to uid " + callingUid)
         }
 
-        val isManager: Boolean = MANAGER_APPLICATION_ID == requestPackageName
+        // The package alone isn't enough: this seeds the gate's cache and grants the manager's
+        // permissions, so it must be signed like the manager this server started from.
+        val isManager: Boolean = runningManager?.packageName == requestPackageName && managerCertMatches()
 
         if (isManager) {
             // Validated above: this uid owns the manager package. Seed the gate's cache from it,
@@ -1242,7 +1367,7 @@ open class AxeronService :
             if (managerGrantedUids.add(callingUid)) {
                 try {
                     PermissionManagerApis.grantRuntimePermission(
-                        MANAGER_APPLICATION_ID,
+                        managerPackage,
                         WRITE_SECURE_SETTINGS, userId
                     )
                 } catch (e: Throwable) {
@@ -1296,7 +1421,7 @@ open class AxeronService :
             )
 
             for (pi in packages) {
-                if (pi.packageName == MANAGER_APPLICATION_ID) continue
+                if (pi.packageName == managerPackage) continue
                 if (pi.packageName == SHIZUKU_MANAGER_APPLICATION_ID) continue
 
                 val appInfo = pi.applicationInfo ?: continue

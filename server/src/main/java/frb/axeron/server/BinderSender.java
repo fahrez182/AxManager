@@ -31,8 +31,6 @@ public class BinderSender {
 
     private static final Logger LOGGER = new Logger("BinderSender");
 
-    private static final String PERMISSION_MANAGER = "frb.axeron.manager.permission.MANAGER";
-
     private static final String SHIZUKU_PERMISSION_MANAGER = "moe.shizuku.manager.permission.MANAGER";
 
     private static final String PERMISSION = "moe.shizuku.manager.permission.API_V23";
@@ -72,7 +70,7 @@ public class BinderSender {
      * changed since its last binder, push the same binder again so it re-reads the server info.
      */
     private static void pushRuntimeChange(int uid) {
-        if (!getPackagesCached(uid).contains(ServerConstants.MANAGER_APPLICATION_ID))
+        if (!axeronService.isManagerUid(uid))
             return;
 
         boolean runtime = currentRuntime();
@@ -90,7 +88,9 @@ public class BinderSender {
         if (packages.isEmpty())
             return;
 
-        boolean isOurManager = packages.contains(ServerConstants.MANAGER_APPLICATION_ID);
+        // By the manager this server started from (its package and signing certificate), not by
+        // a package name or a permission that names one.
+        boolean isOurManager = axeronService.isManagerUid(uid);
 
         IShizukuService shizukuService = axeronService.getShizukuService();
 
@@ -106,11 +106,8 @@ public class BinderSender {
         }
 
         // 🔒 secure fast-path
-        if (shizukuService == null) {
-            LOGGER.d(
-                    "Shizuku unavailable, uid %d belongs to manager, send binder directly",
-                    uid
-            );
+        if (isOurManager) {
+            LOGGER.d("uid %d is the manager, send binder directly", uid);
             sendToManager(userId);
             return;
         }
@@ -131,19 +128,7 @@ public class BinderSender {
                 if (pi == null || pi.requestedPermissions == null)
                     continue;
 
-                if (ArraysKt.contains(pi.requestedPermissions, PERMISSION_MANAGER)) {
-                    boolean granted = pid == -1
-                            ? PermissionManagerApis.checkPermission(PERMISSION_MANAGER, uid)
-                            == PackageManager.PERMISSION_GRANTED
-                            : ActivityManagerApis.checkPermission(PERMISSION_MANAGER, pid, uid)
-                            == PackageManager.PERMISSION_GRANTED;
-
-                    if (granted) {
-                        sendToManager(userId);
-                        return;
-                    }
-
-                } else if (ArraysKt.contains(pi.requestedPermissions, SHIZUKU_PERMISSION_MANAGER)) {
+                if (ArraysKt.contains(pi.requestedPermissions, SHIZUKU_PERMISSION_MANAGER)) {
                     boolean granted = pid == -1
                             ? PermissionManagerApis.checkPermission(SHIZUKU_PERMISSION_MANAGER, uid)
                             == PackageManager.PERMISSION_GRANTED

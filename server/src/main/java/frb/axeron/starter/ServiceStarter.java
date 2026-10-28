@@ -11,7 +11,6 @@ import android.os.Looper;
 
 import java.util.Locale;
 
-import frb.axeron.server.ServerConstants;
 import frb.axeron.server.UserService;
 import frb.axeron.server.util.IContentProviderCompat;
 import frb.axeron.server.util.Logger;
@@ -27,7 +26,7 @@ public class ServiceStarter {
     private static final Logger LOGGER = new Logger(TAG);
     private static final String USER_SERVICE_CMD_FORMAT = "(CLASSPATH='%s' %s%s /system/bin " +
             "--nice-name='%s' frb.axeron.starter.ServiceStarter " +
-            "--token='%s' --package='%s' --class='%s' --uid=%d%s --pgid=$$)&";
+            "--token='%s' --package='%s' --manager='%s' --class='%s' --uid=%d%s --pgid=$$)&";
     // DeathRecipient will automatically be unlinked when all references to the
     // binder is dropped, so we hold the reference here.
     @SuppressWarnings("FieldCanBeLocal")
@@ -49,12 +48,16 @@ public class ServiceStarter {
         }
     }
 
-    public static String commandForUserService(String appProcess, String managerApkPath, String token, String packageName, String classname, String processNameSuffix, int callingUid, boolean debug) {
+    /**
+     * [managerPackage] is the manager the server found, passed on because the service hands its
+     * binder over through that manager's provider: this process knows no manager of its own.
+     */
+    public static String commandForUserService(String appProcess, String managerApkPath, String token, String packageName, String managerPackage, String classname, String processNameSuffix, int callingUid, boolean debug) {
         String processName = String.format("%s:%s", packageName, processNameSuffix);
         return String.format(Locale.ENGLISH, USER_SERVICE_CMD_FORMAT,
                 managerApkPath, appProcess, debug ? (" " + DEBUG_ARGS) : "",
                 processName,
-                token, packageName, classname, callingUid, debug ? (" " + "--debug-name=" + processName) : "");
+                token, packageName, managerPackage, classname, callingUid, debug ? (" " + "--debug-name=" + processName) : "");
     }
 
     public static void main(String[] args) {
@@ -65,6 +68,18 @@ public class ServiceStarter {
         IBinder service;
         String token;
         int pgid;
+
+        String managerPackage = null;
+        for (String arg : args) {
+            if (arg.startsWith("--manager=")) {
+                managerPackage = arg.substring(10);
+            }
+        }
+        if (managerPackage == null) {
+            LOGGER.e("no --manager given, can't hand the service over");
+            System.exit(1);
+            return;
+        }
 
         UserService.setTag(TAG);
         Triple<IBinder, String, Integer> result = UserService.create(args);
@@ -78,7 +93,7 @@ public class ServiceStarter {
         token = result.getSecond();
         pgid = result.getThird();
 
-        if (!sendBinder(service, token, pgid)) {
+        if (!sendBinder(managerPackage, service, token, pgid)) {
             System.exit(1);
         }
 
@@ -88,12 +103,11 @@ public class ServiceStarter {
         LOGGER.i("service exited");
     }
 
-    private static boolean sendBinder(IBinder binder, String token, int pgid) {
-        return sendBinder(binder, token, pgid, true);
+    private static boolean sendBinder(String packageName, IBinder binder, String token, int pgid) {
+        return sendBinder(packageName, binder, token, pgid, true);
     }
 
-    private static boolean sendBinder(IBinder binder, String token, int pgid, boolean retry) {
-        String packageName = ServerConstants.MANAGER_APPLICATION_ID;
+    private static boolean sendBinder(String packageName, IBinder binder, String token, int pgid, boolean retry) {
         String name = packageName + ".server";
         int userId = 0;
         IContentProvider provider = null;
@@ -113,7 +127,7 @@ public class ServiceStarter {
                     ActivityManagerApis.forceStopPackageNoThrow(packageName, userId);
                     LOGGER.e("kill %s in user %d and try again", packageName, userId);
                     Thread.sleep(1000);
-                    return sendBinder(binder, token, pgid, false);
+                    return sendBinder(packageName, binder, token, pgid, false);
                 }
                 return false;
             }

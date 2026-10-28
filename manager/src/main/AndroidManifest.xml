@@ -84,6 +84,8 @@
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"
             android:theme="@style/GrantPermissions">
             <intent-filter>
+                <action android:name="AxRuntime.REQUEST_PERMISSION" />
+                <!-- Up to 2.1.1: a server started before the update still sends this one. -->
                 <action android:name="${applicationId}.intent.action.REQUEST_PERMISSION" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

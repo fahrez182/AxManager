@@ -46,7 +46,7 @@ public class AxeronUserServiceManager extends UserServiceManager {
         return ServiceStarter.commandForUserService(
                 appProcess,
                 Objects.requireNonNull(AxeronService.getManagerApplicationInfo()).sourceDir,
-                token, packageName, classname, processNameSuffix, callingUid, debug);
+                token, packageName, AxeronService.getManagerPackage(), classname, processNameSuffix, callingUid, debug);
     }
 
     @Override

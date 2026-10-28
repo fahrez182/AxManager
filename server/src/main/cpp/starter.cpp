@@ -32,7 +32,6 @@
 #define EXIT_FATAL_KILL 9
 #define EXIT_FATAL_BINDER_BLOCKED_BY_SELINUX 10
 
-#define PACKAGE_NAME "frb.axeron.manager"
 #define SERVER_NAME "axeron_server"
 #define SERVER_CLASS_PATH "frb.axeron.server.AxeronService"
 
@@ -321,16 +320,27 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
     }
 
+    // Run without --apk (adb shell <libaxeron.so>, from a PC): the starter is a library of the
+    // manager's APK, <app dir>/lib/<abi>/libaxeron.so, with the APK at <app dir>/base.apk. No
+    // package name needed: the manager is the app this file belongs to.
     if (apk_path.empty()) {
-        auto f = popen("pm path " PACKAGE_NAME, "r");
-        if (f) {
-            char line[PATH_MAX]{0};
-            fgets(line, PATH_MAX, f);
-            trim(line);
-            if (strstr(line, "package:") == line) {
-                apk_path = line + strlen("package:");
+        char exe[PATH_MAX]{0};
+        ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+        if (len > 0) {
+            std::string dir(exe, len);
+            for (int i = 0; i < 3; ++i) {
+                auto slash = dir.rfind('/');
+                if (slash == std::string::npos) {
+                    dir.clear();
+                    break;
+                }
+                dir.erase(slash);
             }
-            pclose(f);
+            if (!dir.empty()) {
+                apk_path = dir + "/base.apk";
+                printf("info: apk path from the starter's own location\n");
+                fflush(stdout);
+            }
         }
     }
 
