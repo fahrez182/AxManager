@@ -1,5 +1,8 @@
 package frb.axeron.adb.util
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.SystemProperties
 import androidx.annotation.ChecksSdkIntAtLeast
@@ -12,8 +15,17 @@ object AdbEnvironment {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
     }
 
-    fun isWifiRequired(): Boolean {
-        return (getAdbTcpPort() <= 0 || !AxeronSettings.getTcpMode())
+    /**
+     * A Wi-Fi network is up, not just the switch on. Asked of the connectivity service: since
+     * Android 12 WifiManager.connectionInfo is redacted without the location permission (its
+     * networkId is -1 even when connected), so it can't tell.
+     */
+    @Suppress("DEPRECATION")
+    fun isWifiConnected(context: Context): Boolean {
+        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return cm.allNetworks.any {
+            cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        }
     }
 
     fun getAdbTcpPort(): Int {

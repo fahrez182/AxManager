@@ -1,6 +1,7 @@
 package frb.axeron.manager.adb
 
 import android.Manifest.permission.WRITE_SECURE_SETTINGS
+import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -49,9 +50,23 @@ object AdbStarter {
         Settings.Global.getString(context.contentResolver, Starter.KEY_PAIR)
     )
 
+    /**
+     * What the Developer options screen toggles, written directly (WRITE_SECURE_SETTINGS), in
+     * the order it depends on: developer options, then USB debugging, then wireless debugging.
+     * adbd and the settings service watch these values, unlike Wi-Fi's.
+     */
+    private fun enableAdbSettings(cr: ContentResolver, wireless: Boolean) {
+        Settings.Global.putInt(cr, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 1)
+        Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
+        if (wireless) Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
+        Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+    }
+
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun startAdbWireless(
-        context: Context, result: (AdbStateInfo) -> Unit = {}
+        context: Context,
+        onStep: (ActivationStep) -> Unit = {},
+        result: (AdbStateInfo) -> Unit = {}
     ) {
         Log.d(TAG, "startAdb")
 
@@ -68,11 +83,10 @@ object AdbStarter {
         val port = runCatching {
             Log.d(TAG, "awaitAdbPort: enter")
 
-            if (!AdbEnvironment.isWifiRequired()) {
-                ActivationLog.info("TCP mode is on and adbd listens on port $tcpPort — Wi-Fi not needed")
-                return@runCatching tcpPort
-            }
+            // Always through wireless debugging, even with adbd already on a TCP port: TCP mode
+            // only adds the switch to tcpip once connected (see startAdbClient).
             ActivationLog.info("Waiting for Wi-Fi…")
+            onStep(ActivationStep.WIFI)
 
             callbackFlow {
                 Log.d(TAG, "callbackFlow: start")
@@ -127,14 +141,13 @@ object AdbStarter {
                         Log.d(TAG, "WifiReadyGate: onReady")
                         ActivationLog.success("Wi-Fi is connected")
 
+                        onStep(ActivationStep.WIRELESS_DEBUGGING)
                         val cr = context.contentResolver
                         if (context.checkSelfPermission(WRITE_SECURE_SETTINGS)
                             == PackageManager.PERMISSION_GRANTED
                         ) {
                             ActivationLog.info("Turning on wireless debugging (WRITE_SECURE_SETTINGS granted)")
-                            Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
-                            Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-                            Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+                            enableAdbSettings(cr, wireless = true)
                         } else {
                             ActivationLog.warn("No WRITE_SECURE_SETTINGS — wireless debugging must already be on")
                         }
@@ -146,6 +159,7 @@ object AdbStarter {
                             onReady = {
                                 ActivationLog.success("Wireless debugging is on")
                                 ActivationLog.info("Looking up the ADB port (mDNS)…")
+                                onStep(ActivationStep.PORT)
                                 adbMdns.runCatching {
                                     start()
                                 }.onFailure {
@@ -185,10 +199,15 @@ object AdbStarter {
         Log.d(TAG, "awaitAdbPort: SUCCESS port=$port")
 
 
-        startAdbClient(context, port, result)
+        startAdbClient(context, port, onStep, result)
     }
 
-    suspend fun startAdbClient(context: Context, port: Int, result: (AdbStateInfo) -> Unit = {}) {
+    suspend fun startAdbClient(
+        context: Context,
+        port: Int,
+        onStep: (ActivationStep) -> Unit = {},
+        result: (AdbStateInfo) -> Unit = {}
+    ) {
         if (port <= 0) {
             ActivationLog.error("No valid ADB port")
             result(AdbStateInfo.Failed(context.getString(R.string.adb_failed_to_get_port)))
@@ -211,15 +230,20 @@ object AdbStarter {
         var activePort = port
         val tcpMode = AxeronSettings.getTcpMode()
         val tcpPort = AxeronSettings.getTcpPort()
+        // Not activePort: that is the wireless debugging port, a different one every time. What
+        // matters is the TCP port adbd listens on now, if any; switching restarts adbd and drops
+        // the connection, so it only happens when TCP is off or on another port.
+        val liveTcpPort = AdbEnvironment.getAdbTcpPort()
         ActivationLog.info(
-            "TCP mode ${if (tcpMode) "on" else "off"}, configured port $tcpPort, adbd reached on port $activePort" +
+            "TCP mode ${if (tcpMode) "on" else "off"}, configured port $tcpPort, adbd on TCP port " +
+                    "${if (liveTcpPort > 0) liveTcpPort else "none"}, reached on port $activePort" +
                     when {
                         !tcpMode -> " — no switch"
-                        activePort == tcpPort -> " — already on the configured port"
+                        liveTcpPort == tcpPort -> " — already on the configured port"
                         else -> " — switching first"
                     }
         )
-        if (tcpMode && activePort != tcpPort) {
+        if (tcpMode && liveTcpPort != tcpPort) {
             ActivationLog.info("TCP mode is on — switching adbd to TCP port $tcpPort")
 
             runCatching {
@@ -252,6 +276,7 @@ object AdbStarter {
         }
 
         ActivationLog.info("Connecting to adbd on 127.0.0.1:$activePort…")
+        onStep(ActivationStep.CONNECT)
 
         // The starter kills a running server before starting the new one: one at a time.
         var starterRan = false
@@ -265,6 +290,7 @@ object AdbStarter {
                         client.connect()
                         ActivationLog.success("Connected to adbd")
                         ActivationLog.info("Running the AxManager starter…")
+                        onStep(ActivationStep.STARTER)
                         starterRan = true
                         // The starter's own output is what explains a failed start.
                         client.shellCommand(Starter.internalAdbCommand(keyStore.getBase64())) { chunk ->
@@ -309,8 +335,7 @@ object AdbStarter {
         runCatching {
             val cr = context.contentResolver
             if (context.checkSelfPermission(WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED) {
-                Settings.Global.putInt(cr, Settings.Global.ADB_ENABLED, 1)
-                Settings.Global.putLong(cr, "adb_allowed_connection_time", 0L)
+                enableAdbSettings(cr, wireless = false)
             }
 
             val adbEnabled = Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0)
@@ -371,6 +396,9 @@ object AdbStarter {
 
 }
 
+
+/** The stages of a wireless activation, in order, for whoever shows its progress. */
+enum class ActivationStep { WIFI, WIRELESS_DEBUGGING, PORT, CONNECT, STARTER, SERVER }
 
 sealed class AdbStateInfo(val message: String, val cause: Throwable? = null) {
     class Success(message: String) : AdbStateInfo(message)

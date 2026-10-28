@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -38,6 +37,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.filter
@@ -464,14 +464,25 @@ class ActivateViewModel : ViewModel() {
     suspend fun startAdbWireless(
         context: Context
     ): AdbStateInfo = withContext(Dispatchers.IO) {
-        if (AdbEnvironment.isWifiRequired() && !isWifiEnabled(context)) {
-            ActivationLog.error("Wi-Fi is off — wireless debugging needs Wi-Fi (opening Wi-Fi settings)")
-            requestEnableWifi(context)
-            return@withContext AdbStateInfo.Failed("WiFi is required")
-        }
         if (tryActivate) return@withContext AdbStateInfo.Process("Trying to activate")
         setTryToActivate(true)
         resetStatus()
+
+        // An app can't switch Wi-Fi on, so the user does, in Wi-Fi settings; the attempt goes on
+        // once it is connected, and only then can pairing be the fallback.
+        if (!AdbEnvironment.isWifiConnected(context)) {
+            ActivationLog.warn("Wi-Fi is off — turn it on in the panel, the activation continues once it is connected")
+            requestEnableWifi(context)
+            val connected = withTimeoutOrNull(WIFI_WAIT_MS) {
+                while (!AdbEnvironment.isWifiConnected(context)) delay(500)
+                true
+            }
+            if (connected != true) {
+                ActivationLog.error("Wi-Fi wasn't connected within ${WIFI_WAIT_MS / 1000} s")
+                return@withContext AdbStateInfo.Failed("WiFi is required")
+            }
+            ActivationLog.success("Wi-Fi is connected")
+        }
 
         val resultChannel = kotlinx.coroutines.channels.Channel<AdbStateInfo>(1)
         val job = launch {
@@ -532,14 +543,15 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    fun isWifiEnabled(context: Context): Boolean {
-        val wifiManager =
-            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        return wifiManager.isWifiEnabled
-    }
+    /** How long the user gets to turn Wi-Fi on and see it connect. */
+    private val WIFI_WAIT_MS = 60_000L
 
     fun requestEnableWifi(context: Context) {
-        val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+        // The Wi-Fi panel is a sheet over the app with the switch on it; below Android 10 only
+        // the settings page exists.
+        val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Settings.Panel.ACTION_WIFI
+        else Settings.ACTION_WIFI_SETTINGS
+        val intent = Intent(action).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_NO_HISTORY or
                     Intent.FLAG_ACTIVITY_CLEAR_TASK or

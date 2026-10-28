@@ -1,14 +1,13 @@
 package frb.axeron.manager.ui.screen
 
-import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.service.quicksettings.TileService
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.annotation.StringRes
 import frb.axeron.manager.ui.component.AxPanelShape
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -77,11 +76,15 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.VerticalDivider
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import frb.axeron.adb.AdbPairingService
 import frb.axeron.adb.util.AdbEnvironment
+import frb.axeron.adb.util.DeveloperSettings
+import frb.axeron.manager.data.SettingsAccess
 import frb.axeron.api.core.AxeronSettings
 import frb.axeron.api.core.Starter
 import frb.axeron.manager.R
@@ -93,6 +96,7 @@ import frb.axeron.manager.ui.component.AxTopAppBar
 import frb.axeron.manager.ui.component.ConfirmResult
 import frb.axeron.manager.ui.component.IconBadge
 import frb.axeron.manager.ui.component.SectionHeader
+import frb.axeron.manager.ui.component.StatusPill
 import frb.axeron.manager.ui.component.axPanel
 import frb.axeron.manager.ui.component.rememberConfirmDialog
 import frb.axeron.manager.ui.util.ClipboardUtil
@@ -183,6 +187,8 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                 if (notifStyle != 1) MiuiNotificationWarning()
             }
 
+            SettingsAccessCard()
+
             ActivateSectionHeader(stringResource(R.string.activate_section_this_device))
             // Always shown: it also holds the TCP mode/port settings, which matter before TCP is on.
             TcpDebuggingCard(activateViewModel, settingsViewModel, tcpPort, runner)
@@ -195,6 +201,49 @@ fun ActivateScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
             OtgCard(showSheet = otgSheetOpen, onShowSheetChange = { otgSheetOpen = it })
             ComputerCard()
         }
+    }
+}
+
+/** Whether the app can write Secure/Global and System settings by itself, in one line. */
+@Composable
+private fun SettingsAccessCard() {
+    val context = LocalContext.current
+    val access by produceState(
+        SettingsAccess.canWriteSecure(context) to SettingsAccess.canWriteSystem(context)
+    ) {
+        while (true) {
+            delay(2000)
+            value = SettingsAccess.canWriteSecure(context) to SettingsAccess.canWriteSystem(context)
+        }
+    }
+
+    AxCard {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AccessItem(R.string.activate_access_secure, access.first, Modifier.weight(1f))
+            VerticalDivider(modifier = Modifier.height(20.dp))
+            AccessItem(R.string.activate_access_system, access.second, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun AccessItem(@StringRes label: Int, granted: Boolean, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = stringResource(label), style = MaterialTheme.typography.bodyMedium)
+        StatusPill(
+            text = stringResource(
+                if (granted) R.string.activate_access_granted else R.string.activate_access_missing
+            ),
+            color = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+        )
     }
 }
 
@@ -468,24 +517,7 @@ fun WirelessDebuggingCard(activateViewModel: ActivateViewModel, runner: Activati
                     Intent.FLAG_ACTIVITY_CLEAR_TASK or
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
 
-            // Wireless debugging tile settings, then developer options, then plain Settings.
-            val candidates = listOf(
-                Intent(TileService.ACTION_QS_TILE_PREFERENCES).apply {
-                    putExtra(
-                        Intent.EXTRA_COMPONENT_NAME,
-                        ComponentName(
-                            "com.android.settings",
-                            "com.android.settings.development.qstile.DevelopmentTiles\$WirelessDebugging"
-                        )
-                    )
-                    addFlags(flags)
-                },
-                Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                    putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-                    addFlags(flags)
-                },
-                Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            val candidates = DeveloperSettings.candidates(flags)
             val opened = candidates.any { runCatching { launcherDeveloper.launch(it) }.isSuccess }
             if (!opened) {
                 Toast.makeText(context, "Tidak dapat membuka pengaturan", Toast.LENGTH_SHORT).show()
