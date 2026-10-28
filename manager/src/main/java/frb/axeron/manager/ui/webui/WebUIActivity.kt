@@ -153,6 +153,11 @@ class WebUIActivity : ComponentActivity() {
         }
     }
 
+    /** The origins axWebLoader serves from the plugin's webroot. */
+    private fun isPluginPage(url: Uri): Boolean =
+        (url.scheme == "ax" && url.host == "plugin.local") ||
+            (url.scheme == "https" && url.host == "mui.kernelsu.org")
+
     private suspend fun setupWebView() {
         val pluginId = intent.getStringExtra(EXTRA_ID) ?: run {
             Toast.makeText(this, "Plugin-Id not found", Toast.LENGTH_SHORT).show()
@@ -266,6 +271,18 @@ class WebUIActivity : ComponentActivity() {
         }
 
         val webViewClient = object : WebViewClient() {
+            // The bridges (Axeron, ksu) run shell commands for whatever page the WebView shows,
+            // so it only ever shows the plugin's own: any other page opens in the browser.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                if (!request.isForMainFrame || isPluginPage(url)) return false
+                Log.w("WebUIActivity", "not a plugin page, opened outside: $url")
+                if (url.scheme == "http" || url.scheme == "https") {
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, url)) }
+                }
+                return true
+            }
+
             override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
                 super.doUpdateVisitedHistory(view, url, isReload)
                 backCallback.isEnabled = ksuInterface.canGoBack()

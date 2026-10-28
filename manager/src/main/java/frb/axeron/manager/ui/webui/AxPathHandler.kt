@@ -74,7 +74,9 @@ class AxPathHandler @SuppressLint("RestrictedApi") constructor(
                 )
                 val mimeType = guessMimeType(path)
                 Log.d(TAG, "Requested path is: " + getCanonicalDirPath(file))
-                return WebResourceResponse(mimeType, null, stream)
+                return WebResourceResponse(mimeType, null, stream).apply {
+                    responseHeaders = mapOf("Content-Security-Policy" to PLUGIN_CSP)
+                }
             } else {
                 Log.e(
                     TAG, String.format(
@@ -119,6 +121,14 @@ class AxPathHandler @SuppressLint("RestrictedApi") constructor(
         private const val TAG = "AxPathHandler"
 
         const val DEFAULT_MIME_TYPE = "text/plain"
+
+        /**
+         * The bridges (Axeron, ksu) reach every frame in the WebView and can't tell which one
+         * called, and a form's POST skips shouldOverrideUrlLoading. So a plugin's page may frame
+         * and post to the plugin's own pages only; scripts, styles and data load from anywhere.
+         */
+        private const val PLUGIN_CSP =
+            "frame-src ax: https://mui.kernelsu.org blob: data:; form-action ax: https://mui.kernelsu.org"
         private val FORBIDDEN_DATA_DIRS = arrayOf("/data/data", "/data/system")
 
         private val ALLOWED_DATA_DIRS = PathHelper.getWorkingPath(false, null).absolutePath
