@@ -739,15 +739,6 @@ open class AxeronService :
         val server = AxshServer(
             server = { this },
             authorize = { uid, _ -> checkAxshCaller(uid) },
-            // As requestPermission does for an unattached binder caller: found by uid alone, and
-            // answered right away when the manager has it denied.
-            requestPermission = { uid, pid ->
-                if (configManager.find(uid)?.isDenied == true) {
-                    axshServer?.onPermissionResult(uid, false)
-                } else {
-                    showPermissionConfirmation(0, null, uid, pid, UserHandleCompat.getUserId(uid))
-                }
-            }
         )
         axshServer = server
         server.start()
@@ -1215,12 +1206,12 @@ open class AxeronService :
     ) {
 
         LOGGER.i("showPermissionConfirmation")
-        // Stealth: every request lands here (binder, axsh socket, relay), and an app the manager
-        // hasn't allowed gets a no instead of a dialog. Read now, so the switch needs no restart.
+        // Stealth: every request lands here (a binder client, a relayed axsh client), and an app the
+        // manager hasn't allowed gets a no instead of a dialog. Read now, so the switch needs no
+        // restart.
         if (isStealth()) {
             LOGGER.i("stealth: no dialog for uid %d", callingUid)
             clientRecord?.dispatchRequestPermissionResult(requestCode, false)
-            axshServer?.onPermissionResult(callingUid, false)
             return
         }
         val ai = if (clientRecord != null) {
@@ -1327,8 +1318,6 @@ open class AxeronService :
             )
         }
 
-        // axsh sessions on our own socket wait on this uid's answer, not as attached clients.
-        axshServer?.onPermissionResult(requestUid, allowed)
         if (allowed) pushCapability(requestUid)
     }
 
@@ -1609,6 +1598,10 @@ open class AxeronService :
             pushCapability(uid)
             // In stealth its Shizuku clients were told nothing until now.
             if (isStealth()) mainHandler.post { pushShizukuBinder(uid) }
+        } else if ((mask and ConfigManager.MASK_PERMISSION) != 0) {
+            // No longer allowed: its axsh daemon goes too, rather than keep a way in it no
+            // longer has. The next command finds the door as any app not allowed does.
+            axshServer?.closeChannels(uid)
         }
 
         // The app's daemon runs with the setting it was started with: end it, and the next

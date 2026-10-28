@@ -11,8 +11,6 @@ import frb.axeron.server.util.Logger
 import java.io.FileDescriptor
 import java.io.IOException
 import java.security.SecureRandom
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
@@ -26,7 +24,6 @@ import kotlin.concurrent.thread
 class AxshServer(
     private val server: () -> IAxeronService,
     private val authorize: (uid: Int, pid: Int) -> Boolean,
-    private val requestPermission: (uid: Int, pid: Int) -> Unit,
 ) : Sessions.Host {
 
     companion object {
@@ -39,16 +36,6 @@ class AxshServer(
     override val tag = "AxshServer"
 
     private val sessions = Sessions(this)
-
-    /** One dialog per uid in flight; every session from that uid waits on the same answer. */
-    private class PermissionWait {
-        val latch = CountDownLatch(1)
-
-        @Volatile
-        var allowed = false
-    }
-
-    private val waits = SparseArray<PermissionWait>()
 
     fun start() {
         if (!sessions.listen(socketName)) LOGGER.w("axsh socket unavailable")
@@ -146,52 +133,17 @@ class AxshServer(
             .apply { isAccessible = true }
             .newInstance(fd)
 
-    /**
-     * The permission dialog was answered for [uid]; from dispatchPermissionConfirmationResult.
-     * Wakes the sessions waiting on it.
-     */
-    fun onPermissionResult(uid: Int, allowed: Boolean) {
-        val wait = synchronized(waits) {
-            waits.get(uid)?.also { waits.remove(uid) }
-        } ?: return
-        wait.allowed = allowed
-        wait.latch.countDown()
-    }
+    // Only an allowed app is told this socket's name or given a channel, so a uid here that
+    // isn't allowed holds one from before it lost that. It is not answered at all: its client
+    // falls back to the way an app not allowed takes, the manager's relay, which is the one
+    // place that asks (or, in stealth, stays silent).
+    override fun ignore(uid: Int, pid: Int): Boolean = !authorize(uid, pid)
 
-    override fun refuse(uid: Int, pid: Int): String? {
-        if (authorize(uid, pid)) return null
-        return if (awaitPermission(uid, pid)) null else Sessions.DENIED_MESSAGE
-    }
+    // Not reached for a uid ignore() let through, short of a revoke between the two.
+    override fun refuse(uid: Int, pid: Int): String? =
+        if (authorize(uid, pid)) null else Sessions.DENIED_MESSAGE
 
     // Started from here, the shell runs as us: the calls are local, past the binder permission
-    // check, which refuse() already did by the client's uid.
+    // check, which ignore() already did by the client's uid.
     override fun service(): IAxeronService = server()
-
-    /** Asks once per uid and blocks this session until the answer, or gives up. */
-    private fun awaitPermission(uid: Int, pid: Int): Boolean {
-        var ask = false
-        val wait = synchronized(waits) {
-            waits.get(uid) ?: PermissionWait().also {
-                waits.put(uid, it)
-                ask = true
-            }
-        }
-        if (ask) {
-            try {
-                requestPermission(uid, pid)
-            } catch (e: Throwable) {
-                LOGGER.w(e, "permission request for uid=%d failed", uid)
-                onPermissionResult(uid, false)
-            }
-        }
-
-        val answered = wait.latch.await(Sessions.PERMISSION_WAIT_MS, TimeUnit.MILLISECONDS)
-        if (!answered) {
-            // Unanswered (dismissed or left open): the next client asks again.
-            synchronized(waits) {
-                if (waits.get(uid) === wait) waits.remove(uid)
-            }
-        }
-        return answered && wait.allowed
-    }
 }
