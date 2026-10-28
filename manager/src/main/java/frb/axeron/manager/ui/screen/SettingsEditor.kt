@@ -544,7 +544,9 @@ private fun SettingRow(
     onPin: () -> Unit
 ) {
     val matchStyle = searchMatchStyle()
-    val keyText = remember(entry.id, query, matchStyle) {
+    // Keyed by what is drawn, not by the id: the id is type/key and stays the same when the
+    // value is saved, so a row keyed by it kept showing the old value after a reload.
+    val keyText = remember(entry.keyDisplay, query, matchStyle) {
         highlightMatches(entry.keyDisplay, query, matchStyle)
     }
     val pinned = QuickSettingsStore.find(entry.type, entry.key) != null
@@ -606,8 +608,8 @@ private fun SettingRow(
                     )
                 } else {
                     // Cut off by the line limit (seen at layout) or by the preview length.
-                    var clipped by remember(entry.id) { mutableStateOf(entry.isPreviewTruncated) }
-                    val valueText = remember(entry.id, query, matchStyle) {
+                    var clipped by remember(entry.valuePreview) { mutableStateOf(entry.isPreviewTruncated) }
+                    val valueText = remember(entry.valuePreview, query, matchStyle) {
                         highlightMatches(entry.valuePreview, query, matchStyle)
                     }
                     Text(
