@@ -247,14 +247,14 @@ open class AxeronService :
          * SHA-256 of [packageName]'s signing certificate(s), or null when it can't be read. A
          * package of the manager's name signed by someone else is not the manager.
          */
-        fun certDigest(packageName: String): String? {
+        fun certDigest(packageName: String, userId: Int = 0): String? {
             val signing = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 PackageManager.GET_SIGNING_CERTIFICATES
             } else {
                 @Suppress("DEPRECATION")
                 PackageManager.GET_SIGNATURES
             }
-            val info = PackageManagerApis.getPackageInfoNoThrow(packageName, signing.toLong(), 0)
+            val info = PackageManagerApis.getPackageInfoNoThrow(packageName, signing.toLong(), userId)
                 ?: return null
             val signers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 info.signingInfo?.apkContentsSigners
@@ -627,7 +627,8 @@ open class AxeronService :
     }
 
     /**
-     * Whether [uid] is the manager's own. [checkCaller] lets the Shizuku app in too, and exits
+     * Whether [uid] is the manager's own. [checkCaller] lets the Shizuku app in too (through the
+     * intercept only), and exits
      * the server when the manager is gone; this does neither, for callers that only ask.
      */
     fun isManagerUid(uid: Int): Boolean {
@@ -645,6 +646,11 @@ open class AxeronService :
             LOGGER.w("%s isn't signed like the manager this server started from, denying", managerPackage)
             return false
         }
+        val appId = UserHandleCompat.getAppId(callingUid)
+        if (appId == managerUid) return true
+        // The Shizuku app manages its clients through the intercept only. Its package name proves
+        // nothing, and the Axeron binder reaches any app (the sticky), so it is no manager there.
+        if (!ShizukuServiceIntercept.isServing()) return false
         var shizukuManagerUid = cachedShizukuManagerUid
         if (shizukuManagerUid == MANAGER_UID_UNKNOWN) {
             // A failed look-up falls back to the manager's uid for this call; the next call
@@ -654,8 +660,7 @@ open class AxeronService :
                 ?: managerUid
             cachedShizukuManagerUid = shizukuManagerUid
         }
-        val appId = UserHandleCompat.getAppId(callingUid)
-        return appId == managerUid || appId == shizukuManagerUid
+        return appId == shizukuManagerUid
     }
 
     override fun checkCallerManagerPermission(
@@ -1333,6 +1338,7 @@ open class AxeronService :
         }
 
         val reply = Bundle()
+        reply.putInt(AxeronApiConstant.server.BIND_APPLICATION_CLIENT_UID, callingUid)
         reply.putInt(BIND_APPLICATION_SERVER_UID, OsUtils.getUid())
         reply.putInt(BIND_APPLICATION_SERVER_VERSION, replyServerVersion)
         reply.putString(

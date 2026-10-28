@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import frb.axeron.ktx.workerHandler
 import frb.axeron.server.ServerConstants.PERMISSION
+import frb.axeron.server.util.UserHandleCompat
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import rikka.hidden.compat.PackageManagerApis
@@ -20,6 +21,9 @@ class AxeronConfigManager : ConfigManager() {
 
     private val config: AxeronConfig = load()
     private val mWriteRunner = Runnable { write(config) }
+
+    /** Uids whose entry was checked against the app on them, until the uid's processes are gone. */
+    private val verified = HashSet<Int>()
 
     init {
         var changed = false
@@ -131,19 +135,62 @@ class AxeronConfigManager : ConfigManager() {
         return null
     }
 
+    /** The signing certificate of the app on [uid] now (shared-uid packages share one). */
+    private fun signatureOf(uid: Int, packages: List<String>): String? =
+        packages.firstOrNull()?.let { AxeronService.certDigest(it, UserHandleCompat.getUserId(uid)) }
+
+    /**
+     * [uid]'s entry, if it still belongs to the app it was made for: one of its packages is on the
+     * uid and signed the same. An uninstalled app leaves its entry behind and its uid can go to
+     * another app, which would inherit the grant; such an entry is dropped. Checked once per uid,
+     * as this is on every gated call; [invalidate] has it checked again.
+     */
+    private fun findVerifiedLocked(uid: Int): AxeronConfig.PackageEntry? {
+        val entry = findLocked(uid) ?: return null
+        if (uid in verified) return entry
+        val packages = PackageManagerApis.getPackagesForUidNoThrow(uid)
+        val signature = signatureOf(uid, packages)
+        // A look-up that failed (or nobody on the uid yet) proves nothing: refuse this call, keep
+        // the entry, check again on the next.
+        if (signature == null) return null
+        val stored = entry.signature
+        if (entry.packages.orEmpty().none { it in packages } || (stored != null && stored != signature)) {
+            LOGGER.w("remove config for uid %d since it isn't the app it was made for", uid)
+            removeLocked(uid)
+            return null
+        }
+        if (stored == null) {
+            // Made before signatures were kept: trusted so far, so bound to the app there now.
+            entry.signature = signature
+            scheduleWriteLocked()
+        }
+        verified.add(uid)
+        return entry
+    }
+
     override fun find(uid: Int): AxeronConfig.PackageEntry? {
         synchronized(this) {
-            return findLocked(uid)
+            return findVerifiedLocked(uid)
+        }
+    }
+
+    /** [uid]'s processes are gone: its entry is checked again before it is used next. */
+    fun invalidate(uid: Int) {
+        synchronized(this) {
+            verified.remove(uid)
         }
     }
 
     fun findOrUpdate(uid: Int): AxeronConfig.PackageEntry? {
         synchronized(this) {
-            var entry = findLocked(uid)
+            // A dropped entry is made again for the app on the uid now, not shown as the old one.
+            var entry = findVerifiedLocked(uid) ?: findLocked(uid)
             if (entry == null) {
                 // A first request: "ask", not denied.
                 entry = AxeronConfig.PackageEntry(uid, 0)
-                entry.packages!!.addAll(PackageManagerApis.getPackagesForUidNoThrow(uid))
+                val packages = PackageManagerApis.getPackagesForUidNoThrow(uid)
+                entry.packages!!.addAll(packages)
+                entry.signature = signatureOf(uid, packages)
                 config.packages!!.add(entry)
             }
             return entry
@@ -154,6 +201,7 @@ class AxeronConfigManager : ConfigManager() {
         var entry = findLocked(uid)
         if (entry == null) {
             entry = AxeronConfig.PackageEntry(uid, mask and values)
+            entry.signature = signatureOf(uid, PackageManagerApis.getPackagesForUidNoThrow(uid))
             config.packages!!.add(entry)
         } else {
             val newValue = (entry.flags and mask.inv()) or (mask and values)
@@ -183,6 +231,7 @@ class AxeronConfigManager : ConfigManager() {
     private fun removeLocked(uid: Int) {
         val entry = findLocked(uid) ?: return
         config.packages!!.remove(entry)
+        verified.remove(uid)
         scheduleWriteLocked()
     }
 

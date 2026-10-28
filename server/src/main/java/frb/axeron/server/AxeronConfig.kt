@@ -40,6 +40,14 @@ class AxeronConfig() {
         @JvmField
         var packages: MutableList<String>? = ArrayList()
 
+        /**
+         * SHA-256 of the signing certificate of the app the entry was made for. Null in configs
+         * written before it; [AxeronConfigManager] fills it in from the app on the uid then.
+         */
+        @field:SerializedName("signature")
+        @JvmField
+        var signature: String? = null
+
         override val isAllowed: Boolean
             get() = (flags and ConfigManager.FLAG_ALLOWED) != 0
 

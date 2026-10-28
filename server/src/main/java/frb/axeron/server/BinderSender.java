@@ -291,6 +291,8 @@ public class BinderSender {
             // Drop cached packages and sent-binder marks so a restarted uid is served again.
             UID_PACKAGE_CACHE.remove(uid);
             SENT_BINDERS.removeIf(key -> key.startsWith(uid + ":"));
+            // An uninstall ends here too, and the uid may go to another app: check its grant again.
+            axeronService.getConfigManager().invalidate(uid);
         }
     }
 }

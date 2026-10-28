@@ -26,6 +26,14 @@ import rikka.parcelablelist.ParcelableListSlice
 class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizukuService.Stub() {
     companion object {
         val LOGGER = Logger("ShizukuServiceIntercept")
+
+        // Set while this binder serves a transaction: the Shizuku app is a manager on this path
+        // only, never on the Axeron binder, which any app can read from the sticky.
+        private val serving = ThreadLocal<Boolean>()
+
+        /** Whether the current thread is serving a call that came in through the intercept. */
+        @JvmStatic
+        fun isServing(): Boolean = serving.get() == true
     }
 
     /**
@@ -161,32 +169,38 @@ class ShizukuServiceIntercept(val shizukuIntercept: ShizukuIntercept) : IShizuku
         if (revoked && code != INTERFACE_TRANSACTION) {
             throw SecurityException("AX-Permission Intercept is disabled")
         }
-        when (code) {
-            ServerConstants.BINDER_TRANSACTION_getApplications -> {
-                data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
-                val userId = data.readInt()
-                val result: ParcelableListSlice<PackageInfo?> = shizukuIntercept.getApplications(userId)
-                reply!!.writeNoException()
-                result.writeToParcel(reply, Parcelable.PARCELABLE_WRITE_RETURN_VALUE)
-                return true
+        val outer = serving.get()
+        serving.set(true)
+        try {
+            when (code) {
+                ServerConstants.BINDER_TRANSACTION_getApplications -> {
+                    data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+                    val userId = data.readInt()
+                    val result: ParcelableListSlice<PackageInfo?> = shizukuIntercept.getApplications(userId)
+                    reply!!.writeNoException()
+                    result.writeToParcel(reply, Parcelable.PARCELABLE_WRITE_RETURN_VALUE)
+                    return true
+                }
+                BINDER_TRANSACTION_transact -> {
+                    data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+                    shizukuIntercept.transactRemote(data, reply, flags)
+                    return true
+                }
+                14 -> {
+                    data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
+                    val binder = data.readStrongBinder()
+                    val packageName = data.readString()
+                    val args = Bundle()
+                    args.putString(ATTACH_APPLICATION_PACKAGE_NAME, packageName)
+                    args.putInt(ATTACH_APPLICATION_API_VERSION, -1)
+                    attachApplication(IShizukuApplication.Stub.asInterface(binder), args)
+                    reply!!.writeNoException()
+                    return true
+                }
+                else -> return super.onTransact(code, data, reply, flags)
             }
-            BINDER_TRANSACTION_transact -> {
-                data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
-                shizukuIntercept.transactRemote(data, reply, flags)
-                return true
-            }
-            14 -> {
-                data.enforceInterface(AxeronApiConstant.server.SHIZUKU_BINDER_DESCRIPTOR)
-                val binder = data.readStrongBinder()
-                val packageName = data.readString()
-                val args = Bundle()
-                args.putString(ATTACH_APPLICATION_PACKAGE_NAME, packageName)
-                args.putInt(ATTACH_APPLICATION_API_VERSION, -1)
-                attachApplication(IShizukuApplication.Stub.asInterface(binder), args)
-                reply!!.writeNoException()
-                return true
-            }
-            else -> return super.onTransact(code, data, reply, flags)
+        } finally {
+            serving.set(outer)
         }
     }
 }
