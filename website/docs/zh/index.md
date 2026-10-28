@@ -14,6 +14,9 @@ hero:
       text: 开始使用
       link: /zh/guide/what-is-axeron-manager
     - theme: alt
+      text: 3.0 的安全更新
+      link: /zh/guide/security
+    - theme: alt
       text: 查看 GitHub
       link: https://github.com/fahrez182/AxManager
     - theme: alt
@@ -39,12 +42,12 @@ features:
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 16-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg>'
     title: 特权管理
     details: 按应用决定是否允许使用 AxManager：<b>Allowed</b>、<b>Ask</b> 或 <b>Denied</b>，并在同一个菜单中打开、清理、停止或停用应用。
-    link: /zh/guide/app-tour#privilege
+    link: /zh/guide/privilege
     linkText: 了解更多
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h10c2.76 0 5-2.24 5-5s-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>'
     title: 权限与 app-op
     details: 授予运行时权限，设置特殊访问权限以及 Android 记录的所有 app-op（包括 ROM 自带的），可作用于包或整个 uid。
-    link: /zh/guide/app-tour#app-details
+    link: /zh/guide/privilege#special-access
     linkText: 了解更多
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>'
     title: 插件（非 Root 模块）

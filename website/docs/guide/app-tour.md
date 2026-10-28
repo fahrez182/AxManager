@@ -50,83 +50,7 @@ Device model, Android version, security patch, kernel, ABI and the server's SELi
 
 ## Privilege
 
-The list of apps you can allow to use AxManager. Each app shows its [Axeron permission](#axeron-permission): **Allowed**, **Ask (default)** or **Denied**. Search by name or package name; the filter button chooses which apps show:
-
-- **Show**: **Installed** (user apps, default), **System** (system apps) or **Shizuku** (apps built on Shizuku-API, see [Shizuku compatibility](./shizuku-compatibility.md))
-- **Access**: **All**, **Allowed**, **Ask** or **Denied**
-
-Sort by name, ascending or descending. A disabled app is shown in grayscale, marked **Disabled**.
-
-- **Tap** an app to open its details.
-- **Long-press** an app for a quick menu: set its Axeron permission, then **Open app**, **Clear cache**, **Force stop** and **Disable** / **Enable** in one row of buttons. Force stop and disable ask for confirmation first.
-
-### App details
-
-Most actions need the server running. Some are only possible with root, and AxManager says so when shell mode is not enough.
-
-The play button next to the app's name opens the app. It is greyed out for apps that have nothing to open (services, libraries) and for disabled apps.
-
-#### Axeron permission {#axeron-permission}
-
-What happens when the app asks to use AxManager. Tap the row to change it:
-
-| Setting | Meaning |
-|---|---|
-| **Allowed** | Uses AxManager without asking. |
-| **Ask** (default) | AxManager asks you each time. *Allow once* in that dialog lasts until the app is closed. |
-| **Denied** | Refused at once, with no dialog. |
-
-Changing an app from **Allowed** to **Ask** or **Denied** stops it, so it can't keep using access it no longer has.
-
-**Actions**
-
-- **Force stop**: stop the app and all of its processes.
-- **Clear cache**: in shell mode only the external cache (`Android/data/<package>/cache`) is cleared; the internal cache needs root.
-- **Clear data**: delete all data of the app. This cannot be undone.
-- **Uninstall**: a user app is removed. A system app is removed **for this user only** and can be restored later. You can keep the app's data and cache.
-
-Destructive actions ask for confirmation first; if you don't answer in time, the request is cancelled.
-
-**General**
-
-- **Unrestricted battery**: exempt the app from battery optimization (Doze).
-- **Background activity**: when off, Android stops the app from running in the background (`RUN_ANY_IN_BACKGROUND`).
-- **App enabled**: when off, the app is disabled for this user: hidden from the launcher and unable to run until enabled again. Its data is kept.
-
-**Special access**
-
-For each special access the app requests (display over other apps, modify system settings, usage access, all files access, install unknown apps, alarms & reminders, media management, full screen notifications), pick a mode:
-
-| Mode | Meaning |
-|---|---|
-| **Allow** | Always allowed |
-| **Foreground only** | Allowed only while the app is in use |
-| **Ignore** | Refused quietly: the app gets no error, just nothing |
-| **Deny** | Refused with an error, like turning it off in system Settings |
-| **Default** | Follows the permission grant, which ordinary apps don't hold |
-
-On **MIUI / HyperOS**, every app also lists three of the ROM's own permissions here: **Autostart** (others may start the app when it isn't running), **Home screen shortcuts** and **Open new windows while running in the background**.
-
-**Other app-ops**: below special access, a folded card lists everything else Android keeps for the app that the sections above don't cover, including permissions your ROM added. They use the same modes. Ones AxManager doesn't know are shown by their raw name (for example `MIUIOP(10050)`), with a note that their meaning isn't known.
-
-::: warning Names of a ROM's own permissions
-A ROM numbers its own permissions however it likes, and gives them no names AxManager can read. The names above for MIUI's come from a list in AxManager and are only used on MIUI / HyperOS: the same number can mean something else on another brand's ROM, so there it shows by its raw name.
-:::
-
-**Package or whole uid**
-
-Android stores each of these modes twice: for the app's package, and for its whole uid (every package that shares it). The uid mode is checked first: anything but *Default* there wins, and *Default* hands the decision back to the package mode. Android often sets uid modes itself for permissions tied to runtime permissions, such as location.
-
-When you pick a mode, **Apply to** chooses where it goes:
-
-- **Package** (default): this package only, as system Settings does it. If the uid mode isn't *Default*, it is reset, or your choice wouldn't take effect.
-- **Whole uid**: the uid mode, for every package of the uid. The package mode is left as it is.
-
-The sheet shows both modes, and marks the uid mode when it is overriding the package mode.
-
-**Permissions**
-
-Runtime and development permissions the app requests can be granted or revoked with a switch. Permissions granted at install or by signature are listed separately and cannot be changed.
+The list of apps you can allow to use AxManager, each with its Axeron permission (**Allowed**, **Ask** or **Denied**). Tap an app for its details: permissions, special access, app-ops and actions. All of it is on **[Privilege & Permissions](./privilege.md)**.
 
 ## Plugin
 
@@ -173,7 +97,7 @@ A terminal that runs commands with the server's privileges: shell, or root when 
 
 **All** shows every source together, with an overview of how many entries each has. Search by key or value. Tap an entry to edit it, add new keys, or remove them.
 
-#### Environment {#environment-editor}
+### Environment {#environment-editor}
 
 The variables AxManager and Android set (see [Environment variables](../plugin/environment.md#environment-variables)) are marked **Locked**: shown, but not changeable, so a saved copy can't go stale or drop the system's own paths. Your env only adds to them:
 
@@ -209,8 +133,9 @@ A process belongs to an app only when its name is the app's package (or `package
 
 Shown while the server runs, except the last one:
 
+- **AX-Stealth Mode**: apps you haven't allowed can't see AxManager: no permission dialog, no answer, Shizuku clients included. Allow new apps from [Privilege](./privilege.md) instead; apps already allowed keep working. The info icon next to it, as next to other settings with more to say, explains it in full. See [Security in 3.0](./security.md).
 - **AX-Permission Intercept**: let apps built on Shizuku-API use AxManager. See [Shizuku compatibility](./shizuku-compatibility.md).
-- **Stop plugins with the server**: when the server stops or dies, every plugin's processes are stopped too. Off (default): plugins keep running on their own. See [Plugin processes](../plugin/environment.md#plugin-processes).
+- **Stop plugins with the server**: plugins stop when the server stops. Off (default): plugins keep running on their own. See [Plugin processes](../plugin/environment.md#plugin-processes).
 - **Prefer System Binaries**: put Android's own binaries before AxManager's BusyBox in `PATH`, so commands use the system versions.
 
 ### General

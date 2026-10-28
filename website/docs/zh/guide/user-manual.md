@@ -42,38 +42,7 @@ AxManager 可以在重启后自动启动，参见[开机自启](#activate-on-boo
 
 ### 使用无线调试启动 {#start-with-wireless-debugging}
 
-使用无线调试启动适用于 Android 11 及以上版本。此启动方法无需连接到电脑。由于系统限制，每次重启后需要重新执行启动步骤，除非[开机自启](#activate-on-boot)为您完成。
-
-它需要 Wi-Fi 网络。如果 Wi-Fi 已关闭，AxManager 会打开 Wi-Fi 面板并等待网络连接，因为应用无法自己打开 Wi-Fi。它始终通过无线调试启动，即使 ADB 已经在某个 TCP 端口上监听；如果想在没有 Wi-Fi 的情况下从该端口启动，请使用 [TCP 调试](#start-with-tcp-debugging)。
-
-#### 启用无线调试 {#enable-wireless-debugging}
-
-1. 搜索如何为您的设备型号启用"**开发者选项**"
-2. 启用"**开发者选项**"和"**USB 调试**"
-3. 进入"**无线调试**"
-4. 启用"**无线调试**"
-
-::: tip
-在激活页面的**通过无线调试激活**卡片中，**操作说明** → **开发者**会直接为您打开无线调试设置。
-:::
-
-激活页面顶部有一行，显示 AxManager 是否能写入 **Secure** 和 **System** 设置（**Granted** 或 **Not granted**）。能写入时，AxManager 每次激活都会同时打开开发者选项、USB 调试和无线调试，因此只有显示 **Not granted** 时才需要手动执行上面的步骤。
-
-#### 启动和配对（只需一次） {#start-pairing}
-
-AxManager 通过通知提供配对码输入框，因此请先允许通知（在允许之前，按钮会显示**授予通知权限**）。
-
-1. 在 AxManager 中点击**开始配对**
-2. [启用"**无线调试**"](#enable-wireless-debugging)
-3. 在"**无线调试**"中点击"**使用配对码配对设备**"
-4. 在 AxManager 的通知中输入配对码，直到显示"**配对成功**"
-5. 返回 AxManager 并等待连接成功（在某些设备上您需要再次点击**开始配对**）
-
-配对完成后，**开始配对**会直接连接。如果连接失败（例如设备从未配对），AxManager 会重新启动配对服务，并提示您按照通知操作。
-
-::: warning
-AxManager 运行期间不要关闭"**开发者选项**"或"**USB 调试**"，否则它会停止。网络变化时，无线调试也会自动关闭。
-:::
+Android 11 及以上，需要 Wi-Fi，不需要电脑：在无线调试设置中配对一次，然后从 AxManager 启动。步骤见 **[使用无线调试启动](./start-wireless.md)**。
 
 ### 使用 TCP 调试启动 {#start-with-tcp-debugging}
 
@@ -109,57 +78,13 @@ AxManager 可以充当另一台手机的"电脑"：用 OTG 线连接两台手机
 
 ### 通过连接电脑启动 {#start-by-connecting-to-a-computer}
 
-此方法适用于任何设备，无论是否 root。它需要电脑，并且每次重启后都需要重新执行这些步骤。
-
-#### 什么是 `adb`？ {#what-is-adb}
-
-Android 调试桥（`adb`）是一个多功能命令行工具，让您能够与设备进行通信。`adb` 命令可用于各种设备操作，例如安装和调试应用，并提供对 Unix shell 的访问，您可以使用它在设备上运行各种命令。
-
-更多信息请参阅 [Android Developer](https://developer.android.google.cn/tools/adb)。
-
-#### 安装 `adb` {#install-adb}
-
-1. 下载 Google 提供的"**SDK Platform Tools**"并将其解压到任意文件夹
-2. 打开文件夹，右键选择
-   - Windows 10/11：在此处打开 PowerShell 窗口（按住 Shift 以显示此选项）
-   - Mac 或 Linux：打开终端
-3. 输入 `adb`，如果成功，您会看到一长列内容，而不是提示找不到 adb。
-
-::: tip
-请不要关闭此窗口。后文提到的"**终端**"指的是此窗口（如果您关闭了窗口，请回到[步骤 2](#install-adb)）。
-如果您使用 PowerShell 或 Linux/Mac，所有 `adb` 都应替换为 `./adb`
-:::
-
-#### 设置 `adb` {#setting-adb}
-
-要使用 `adb`，您首先需要在设备上启用 USB 调试，通常按照以下步骤：
-
-1. 搜索如何为您的设备型号启用"**开发者选项**"
-2. 启用"**开发者选项**"和"**USB 调试**"
-3. 将设备连接到电脑，并在终端中输入 `adb devices`。
-4. 此时，设备上会出现"**允许调试**"对话框，勾选"**始终允许**"并确认。
-5. 在终端中再次输入 `adb devices`。如果没有问题，您将看到类似以下内容。
-
-   ```
-   List of devices attached
-   XXX     device
-   ```
-
-#### 启动 AxManager {#start-axmanager}
-
-在激活页面中，打开**通过电脑命令行激活**下的**查看命令**。它会显示如下形式的命令：
-
-```
-adb shell /data/app/~~…/frb.axeron.manager-…/lib/arm64/libaxeron.so
-```
-
-具体路径取决于您的安装，因此请始终从应用中复制（**复制**，或通过**分享**发送到电脑）。将其粘贴到终端中。如果没有问题，AxManager 会显示已成功启动。
+任何设备，无论是否 root，都需要一台装有 `adb` 的电脑：每次重启后运行 AxManager 显示的命令。安装和设置 `adb` 见 **[使用电脑启动（adb）](./start-computer.md)**。
 
 ### 通过浏览器启动 {#start-from-the-browser}
 
 [通过浏览器激活](/activate)与电脑方法的作用相同，只是通过网页经 USB 完成，无需安装 `adb`。可在电脑上的 Chrome 或 Edge 中使用，也可在用 OTG 线连接的另一台手机上的 Chrome 中使用。
 
-1. 在设备上开启 **USB 调试**（[方法](#setting-adb)），并用 USB 线连接。
+1. 在设备上开启 **USB 调试**（[方法](./start-computer.md#setting-adb)），并用 USB 线连接。
 2. 打开 [axmanager.app/activate](https://axmanager.app/activate)，点击 **Connect** 并选择该设备。
 3. 在设备上允许 USB 调试，然后点击 **Activate**。
 

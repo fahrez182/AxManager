@@ -11,7 +11,7 @@ AxManager 运行插件脚本时脚本能看到什么、文件放在哪里，以�
 | 变量 | 值 |
 |---|---|
 | `AXERON` | `true`。可用于区分 AxManager 与 KernelSU、Magisk。 |
-| `AXERONVER` | 服务的版本号，例如 `20000`。`module.prop` 中的 `axeronPlugin` 就是与它比较。 |
+| `AXERONVER` | 服务的版本号，例如 `30000`。`module.prop` 中的 `axeronPlugin` 就是与它比较。 |
 | `AXERONDIR` | 当前模式下 AxManager 的[工作目录](#working-folder)。 |
 | `AXERONBIN` | `$AXERONDIR/bin`：BusyBox 和 AxManager 的工具。 |
 | `AXERONXBIN` | `$AXERONDIR/xbin`：指向每个已启用插件 `system/bin` 的链接。 |
@@ -22,7 +22,7 @@ AxManager 运行插件脚本时脚本能看到什么、文件放在哪里，以�
 | `HOSTNAME` | `axeron` |
 | `AXERON_PLUGIN` | 仅存在于插件自己的进程中：插件的 id。参见[插件进程](#plugin-processes)。 |
 
-`customize.sh` 在安装期间还会获得更多变量（`MODPATH`、`ZIPFILE`、`ARCH`、`API` 等），参见[自定义](./what-is-plugin.md#自定义)。
+`customize.sh` 在安装期间还会获得更多变量（`MODPATH`、`ZIPFILE`、`ARCH`、`API` 等），参见[自定义](./plugin-installer.md#customize)。
 
 这些变量是锁定的：用户在设置编辑器中的环境变量可以添加变量，以及向 `PATH` / `LD_LIBRARY_PATH` 添加条目，但不能替换它们。参见[环境变量](../guide/app-tour.md#environment-editor)。
 

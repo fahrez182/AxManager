@@ -29,6 +29,24 @@ The command string is handed to `sh -c "…"` by a shell, inside double quotes. 
 A call into `ksu` or `Axeron` blocks the page's JavaScript until it returns: nothing redraws, timers stop, a spinner freezes. The callback variants (`ksu.exec(command, options, callback)`, `ksu.spawn`, `Axeron.exec(command, options, callback)`) return at once and run the command in the background, so prefer them, or the `kernelsu.js` / `axeron.js` helpers built on them, for anything that can take time. The synchronous variants are fine for quick calls.
 :::
 
+## What a page can reach {#what-a-page-can-reach}
+
+`ksu` and `Axeron` run commands for whatever code is on the page, so the WebUI only ever shows the plugin's own pages. Your plugin is trusted, as its scripts already run with the server's privileges; a site it happens to link to is not.
+
+| | In the WebUI |
+|---|---|
+| Your pages (`ax://plugin.local/`, `https://mui.kernelsu.org/`) | Shown, with `ksu` and `Axeron` |
+| A link, redirect or `location` change to another site | Opened in the browser instead |
+| An `<iframe>` of another site | Blocked |
+| A `<form>` posting to another site | Blocked |
+| Scripts, styles, fonts, images and `fetch` from any site | Allowed: they run as part of your page |
+
+The last two are blocked by a `Content-Security-Policy` AxManager sends with your files (`frame-src` and `form-action` limited to the plugin's own pages, `blob:` and `data:`). It only narrows frames and forms; any `<meta>` CSP of your own still applies on top.
+
+::: warning Scripts and text from the internet
+A script you load from a CDN runs as your page, with `ksu` and `Axeron`, so only load what you would ship in the plugin. The same goes for text you fetch: put it in the page with `textContent`, not `innerHTML`, or a server you don't control can run commands on the device through your page.
+:::
+
 ## The `ksu` object
 
 ### `ksu.exec(command)`

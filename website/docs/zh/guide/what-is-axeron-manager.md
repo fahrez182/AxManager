@@ -1,5 +1,9 @@
 # <Icon name="info" /> 什么是 Axeron Manager？
 
+::: warning AxManager 3.0 是一次安全更新
+在之前的版本中，你从未允许过的应用也可能触及 AxManager 的 shell。请更新 AxManager 以及所有基于其 API 构建的应用。参见 **[3.0 的安全更新](./security.md)**。
+:::
+
 Axeron Manager (AxManager) 是一个开放的实验性项目，旨在构建一个更具包容性的 Android “管理器”。
 AxManager 不严格依赖 root 访问权限，而是专注于 ADB/非 Root 模式，使其能够在更广泛的设备上运行。同时，其架构保持灵活性——允许可选的 root 执行、支持第三方插件，甚至提供基于 Web 的 Shell 界面。
 

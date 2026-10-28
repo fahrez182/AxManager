@@ -71,16 +71,27 @@ export default defineConfig({
             ],
           },
           {
-            text: "Guide",
+            text: "Getting started",
             items: [
               {
                 text: withIcon("info", "What is Axeron Manager?"),
                 link: "/guide/what-is-axeron-manager",
               },
+              { text: withIcon("shield", "Security in 3.0"), link: "/guide/security" },
               { text: withIcon("start", "User Manual"), link: "/guide/user-manual" },
+              {
+                text: withIcon("start", "Start with Wireless Debugging"),
+                link: "/guide/start-wireless",
+              },
+              { text: withIcon("usb", "Start with a Computer (adb)"), link: "/guide/start-computer" },
+            ],
+          },
+          {
+            text: "Using the app",
+            items: [
               { text: withIcon("tour", "App Tour"), link: "/guide/app-tour" },
+              { text: withIcon("key", "Privilege & Permissions"), link: "/guide/privilege" },
               { text: withIcon("code", "Run in Any Terminal (axsh)"), link: "/guide/axsh" },
-              { text: withIcon("link", "Connect with an App"), link: "/guide/connect-app" },
               {
                 text: withIcon("swap", "Shizuku Compatibility"),
                 link: "/guide/shizuku-compatibility",
@@ -89,9 +100,18 @@ export default defineConfig({
             ],
           },
           {
+            text: "For developers",
+            items: [
+              { text: withIcon("link", "Connect with an App"), link: "/guide/connect-app" },
+              { text: withIcon("service", "AxShellService"), link: "/guide/shell-service" },
+              { text: withIcon("tips", "Tips & Demo App"), link: "/guide/connect-tips" },
+            ],
+          },
+          {
             text: "Plugin",
             items: [
               { text: withIcon("plugin", "What is Plugin?"), link: "/plugin/what-is-plugin" },
+              { text: withIcon("plugin", "Plugin Installer"), link: "/plugin/plugin-installer" },
               { text: withIcon("folder", "Environment & Paths"), link: "/plugin/environment" },
               { text: withIcon("web", "WebUI API"), link: "/plugin/webui-api" },
               {
@@ -122,16 +142,24 @@ export default defineConfig({
         ],
         sidebar: [
           {
-            text: "指南",
+            text: "入门",
             items: [
               {
                 text: withIcon("info", "什么是 Axeron Manager？"),
                 link: "/zh/guide/what-is-axeron-manager",
               },
+              { text: withIcon("shield", "3.0 的安全更新"), link: "/zh/guide/security" },
               { text: withIcon("start", "用户手册"), link: "/zh/guide/user-manual" },
+              { text: withIcon("start", "使用无线调试启动"), link: "/zh/guide/start-wireless" },
+              { text: withIcon("usb", "使用电脑启动（adb）"), link: "/zh/guide/start-computer" },
+            ],
+          },
+          {
+            text: "使用应用",
+            items: [
               { text: withIcon("tour", "应用导览"), link: "/zh/guide/app-tour" },
+              { text: withIcon("key", "特权与权限"), link: "/zh/guide/privilege" },
               { text: withIcon("code", "在任意终端中运行（axsh）"), link: "/zh/guide/axsh" },
-              { text: withIcon("link", "与应用连接"), link: "/zh/guide/connect-app" },
               {
                 text: withIcon("swap", "Shizuku 兼容"),
                 link: "/zh/guide/shizuku-compatibility",
@@ -140,9 +168,18 @@ export default defineConfig({
             ],
           },
           {
+            text: "面向开发者",
+            items: [
+              { text: withIcon("link", "与应用连接"), link: "/zh/guide/connect-app" },
+              { text: withIcon("service", "AxShellService"), link: "/zh/guide/shell-service" },
+              { text: withIcon("tips", "技巧与演示应用"), link: "/zh/guide/connect-tips" },
+            ],
+          },
+          {
             text: "插件",
             items: [
               { text: withIcon("plugin", "什么是插件？"), link: "/zh/plugin/what-is-plugin" },
+              { text: withIcon("plugin", "插件安装程序"), link: "/zh/plugin/plugin-installer" },
               { text: withIcon("folder", "环境与路径"), link: "/zh/plugin/environment" },
               { text: withIcon("web", "WebUI API"), link: "/zh/plugin/webui-api" },
               { text: withIcon("reboot", "Re-ignite（重启系统）"), link: "/zh/plugin/re-ignite" },

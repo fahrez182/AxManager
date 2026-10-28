@@ -53,26 +53,28 @@ axsh script.sh      # 一个脚本文件
 
 ## 连接方式 {#how-it-connects}
 
-`axsh` 需要连接到 AxManager 的服务。具体方式取决于服务的启动方式：
+`axsh` 需要连接到 AxManager 的服务。它会在您的终端应用中，从 AxManager 的应用里启动一个小助手。助手向 AxManager 请求终端应用自己的服务连接：这个连接只对该应用有效，而且在您允许之前只能用来请求权限。之后：
 
 | 服务 | 方式 |
 |---|---|
-| **Root** | 直接连接到服务。 |
-| **Shell**（无线调试、电脑等） | Android 不允许应用直接与 shell 进程通信，因此 `axsh` 会在您的终端应用中，从 AxManager 的应用里启动一个小助手。助手从 AxManager 获取服务并交接会话。启动时会多一点延迟。 |
+| **Root** | 应用获准后，助手还会在终端的 `$TMPDIR` 中留下服务自己的 socket 的位置，之后的命令会直接连接服务。socket 的名称在服务每次启动时都会改变，且只告诉已获准的应用；服务重启后，第一条命令会再次经过助手。 |
+| **Shell**（无线调试、电脑等） | Android 不允许应用直接与 shell 进程通信，因此每条命令都会经过助手。启动时会多一点延迟。 |
 
-内置了 axsh 的应用（参见[与应用连接](./connect-app.md)）会跳过这个助手，也不会询问 AxManager：服务会把它的 binder 留成一条广播，应用自己读取。对于终端应用，**保持 axsh 就绪**（在 AxManager 的**特权 → 该应用**中，Axeron 权限下方）会在第一条命令后保留助手，之后的命令会立即启动。
+内置了 axsh 的应用（参见[与应用连接](./connect-app.md)）会跳过这个助手，也不会询问 AxManager：获准后，服务会自己把连接交给该应用。对于终端应用，**保持 axsh 就绪**（在 AxManager 的**特权 → 该应用**中，Axeron 权限下方）会在第一条命令后保留助手，之后的命令会立即启动。
+
+只有已获准的应用才会被告知服务的 socket，或保留一个就绪的助手。已不再获准、但仍持有这些的应用在那里得不到任何回应；`axsh` 随后会像任何未获准的应用一样经过助手，权限对话框也从那里发起。请求只在这一个地方发生。
 
 ::: info MIUI / HyperOS
-在 shell 模式下，助手会向 AxManager 请求服务。MIUI 会杀死从最近任务中划掉的应用，并默认阻止其他应用再次启动它们，因此 AxManager 无法响应。为此，AxManager 每次连接到服务时都会为自己允许**自启动**（以及桌面快捷方式和后台弹出界面权限）。如果划掉 AxManager 后 `axsh` 仍提示服务未运行，请在系统设置中检查 AxManager 的**自启动**。内置了 axsh 的应用不会询问 AxManager，因此不受影响。
+助手会向 AxManager 请求连接。MIUI 会杀死从最近任务中划掉的应用，并默认阻止其他应用再次启动它们，因此 AxManager 无法响应。为此，AxManager 每次连接到服务时都会为自己允许**自启动**（以及桌面快捷方式和后台弹出界面权限）。如果划掉 AxManager 后 `axsh` 仍提示服务未运行，请在系统设置中检查 AxManager 的**自启动**。内置了 axsh 的应用不会询问 AxManager，因此不受影响。
 :::
 
 ::: info 它真的是服务吗？
-应用无论从广播还是从 AxManager 得到 binder，都不会立刻信任它。应用会先连接到该 binder，只有当服务以自己的 uid（root 或 shell）回调时才接受，应用无法伪造这一点。不以这种方式回调的 binder 会被拒绝。
+应用无论得到什么，都不会立刻信任它。应用会先连接，只有当服务以自己的 uid（root 或 shell）回调，并说明连接者正是该应用本身时才接受；应用无法伪造这一点，其他应用也无法转交真实服务的回应。服务的 socket 同样只在由 root 或 shell 持有时才被接受。其他一律拒绝。
 :::
 
 ## 权限 {#permission}
 
-终端应用（例如 Termux）和其他应用一样，需要 AxManager 的权限。请在 **[特权](./app-tour.md#privilege)** 中设置：
+终端应用（例如 Termux）和其他应用一样，需要 AxManager 的权限。请在 **[特权](./privilege.md)** 中设置：
 
 | 设置 | `axsh` 的行为 |
 |---|---|
@@ -82,16 +84,18 @@ axsh script.sh      # 一个脚本文件
 
 将应用从 **Allowed** 改为 **Ask** 或 **Denied** 会停止该应用，因此对 Termux 这样修改会关闭 Termux。
 
+开启 [AX-Stealth Mode](./app-tour.md#environment) 时，未获准的终端应用在任何地方都得不到对话框或回应：`axsh` 的提示与找不到可询问的 AxManager 时相同，即 `AxManager server is not running [no way to reach the server (…)]`。请先在**特权**中允许它。
+
 ## 提示信息 {#messages}
 
-前两条提示的末尾可能带有方括号中的原因，例如 `AxManager server is not running [the manager didn't answer (is AxManager running?)]`。它说明 `axsh` 停在了哪一步。
+前两条提示的末尾可能带有方括号中的原因，例如 `AxManager server is not running [no way to reach the server (no answer)]`。它说明 `axsh` 停在了哪一步。
 
 | 提示 | 含义 |
 |---|---|
 | `AxManager permission required: allow this app in AxManager` | 终端应用未获允许：被设为 **Denied**，或对话框被拒绝、未回答。 |
-| `AxManager server is not running` | AxManager 没有交出服务：服务未运行，或 AxManager 无法在后台启动（参见上方 MIUI 说明）。 |
-| `AxManager server is not running [no way to reach the server (…)]` | 助手找不到可以询问的 AxManager。当 `libaxsh.so` 被复制到 AxManager 文件夹之外时会出现这种情况；请改用启动器。 |
-| `AxManager server is not reachable […]` | 自己运行 `Axsh` 的应用找不到连接服务的方式。原因会说明是 broker 从未启动，还是服务没有留下 binder（服务未运行，或版本太旧无法发布）。 |
+| `AxManager server is not running` | AxManager 没有交出连接：服务未运行。 |
+| `AxManager server is not running [no way to reach the server (…)]` | 助手找不到可以询问的 AxManager，或没有得到回应：`libaxsh.so` 被复制到 AxManager 文件夹之外（请改用启动器）、AxManager 无法在后台启动（参见上方 MIUI 说明），或开启了 [AX-Stealth Mode](./app-tour.md#environment) 而该终端应用未获准。 |
+| `AxManager server is not reachable […]` | 自己运行 `Axsh` 的应用找不到连接服务的方式。原因会说明是 broker 从未启动，还是没有收到连接：该应用未在 AxManager 中获准，或服务未运行。 |
 | `… [the binder never called back …]` 或 `[… isn't the server's …]` | 找到了一个 binder，但无法确认它属于服务，因此被拒绝。 |
 | `axsh: can't exec app_process (…)` | shell 模式的助手无法启动。 |
 

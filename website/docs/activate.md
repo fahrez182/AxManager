@@ -14,7 +14,7 @@ Start AxManager from this page over USB. It runs the same command as [Start by c
 ## Steps
 
 1. Install AxManager on the device.
-2. Enable "**Developer Options**" and "**USB Debugging**" on the device ([how](./guide/user-manual.md#setting-adb)).
+2. Enable "**Developer Options**" and "**USB Debugging**" on the device ([how](./guide/start-computer.md#setting-adb)).
 3. Connect the device with a USB cable, then click **Connect** and pick it from the list.
 4. On the device, allow USB debugging when asked (check "**Always allow**").
 5. Click **Activate**. The log shows the starter's output, and the status turns green once the server is running.

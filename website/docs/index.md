@@ -14,6 +14,9 @@ hero:
       text: Get Started
       link: /guide/what-is-axeron-manager
     - theme: alt
+      text: Security in 3.0
+      link: /guide/security
+    - theme: alt
       text: Activate
       link: /activate
     - theme: alt
@@ -42,12 +45,12 @@ features:
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 16-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg>'
     title: Privilege manager
     details: Decide per app whether it may use AxManager, <b>Allowed</b>, <b>Ask</b> or <b>Denied</b>, and open, clear, stop or disable apps from one menu.
-    link: /guide/app-tour#privilege
+    link: /guide/privilege
     linkText: Learn more
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h10c2.76 0 5-2.24 5-5s-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>'
     title: Permissions & app-ops
     details: Grant runtime permissions, set special access and every app-op Android keeps, your ROM's own included, for the package or the whole uid.
-    link: /guide/app-tour#app-details
+    link: /guide/privilege#special-access
     linkText: Learn more
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>'
     title: Plugins (unrooted modules)

@@ -62,7 +62,8 @@
 ## 应用提示找不到 Shizuku {#shizuku-not-found}
 
 1. 在 AxManager 运行时打开**设置 → AX-权限接管**。
-2. 一些较旧的 Shizuku 客户端（例如旧版 ZArchiver）只有在**安装了** Shizuku 应用时才会连接。安装它即可，不需要启动。
+2. 开启 **AX-Stealth Mode** 时，你未允许的应用不会被告知 Shizuku 正在运行。请在**特权**中允许它。
+3. 一些较旧的 Shizuku 客户端（例如旧版 ZArchiver）只有在**安装了** Shizuku 应用时才会连接。安装它即可，不需要启动。
 
 参见 [Shizuku 兼容](./shizuku-compatibility.md)。
 
@@ -78,9 +79,21 @@
 
 在 shell 模式下，`axsh` 会向 AxManager 请求服务，因此 AxManager 需要能在后台启动。有些系统（尤其是 MIUI / HyperOS）会杀死从最近任务中划掉的应用，并阻止它们再次被启动。AxManager 在 MIUI / HyperOS 上连接到服务时会为自己允许**自启动**；如果仍然出现该提示，请在系统设置中为 AxManager 允许**自启动**（或"后台运行"）。参见[连接方式](./axsh.md#how-it-connects)。
 
+## 已允许的应用又在请求权限 {#asks-again}
+
+权限属于应用的签名证书。如果应用以其他密钥签名重新安装（例如在正式版之后安装调试版，或来自其他来源的构建），AxManager 会把它当作新应用并再次询问。这也能防止获得已卸载应用 uid 的应用继承它的权限。参见 [3.0 的安全更新](./security.md)。
+
+## 应用提示 AxManager 未安装 {#axmanager-not-installed}
+
+开启 **AX-Stealth Mode** 时，AxManager 不会向你未允许的应用显示自己：没有对话框，也没有回应。请在**特权**中允许该应用，或在它请求时关闭隐身模式。参见 [AX-Stealth Mode](./app-tour.md#environment)。
+
+## 基于 Axeron API 的应用在更新 AxManager 后无法连接 {#api-app-stopped-connecting}
+
+AxManager 3.0 改变了应用的连接方式，3.0 之前使用 `axsh` 库构建的应用无法连接 3.0 的服务。该应用需要更新为使用 `3.0.0` 或更高版本构建。参见 [3.0 的安全更新](./security.md#what-changes-for-app-developers)。
+
 ## app-op 显示为 MIUIOP(10050) 这样的原始名称 {#raw-app-op-name}
 
-这是 ROM 添加的权限，而 ROM 没有提供 AxManager 可以读取的名称。AxManager 用它的编号显示，以便您仍然可以修改它。只有少数已知的项有名称，并且只在其所属的 ROM 上使用，因为其他品牌可能用同一个编号表示别的东西。参见[应用详情](./app-tour.md#app-details)。
+这是 ROM 添加的权限，而 ROM 没有提供 AxManager 可以读取的名称。AxManager 用它的编号显示，以便您仍然可以修改它。只有少数已知的项有名称，并且只在其所属的 ROM 上使用，因为其他品牌可能用同一个编号表示别的东西。参见[特殊访问权限](./privilege.md#special-access)。
 
 ## 服务停止后插件仍在运行 {#plugins-keep-running}
 

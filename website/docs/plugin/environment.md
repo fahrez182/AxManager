@@ -11,7 +11,7 @@ Every process the server starts (plugin scripts, `action.sh`, WebUI commands, Qu
 | Variable | Value |
 |---|---|
 | `AXERON` | `true`. Use it to tell AxManager apart from KernelSU and Magisk. |
-| `AXERONVER` | The server's version code, e.g. `20000`. This is what `axeronPlugin` in `module.prop` is compared against. |
+| `AXERONVER` | The server's version code, e.g. `30000`. This is what `axeronPlugin` in `module.prop` is compared against. |
 | `AXERONDIR` | AxManager's [working folder](#working-folder) for the current mode. |
 | `AXERONBIN` | `$AXERONDIR/bin`: BusyBox and AxManager's tools. |
 | `AXERONXBIN` | `$AXERONDIR/xbin`: links to every enabled plugin's `system/bin`. |
@@ -22,7 +22,7 @@ Every process the server starts (plugin scripts, `action.sh`, WebUI commands, Qu
 | `HOSTNAME` | `axeron` |
 | `AXERON_PLUGIN` | Only in a plugin's own processes: the plugin's id. See [Plugin processes](#plugin-processes). |
 
-`customize.sh` gets more variables during installation (`MODPATH`, `ZIPFILE`, `ARCH`, `API`, …); see [Customize](./what-is-plugin.md#customize).
+`customize.sh` gets more variables during installation (`MODPATH`, `ZIPFILE`, `ARCH`, `API`, …); see [Customize](./plugin-installer.md#customize).
 
 These are locked: the user's own env, from Settings Editor, can add variables and entries to `PATH` / `LD_LIBRARY_PATH`, but can't replace them. See [Environment](../guide/app-tour.md#environment-editor).
 

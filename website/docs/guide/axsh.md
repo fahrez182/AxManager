@@ -49,26 +49,28 @@ When `axsh` is used from a script, a pipe or an app (input or output is not a te
 
 ## How it connects {#how-it-connects}
 
-`axsh` needs to reach AxManager's server. How depends on how the server was started:
+`axsh` needs to reach AxManager's server. It starts a small helper from AxManager's app inside your terminal app. The helper asks AxManager for the terminal app's own connection to the server: one that works for that app alone, and only lets it ask for permission until you allow it. Then:
 
 | Server | Path |
 |---|---|
-| **Root** | Directly to the server. |
-| **Shell** (wireless debugging, computer, …) | Android doesn't let apps talk to a shell process directly, so `axsh` starts a small helper from AxManager's app inside your terminal app. The helper gets the server from AxManager and hands the session over. This adds a short delay at start. |
+| **Root** | Once the app is allowed, the helper also leaves where the server's own socket is, in the terminal's `$TMPDIR`, so the next commands go straight to the server. The socket's name is new every time the server starts and only allowed apps are told it; after a restart the first command goes through the helper again. |
+| **Shell** (wireless debugging, computer, …) | Android doesn't let apps talk to a shell process directly, so every command goes through the helper. This adds a short delay at start. |
 
-Apps that build axsh in (see [Connect with an App](./connect-app.md)) skip the helper, and they don't ask AxManager either: the server leaves its binder as a broadcast, and the app reads it itself. For a terminal app, **Keep axsh ready** (in AxManager, **Privilege → the app**, under the Axeron permission) keeps the helper after the first command, so the next ones start at once.
+Apps that build axsh in (see [Connect with an App](./connect-app.md)) skip the helper, and they don't ask AxManager either: once allowed, the server hands the app its connection itself. For a terminal app, **Keep axsh ready** (in AxManager, **Privilege → the app**, under the Axeron permission) keeps the helper after the first command, so the next ones start at once.
+
+Only an allowed app is told the server's socket or keeps a ready helper. An app that is no longer allowed but still has them gets no answer there at all; `axsh` then goes through the helper, like any app not allowed, and the permission dialog comes from there. Asking happens in that one place.
 
 ::: info MIUI / HyperOS
-In shell mode the helper asks AxManager for the server. MIUI kills apps swiped away from recents and by default blocks other apps from starting them again, so AxManager could not answer. AxManager therefore allows its own **Autostart** (and its home screen shortcut and background window permissions) whenever it connects to the server. If `axsh` still says the server is not running after you swipe AxManager away, check **Autostart** for AxManager in the system settings. Apps that build axsh in don't ask AxManager, so this doesn't affect them.
+The helper asks AxManager for the connection. MIUI kills apps swiped away from recents and by default blocks other apps from starting them again, so AxManager could not answer. AxManager therefore allows its own **Autostart** (and its home screen shortcut and background window permissions) whenever it connects to the server. If `axsh` still says the server is not running after you swipe AxManager away, check **Autostart** for AxManager in the system settings. Apps that build axsh in don't ask AxManager, so this doesn't affect them.
 :::
 
 ::: info Is that really the server?
-Whatever an app finds, from the broadcast or from AxManager, it does not trust yet. It attaches to that binder and accepts it only when the server calls back from its own uid (root, or shell), which an app cannot fake. A binder that doesn't call back that way is refused.
+Whatever an app is handed, it does not trust yet. It attaches and accepts the connection only when the server calls back from its own uid (root, or shell), which an app cannot fake, and names the app itself as the one that attached, so another app can't pass a real server's answer on. The server's socket, too, is only accepted when root or shell holds it. Anything else is refused.
 :::
 
 ## Permission {#permission}
 
-The terminal app (for example Termux) needs AxManager's permission, like any other app. Set it in **[Privilege](./app-tour.md#privilege)**:
+The terminal app (for example Termux) needs AxManager's permission, like any other app. Set it in **[Privilege](./privilege.md)**:
 
 | Setting | What `axsh` does |
 |---|---|
@@ -78,16 +80,18 @@ The terminal app (for example Termux) needs AxManager's permission, like any oth
 
 Changing an app from **Allowed** to **Ask** or **Denied** stops that app, so changing it for Termux closes Termux.
 
+With [AX-Stealth Mode](./app-tour.md#environment) on, a terminal app that isn't allowed gets no dialog and no answer from anywhere: `axsh` says what it says when there is no AxManager to ask, `AxManager server is not running [no way to reach the server (…)]`. Allow it in **Privilege** first.
+
 ## Messages {#messages}
 
-The first two messages can end with a reason in square brackets, such as `AxManager server is not running [the manager didn't answer (is AxManager running?)]`. It says where `axsh` stopped.
+The first two messages can end with a reason in square brackets, such as `AxManager server is not running [no way to reach the server (no answer)]`. It says where `axsh` stopped.
 
 | Message | Meaning |
 |---|---|
 | `AxManager permission required: allow this app in AxManager` | The terminal app is not allowed: it is set to **Denied**, or the dialog was denied or not answered. |
-| `AxManager server is not running` | AxManager didn't hand over the server: it isn't running, or AxManager couldn't be started in the background (see the MIUI note above). |
-| `AxManager server is not running [no way to reach the server (…)]` | The helper found no AxManager to ask. This happens when `libaxsh.so` was copied out of AxManager's folder; use the launcher instead. |
-| `AxManager server is not reachable [… ]` | An app that runs `Axsh` itself found no way to the server. The reason says whether its broker was never started, or the server left no binder (it isn't running, or it is too old to publish one). |
+| `AxManager server is not running` | AxManager handed over no connection: the server isn't running. |
+| `AxManager server is not running [no way to reach the server (…)]` | The helper found no AxManager to ask, or none answered: `libaxsh.so` was copied out of AxManager's folder (use the launcher instead), AxManager couldn't be started in the background (see the MIUI note above), or [AX-Stealth Mode](./app-tour.md#environment) is on and the terminal app isn't allowed. |
+| `AxManager server is not reachable [… ]` | An app that runs `Axsh` itself found no way to the server. The reason says whether its broker was never started, or no connection arrived: the app isn't allowed in AxManager, or the server isn't running. |
 | `… [the binder never called back …]` or `[… isn't the server's …]` | A binder was found but not confirmed as the server's, so it was refused. |
 | `axsh: can't exec app_process (…)` | The shell-mode helper could not start. |
 

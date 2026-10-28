@@ -29,6 +29,24 @@ WebUI 运行的每条命令都由 AxManager 的服务启动，拥有服务的权
 调用 `ksu` 或 `Axeron` 时，页面的 JavaScript 会一直阻塞到调用返回：页面不会重绘，定时器停止，加载动画也会卡住。回调形式（`ksu.exec(command, options, callback)`、`ksu.spawn`、`Axeron.exec(command, options, callback)`）会立即返回并在后台运行命令，因此耗时的操作请优先使用它们，或基于它们的 `kernelsu.js` / `axeron.js` 辅助模块。同步形式适合很快就能完成的调用。
 :::
 
+## 页面能触及什么 {#what-a-page-can-reach}
+
+`ksu` 和 `Axeron` 会替页面上的任何代码运行命令，因此 WebUI 只显示插件自己的页面。你的插件是受信任的，因为它的脚本本来就以服务的权限运行；而它恰好链接到的网站则不受信任。
+
+| | 在 WebUI 中 |
+|---|---|
+| 你的页面（`ax://plugin.local/`、`https://mui.kernelsu.org/`） | 显示，并带有 `ksu` 和 `Axeron` |
+| 指向其他网站的链接、重定向或 `location` 更改 | 改为在浏览器中打开 |
+| 其他网站的 `<iframe>` | 被阻止 |
+| 提交到其他网站的 `<form>` | 被阻止 |
+| 来自任何网站的脚本、样式、字体、图片和 `fetch` | 允许：它们作为你页面的一部分运行 |
+
+后两项由 AxManager 随你的文件发送的 `Content-Security-Policy` 阻止（`frame-src` 和 `form-action` 仅限插件自己的页面、`blob:` 和 `data:`）。它只收紧框架和表单；你自己的 `<meta>` CSP 仍会叠加生效。
+
+::: warning 来自互联网的脚本和文本
+从 CDN 加载的脚本会作为你的页面运行，并能使用 `ksu` 和 `Axeron`，因此只加载你愿意随插件一起发布的内容。获取的文本也是如此：请用 `textContent` 而不是 `innerHTML` 放入页面，否则一个你无法控制的服务器就能通过你的页面在设备上运行命令。
+:::
+
 ## `ksu` 对象 {#the-ksu-object}
 
 ### `ksu.exec(command)` {#ksu-exec-command}

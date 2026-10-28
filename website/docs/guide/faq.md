@@ -62,7 +62,7 @@ Don't click the dialog shows after connecting the USB, because it will change US
 ## An app says Shizuku is not found
 
 1. Turn on **Settings → AX-Permission Intercept** while AxManager is running.
-2. Some older Shizuku clients (for example older versions of ZArchiver) only connect when the Shizuku app is **installed**. Install it; it doesn't need to be started.
+3. Some older Shizuku clients (for example older versions of ZArchiver) only connect when the Shizuku app is **installed**. Install it; it doesn't need to be started.
 
 See [Shizuku compatibility](./shizuku-compatibility.md).
 
@@ -78,9 +78,21 @@ The terminal app isn't allowed. Set it to **Allowed** in **Privilege**, or leave
 
 In shell mode, `axsh` asks AxManager for the server, so AxManager has to be started in the background. Some systems, MIUI / HyperOS in particular, kill apps swiped from recents and block them from being started again. AxManager allows its own **Autostart** on MIUI / HyperOS when it connects to the server; if the message persists, allow **Autostart** (or "run in background") for AxManager in the system settings. See [How it connects](./axsh.md#how-it-connects).
 
+## An app I allowed asks for permission again
+
+A permission belongs to the app's signing certificate. If the app was reinstalled signed with another key, for example a debug build after a release one or a build from another source, AxManager treats it as a new app and asks again. This also keeps an app that gets an uninstalled app's uid from inheriting its permission. See [Security in 3.0](./security.md).
+
+## An app says AxManager isn't installed
+
+With **AX-Stealth Mode** on, AxManager doesn't show itself to apps you haven't allowed: no dialog, no answer. Allow the app in **Privilege**, or turn stealth off while it asks. See [AX-Stealth Mode](./app-tour.md#environment).
+
+## An app built on the Axeron API stopped connecting after updating AxManager
+
+AxManager 3.0 changed how apps connect, and apps built on the `axsh` library before 3.0 can't reach a 3.0 server. The app needs an update built with `3.0.0` or later. See [Security in 3.0](./security.md#what-changes-for-app-developers).
+
 ## An app-op shows a raw name like MIUIOP(10050)
 
-It is a permission your ROM added, and the ROM gives it no name AxManager can read. AxManager shows it by its number so you can still change it. Names exist only for the few it knows, and only on the ROM they belong to, because another brand can use the same number for something else. See [Other app-ops](./app-tour.md#app-details).
+It is a permission your ROM added, and the ROM gives it no name AxManager can read. AxManager shows it by its number so you can still change it. Names exist only for the few it knows, and only on the ROM they belong to, because another brand can use the same number for something else. See [Special access](./privilege.md#special-access).
 
 ## Plugins keep running after the server stops
 
