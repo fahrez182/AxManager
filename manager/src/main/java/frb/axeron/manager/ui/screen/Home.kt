@@ -1,6 +1,11 @@
 package frb.axeron.manager.ui.screen
 
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import java.security.MessageDigest
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -49,14 +54,20 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.outlined.Coffee
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import frb.axeron.manager.ui.component.AxTopAppBar
 import androidx.compose.material3.VerticalDivider
@@ -65,6 +76,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +88,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import frb.axeron.manager.ui.component.SettingsDivider
+import frb.axeron.api.Axeron
 import frb.axeron.api.core.AxeronSettings
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.LinearProgressIndicator
@@ -126,6 +139,7 @@ import frb.axeron.manager.ui.util.module.LatestVersionInfo
 import frb.axeron.manager.ui.viewmodel.ActivateViewModel
 import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 import frb.axeron.server.Mode
+import frb.axeron.server.ServerInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import frb.axeron.shared.AxeronApiConstant.server.VERSION_CODE
@@ -145,6 +159,16 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
     val activateViewModel = viewModelGlobal.activateViewModel
 
     val isRunning = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Running
+
+    val verification = rememberServerVerification()
+    var showSignature by remember { mutableStateOf(false) }
+    if (showSignature && isRunning) {
+        SignatureSheet(
+            verification = verification,
+            serverInfo = activateViewModel.axeronInfo.serverInfo,
+            onDismiss = { showSignature = false }
+        )
+    }
 
     val reigniteSheet = rememberReigniteSheet()
     val shutdownTitle = stringResource(R.string.server_shutdown)
@@ -201,6 +225,13 @@ fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGloba
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold,
                             )
+                        }
+                    }
+                },
+                actions = {
+                    if (isRunning) {
+                        SignatureBadge(verification, activateViewModel.axeronInfo.serverInfo) {
+                            showSignature = true
                         }
                     }
                 },
@@ -855,6 +886,300 @@ private fun WakeLockStrip(held: Boolean, onChange: (Boolean) -> Unit) {
         )
     }
 }
+
+/** What the server's callback proved so far; it lands after the screen is composed. */
+private data class ServerVerification(val verified: Boolean, val callbackUid: Int)
+
+// Plain fields in Axeron, not state: the info read right after the callback is equal to the one
+// before, so nothing else would redraw.
+@Composable
+private fun rememberServerVerification(): ServerVerification {
+    var verification by remember {
+        mutableStateOf(ServerVerification(Axeron.isServerVerified(), Axeron.serverCallbackUid()))
+    }
+    DisposableEffect(Unit) {
+        val listener = Axeron.OnBinderReceivedListener {
+            verification = ServerVerification(Axeron.isServerVerified(), Axeron.serverCallbackUid())
+        }
+        Axeron.addBinderReceivedListenerSticky(listener, Handler(Looper.getMainLooper()))
+        onDispose { Axeron.removeBinderReceivedListener(listener) }
+    }
+    return verification
+}
+
+/**
+ * Whether this server was started by a manager signed like this one, as with root managers, and
+ * whether the binder behind that answer is the server's at all: icon, verdict, colour, and what
+ * the verdict means.
+ */
+@Composable
+private fun signatureVerdict(
+    verification: ServerVerification,
+    serverInfo: ServerInfo
+): Quad<ImageVector, Int, Color, Int> {
+    val colors = MaterialTheme.colorScheme
+    return when {
+        !verification.verified -> Quad(
+            Icons.Outlined.Warning, R.string.home_signature_unverified, colors.error,
+            R.string.home_signature_unverified_msg
+        )
+        serverInfo.callerIsManager -> Quad(
+            Icons.Outlined.VerifiedUser, R.string.home_signature_match, colors.primary,
+            R.string.home_signature_match_msg
+        )
+        else -> Quad(
+            Icons.Outlined.Warning, R.string.home_signature_mismatch, colors.error,
+            R.string.home_signature_mismatch_msg
+        )
+    }
+}
+
+/** The verdict as a pill: tinted, not filled, with a thin edge so it still reads on any background. */
+@Composable
+private fun SignaturePill(
+    icon: ImageVector,
+    text: String,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(tint.copy(alpha = 0.14f))
+            .border(1.dp, tint.copy(alpha = 0.35f), CircleShape)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(modifier = Modifier.size(16.dp), imageVector = icon, contentDescription = null, tint = tint)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = tint,
+            maxLines = 1
+        )
+    }
+}
+
+/** Top right of Home while the server runs: the verdict at a glance, the details on a tap. */
+@Composable
+private fun SignatureBadge(
+    verification: ServerVerification,
+    serverInfo: ServerInfo,
+    onClick: () -> Unit
+) {
+    val (icon, verdict, tint, _) = signatureVerdict(verification, serverInfo)
+    SignaturePill(
+        icon = icon,
+        text = stringResource(verdict),
+        tint = tint,
+        modifier = Modifier
+            .padding(end = 8.dp)
+            .clickable(onClick = onClick)
+    )
+}
+
+/**
+ * What the badge means, and what it was read from, as it is read, so a "no" says why: who
+ * called back, and both certificates to compare by eye (a tap copies one).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SignatureSheet(
+    verification: ServerVerification,
+    serverInfo: ServerInfo,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val copied = stringResource(R.string.copied)
+    val colors = MaterialTheme.colorScheme
+    val own = remember { ownCertDigest(context) }
+    val (icon, verdict, tint, explanation) = signatureVerdict(verification, serverInfo)
+
+    fun copy(value: String) {
+        if (ClipboardUtil.put(context, value) && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    ModalBottomSheet(
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = colors.surfaceContainerLowest,
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.home_signature),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                SignaturePill(icon = icon, text = stringResource(verdict), tint = tint)
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(explanation),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(R.string.home_signature_about),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant
+                )
+            }
+
+            Surface(
+                shape = AxPanelShape,
+                color = colors.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    SignatureRow(
+                        label = stringResource(R.string.home_signature_binder),
+                        value = when {
+                            verification.verified -> stringResource(
+                                R.string.home_signature_called_back, uidName(verification.callbackUid)
+                            )
+                            verification.callbackUid >= 0 -> stringResource(
+                                R.string.home_signature_called_back_wrong, uidName(verification.callbackUid)
+                            )
+                            else -> stringResource(R.string.home_signature_no_callback)
+                        }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        color = colors.outline.copy(alpha = 0.2f)
+                    )
+                    SignatureBlock(
+                        label = stringResource(R.string.home_signature_server),
+                        value = serverInfo.managerCert,
+                        onCopy = ::copy
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        color = colors.outline.copy(alpha = 0.2f)
+                    )
+                    SignatureBlock(
+                        label = stringResource(R.string.home_signature_this),
+                        value = own.orEmpty(),
+                        onCopy = ::copy
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.home_signature_copy_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.outline
+            )
+        }
+    }
+}
+
+private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
+/** A label and its short value on one line. */
+@Composable
+private fun SignatureRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value.ifEmpty { "—" },
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+/**
+ * A certificate digest under its label, in groups of 8 characters, 4 groups to a line, so two
+ * of them can be compared line by line. More than one signer gets a gap between them. A tap
+ * copies the digest as one string.
+ */
+@Composable
+private fun SignatureBlock(label: String, value: String, onCopy: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (value.isNotEmpty()) Modifier.clickable { onCopy(value) } else Modifier),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (value.isNotEmpty()) {
+                Icon(
+                    modifier = Modifier.size(16.dp),
+                    imageVector = Icons.Outlined.ContentCopy,
+                    contentDescription = null,
+                    tint = colors.outline
+                )
+            }
+        }
+        Text(
+            text = value.split(',').filter { it.isNotEmpty() }.joinToString("\n\n") { digest ->
+                digest.chunked(8).chunked(4).joinToString("\n") { it.joinToString(" ") }
+            }.ifEmpty { "—" },
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.5.sp,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+/** root and shell are what a real server calls back as; any other uid is shown as a number. */
+private fun uidName(uid: Int): String = when (uid) {
+    0 -> "root (0)"
+    2000 -> "shell (2000)"
+    else -> "uid $uid"
+}
+
+/**
+ * SHA-256 of this app's signing certificate(s), computed as the server computes the one it
+ * trusts, to show next to it. Display only: whether they match is the server's call.
+ */
+private fun ownCertDigest(context: Context): String? = runCatching {
+    val pm = context.packageManager
+    val signers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            .signingInfo?.apkContentsSigners
+    } else {
+        @Suppress("DEPRECATION")
+        pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
+    }
+    signers?.joinToString(",") { signer ->
+        MessageDigest.getInstance("SHA-256").digest(signer.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+    }
+}.getOrNull()
 
 /** AXGC-style sub card: uptime, PID and server version in one strip with dividers. */
 @Composable
