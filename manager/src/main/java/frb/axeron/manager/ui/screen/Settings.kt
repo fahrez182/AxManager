@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Coffee
@@ -184,6 +185,7 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                             override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
                                 activateViewModel.checkShizukuIntercept()
                                 activateViewModel.checkStopPluginsWithServer()
+                                activateViewModel.checkStealth(context)
                                 shizukuAppInstalled = isShizukuAppInstalled(context)
                             }
                         }
@@ -192,6 +194,14 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                             lifecycleOwner.lifecycle.removeObserver(observer)
                         }
                     }
+                    SettingsRow(
+                        iconVector = Icons.Outlined.VisibilityOff,
+                        label = stringResource(R.string.stealth),
+                        description = stringResource(R.string.stealth_desc),
+                        detail = stringResource(R.string.stealth_detail),
+                        checked = activateViewModel.isStealth,
+                        onSwitchChange = { activateViewModel.updateStealth(context, it) }
+                    )
                     SettingsRow(
                         iconPainter = painterResource(R.drawable.ic_axeron),
                         label = stringResource(R.string.axeron_permission),
@@ -202,12 +212,14 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                             stringResource(R.string.axeron_permission_desc)
                         },
                         checked = activateViewModel.isShizukuActive,
-                        onSwitchChange = { activateViewModel.setShizukuIntercept(it) }
+                        onSwitchChange = { activateViewModel.setShizukuIntercept(it) },
+                        showDivider = true
                     )
                     SettingsRow(
                         iconVector = Icons.Outlined.PowerSettingsNew,
                         label = stringResource(R.string.stop_plugins_with_server),
                         description = stringResource(R.string.stop_plugins_with_server_desc),
+                        detail = stringResource(R.string.stop_plugins_with_server_detail),
                         checked = activateViewModel.isStopPluginsWithServer,
                         onSwitchChange = { activateViewModel.updateStopPluginsWithServer(it) },
                         showDivider = true

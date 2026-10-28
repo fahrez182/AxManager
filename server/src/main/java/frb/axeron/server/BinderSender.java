@@ -92,6 +92,12 @@ public class BinderSender {
         // a package name or a permission that names one.
         boolean isOurManager = axeronService.isManagerUid(uid);
 
+        // An allowed app gets its capability, each process once; pushCapability does nothing for
+        // one that isn't (see ClientCapability).
+        if (!isOurManager && SENT_BINDERS.add(uid + ":" + pid + ":cap")) {
+            axeronService.pushCapability(uid);
+        }
+
         IShizukuService shizukuService = axeronService.getShizukuService();
 
         // Non-manager uids can only be served while the Shizuku intercept is enabled. Do not mark
@@ -149,6 +155,12 @@ public class BinderSender {
                     }
 
                 } else if (ArraysKt.contains(pi.requestedPermissions, PERMISSION)) {
+                    // Stealth: a client not allowed yet isn't told a server is here. Allowing it
+                    // in the manager hands it the binder then (pushShizukuBinder).
+                    if (axeronService.isStealth() && !axeronService.isAllowed(uid)) {
+                        LOGGER.d("stealth: uid %d isn't allowed, no binder", uid);
+                        return;
+                    }
                     AxeronService.sendBinderToUserApp(
                             shizukuService.asBinder(),
                             packageName,
@@ -219,6 +231,7 @@ public class BinderSender {
                 PID_LIST.remove(pid);
             }
             SENT_BINDERS.remove(uid + ":" + pid);
+            SENT_BINDERS.remove(uid + ":" + pid + ":cap");
         }
 
         @Override

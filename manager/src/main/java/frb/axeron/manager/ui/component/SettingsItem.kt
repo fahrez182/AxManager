@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -16,18 +17,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,8 +50,10 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import frb.axeron.manager.R
 
 // Rows inside a settings card: 16dp gutter + 36dp badge + 12dp gap.
 private val RowTextInset = 64.dp
@@ -67,6 +77,11 @@ fun SettingsGroup(
 fun SettingsRow(
     label: String,
     description: String? = null,
+    /**
+     * The full story behind [description], which stays one short line: an info icon opens it in
+     * a sheet. Tapping the row still toggles, so the explanation can't be opened by mistake.
+     */
+    detail: String? = null,
     iconVector: ImageVector? = null,
     iconPainter: Painter? = null,
     enabled: Boolean = true,
@@ -80,6 +95,16 @@ fun SettingsRow(
 ) {
     // A switch row toggles from anywhere on the row, not only from the switch itself.
     val rowClick = onClick ?: onSwitchChange?.let { { it(!checked) } }
+    var showDetail by remember { mutableStateOf(false) }
+
+    if (showDetail && detail != null) {
+        SettingsDetailSheet(
+            label = label,
+            summary = description,
+            detail = detail,
+            onDismiss = { showDetail = false }
+        )
+    }
 
     Column {
         if (showDivider) {
@@ -102,6 +127,16 @@ fun SettingsRow(
                 enabled = enabled
             )
 
+            if (detail != null) {
+                IconButton(onClick = { showDetail = true }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = stringResource(R.string.settings_about, label),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             trailing?.invoke(this)
 
             when {
@@ -120,6 +155,49 @@ fun SettingsRow(
 
         if (content != null) {
             content(enabled)
+        }
+    }
+}
+
+/** A row's [SettingsRow] detail: its one-line summary on top, then the rest. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsDetailSheet(
+    label: String,
+    summary: String?,
+    detail: String,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            if (summary != null) {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

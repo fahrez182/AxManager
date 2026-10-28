@@ -10,14 +10,18 @@ import frb.axeron.server.IAxeronService
 import frb.axeron.server.util.Logger
 import java.io.FileDescriptor
 import java.io.IOException
+import java.security.SecureRandom
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
- * Native `axsh` clients connect to the abstract socket [SOCKET_NAME] wherever SELinux lets them
+ * Native `axsh` clients connect to the abstract socket [socketName] wherever SELinux lets them
  * (root mode) and run the shared [Sessions] protocol right here, without the binder round
  * trip a broker needs. Callers are identified by SO_PEERCRED.
+ *
+ * The name is new on every start and only told to allowed apps (getAxshSocketName), so an app
+ * that isn't can't find the socket, let alone knock on it.
  */
 class AxshServer(
     private val server: () -> IAxeronService,
@@ -27,9 +31,10 @@ class AxshServer(
 
     companion object {
         private val LOGGER = Logger("AxshServer")
-
-        const val SOCKET_NAME = "axeron"
     }
+
+    val socketName: String = "axeron." +
+        ByteArray(8).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
 
     override val tag = "AxshServer"
 
@@ -46,14 +51,14 @@ class AxshServer(
     private val waits = SparseArray<PermissionWait>()
 
     fun start() {
-        if (!sessions.listen(SOCKET_NAME)) LOGGER.w("axsh socket @%s unavailable", SOCKET_NAME)
+        if (!sessions.listen(socketName)) LOGGER.w("axsh socket unavailable")
     }
 
     fun stop() = sessions.stop()
 
     /**
      * A channel for a helper running as [uid] (axsh's native daemon), which can't connect to
-     * [SOCKET_NAME] under SELinux but can hold a socket we made. Each byte it sends carries one
+     * [socketName] under SELinux but can hold a socket we made. Each byte it sends carries one
      * client socket (SCM_RIGHTS) that it accepted; the session is then served here, exactly as
      * if the client had connected to us. Returns the helper's end.
      */

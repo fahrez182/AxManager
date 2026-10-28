@@ -22,6 +22,7 @@ import android.os.PowerManager
 import android.os.RemoteException
 import android.os.SELinux
 import android.os.SystemProperties
+import android.util.SparseArray
 import android.os.ServiceManager
 import android.os.SystemClock
 import android.system.Os
@@ -94,10 +95,6 @@ open class AxeronService :
 
         // In AXERONDIR. Must match START_ENV_FILE in starter.cpp.
         private const val START_ENV_FILE = "server_env"
-
-        // The sticky broadcast holding this server's binder (see publishBinder). Mirrored in
-        // AxBroker.
-        private const val SERVER_BINDER_ACTION = "AxRuntime.SERVER_BINDER"
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -349,6 +346,30 @@ open class AxeronService :
         }
 
         fun sendBinderToUserApp(binder: IBinder, packageName: String, userId: Int, retry: Boolean) {
+            val ours = packageName == runningManager?.packageName
+            val extras = Bundle().apply {
+                putParcelable(
+                    if (ours) "AxServer.BINDER" else "moe.shizuku.privileged.api.intent.extra.BINDER",
+                    BinderContainer(binder)
+                )
+            }
+            val name = if (ours) "$packageName.server" else "$packageName.shizuku"
+            callAppProvider(packageName, userId, name, "sendBinder", extras, retry)
+        }
+
+        /** An allowed app's capability, to the provider axsh's manifest gives it. */
+        @JvmStatic
+        fun sendCapabilityToApp(capability: IBinder, packageName: String, userId: Int) {
+            val extras = Bundle().apply { putBinder(AxeronApiConstant.server.EXTRA_CAPABILITY, capability) }
+            callAppProvider(
+                packageName, userId, packageName + AxeronApiConstant.server.PROVIDER_AUTHORITY_SUFFIX,
+                AxeronApiConstant.server.METHOD_SEND_CAPABILITY, extras, true
+            )
+        }
+
+        private fun callAppProvider(
+            packageName: String, userId: Int, name: String, method: String, extras: Bundle, retry: Boolean
+        ) {
             try {
                 DeviceIdleControllerApis.addPowerSaveTempWhitelistApp(
                     packageName, 30 * 1000, userId,
@@ -364,15 +385,6 @@ open class AxeronService :
                 )
             }
 
-            var name: String
-            var extraBinder: String
-            if (packageName == runningManager?.packageName) {
-                name = "$packageName.server"
-                extraBinder = "AxServer.BINDER"
-            } else {
-                name = "$packageName.shizuku"
-                extraBinder = "moe.shizuku.privileged.api.intent.extra.BINDER"
-            }
             var provider: IContentProvider?
             val token: IBinder? = null
 
@@ -392,7 +404,7 @@ open class AxeronService :
                         // Later, not by sleeping: callers are the main thread and the uid and
                         // process observers, whose other events would wait behind it.
                         Service.mainHandler.postDelayed({
-                            sendBinderToUserApp(binder, packageName, userId, false)
+                            callAppProvider(packageName, userId, name, method, extras, false)
                         }, 1000)
                     }
                     return
@@ -402,13 +414,10 @@ open class AxeronService :
                     LOGGER.e("retry works")
                 }
 
-                val extra = Bundle().apply {
-                    putParcelable(extraBinder, BinderContainer(binder))
-                }
-                IContentProviderCompat.call(provider, null, null, name, "sendBinder", null, extra)
-                LOGGER.i("send binder to user app %s in user %d", packageName, userId)
+                IContentProviderCompat.call(provider, null, null, name, method, null, extras)
+                LOGGER.i("%s to %s in user %d", method, name, userId)
             } catch (it: Throwable) {
-                LOGGER.e(it, "failed send binder to user app %s in user %d", packageName, userId)
+                LOGGER.e(it, "failed %s to %s in user %d", method, name, userId)
             } finally {
                 try {
                     ActivityManagerApis.removeContentProviderExternal(name, token)
@@ -671,6 +680,51 @@ open class AxeronService :
 
     private var axshServer: AxshServer? = null
 
+    /** One per granted uid, minted the first time it is handed out. */
+    private val capabilities = SparseArray<ClientCapability>()
+
+    /**
+     * [uid]'s view of the server, or null while it isn't allowed: an app that isn't gets nothing
+     * to call. Kept per uid; it refuses calls by itself once the grant is gone.
+     */
+    fun capabilityFor(uid: Int): ClientCapability? {
+        if (configManager.find(uid)?.isAllowed != true) return null
+        return capabilityOf(uid)
+    }
+
+    /** [uid]'s capability whether or not it is allowed yet: before, it can only ask. */
+    private fun capabilityOf(uid: Int): ClientCapability =
+        synchronized(capabilities) {
+            capabilities.get(uid) ?: ClientCapability(this, uid).also { capabilities.put(uid, it) }
+        }
+
+    /**
+     * For the manager's relay, whose app_process requester has no provider to push to and no
+     * activity to ask from: its capability even before it is allowed, so it can ask (as its own
+     * uid; any other uid can't use it). The requester named the manager to get here.
+     */
+    override fun getClientCapability(uid: Int): IBinder? {
+        enforceManagerPermission("getClientCapability")
+        if (uid < 0 || isManagerUid(uid)) return null
+        return capabilityOf(uid).asBinder()
+    }
+
+    /**
+     * Hands [uid] its capability through the provider of each of its packages, if it is allowed;
+     * an app without axsh's provider is just logged. Off the caller's thread: reaching a provider
+     * may start its app.
+     */
+    fun pushCapability(uid: Int) {
+        if (isManagerUid(uid)) return
+        mainHandler.post {
+            val capability = capabilityFor(uid) ?: return@post
+            val userId = UserHandleCompat.getUserId(uid)
+            for (packageName in PackageManagerApis.getPackagesForUidNoThrow(uid)) {
+                sendCapabilityToApp(capability, packageName, userId)
+            }
+        }
+    }
+
     /**
      * Native `axsh` clients (uid/pid from SO_PEERCRED) reach the same gate as binder callers:
      * root/shell always, the manager app always, everything else only once granted per-uid.
@@ -723,6 +777,13 @@ open class AxeronService :
     private val starting: Long = SystemClock.elapsedRealtime()
 
     var shizuku: ShizukuServiceIntercept? = null
+
+    /**
+     * AX-Stealth Mode ([AxeronApiConstant.folder.STEALTH]): an app the manager hasn't allowed is
+     * told nothing, Shizuku clients included. Read each time, so the switch needs no restart.
+     */
+    fun isStealth(): Boolean =
+        File(PathHelper.getWorkingPath(isRoot, AxeronApiConstant.folder.PARENT), AxeronApiConstant.folder.STEALTH).exists()
 
     val axCompanion =
         File(
@@ -820,11 +881,13 @@ open class AxeronService :
         }
 
         BinderSender.register(this)
-        publishBinder()
 
         mainHandler.post {
             sendBinderToClient()
             sendBinderToManager()
+            // Nothing is published for apps to pick up: each allowed one is handed its capability,
+            // including those already running, which BinderSender only sees on their next change.
+            for (uid in configManager.allowedUids()) pushCapability(uid)
         }
 
         // Held from the start; the manager releases it on connect if the user turned it off.
@@ -833,38 +896,34 @@ open class AxeronService :
         startDeathWatchdog()
     }
 
-    /**
-     * Leaves this server's binder in system_server as a sticky broadcast, for every user, so an
-     * app with a Context reads it with registerReceiver(null, …) — nothing is delivered and nobody
-     * is woken — instead of waiting for BinderSender to push it. Each start replaces the last; a
-     * stale sticky holds a dead binder the reader drops on pingBinder. Who reads it needn't be
-     * known: every call on the binder is gated by the caller's uid. The binder can't be registered
-     * as a receiver instead (AMS ignores receivers with no app process) nor added to ServiceManager
-     * (the shell domain may not), and an app_process client (axsh in a bare terminal) can't read a
-     * sticky either, so [BinderSender]'s push and the manager's AxRuntime.REQUEST_BINDER relay stay.
-     */
-    private fun publishBinder() {
-        val intent = Intent(SERVER_BINDER_ACTION)
-            .putExtra("data", Bundle().apply {
-                putBinder("binder", this@AxeronService)
-                putLong("version", VERSION_CODE)
-                putString("libDir", getManagerApplicationInfo()?.nativeLibraryDir)
-            })
-        try {
-            ActivityManagerApis.broadcastIntent(
-                intent, null, null, 0, null, null, null, -1, null,
-                false, true, -1 /* UserHandle.USER_ALL */
-            )
-            LOGGER.i("server binder published as sticky")
-        } catch (e: Throwable) {
-            LOGGER.w(e, "can't publish the server binder as sticky")
+    fun sendBinderToClient() {
+        shizukuService?.let {
+            if (isStealth()) {
+                // Only the clients already allowed: the rest aren't told a server is here.
+                for (uid in configManager.allowedUids()) pushShizukuBinder(uid)
+                return
+            }
+            for (userId in UserManagerApis.getUserIdsNoThrow()) {
+                sendBinderToClient(it.asBinder(), userId)
+            }
         }
     }
 
-    fun sendBinderToClient() {
-        shizukuService?.let {
-            for (userId in UserManagerApis.getUserIdsNoThrow()) {
-                sendBinderToClient(it.asBinder(), userId)
+    fun isAllowed(uid: Int): Boolean = configManager.find(uid)?.isAllowed == true
+
+    /**
+     * The Shizuku binder to [uid]'s Shizuku clients (packages asking for its permission), while
+     * the intercept is on. For an app just allowed: in stealth it was told nothing before.
+     */
+    fun pushShizukuBinder(uid: Int) {
+        val binder = shizukuService?.asBinder() ?: return
+        val userId = UserHandleCompat.getUserId(uid)
+        for (packageName in PackageManagerApis.getPackagesForUidNoThrow(uid)) {
+            val pi = PackageManagerApis.getPackageInfoNoThrow(
+                packageName, PackageManager.GET_PERMISSIONS.toLong(), userId
+            ) ?: continue
+            if (pi.requestedPermissions?.contains(PERMISSION) == true) {
+                sendBinderToUserApp(binder, packageName, userId)
             }
         }
     }
@@ -1119,6 +1178,11 @@ open class AxeronService :
         }
     }
 
+    override fun getAxshSocketName(): String? {
+        enforceCallingPermission("getAxshSocketName")
+        return axshServer?.socketName
+    }
+
     override fun openAxshChannel(): ParcelFileDescriptor {
         enforceCallingPermission("openAxshChannel")
         val server = checkNotNull(axshServer) { "axsh is not running" }
@@ -1151,6 +1215,14 @@ open class AxeronService :
     ) {
 
         LOGGER.i("showPermissionConfirmation")
+        // Stealth: every request lands here (binder, axsh socket, relay), and an app the manager
+        // hasn't allowed gets a no instead of a dialog. Read now, so the switch needs no restart.
+        if (isStealth()) {
+            LOGGER.i("stealth: no dialog for uid %d", callingUid)
+            clientRecord?.dispatchRequestPermissionResult(requestCode, false)
+            axshServer?.onPermissionResult(callingUid, false)
+            return
+        }
         val ai = if (clientRecord != null) {
             PackageManagerApis.getApplicationInfoNoThrow(clientRecord.packageName, 0, userId)
                 ?: return
@@ -1257,6 +1329,7 @@ open class AxeronService :
 
         // axsh sessions on our own socket wait on this uid's answer, not as attached clients.
         axshServer?.onPermissionResult(requestUid, allowed)
+        if (allowed) pushCapability(requestUid)
     }
 
     @Synchronized
@@ -1532,6 +1605,11 @@ open class AxeronService :
         val keepAliveBefore = getFlagsForUidInternal(uid, KeepAlive.MASK)
 
         configManager.update(uid, null, mask, value)
+        if ((mask and value and ConfigManager.FLAG_ALLOWED) != 0) {
+            pushCapability(uid)
+            // In stealth its Shizuku clients were told nothing until now.
+            if (isStealth()) mainHandler.post { pushShizukuBinder(uid) }
+        }
 
         // The app's daemon runs with the setting it was started with: end it, and the next
         // command starts one with this.

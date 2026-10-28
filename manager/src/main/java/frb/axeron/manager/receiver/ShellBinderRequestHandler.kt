@@ -8,6 +8,7 @@ import android.os.Looper
 import android.os.Parcel
 import android.util.Log
 import frb.axeron.api.Axeron
+import frb.axeron.manager.ui.util.Stealth
 import frb.axeron.shell.KeepAlive
 import frb.axeron.server.ServerConstants
 import frb.axeron.shared.AxeronApiConstant
@@ -46,7 +47,7 @@ object ShellBinderRequestHandler {
         }
 
         Axeron.getBinder()?.takeIf { it.pingBinder() }?.let {
-            reply(context, receiver, it, keepAlive(uid))
+            answer(context, receiver, uid)
             onDone()
             return true
         }
@@ -58,7 +59,7 @@ object ShellBinderRequestHandler {
             override fun onBinderReceived() {
                 if (done.getAndSet(true)) return
                 Axeron.removeBinderReceivedListener(this)
-                Axeron.getBinder()?.let { reply(context, receiver, it, keepAlive(uid)) }
+                if (Axeron.getBinder() != null) answer(context, receiver, uid)
                 onDone()
             }
         }
@@ -70,6 +71,24 @@ object ShellBinderRequestHandler {
             onDone()
         }, BINDER_WAIT_MS)
         return true
+    }
+
+    /**
+     * The requester gets the capability of the uid it names, never the server's own binder: it
+     * works for that uid alone (to ask for the permission, until allowed), so naming someone
+     * else's uid gets nothing usable. A requester naming no uid (older) gets no answer.
+     */
+    private fun answer(context: Context, receiver: IBinder, uid: Int) {
+        // Stealth: only an app already allowed is answered; to any other, nothing is here.
+        if (Stealth.isOn() && Axeron.getFlagsForUid(uid, 1 shl 1 /* FLAG_ALLOWED */) == 0) {
+            Log.i(TAG, "stealth: uid $uid isn't allowed, not answering")
+            return
+        }
+        val capability = (if (uid >= 0) Axeron.getClientCapability(uid) else null) ?: run {
+            Log.w(TAG, "no capability for uid $uid, not answering")
+            return
+        }
+        reply(context, receiver, capability, keepAlive(uid))
     }
 
     /** The requester's setting, kept by the server: ask only once its binder is here. */

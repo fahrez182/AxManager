@@ -174,6 +174,10 @@ class AxeronConfigManager : ConfigManager() {
         }
     }
 
+    /** The uids allowed now, as stored; each is checked against its app when it is next found. */
+    fun allowedUids(): List<Int> =
+        synchronized(this) { config.packages!!.filter { it.isAllowed }.map { it.uid } }
+
     /** [uid]'s processes are gone: its entry is checked again before it is used next. */
     fun invalidate(uid: Int) {
         synchronized(this) {

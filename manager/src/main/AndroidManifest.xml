@@ -31,7 +31,6 @@
         android:name=".AxeronApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:debuggable="true"
         android:directBootAware="true"
         android:enableOnBackInvokedCallback="true"
         android:fullBackupContent="@xml/backup_rules"
@@ -41,7 +40,6 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.AxManager"
-        tools:ignore="HardcodedDebugMode"
         tools:targetApi="33">
 
         <!-- singleTask: one AxActivity, in AxManager's own task. Zips from other apps arrive
@@ -85,29 +83,40 @@
             android:theme="@style/GrantPermissions">
             <intent-filter>
                 <action android:name="AxRuntime.REQUEST_PERMISSION" />
-                <!-- Up to 2.1.1: a server started before the update still sends this one. -->
-                <action android:name="${applicationId}.intent.action.REQUEST_PERMISSION" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
+        <!-- An app asks for AxManager here, for a result (AxRuntime.REQUEST_ACCESS): the only way
+             an app learns it is here before it is allowed. -->
+        <activity
+            android:name=".ui.RequestAccessActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@style/Theme.Transparent.NoUI">
+            <intent-filter>
+                <action android:name="AxRuntime.REQUEST_ACCESS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Opened by component only (WebUIActivity.intentFor, its shortcuts): no filter for
+             other apps to find it by. -->
         <activity
             android:name=".ui.webui.WebUIActivity"
             android:autoRemoveFromRecents="true"
             android:documentLaunchMode="intoExisting"
             android:exported="true"
-            android:theme="@style/Theme.AxManager.WebUI">
-            <intent-filter>
-                <action android:name="AxManager.WEB_UI" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
+            android:theme="@style/Theme.AxManager.WebUI" />
 
+        <!-- For plugins (`am start` as the server's uid): shell and root hold the permission, an
+             app doesn't, so none can show a toast as AxManager. -->
         <activity
             android:name=".Toast"
             android:enabled="true"
             android:excludeFromRecents="true"
             android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"
             android:taskAffinity=":toast"
             android:theme="@style/Theme.Transparent.NoUI">
             <intent-filter>
@@ -137,16 +146,14 @@
             android:process=":crash"
             android:theme="@style/Theme.AxManager" />
 
+        <!-- The relay for app_process clients, reached by component
+             (AxeronApiConstant.server.RELAY_RECEIVER): no filter for other apps to find it by. -->
         <receiver
             android:name="frb.axeron.manager.receiver.BinderRequestReceiver"
             android:directBootAware="true"
             android:enabled="true"
             android:exported="true"
-            tools:ignore="ExportedReceiver">
-            <intent-filter>
-                <action android:name="AxRuntime.REQUEST_BINDER" />
-            </intent-filter>
-        </receiver>
+            tools:ignore="ExportedReceiver" />
 
         <provider
             android:name=".AxManagerProvider"

@@ -31,6 +31,7 @@ import frb.axeron.manager.adb.AdbStarter
 import frb.axeron.manager.adb.AdbStarter.stopTcp
 import frb.axeron.manager.adb.AdbStateInfo
 import frb.axeron.manager.ui.component.ActionLog
+import frb.axeron.manager.ui.util.Stealth
 import frb.axeron.shared.AxeronApiConstant
 import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.CompletableDeferred
@@ -223,6 +224,23 @@ class ActivateViewModel : ViewModel() {
             }
             // Show what is really on disk, in case the write failed.
             checkStopPluginsWithServer()
+        }
+    }
+
+    /** See [Stealth]: shown as on disk, which the request-access activity is kept in line with. */
+    var isStealth by mutableStateOf(false)
+        private set
+
+    fun checkStealth(context: Context) {
+        viewModelScope.launch {
+            isStealth = withContext(Dispatchers.IO) { Stealth.isOn().also { Stealth.sync(context, it) } }
+        }
+    }
+
+    fun updateStealth(context: Context, enable: Boolean) {
+        viewModelScope.launch {
+            isStealth = enable
+            isStealth = withContext(Dispatchers.IO) { Stealth.set(context, enable) }
         }
     }
 

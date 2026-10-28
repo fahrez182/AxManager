@@ -64,9 +64,18 @@ import java.util.concurrent.TimeoutException
 
 class RequestPermissionActivity : ComponentActivity() {
 
+    companion object {
+        /**
+         * From RequestAccessActivity: no "allow once", as no process of the app is attached to
+         * hold a one-time grant. The answer goes back to that app as this activity's result.
+         */
+        const val EXTRA_FOR_GOOD_ONLY = "forGoodOnly"
+    }
+
     private val LOGGER = Logger("RequestPermissionActivity")
 
     private fun setResult(uid: Int, pid: Int, code: Int, allowed: Boolean, onetime: Boolean) {
+        setResult(if (allowed) RESULT_OK else RESULT_CANCELED)
         val data = Bundle().apply {
             putBoolean(REQUEST_PERMISSION_REPLY_ALLOWED, allowed)
             putBoolean(REQUEST_PERMISSION_REPLY_IS_ONETIME, onetime)
@@ -145,6 +154,7 @@ class RequestPermissionActivity : ComponentActivity() {
             AxManagerTheme {
                 RequestPermissionDialog(
                     applicationInfo = ai,
+                    allowOnce = !intent.getBooleanExtra(EXTRA_FOR_GOOD_ONLY, false),
                     onAllow = { once ->
                         setResult(uid, pid, requestCode, allowed = true, onetime = once)
                         finish()
@@ -163,6 +173,7 @@ class RequestPermissionActivity : ComponentActivity() {
 @Composable
 fun RequestPermissionDialog(
     applicationInfo: ApplicationInfo,
+    allowOnce: Boolean = true,
     onAllow: (once: Boolean) -> Unit,
     onDeny: () -> Unit
 ) {
@@ -259,7 +270,7 @@ fun RequestPermissionDialog(
                 ) {
                     Text(stringResource(R.string.permission_allow_all_time))
                 }
-                Button(
+                if (allowOnce) Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         scope.launch { sheetState.hide() }.invokeOnCompletion { onAllow(true) }

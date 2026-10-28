@@ -348,8 +348,13 @@
     <string name="plugin_dev_info_on">On</string>
     <string name="plugin_dev_info_off">Off</string>
     <string name="plugin_dev_info_hint">Tap a value to copy it. Every process a plugin starts carries the marker, so it is stopped with the plugin.</string>
+    <string name="stealth">AX-Stealth Mode</string>
+    <string name="stealth_desc">Apps you haven\'t allowed can\'t see AxManager.</string>
+    <string name="stealth_detail">While on:\n• An app you haven\'t allowed gets no permission dialog and no answer. To it, AxManager isn\'t installed.\n• Shizuku clients through Permission Intercept are included: they get no binder until you allow them.\n• Allow a new app from the app list in AxManager; it connects right away.\n\nNot affected: apps you already allowed keep working.\n\nAxManager itself still shows in the launcher, and to apps that can list every installed app.</string>
     <string name="stop_plugins_with_server">Stop plugins with the server</string>
-    <string name="stop_plugins_with_server_desc">When the server stops or dies, every plugin is stopped too. Shutdown and Restart from AxManager stop them first, shown in their log; Restart then ignites them again. If the server dies any other way, they are stopped right after. Off: plugins keep running on their own.</string>
+    <string name="stop_plugins_with_server_desc">Plugins stop when the server stops.</string>
+    <string name="stop_plugins_with_server_detail">While on:\n• Shutdown and Restart from AxManager stop every plugin first, shown in their log. Restart then ignites them again.\n• If the server dies any other way, plugins are stopped right after.\n\nOff: plugins keep running on their own when the server stops.</string>
+    <string name="settings_about">About %1$s</string>
     <string name="settings_env_locked">Set by AxManager or Android. It is shown here, but can\'t be changed.</string>
     <string name="settings_env_ref_kept">Always kept</string>
     <string name="settings_env_ref_desc">$%1$s stands for the default %1$s that AxManager and Android set, listed below in order. It can\'t be removed: your entries only go before or after it.</string>

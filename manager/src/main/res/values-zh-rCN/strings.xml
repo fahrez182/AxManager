@@ -174,7 +174,12 @@
     <string name="plugin_dev_info_off">关</string>
     <string name="plugin_dev_info_hint">点击值即可复制。插件启动的每个进程都带有此标记，因此会随插件一起停止。</string>
     <string name="stop_plugins_with_server">随服务停止插件</string>
-    <string name="stop_plugins_with_server_desc">服务停止或退出时，所有插件也会随之停止。从 AxManager 关闭或重启服务时会先停止插件，过程显示在日志中；重启后会重新启动插件。若服务以其他方式退出，插件会随后被停止。关闭时，插件将独立继续运行。</string>
+    <string name="stop_plugins_with_server_desc">服务停止时，插件也随之停止。</string>
+    <string name="stop_plugins_with_server_detail">开启时：\n• 从 AxManager 关闭或重启服务时，会先停止所有插件，过程显示在日志中；重启后会重新启动插件。\n• 若服务以其他方式退出，插件会随后被停止。\n\n关闭时：服务停止后，插件将独立继续运行。</string>
+    <string name="stealth">AX-Stealth Mode</string>
+    <string name="stealth_desc">未经你允许的应用无法发现 AxManager。</string>
+    <string name="stealth_detail">开启时：\n• 未经你允许的应用不会看到授权对话框，也得不到任何回应。对它而言，AxManager 并未安装。\n• 通过 Permission Intercept 的 Shizuku 客户端同样如此：在你允许之前不会收到 binder。\n• 请在 AxManager 的应用列表中允许新应用，它会立即连接。\n\n不受影响：已允许的应用照常工作。\n\nAxManager 本身仍会显示在启动器中，也能被可查看所有已安装应用的应用看到。</string>
+    <string name="settings_about">关于 %1$s</string>
     <string name="settings_env_locked">由 AxManager 或 Android 设置。此处仅显示，无法修改。</string>
     <string name="settings_env_ref_kept">始终保留</string>
     <string name="settings_env_ref_desc">$%1$s 代表 AxManager 与 Android 设置的默认 %1$s，按顺序列于下方。它无法被移除：你的条目只能放在它之前或之后。</string>
