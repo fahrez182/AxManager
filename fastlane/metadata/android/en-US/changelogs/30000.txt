@@ -1,0 +1,45 @@
+# AxManager 3.0.0
+
+A security release. Every route to AxManager's shell now goes through your permission, per app.
+
+> [!WARNING]
+> Apps built on the Axeron API (`axsh`) 2.x can't connect to 3.0. They need `axsh` 3.0.0 or later.
+> Apps built on Shizuku-API are not affected.
+
+## Security
+- **Each app gets its own access.** The server's binder goes to AxManager alone; every other app gets a capability that works for its uid only and stops the moment you revoke it.
+- **Manager identified by its APK and certificate**, not by a package name. The Shizuku app's package name no longer grants manager rights outside Shizuku compatibility.
+- **Grants are bound to the app's signing certificate.** An app that inherits the uid of an uninstalled one, or the same app re-signed with another key, is asked again.
+- **WebUI:** other sites open in the browser, and plugin pages are served with a CSP, so no other site can be framed in or posted to and reach the shell bridges.
+- **axsh socket:** random name per server start, told only to allowed apps; clients accept it only from root or shell.
+- Apps can no longer pass themselves off as the server to other apps.
+
+## New
+- **AX-Stealth Mode** (Settings → Environment): apps you haven't allowed get no dialog and no answer, as if AxManager weren't installed. Shizuku clients included.
+- **Request access:** apps that aren't allowed yet open AxManager's permission dialog.
+- **Start after reboot** through a watchdog service that waits for Wi-Fi and shows each activation step in a notification.
+- **Signature badge** on Home, with a detail sheet.
+- Settings rows can explain themselves behind an info icon.
+
+## Activation
+- Wireless start waits for Wi-Fi (opens the Wi-Fi panel) and always goes through wireless debugging.
+- Developer options, USB debugging and wireless debugging are switched on together.
+- Developer settings open straight in Settings, no more "Open with" chooser.
+- Activate shows whether Secure and System settings can be written.
+- TCP mode only switches adbd to tcpip when it's actually needed.
+
+## Fixes
+- Release builds: the server could fail to hand its binder to AxManager (R8 stripped a class).
+- Settings editor redraws a row when its value changes.
+- Signature badge touch area follows its pill shape.
+
+## Plugins
+- `axeronPlugin=30000`. WebUI pages can reach only the plugin's own origins.
+
+## Website
+- axmanager.app is the official site.
+- New **Security in 3.0** page; long pages split; sidebar regrouped.
+- Kotlin and Java examples in Connect with an App.
+- Everything also in Simplified Chinese.
+
+**Full Changelog**: https://github.com/fahrez182/AxManager/compare/v2.1.0...v3.0.0
