@@ -6,6 +6,8 @@ A privileged environment for Android that runs on **ADB (shell) permissions**, o
 
 [Switch to Chinese translation 切换到中文翻译](README_cn.md)
 
+> **3.0 is a security release.** Every app now gets its own access to the server, bound to its signing certificate and gone the moment you revoke it. Apps built on the Axeron API (`axsh`) before 3.0 can't connect; Shizuku-API apps are not affected. See [Security in 3.0](https://axmanager.app/guide/security).
+
 ## What it is
 
 AxManager starts its own server process, either as the `shell` user (through Wireless Debugging, a computer, or another phone over OTG) or as `root`. The app, plugins, their WebUIs and the other apps you allow all work through that server. Most features need no root; with root they run with root's reach.
@@ -14,23 +16,25 @@ AxManager starts its own server process, either as the `shell` user (through Wir
 
 ### Activation
 - **Root**: start directly from the app.
-- **Wireless Debugging** (Android 11+): pair and start on the device itself, without a computer.
+- **Wireless Debugging** (Android 11+): pair and start on the device itself, without a computer. It waits for Wi-Fi, and switches developer options, USB debugging and wireless debugging on together.
 - **TCP debugging**, with a configurable port.
 - **Computer**: start it with one `adb shell` command.
 - **Browser**: start it over USB from [axmanager.app/activate](https://axmanager.app/activate) in Chrome or Edge, without installing `adb`.
 - **OTG**: use this phone as the computer and start AxManager on another phone over a USB cable.
 - **Start as Shell**: run in shell mode even on a rooted device.
-- **Start on boot**: root, or ADB on Android 11+ (experimental).
+- **Start on boot**: root, or ADB on Android 11+ (experimental), through a service that waits for Wi-Fi and shows each step in a notification.
 - An activation log streams each step, so a failure says where it stopped.
 
 ### Home
 - Server status, how it was started (root, root as shell, or ADB) and whether it starts on boot.
+- A signature badge (Match, Mismatch or Unverified) that says whether the running server was started by this AxManager, by its signing certificate rather than a package name; tap it for the details.
 - A wakelock switch that keeps the server from being suspended.
 - Device details: model, Android version, security patch, kernel, supported ABIs, SELinux context.
 - An update notice when a newer release is out.
 
 ### Privilege
 - Grant or deny AxManager access per app, with filters for installed, system and Shizuku-API apps.
+- An app that isn't allowed yet asks through AxManager's permission dialog. A permission belongs to the app's signing certificate: the same app signed with another key, or another app that later gets its uid, is asked again.
 - **Shizuku compatibility**: apps built on [Shizuku-API](https://github.com/RikkaApps/Shizuku-API) connect to AxManager without Shizuku running. Some older apps still require the Shizuku app to be installed (not running), and Settings warns you when it isn't.
 - **Per-app detail**:
   - Force stop, clear cache, clear data, and uninstall (system apps for the current user).
@@ -43,7 +47,7 @@ AxManager starts its own server process, either as the `shell` user (through Wir
 Modules in the familiar Magisk/KernelSU layout, run by AxManager's server instead of a root daemon. See the [plugin docs](https://axmanager.app/plugin/what-is-plugin.html).
 - `module.prop`, `customize.sh`, `post-fs-data.sh`, `service.sh`, `system.prop`, `action.sh`, `uninstall.sh`, and `system/bin` (linked into `$AXERONXBIN`, which is on `PATH`).
 - A full BusyBox (with Standalone Mode), `resetprop`, and the `AXERON`, `AXERONVER`, `AXERONDIR`, `AXERONBIN`, `AXERONXBIN` and `TMPDIR` environment variables.
-- **WebUI** with a KernelSU-compatible `ksu` JavaScript API and AxManager's own `Axeron` API. Any plugin's WebUI can be pinned to the home screen with its own name and icon.
+- **WebUI** with a KernelSU-compatible `ksu` JavaScript API and AxManager's own `Axeron` API. Any plugin's WebUI can be pinned to the home screen with its own name and icon. A WebUI shows only the plugin's own pages: other sites open in the browser and can't reach those APIs.
 - **Process lifecycle**: every process a plugin starts (from its scripts, its action or its WebUI) carries an `AXERON_PLUGIN=<id>` marker. Disabling or removing the plugin stops all of them, daemons included: SIGTERM first, SIGKILL after 3 seconds.
 - `post-fs-data.sh` and `uninstall.sh` can block for 40 seconds at most; their output is kept in `$AXERONDIR/logs`.
 - Plugins keep running when the server stops, unless you turn on **Stop plugins with the server**.
@@ -61,6 +65,7 @@ Modules in the familiar Magisk/KernelSU layout, run by AxManager's server instea
 - **Quick Settings**: keep the values you change often in one list and switch them in one tap.
 
 ### Settings and appearance
+- **AX-Stealth Mode**: apps you haven't allowed get no dialog and no answer, as if AxManager weren't installed, Shizuku clients included. You allow new apps from Privilege instead.
 - Environment: the Shizuku intercept, stopping plugins with the server, and preferring the system's binaries over BusyBox on `PATH`.
 - Start on boot, and re-ignite plugins every time the app reconnects to the server (by default only on the first connection after the server starts).
 - Reset per mode (root, shell, or both).
@@ -124,6 +129,8 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 Everything is on [axmanager.app](https://axmanager.app):
 - [What is Axeron Manager?](https://axmanager.app/guide/what-is-axeron-manager.html)
 - [User manual](https://axmanager.app/guide/user-manual.html)
+- [Security in 3.0](https://axmanager.app/guide/security.html)
+- [Connect with an App](https://axmanager.app/guide/connect-app.html)
 - [Plugins](https://axmanager.app/plugin/what-is-plugin.html)
 - [Re-ignite](https://axmanager.app/plugin/re-ignite.html)
 - [FAQ](https://axmanager.app/guide/faq.html)

@@ -6,6 +6,8 @@
 
 [Switch to English 切换到英文](README.md)
 
+> **3.0 是一次安全更新。** 每个应用都会获得自己专属的服务访问权限，该权限绑定到应用的签名证书，一旦撤销立即失效。基于 3.0 之前的 Axeron API（`axsh`）构建的应用无法连接；基于 Shizuku-API 的应用不受影响。详见 [3.0 的安全更新](https://axmanager.app/zh/guide/security)。
+
 ## 💡 这是什么
 
 AxManager 以 `shell` 用户（通过无线调试、电脑或另一台手机经 OTG）或以 `root` 身份启动自己的服务进程。其余一切都与该服务通信：应用本身、插件、插件的 WebUI，以及您允许的其他应用。大部分功能都不需要 root；有 root 时，同样的功能将以 root 的权限范围运行。
@@ -14,7 +16,8 @@ AxManager 以 `shell` 用户（通过无线调试、电脑或另一台手机经 
 
 ### 🚀 激活
 - **Root**：直接启动，并在开机时自动启动。
-- **无线调试**（Android 11+）：在设备本机上配对并启动，无需电脑。
+- **无线调试**（Android 11+）：在设备本机上配对并启动，无需电脑。会等待 Wi-Fi 连接，并同时开启开发者选项、USB 调试和无线调试。
+- **开机启动**：root，或 Android 11+ 上的 ADB（实验性），由一个等待 Wi-Fi 的服务完成，并在通知中显示每一步。
 - **TCP 调试**和**电脑（adb）**：经典的启动方式。
 - **OTG**：把这台手机当作"电脑"，通过 USB 线在另一台手机上启动 AxManager。
 - **浏览器**：在 Chrome 或 Edge 中打开 [axmanager.app/activate](https://axmanager.app/activate)，通过 USB 启动，无需安装 `adb`。
@@ -25,13 +28,15 @@ AxManager 以 `shell` 用户（通过无线调试、电脑或另一台手机经 
 采用熟悉的 Magisk/KernelSU 结构的模块，由 AxManager 的服务运行，而不是 root 守护进程。[插件文档](https://axmanager.app/zh/plugin/what-is-plugin.html)
 - `module.prop`、`customize.sh`、`post-fs-data.sh`、`service.sh`、`system.prop`、`action.sh`、`uninstall.sh`，以及 `system/bin`（链接到位于 `PATH` 中的 `$AXERONXBIN`）。
 - 完整的 **BusyBox**（支持独立模式），以及 `AXERON`、`AXERONVER`、`AXERONDIR`、`AXERONBIN`、`TMPDIR` 环境变量。
-- **WebUI**：兼容 KernelSU 的 `ksu` JavaScript API，加上 AxManager 自己的 `Axeron` API，并可为插件的 WebUI 创建桌面快捷方式。
+- **WebUI**：兼容 KernelSU 的 `ksu` JavaScript API，加上 AxManager 自己的 `Axeron` API，并可为插件的 WebUI 创建桌面快捷方式。WebUI 只显示插件自己的页面：其他网站会在浏览器中打开，无法访问这些 API。
 - **干净的进程生命周期**：插件启动的每个进程（无论来自其任何脚本、操作按钮还是 WebUI）都带有 `AXERON_PLUGIN=<id>` 标记，因此禁用或移除插件会停止它的全部进程，包括守护进程。
 - 可选：**服务停止时停止所有插件**，或让插件独立继续运行。
 - **开发者模式**会增加一张信息卡片，显示插件脚本看到的路径和变量值。
 
 ### 🛡️ 权限
-- 按应用授予或拒绝对 AxManager 的访问。
+- 按应用授予或拒绝对 AxManager 的访问。尚未获得允许的应用通过 AxManager 的权限对话框申请。权限属于应用的签名证书：换了签名密钥的同一应用，或之后获得其 uid 的其他应用，都会被重新询问。
+- **AX-Stealth 模式**：未获允许的应用得不到对话框，也得不到任何响应，就像 AxManager 没有安装一样，Shizuku 客户端也是如此。新应用改为在权限页面中允许。
+- **签名徽章**（主页）：根据签名证书而非包名，显示正在运行的服务是否由本 AxManager 启动（匹配、不匹配或未验证）；点按可查看详情。
 - **兼容 Shizuku API**：基于 [Shizuku-API](https://github.com/RikkaApps/Shizuku-API) 构建的应用无需运行 Shizuku 即可连接 AxManager。部分旧应用仍要求*安装*了 Shizuku 应用；遇到这种情况 AxManager 会提示您。
 - **应用详情**：强行停止、清除缓存或数据、卸载（也支持系统应用，按用户）；授予或撤销运行时权限和开发权限；设置特殊访问的 app-op 模式（显示在其他应用上层、使用情况访问、所有文件访问权限……）；电池优化、后台活动、启用或停用应用。
 
@@ -89,6 +94,8 @@ adb install manager/build/outputs/apk/debug/manager-debug.apk
 ## 📖 文档
 - [什么是 Axeron 管理器？](https://axmanager.app/zh/guide/what-is-axeron-manager.html)
 - [用户手册](https://axmanager.app/zh/guide/user-manual.html)
+- [3.0 的安全更新](https://axmanager.app/zh/guide/security.html)
+- [与应用连接](https://axmanager.app/zh/guide/connect-app.html)
 - [插件](https://axmanager.app/zh/plugin/what-is-plugin.html)
 - [Re-ignite](https://axmanager.app/zh/plugin/re-ignite.html)
 - [常见问题](https://axmanager.app/zh/guide/faq.html)
