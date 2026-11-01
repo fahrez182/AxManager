@@ -72,7 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.rememberLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AppearanceScreenDestination
@@ -179,8 +179,8 @@ fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelG
                     // Older Shizuku clients (e.g. old ZArchiver) refuse to connect unless the real
                     // Shizuku app is installed. Re-checked on resume: the user may install it meanwhile.
                     var shizukuAppInstalled by remember { mutableStateOf(isShizukuAppInstalled(context)) }
-                    val lifecycleOwner = rememberLifecycleOwner()
-                    DisposableEffect(Unit) {
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    DisposableEffect(lifecycleOwner) {
                         val observer = object : androidx.lifecycle.DefaultLifecycleObserver {
                             override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
                                 activateViewModel.checkShizukuIntercept()

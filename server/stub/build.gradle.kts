@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'frb.axeron.server.stub'
+    namespace = "frb.axeron.server.stub"
     buildFeatures {
-        buildConfig false
+        buildConfig = false
     }
     buildTypes {
         release {
-            minifyEnabled false
+            isMinifyEnabled = false
         }
     }
 }
