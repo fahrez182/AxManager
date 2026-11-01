@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AddToHomeScreen
+import androidx.compose.material.icons.automirrored.outlined.AddToHomeScreen
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Restore
@@ -244,7 +244,7 @@ fun WebUiShortcutSheet(
         ) {
             Icon(
                 modifier = Modifier.size(18.dp),
-                imageVector = Icons.Outlined.AddToHomeScreen,
+                imageVector = Icons.AutoMirrored.Outlined.AddToHomeScreen,
                 contentDescription = null
             )
             Spacer(Modifier.width(8.dp))

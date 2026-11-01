@@ -1,9 +1,11 @@
+import com.android.build.api.artifact.SingleArtifact
+import com.android.build.api.variant.FilterConfiguration
+import com.android.build.api.variant.impl.VariantOutputImpl
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.rikka.tools.refine)
@@ -46,38 +48,48 @@ android {
         }
     }
 
-    applicationVariants.all {
-        val ts = LocalDateTime.now()
-            .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
-        outputs.all {
-            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val abi = outputImpl.getFilter(com.android.build.OutputFile.ABI)
-                ?: if (splitAbis) "universal" else null
-            val abiSuffix = abi?.let { "-$it" } ?: ""
-            outputImpl.outputFileName =
-                "AxManager_v${versionName}_${versionCode}-${buildType.name}${abiSuffix}_$ts.apk"
-
-            val outDir = File(rootDir, "out")
-            val mappingPath = File(outDir, "mapping").absolutePath
-
-            assembleProvider.get().doLast {
-                // copy mapping.txt kalau minify aktif
-                if (buildType.isMinifyEnabled) {
-                    copy {
-                        from(mappingFileProvider.get())
-                        into(mappingPath)
-                        rename {
-                            "manager-v${versionName}.txt"
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val ts = LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
+        val buildTypeName = variant.buildType ?: variant.name
+        variant.outputs.forEach { output ->
+            val abi = output.filters
+                .firstOrNull { it.filterType == FilterConfiguration.FilterType.ABI }
+                ?.identifier
+                ?: if (splitAbis) "universal" else null
+            val abiSuffix = abi?.let { "-$it" } ?: ""
+            if (output is VariantOutputImpl) {
+                val verName = output.versionName.orNull
+                val verCode = output.versionCode.orNull
+                output.outputFileName.set(
+                    "AxManager_v${verName}_${verCode}-${buildTypeName}${abiSuffix}_$ts.apk"
+                )
+            }
+        }
+
+        if (variant.isMinifyEnabled) {
+            val mappingFileProvider = variant.artifacts.get(SingleArtifact.OBFUSCATION_MAPPING_FILE)
+            val mainOutput = variant.outputs.firstOrNull()
+            val verNameProvider = mainOutput?.versionName
+            val capName = variant.name.replaceFirstChar { it.uppercase() }
+            val copyTask = tasks.register<Copy>("copy${capName}Mapping") {
+                from(mappingFileProvider)
+                into(rootProject.layout.projectDirectory.dir("out/mapping"))
+                rename {
+                    "manager-v${verNameProvider?.orNull}.txt"
+                }
+            }
+            tasks.matching { it.name == "assemble$capName" }.configureEach {
+                finalizedBy(copyTask)
+            }
+        }
     }
 }
 

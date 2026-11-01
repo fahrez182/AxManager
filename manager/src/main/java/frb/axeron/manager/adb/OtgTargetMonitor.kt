@@ -191,7 +191,7 @@ object OtgTargetMonitor {
     private fun logUsbState(intent: Intent) {
         val extras = intent.extras ?: return
         val functions = extras.keySet()
-            .filter { it != EXTRA_CONNECTED && it != EXTRA_CONFIGURED && extras.get(it) == true }
+            .filter { it != EXTRA_CONNECTED && it != EXTRA_CONFIGURED && extras.getBoolean(it) }
             .sorted()
         val state = "USB state: connected=${extras.getBoolean(EXTRA_CONNECTED)}, " +
                 "configured=${extras.getBoolean(EXTRA_CONFIGURED)}, functions=$functions"

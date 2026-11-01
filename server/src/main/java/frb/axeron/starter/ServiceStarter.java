@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 
+import androidx.core.os.BundleCompat;
+
 import java.util.Locale;
 
 import frb.axeron.server.UserService;
@@ -60,6 +62,9 @@ public class ServiceStarter {
                 token, packageName, managerPackage, classname, callingUid, debug ? (" " + "--debug-name=" + processName) : "");
     }
 
+    // prepareMainLooper is deprecated for apps, whose main looper the framework makes; this runs
+    // in app_process, where nothing else does.
+    @SuppressWarnings("deprecation")
     public static void main(String[] args) {
         if (Looper.getMainLooper() == null) {
             Looper.prepareMainLooper();
@@ -147,7 +152,7 @@ public class ServiceStarter {
                 reply.setClassLoader(BinderContainer.class.getClassLoader());
 
                 LOGGER.i(TAG, String.format("send binder to %s in user %d", packageName, userId));
-                BinderContainer container = reply.getParcelable(EXTRA_BINDER);
+                BinderContainer container = BundleCompat.getParcelable(reply, EXTRA_BINDER, BinderContainer.class);
 
                 if (container != null && container.binder != null && container.binder.pingBinder()) {
                     shizukuBinder = container.binder;

@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -24,7 +23,7 @@ val igniterAbis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 val igniterLibDir = layout.buildDirectory.dir("generated/igniterLib")
 val igniterDexDir = layout.buildDirectory.dir("intermediates/igniterDex")
 
-android.sourceSets.getByName("main").jniLibs.srcDir(igniterLibDir)
+android.sourceSets.getByName("main").jniLibs.srcDir(igniterLibDir.get().asFile)
 
 fun classesJars(configuration: String) = configurations.getByName(configuration).incoming
     .artifactView {
@@ -45,7 +44,9 @@ val igniterDex = tasks.register<JavaExec>("igniterDex") {
     outputs.dir(outDir)
 
     classpath = files(
-        android.sdkDirectory.resolve("build-tools/${android.buildToolsVersion}/lib/d8.jar")
+        androidComponents.sdkComponents.sdkDirectory.map {
+            it.dir("build-tools").dir(android.buildToolsVersion).file("lib/d8.jar")
+        }
     )
     mainClass.set("com.android.tools.r8.R8")
     argumentProviders.add(CommandLineArgumentProvider {

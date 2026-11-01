@@ -1,5 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.gradle.LibraryExtension
+import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import java.io.FileInputStream
@@ -8,7 +8,6 @@ import java.util.Properties
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
     alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.rikka.tools.refine) apply false
@@ -82,14 +81,18 @@ subprojects {
             }
         }
     }
-    plugins.withId("org.jetbrains.kotlin.android") {
-        extensions.configure<KotlinAndroidProjectExtension> {
+    plugins.withId("com.android.base") {
+        extensions.findByType(KotlinAndroidProjectExtension::class.java)?.apply {
             compilerOptions {
                 jvmTarget.set(JvmTarget.JVM_21)
                 // Every module here is AxManager's own; apps building on the api don't get this.
-                optIn.add("frb.axeron.shell.InternalAxeronApi")
+                // Only where axsh, which declares the marker, is a dependency: elsewhere it's unresolved.
+                optIn.addAll(provider {
+                    val usesAxsh = path == ":axsh" || configurations["implementation"].dependencies
+                        .any { it is ProjectDependency && it.path == ":axsh" }
+                    if (usesAxsh) listOf("frb.axeron.shell.InternalAxeronApi") else emptyList()
+                })
             }
         }
     }
 }
-

@@ -85,6 +85,9 @@ class WifiReadyGate(
         handler.removeCallbacksAndMessages(null)
     }
 
+    // connectionInfo is deprecated for a NetworkCallback's WifiInfo, which only comes once there
+    // is a network; this fast path is for a link that's up before that.
+    @Suppress("DEPRECATION")
     private fun isWifiLinkUp(): Boolean {
         val info = wm.connectionInfo ?: return false
         return info.networkId != -1 &&
