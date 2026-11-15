@@ -1,4 +1,4 @@
-# Axeron Manager (AxManager)
+https://github.com/fahrez182/AxManager.git# Axeron Manager (AxManager)
 
 A privileged environment for Android that runs on **ADB (shell) permissions**, or on **root** when you have it. AxManager keeps a background server alive and builds on it: Magisk-style plugins with a WebUI, per-app privilege control, a Shizuku-compatible API, a shell, and a system settings editor.
 
