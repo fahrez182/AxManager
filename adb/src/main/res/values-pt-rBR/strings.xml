@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wireless debugging pairing notification (AdbPairingService) -->
+    <string name="adb_pairing_channel">Pareamento da depuração sem fio</string>
+
+    <string name="adb_pairing_searching_title">Procurando o serviço de pareamento</string>
+    <string name="adb_pairing_searching_text">Na Depuração sem fio, toque em \"Parear dispositivo usando código de pareamento\".</string>
+    <string name="adb_pairing_found_title">Serviço de pareamento encontrado</string>
+    <string name="adb_pairing_found_text">Digite o código de 6 dígitos mostrado na Depuração sem fio.</string>
+    <string name="adb_pairing_working_title">Pareando…</string>
+    <string name="adb_pairing_paired_title">Pareamento concluído</string>
+    <string name="adb_pairing_starting_text">Iniciando o AxManager…</string>
+    <string name="adb_pairing_activated_title">AxManager ativado</string>
+    <string name="adb_pairing_activated_text">O serviço já está em execução.</string>
+
+    <string name="adb_pairing_failed_title">Falha no pareamento</string>
+    <string name="adb_pairing_start_failed_title">Não foi possível iniciar o AxManager</string>
+    <string name="adb_pairing_timeout_title">Tempo de pareamento esgotado</string>
+    <string name="adb_pairing_timeout_text">Abra a Depuração sem fio e toque em Tentar de novo.</string>
+
+    <string name="adb_pairing_wrong_code">Código de pareamento incorreto. Toque em \"Parear dispositivo usando código de pareamento\" novamente.</string>
+    <string name="adb_pairing_rejected">A Depuração sem fio não aceitou o pareamento.</string>
+    <string name="adb_pairing_cant_connect">Não foi possível conectar ao serviço de depuração sem fio.</string>
+    <string name="adb_pairing_key_failed">Não foi possível criar a chave ADB deste app.</string>
+    <string name="adb_pairing_no_connect">A conexão de depuração sem fio não foi encontrada.</string>
+
+    <string name="adb_pairing_code_label">Código de pareamento</string>
+    <string name="adb_pairing_action_enter_code">Digitar código</string>
+    <string name="adb_pairing_action_settings">Abrir configurações</string>
+    <string name="adb_pairing_action_stop">Parar</string>
+    <string name="adb_pairing_action_retry">Tentar de novo</string>
+</resources>
