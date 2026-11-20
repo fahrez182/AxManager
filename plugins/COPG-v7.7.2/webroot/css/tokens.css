@@ -1,0 +1,84 @@
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   tokens.css — Design tokens & themes
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Safe-area insets — prefer the KsuWebUI host vars (--window-inset-*, set by
+     the internal insets.css API), fall back to CSS env() for WebUI-X / MMRL /
+     browsers, then 0. Use var(--inset-*) everywhere instead of raw env(). */
+  --inset-top:    var(--window-inset-top,    env(safe-area-inset-top,    0px));
+  --inset-right:  var(--window-inset-right,  env(safe-area-inset-right,  0px));
+  --inset-bottom: var(--window-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --inset-left:   var(--window-inset-left,   env(safe-area-inset-left,   0px));
+
+  --accent-primary:   #818CF8;
+  --accent-secondary: #A78BFA;
+  --accent-glow:      #67E8F9;
+  --accent-danger:    #F87171;
+  --accent-success:   #34D399;
+
+  --bg-base:          #0A0A12;
+  --bg-surface-1:     #10101E;
+  --bg-surface-2:     #16162A;
+  --bg-surface-3:     #1E1E36;
+
+  --glass-bg:           rgba(255,255,255,0.04);
+  --glass-bg-hover:     rgba(255,255,255,0.07);
+  --glass-border:       rgba(255,255,255,0.09);
+  --glass-border-active:rgba(129,140,248,0.4);
+  --glass-shadow:       0 8px 32px rgba(0,0,0,0.5);
+
+  --text-primary:   rgba(255,255,255,0.95);
+  --text-secondary: rgba(255,255,255,0.55);
+  --text-tertiary:  rgba(255,255,255,0.30);
+
+  --nav-bg:       rgba(18,18,32,0.55);
+  --overlay-bg:   rgba(0,0,0,0.6);
+  --sheet-bg:     rgba(16,16,30,0.96);
+
+  --radius-sm:   12px;
+  --radius-md:   18px;
+  --radius-lg:   24px;
+  --radius-xl:   30px;
+  --radius-full: 999px;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+  --spring:    cubic-bezier(0.34,1.56,0.64,1);
+  --ease-out:  cubic-bezier(0.16,1,0.3,1);
+  --ease-snap: cubic-bezier(0.22,1,0.36,1);
+  --dur-fast:  180ms;
+  --dur-med:   320ms;
+  --dur-slow:  480ms;
+
+  --bot-nav-h: 92px;
+  --page-px:   16px;
+}
+
+[data-theme="light"] {
+  --bg-base:          #F0F0F8;
+  --bg-surface-1:     #F8F8FF;
+  --bg-surface-2:     #EEEEF8;
+  --bg-surface-3:     #E4E4F2;
+  --glass-bg:         rgba(255,255,255,0.55);
+  --glass-bg-hover:   rgba(255,255,255,0.75);
+  --glass-border:     rgba(80,80,160,0.12);
+  --text-primary:     rgba(10,10,40,0.92);
+  --text-secondary:   rgba(10,10,40,0.52);
+  --text-tertiary:    rgba(10,10,40,0.28);
+  --nav-bg:           rgba(240,240,250,0.62);
+  --overlay-bg:       rgba(0,0,0,0.35);
+  --sheet-bg:         rgba(240,240,252,0.97);
+}
+
+[data-theme="amoled"] {
+  --bg-base:      #000;
+  --bg-surface-1: #050505;
+  --bg-surface-2: #0A0A0A;
+  --bg-surface-3: #111;
+  --glass-bg:     rgba(255,255,255,0.03);
+  --nav-bg:       rgba(0,0,0,0.6);
+  --sheet-bg:     rgba(5,5,5,0.98);
+}
