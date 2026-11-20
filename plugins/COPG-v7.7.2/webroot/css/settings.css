@@ -1,0 +1,301 @@
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   settings.css — Settings page, rows, toggles, bottom sheets
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ── Settings card wrapper ── */
+.settings-card { padding:4px 0; }
+
+/* ── Setting row (generic) ── */
+.setting-row {
+  display:flex;align-items:center;gap:12px;padding:13px 16px;
+  cursor:pointer;transition:background var(--dur-fast) var(--ease-out);
+}
+.setting-row:active { background:var(--glass-bg-hover); }
+.setting-row__icon {
+  width:28px;height:28px;border-radius:8px;
+  background:rgba(255,255,255,.05);
+  display:grid;place-items:center;flex-shrink:0;color:var(--accent-primary);
+}
+.setting-row__label { flex:1;font-size:.875rem;font-weight:500;color:var(--text-primary); }
+.setting-row__value-hint { font-size:.8rem;color:var(--text-tertiary); }
+.setting-row__value-hint.is-reboot-hint { color:var(--accent-primary);font-weight:600; }
+.setting-row__chevron { color:var(--text-tertiary); }
+
+/* System-Server state chip — mirrors the Hook Status board (css/status.css .syshook__chip) so the
+   Device-tab rows read the same way: "Reboot to apply" when the master is on but not yet booted,
+   "Needs reboot" / muted when it's off, nothing once armed. Sits just before a row's toggle/hint. */
+.state-chip {
+  font-size:.68rem;font-weight:600;letter-spacing:.01em;white-space:nowrap;
+  padding:2px 9px;border-radius:var(--radius-full);line-height:1.5;flex:none;
+}
+.state-chip.is-active { color:var(--accent-success); background:color-mix(in srgb, var(--accent-success) 15%, transparent); }
+.state-chip.is-reboot { color:var(--accent-primary); background:color-mix(in srgb, var(--accent-primary) 15%, transparent); }
+.state-chip.is-gated,
+.state-chip.is-off    { color:var(--text-tertiary); background:var(--bg-surface-3); }
+.state-chip[hidden]   { display:none; }
+
+/* toggle rows non-clickable background */
+.setting-row--toggle { cursor:default; }
+
+/* ── Toggle switch ── */
+.toggle { position:relative;display:inline-flex;cursor:pointer; }
+.toggle input { position:absolute;opacity:0;width:0;height:0; }
+.toggle__track {
+  width:46px;height:26px;border-radius:var(--radius-full);
+  background:var(--bg-surface-3);border:1px solid var(--glass-border);
+  position:relative;
+  transition:background var(--dur-med) var(--ease-out),
+             border-color var(--dur-med) var(--ease-out),
+             box-shadow var(--dur-med) var(--ease-out);
+}
+.toggle input:checked + .toggle__track {
+  background:var(--accent-primary);border-color:var(--accent-primary);
+  box-shadow:0 0 12px rgba(129,140,248,.4);
+}
+.toggle__thumb {
+  position:absolute;top:3px;left:3px;width:18px;height:18px;
+  border-radius:50%;background:rgba(255,255,255,.7);
+  transition:transform var(--dur-med) var(--spring),background var(--dur-med) var(--ease-out);
+  box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+.toggle input:checked + .toggle__track .toggle__thumb { transform:translateX(20px);background:#fff; }
+
+/* ── Bottom Sheet overlay ── */
+.sheet-overlay {
+  position:fixed;inset:0;z-index:200;
+  background:var(--overlay-bg);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  opacity:0;pointer-events:none;
+  transition:opacity var(--dur-med) var(--ease-out);
+}
+.sheet-overlay.visible { opacity:1;pointer-events:auto; }
+
+/* ── Bottom Sheet panel ── */
+.bottom-sheet {
+  position:fixed;bottom:var(--kb-inset,0px);left:0;right:0;z-index:300;
+  background:var(--sheet-bg);
+  border-top:1px solid var(--glass-border);
+  border-radius:var(--radius-xl) var(--radius-xl) 0 0;
+  padding-bottom:var(--inset-bottom,0px);
+  transform:translateY(100%);
+  transition:transform var(--dur-slow) var(--spring);
+  will-change:transform;
+  max-width:480px;margin:0 auto;
+  /* Cap height + let the body scroll so a tall sheet (hook stats, backup, install patches)
+     stays on screen in landscape, where the viewport is short. Self-capping variants
+     (--form/--picker/--console) override this via their own later max-height. */
+  display:flex;flex-direction:column;max-height:var(--sheet-vh, 92vh);
+}
+@supports (max-height:1dvh) { .bottom-sheet { max-height:var(--sheet-vh, 92dvh); } }
+.bottom-sheet.open { transform:translateY(0); }
+
+.sheet-handle {
+  width:36px;height:4px;border-radius:2px;
+  background:var(--glass-border);margin:12px auto 0;
+}
+.sheet-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px 12px;
+}
+.sheet-header__title { font-size:1rem;font-weight:700;color:var(--text-primary);letter-spacing:-.01em; }
+.sheet-header__close {
+  width:30px;height:30px;border-radius:var(--radius-full);
+  background:var(--glass-bg);border:1px solid var(--glass-border);
+  display:grid;place-items:center;cursor:pointer;
+  color:var(--text-secondary);
+  transition:background var(--dur-fast),color var(--dur-fast);
+  outline:none;appearance:none;-webkit-appearance:none;
+}
+.sheet-header__close:hover { background:var(--glass-bg-hover);color:var(--text-primary); }
+
+.sheet-body { padding:4px 12px 20px; flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+/* ── Sheet option row ── */
+.sheet-option {
+  display:flex;align-items:center;gap:14px;
+  padding:13px 10px;border-radius:var(--radius-md);
+  cursor:pointer;
+  transition:background var(--dur-fast) var(--ease-out);
+}
+.sheet-option:active { background:var(--glass-bg-hover); }
+.sheet-option__icon {
+  width:38px;height:38px;border-radius:var(--radius-md);
+  background:var(--glass-bg);border:1px solid var(--glass-border);
+  display:grid;place-items:center;flex-shrink:0;color:var(--accent-primary);
+}
+.sheet-option__label  { flex:1;font-size:.9rem;font-weight:500;color:var(--text-primary); }
+.sheet-option__check  { display:none;color:var(--accent-primary); }
+.sheet-option.selected .sheet-option__check { display:flex; }
+.sheet-option.selected .sheet-option__label { color:var(--accent-primary); }
+.sheet-option.selected .sheet-option__icon  { background:rgba(129,140,248,.12);border-color:rgba(129,140,248,.25); }
+
+/* ── License card (collapsible · PRO) ─────────────────────────────────────── */
+.lic-card { overflow:hidden; }
+.lic-head__icon { color:#F59E0B; background:rgba(245,158,11,.12); }   /* gold key */
+.lic-head__chev { transition:transform var(--dur-med) var(--ease-out); }
+.lic-card.is-open .lic-head__chev { transform:rotate(90deg); }
+
+/* status chip */
+.lic-chip {
+  font-size:.72rem; font-weight:700; letter-spacing:.01em; white-space:nowrap;
+  padding:4px 10px; border-radius:var(--radius-full);
+  border:1px solid var(--glass-border); color:var(--text-tertiary); background:var(--glass-bg);
+}
+.lic-chip[data-state="VALID"], .lic-chip[data-state="GRACE"] {
+  color:#FBBF24; border-color:rgba(250,204,21,.42); background:rgba(250,204,21,.12);
+}
+.lic-chip[data-state="EXPIRED"], .lic-chip[data-state="REVOKED"] {
+  color:#F87171; border-color:rgba(248,113,113,.35); background:rgba(248,113,113,.10);
+}
+
+/* collapsible body (grid-rows 0fr→1fr = smooth height, no fixed max) */
+.lic-body {
+  display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows var(--dur-slow) var(--ease-out);
+}
+.lic-card.is-open .lic-body { grid-template-rows:1fr; }
+.lic-body__inner { overflow:hidden; padding:0 16px; }
+.lic-card.is-open .lic-body__inner { padding:2px 16px 16px; }
+
+/* state line — clear status, incl. a red "Expired" / "Revoked" */
+.lic-state {
+  display:flex; align-items:center; gap:8px; margin:2px 0 14px;
+  font-size:.8rem; font-weight:600; color:var(--text-secondary);
+}
+.lic-state__dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--text-tertiary); }
+.lic-state[data-state="VALID"] .lic-state__dot,
+.lic-state[data-state="GRACE"] .lic-state__dot { background:#FBBF24; box-shadow:0 0 8px rgba(251,191,36,.55); }
+.lic-state[data-state="VALID"] .lic-state__txt,
+.lic-state[data-state="GRACE"] .lic-state__txt { color:#FBBF24; }
+.lic-state[data-state="EXPIRED"] .lic-state__dot,
+.lic-state[data-state="REVOKED"] .lic-state__dot { background:#F87171; }
+.lic-state[data-state="EXPIRED"] .lic-state__txt,
+.lic-state[data-state="REVOKED"] .lic-state__txt { color:#F87171; }
+
+/* numbered step groups */
+.lic-step { margin-top:16px; }
+.lic-step:first-of-type { margin-top:0; }
+.lic-step__label { display:flex; align-items:center; gap:8px; font-size:.74rem; font-weight:600; color:var(--text-secondary); margin-bottom:8px; }
+.lic-step__n {
+  display:grid; place-items:center; width:17px; height:17px; border-radius:50%; flex-shrink:0;
+  font-size:.66rem; font-weight:700; color:var(--accent-primary);
+  background:rgba(129,140,248,.14); border:1px solid rgba(129,140,248,.3);
+}
+
+/* action buttons — slim, standard weight */
+.lic-btn {
+  display:flex; align-items:center; justify-content:center; gap:7px; width:100%;
+  padding:10px 12px; border-radius:var(--radius-sm);
+  font-size:.82rem; font-weight:600; cursor:pointer; color:var(--text-primary);
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+  transition:background var(--dur-fast), transform var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+.lic-btn:active { transform:scale(.98); background:var(--glass-bg-hover); }
+.lic-btn--primary {
+  background:linear-gradient(135deg, var(--accent-primary), #6366F1);
+  border-color:transparent; color:#fff; box-shadow:0 4px 14px rgba(99,102,241,.28);
+}
+/* visible outlined secondary — replaces the near-invisible "or choose file" text link */
+.lic-btn--ghost { background:transparent; color:var(--text-secondary); }
+.lic-btn--ghost:active { color:var(--text-primary); border-color:var(--accent-primary); background:var(--glass-bg-hover); }
+
+/* code reveal — tap-to-copy box, wraps inside, tiny copy icon in the corner */
+.lic-code { margin-top:12px; }
+.lic-code__label { font-size:.72rem; color:var(--text-tertiary); margin-bottom:6px; }
+.lic-code__box {
+  position:relative; cursor:pointer;
+  font-family:var(--font-mono); font-size:.68rem; line-height:1.45; color:var(--accent-glow);
+  background:var(--bg-surface-1); border:1px solid var(--glass-border);
+  border-radius:var(--radius-sm); padding:9px 36px 9px 11px;   /* right pad clears the icon */
+  max-height:82px; overflow-y:auto;
+  overflow-wrap:anywhere; word-break:break-all;
+  transition:border-color var(--dur-fast);
+}
+.lic-code__box:active { border-color:var(--accent-primary); }
+.lic-code__copy {
+  position:absolute; top:7px; right:7px; width:22px; height:22px; border-radius:7px;
+  display:grid; place-items:center; color:var(--text-tertiary);
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+  transition:color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
+}
+.lic-code__box:active .lic-code__copy { color:var(--accent-primary); }
+.lic-copy-ok { display:none; }
+.lic-code__box.copied .lic-code__copy { color:#34D399; border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.12); }
+.lic-code__box.copied .lic-copy-ico { display:none; }
+.lic-code__box.copied .lic-copy-ok  { display:block; }
+
+/* clipboard-free ways to send the device code — icon+label chips (equal 3-up grid) */
+.lic-share { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+.lic-share__btn {
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px;
+  min-height:66px; padding:12px 6px; border-radius:var(--radius-md);
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+  color:var(--text-secondary); font-size:.72rem; font-weight:600; cursor:pointer;
+  transition:background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+}
+.lic-share__btn svg { width:20px; height:20px; }
+.lic-share__btn:active { transform:scale(.97); background:var(--glass-bg-hover); color:var(--text-primary); }
+.lic-share__btn[aria-pressed="true"] {   /* QR panel open */
+  color:var(--accent-primary); border-color:var(--accent-primary); background:var(--glass-bg-hover);
+}
+
+.lic-hint { font-size:.74rem; color:var(--text-tertiary); line-height:1.5; margin:10px 0 0; }
+
+/* QR reveal — themed panel with a white tile so the code scans against any theme */
+.lic-qr {
+  margin-top:12px; display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:16px; border-radius:var(--radius-lg);
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+  animation:licQrIn var(--dur-med) var(--ease-out);
+}
+.lic-qr__tile { background:#fff; padding:12px; border-radius:var(--radius-md); line-height:0; }
+.lic-qr__tile svg { display:block; width:180px; height:180px; }
+.lic-qr__cap { font-size:.74rem; color:var(--text-tertiary); }
+@keyframes licQrIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce) { .lic-qr { animation:none; } }
+
+.lic-contact {
+  display:inline-block; margin-top:10px; font-size:.76rem; font-weight:600;
+  color:var(--accent-primary); cursor:pointer; text-decoration:none;
+}
+.lic-contact:active { opacity:.7; }
+
+/* import — paste textarea + primary button + "or choose file" ghost link */
+.lic-sep { height:1px; background:var(--glass-border); opacity:.6; margin:16px 0 12px; }
+.lic-import__field {
+  width:100%; resize:none; box-sizing:border-box;
+  font-family:var(--font-mono); font-size:.7rem; line-height:1.4; color:var(--text-primary);
+  background:var(--bg-surface-1); border:1px solid var(--glass-border);
+  border-radius:var(--radius-sm); padding:9px 11px; margin-bottom:10px;
+  outline:none; transition:border-color var(--dur-fast);
+}
+.lic-import__field:focus { border-color:var(--accent-primary); }
+.lic-import__field::placeholder { color:var(--text-tertiary); }
+.lic-import__row { display:flex; align-items:center; gap:10px; }
+.lic-import__row .lic-btn { flex:1; margin:0; }
+
+/* Content sheets that borrow .sheet--confirm (for its .confirm-msg styling) but are NOT the
+   confirm dialog: keep them below #confirmModal (z:320) so a risk-gate confirm opened from a
+   toggle inside them (e.g. Install Patches → Disable signature verification) stacks ABOVE,
+   not behind. Without this they sit at 320 == the confirm and the warning is buried. */
+#globImeiSheet, #installPatchSheet, #gaidSheet { z-index:310; }
+#globImeiSheet .gi-enable { padding:6px 0; margin-top:4px; }
+#globImeiSheet .gi-fields { display:flex; flex-direction:column; gap:12px; margin-top:8px; transition:opacity .15s ease; }
+#globImeiSheet .gi-fields.is-off { opacity:.4; pointer-events:none; }
+#globImeiSheet .gi-fields .field { margin:0; }
+#globImeiSheet .sheet-header .trow__pro { margin-inline-start:8px; margin-inline-end:auto; }
+
+/* ── Install Patches sheet (installpatchessheet.js) — grouped package-manager patches ── */
+.ip-rows { display:flex; flex-direction:column; }
+.ip-rows.is-locked { opacity:.5; }
+.ip-row { align-items:flex-start; }
+.ip-row__text { flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; padding-top:1px; }
+.ip-row__text .setting-row__label { flex:none; }
+.ip-row__sub { font-size:.75rem; line-height:1.4; color:var(--text-secondary); }
+.ip-note {
+  display:flex; align-items:flex-start; gap:9px;
+  padding:11px 13px; margin:2px 0 12px; border-radius:var(--radius-sm);
+  background:color-mix(in srgb, var(--accent-danger) 12%, transparent);
+  color:var(--text-secondary); font-size:.8rem; line-height:1.45;
+}
+.ip-note svg { flex:none; margin-top:1px; color:var(--accent-danger); }
