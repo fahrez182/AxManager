@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Stop the WebView caching the SPA so code updates take effect on reopen
+       (the KsuWebUI cache otherwise keeps serving a stale index.html). -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <!-- Tints the system status bar to the theme base (kept in sync in theme.js) -->
+  <meta name="theme-color" content="#0A0A12" />
+  <title>COPG — Module Dashboard</title>
+  <!-- KsuWebUI host API: injects --window-inset-{top,right,bottom,left} for the
+       real system-bar insets and switches the WebView to edge-to-edge with
+       transparent bars. Without it KsuWebUI draws opaque (black) system bars.
+       Resolves only inside KsuWebUI; harmlessly 404s elsewhere (env() fallback). -->
+  <link rel="stylesheet" href="https://mui.kernelsu.org/internal/insets.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ───────── PAGES ───────── -->
+  <main class="pages-wrap">
+
+    <!-- ═══════ HOME ═══════ -->
+    <section class="page page--home active" id="pageHome">
+      <div class="scroll-area">
+
+        <!-- Hero Banner (no top bar — version lives here) -->
+        <div class="hero" id="hero">
+          <div class="hero__bg-mesh"></div>
+          <div class="hero__orb hero__orb--1"></div>
+          <div class="hero__orb hero__orb--2"></div>
+          <div class="hero__content">
+            <div class="hero__module-id">
+              <!-- Zygisk bolt -->
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span data-i18n="hero_module_id">Zygisk Module</span>
+            </div>
+            <div class="hero__title-row">
+              <h1 class="hero__name">COPG</h1>
+              <span class="hero__version-badge" id="heroVer">—</span>
+            </div>
+            <p class="hero__sub" data-i18n="hero_sub">Advanced Device &amp; App Spoofing</p>
+            <div class="hero__badges">
+              <span class="badge badge--active" id="heroBadge">
+                <span class="badge__dot"></span>Active
+              </span>
+              <span class="badge badge--env" id="envBadge">KernelSU</span>
+            </div>
+          </div>
+          <button class="hero__pro" id="heroPro" data-state="FREE" type="button" aria-label="PRO">
+            <svg class="hero__pro-lock" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <svg class="hero__pro-ico" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16 3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5zm0 2h14v2H5v-2z"/></svg>
+            <span class="hero__pro-txt">FREE</span>
+          </button>
+          <div class="hero__glass-sheen"></div>
+        </div>
+
+        <!-- Quick Stats — Devices + Packages -->
+        <div class="section-label" data-i18n="label_quick_stats">Quick Stats</div>
+        <div class="stats-grid">
+          <div class="stat-card" data-card="devices">
+            <div class="stat-card__icon">
+              <!-- Phone icon -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <rect x="5" y="2" width="14" height="20" rx="2"/>
+                <circle cx="12" cy="17" r="1" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="stat-card__body">
+              <div class="stat-card__label" data-i18n="stat_devices">Devices</div>
+              <div class="stat-card__value" id="statDevices">—</div>
+            </div>
+            <div class="stat-card__glow"></div>
+          </div>
+
+          <div class="stat-card" data-card="packages">
+            <div class="stat-card__icon">
+              <!-- Package icon -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div class="stat-card__body">
+              <div class="stat-card__label" data-i18n="stat_packages">Packages</div>
+              <div class="stat-card__value" id="statPackages">—</div>
+            </div>
+            <div class="stat-card__glow"></div>
+          </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="section-label" data-i18n="label_system">System</div>
+        <div class="glass-card sys-card">
+
+          <!-- Android — robot head SVG -->
+          <div class="sys-row">
+            <span class="sys-row__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <!-- antennas -->
+                <line x1="8" y1="4.2" x2="6.4" y2="2"/>
+                <line x1="16" y1="4.2" x2="17.6" y2="2"/>
+                <!-- dome head: flat base, semicircle top -->
+                <path d="M4 15a8 8 0 0 1 16 0z"/>
+                <!-- eyes -->
+                <circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/>
+                <circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/>
+              </svg>
+            </span>
+            <span class="sys-row__label" data-i18n="sys_android">Android Version</span>
+            <span class="sys-row__value" id="androidVer">—</span>
+          </div>
+          <div class="sys-divider"></div>
+
+          <!-- ABI — chip/cpu -->
+          <div class="sys-row">
+            <span class="sys-row__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <rect x="6" y="6" width="12" height="12" rx="2"/>
+                <path d="M9 6V3M12 6V3M15 6V3M9 21v-3M12 21v-3M15 21v-3M6 9H3M6 12H3M6 15H3M21 9h-3M21 12h-3M21 15h-3"/>
+              </svg>
+            </span>
+            <span class="sys-row__label" data-i18n="sys_abi">ABI</span>
+            <span class="sys-row__value" id="abiVal">—</span>
+          </div>
+          <div class="sys-divider"></div>
+
+          <!-- Zygisk — bolt -->
+          <div class="sys-row">
+            <span class="sys-row__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </span>
+            <span class="sys-row__label" data-i18n="sys_zygisk">Zygisk Variant</span>
+            <span class="sys-row__value" id="zygiskVal">—</span>
+          </div>
+          <div class="sys-divider"></div>
+
+          <!-- Root solution + version — shield -->
+          <div class="sys-row">
+            <span class="sys-row__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>
+                <path d="M9.5 12l1.8 1.8L15 10"/>
+              </svg>
+            </span>
+            <span class="sys-row__label" data-i18n="sys_root_version">Root Version</span>
+            <span class="sys-row__value" id="rootVerVal">—</span>
+          </div>
+          <div class="sys-divider"></div>
+
+          <!-- GPU — graphics card with fan -->
+          <div class="sys-row">
+            <span class="sys-row__icon">
+              <!-- GPU — graphics card with fan -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2.5" y="6" width="19" height="12" rx="2.4"/>
+                <circle cx="9" cy="12" r="3"/>
+                <path d="M15 9h4M15 12h4M15 15h4"/>
+              </svg>
+            </span>
+            <span class="sys-row__label" data-i18n="sys_gpu">GPU</span>
+            <span class="sys-row__value" id="gpuVal">—</span>
+          </div>
+          <div class="sys-divider"></div>
+
+          <!-- Kernel — processing core / die with pins -->
+          <div class="sys-row">
+            <span class="sys-row__icon">
+              <!-- Kernel — processing core / die with pins -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4.5" y="4.5" width="15" height="15" rx="4"/>
+                <rect x="9" y="9" width="6" height="6" rx="1.6"/>
+                <path d="M12 1.8v2.7M12 19.5v2.7M1.8 12h2.7M19.5 12h2.7"/>
+              </svg>
+            </span>
+            <span class="sys-row__label" data-i18n="sys_kernel">Kernel Version</span>
+            <span class="sys-row__value sys-row__value--mono" id="kernelVal">—</span>
+          </div>
+        </div>
+
+        <div class="scroll-bottom-pad"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ LIBRARY ═══════ -->
+    <section class="page page--library" id="pageLibrary">
+      <div class="scroll-area">
+        <div class="page-header">
+          <h2 class="page-header__title" data-i18n="page_library">Library</h2>
+          <button class="page-header__action" id="libBackupBtn" type="button" data-i18n-attr="aria-label:lib_backup" aria-label="Backup &amp; Restore">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 18h9a4 4 0 0 0 .5-7.97 6 6 0 0 0-11.3-1.2A3.5 3.5 0 0 0 6 18"/>
+              <line x1="9.6" y1="15" x2="9.6" y2="9.8"/><polyline points="7.9 11.4 9.6 9.6 11.3 11.4"/>
+              <line x1="14.4" y1="9.4" x2="14.4" y2="14.6"/><polyline points="12.7 13 14.4 14.8 16.1 13"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Preview banner (shown only in browser preview without ksu bridge) -->
+        <div class="preview-banner" id="previewBanner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span data-i18n="preview_unsaved">Preview mode — changes are not saved to the device.</span>
+        </div>
+
+        <div class="inner-tabs" id="innerTabs">
+          <button class="inner-tab active" data-lib-tab="devices">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="5" y="2" width="14" height="20" rx="2"/>
+              <circle cx="12" cy="17" r="1" fill="currentColor"/>
+            </svg>
+            <span data-i18n="tab_devices">Devices</span>
+            <span class="inner-tab__count" id="devTabCount">0</span>
+          </button>
+          <button class="inner-tab" data-lib-tab="packages">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span data-i18n="tab_packages">Packages</span>
+            <span class="inner-tab__count" id="pkgTabCount">0</span>
+          </button>
+        </div>
+
+        <div class="lib-panel active" id="libDevices">
+          <div class="lib-searchrow">
+            <div class="lib-search">
+              <svg class="lib-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="search" class="lib-search__input" id="deviceSearch" autocomplete="off" data-i18n-attr="placeholder:search_devices" placeholder="Search devices…" />
+            </div>
+            <button class="add-pill add-pill--icon" id="importDeviceBtn" type="button" data-i18n-attr="aria-label:dev_import_title" aria-label="Import Device">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="add-pill" id="addDeviceBtn" type="button" data-i18n-attr="aria-label:add_device" aria-label="Add Device">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span class="add-pill__label" data-i18n="add_short">Add</span>
+            </button>
+          </div>
+          <div class="device-list" id="deviceList"></div>
+        </div>
+        <div class="lib-panel" id="libPackages">
+          <div class="lib-searchrow">
+            <div class="lib-search">
+              <svg class="lib-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="search" class="lib-search__input" id="packageSearch" autocomplete="off" data-i18n-attr="placeholder:search_packages" placeholder="Search packages…" />
+            </div>
+            <button class="add-pill" id="addPackageBtn" type="button" data-i18n-attr="aria-label:add_package" aria-label="Add Package">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span class="add-pill__label" data-i18n="add_short">Add</span>
+            </button>
+          </div>
+          <div class="package-list" id="packageList"></div>
+        </div>
+
+        <div class="scroll-bottom-pad"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ SETTINGS ═══════ -->
+    <!-- ───────── DEVICE ───────── -->
+    <section class="page page--device" id="pageDevice">
+      <div class="scroll-area">
+        <div class="page-header">
+          <h2 class="page-header__title" data-i18n="page_device">Device</h2>
+        </div>
+
+        <!-- System-Server master switch — FIRST; the dependent spoofs below gate on it -->
+        <div class="section-label" data-i18n="label_sysserver">System-Server</div>
+        <div class="glass-card settings-card">
+          <div class="setting-row setting-row--toggle" id="sysServerRow">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="glob_sysserver">System-Server Spoofs</span>
+            <label class="toggle" aria-label="System-Server Spoofs">
+              <input type="checkbox" id="sysServerToggle"/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Device-wide controls (some require System-Server Spoofs above) -->
+        <div class="section-label" data-i18n="label_global">Global Hooks</div>
+        <div class="glass-card settings-card">
+          <div class="setting-row" id="globImeiRow" role="button" tabindex="0" aria-label="Global IMEI">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 6h6M12 18h.01"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="glob_imei">Global IMEI</span>
+            <span class="setting-row__value-hint" id="globImeiHint">—</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="setting-row setting-row--toggle" id="flagSecureRow">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="glob_flagsecure">Disable FLAG_SECURE</span>
+            <label class="toggle" aria-label="Disable FLAG_SECURE">
+              <input type="checkbox" id="flagSecureToggle"/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </label>
+          </div>
+          <div class="setting-row setting-row--toggle" id="storageRow">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M4 4h16"/><rect x="4" y="8" width="16" height="8" rx="1"/><path d="M8 12h.01M12 12h.01"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="glob_storage">No Storage Restrict</span>
+            <label class="toggle" aria-label="No Storage Restrict">
+              <input type="checkbox" id="storageToggle"/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </label>
+          </div>
+          <div class="setting-row setting-row--toggle" id="micShareRow">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="glob_micshare">Concurrent Mic</span>
+            <label class="toggle" aria-label="Concurrent Mic">
+              <input type="checkbox" id="micShareToggle"/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </label>
+          </div>
+          <div class="setting-row" id="installPatchRow" role="button" tabindex="0" aria-label="Install Patches">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="m9 12 2 2 4-4"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="glob_installpatch">Install Patches</span>
+            <span class="setting-row__value-hint" id="installPatchHint">—</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="setting-row" id="gaidRow" role="button" tabindex="0" aria-label="Advertising ID">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15v-4a2 2 0 0 1 4 0v4M7 13h4M15 15V9"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="set_gaid">Advertising ID</span>
+            <span class="setting-row__value-hint" id="gaidHint">—</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+        <div class="scroll-bottom-pad"></div>
+      </div>
+    </section>
+
+    <section class="page page--settings" id="pageSettings">
+      <div class="scroll-area">
+        <div class="page-header">
+          <h2 class="page-header__title" data-i18n="page_settings">Settings</h2>
+        </div>
+
+        <!-- License (PRO tier) — one collapsible row -->
+        <div class="section-label" data-i18n="lic_section">License</div>
+        <div class="glass-card settings-card lic-card" id="licenseCard">
+          <div class="setting-row lic-head" id="licHeadRow" role="button" tabindex="0" aria-expanded="false" aria-controls="licBody">
+            <span class="setting-row__icon lic-head__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.5 12.5 20 3"/><path d="m16 7 3 3"/><path d="m14 9 2 2"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="lic_section">License</span>
+            <span class="lic-chip" id="licStatusChip" data-state="FREE">—</span>
+            <svg class="setting-row__chevron lic-head__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="lic-body" id="licBody">
+            <div class="lic-body__inner">
+              <!-- State line — reflects VALID / GRACE / EXPIRED / REVOKED / FREE (set in license.js) -->
+              <div class="lic-state" id="licStateLine" data-state="FREE">
+                <span class="lic-state__dot" aria-hidden="true"></span>
+                <span class="lic-state__txt" id="licStateTxt" data-i18n="lic_status_free">Free tier — PRO features locked</span>
+              </div>
+
+              <!-- Step 1 — device code -->
+              <div class="lic-step">
+                <div class="lic-step__label"><span class="lic-step__n">1</span><span data-i18n="lic_step_code">Get your device code</span></div>
+                <button class="lic-btn" id="licGetRow" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 10h8M8 14h5"/></svg>
+                  <span data-i18n="lic_get">Get device code</span>
+                </button>
+                <div class="lic-code" id="licCodeWrap" hidden>
+                  <div class="lic-code__label" data-i18n="lic_code_label">Your device code — tap to copy</div>
+                  <div class="lic-code__box" id="licCodeField" role="button" tabindex="0" aria-label="Copy code">
+                    <span class="lic-code__text" id="licCodeText"></span>
+                    <span class="lic-code__copy" id="licCopyBtn" aria-hidden="true">
+                      <svg class="lic-copy-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      <svg class="lic-copy-ok" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                  </div>
+                  <div class="lic-share">
+                    <button class="lic-share__btn" id="licShareBtn" type="button">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+                      <span data-i18n="lic_share">Share</span>
+                    </button>
+                    <button class="lic-share__btn" id="licSaveBtn" type="button">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+                      <span data-i18n="lic_savefile">Save file</span>
+                    </button>
+                    <button class="lic-share__btn" id="licQrBtn" type="button" aria-pressed="false">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v.01M17 17v.01"/></svg>
+                      <span data-i18n="lic_qr">QR code</span>
+                    </button>
+                  </div>
+                  <p class="lic-hint" id="licShareHint" hidden data-i18n="lic_share_hint">Can't copy? Use Share, Save, or QR above.</p>
+                  <div class="lic-qr" id="licQrPanel" hidden>
+                    <div class="lic-qr__tile" id="licQrHolder"></div>
+                    <span class="lic-qr__cap" data-i18n="lic_qr_cap">Scan to read your device code</span>
+                  </div>
+                  <a class="lic-contact" id="licContactLink" role="button" tabindex="0" data-i18n="lic_contact">Contact the seller on Telegram</a>
+                </div>
+              </div>
+
+              <!-- Step 2 — activate -->
+              <div class="lic-step">
+                <div class="lic-step__label"><span class="lic-step__n">2</span><span data-i18n="lic_step_activate">Activate your license</span></div>
+                <textarea class="lic-import__field" id="licImportField" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off" data-i18n-attr="placeholder:lic_import_ph" placeholder="Paste license code…"></textarea>
+                <div class="lic-import__row">
+                  <button class="lic-btn lic-btn--primary" id="licImportRow" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span data-i18n="lic_import">Import</span>
+                  </button>
+                  <button class="lic-btn lic-btn--ghost" id="licImportFile" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span data-i18n="lic_import_file">Choose file</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="section-label" data-i18n="label_appearance">Appearance</div>
+        <div class="glass-card settings-card">
+          <!-- Theme row → opens sheet -->
+          <div class="setting-row" id="themeSettingRow" role="button" tabindex="0" aria-label="Choose theme">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="set_theme">Theme</span>
+            <span class="setting-row__value-hint" id="themeRowHint">Dark</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="sys-divider"></div>
+          <!-- Language row → opens sheet -->
+          <div class="setting-row" id="langSettingRow" role="button" tabindex="0" aria-label="Choose language">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="set_language">Language</span>
+            <span class="setting-row__value-hint" id="langRowHint">English</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="sys-divider"></div>
+          <!-- Fullscreen (immersive) toggle → ksu.fullScreen bridge -->
+          <div class="setting-row setting-row--toggle">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="set_fullscreen">Fullscreen</span>
+            <label class="toggle" aria-label="Fullscreen mode">
+              <input type="checkbox" id="fullscreenToggle"/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Developer -->
+        <div class="section-label" data-i18n="label_developer">Developer</div>
+        <div class="glass-card settings-card">
+          <div class="setting-row setting-row--toggle">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="set_debug">Debug Logs</span>
+            <label class="toggle" aria-label="Enable debug logs">
+              <input type="checkbox" id="debugToggle"/>
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </label>
+          </div>
+          <div class="setting-row" id="statusRow" role="button" tabindex="0" aria-label="Hook Status">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="set_status">Hook Status</span>
+            <span class="setting-row__value-hint" data-i18n="set_status_hint">Served spoofs</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="setting-row" id="helpersRow" role="button" tabindex="0" aria-label="Integrations">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="hlp_title">Integrations</span>
+            <span class="setting-row__value-hint" data-i18n="hlp_row_hint">Module helpers</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="setting-row" id="consoleRow" role="button" tabindex="0" aria-label="Open Console">
+            <span class="setting-row__icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </span>
+            <span class="setting-row__label" data-i18n="console_open">Open Console</span>
+            <span class="setting-row__value-hint" data-i18n="console_row_hint">Shell · logcat</span>
+            <svg class="setting-row__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+
+        <!-- About (module info) -->
+        <div class="section-label" data-i18n="label_about">About</div>
+        <div class="glass-card about-card" id="aboutCard" role="button" tabindex="0" aria-expanded="false" aria-label="Module info">
+          <div class="about-header">
+            <div class="about-header__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5"/><circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="about-header__info">
+              <div class="about-header__name" data-i18n="about_module">COPG Module</div>
+              <div class="about-header__ver" id="aboutVersion">—</div>
+            </div>
+            <svg class="about-header__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="about-body">
+            <div class="sys-divider" style="margin:0 16px 0;"></div>
+            <div class="about-row">
+              <span class="about-row__label" data-i18n="about_version">Version</span>
+              <span class="about-row__value about-row__value--accent" id="aboutVersion2">—</span>
+            </div>
+            <div class="sys-divider"></div>
+            <div class="about-row">
+              <span class="about-row__label" data-i18n="about_vcode">Version Code</span>
+              <span class="about-row__value" id="aboutVersionCode">—</span>
+            </div>
+            <div class="sys-divider"></div>
+            <div class="about-row">
+              <span class="about-row__label" data-i18n="about_author">Author</span>
+              <span class="about-row__value" id="aboutAuthor">—</span>
+            </div>
+            <div class="about-desc" data-i18n="about_desc">
+              A Zygisk module that spoofs your device — and optionally its CPU — per game or app.
+            </div>
+            <div class="sys-divider"></div>
+            <div class="about-row">
+              <span class="about-row__label" data-i18n="about_license">License</span>
+              <span class="about-row__value">Apache License 2.0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="scroll-bottom-pad"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ───────── BOTTOM NAV ───────── -->
+  <nav class="bottom-nav" id="bottomNav" aria-label="Main navigation">
+    <div class="bottom-nav__dock">
+      <button class="nav-item active" data-page="home" aria-label="Home" aria-current="page">
+        <span class="nav-item__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9.8 12 3l9 6.8"/>
+            <path d="M5.3 8.6V20a1 1 0 0 0 1 1h3.4v-5.4a1 1 0 0 1 1-1h2.6a1 1 0 0 1 1 1V21h3.4a1 1 0 0 0 1-1V8.6"/>
+          </svg>
+        </span>
+        <span class="nav-item__label" data-i18n="nav_home">Home</span>
+        <span class="nav-item__pill"></span>
+      </button>
+
+      <button class="nav-item" data-page="library" aria-label="Library">
+        <span class="nav-item__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4v16"/><path d="M8 8v12"/><path d="M12 6v14"/><path d="m16 6 4 14"/>
+          </svg>
+        </span>
+        <span class="nav-item__label" data-i18n="nav_library">Library</span>
+        <span class="nav-item__pill"></span>
+      </button>
+
+      <button class="nav-item" data-page="device" aria-label="Device">
+        <span class="nav-item__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>
+          </svg>
+        </span>
+        <span class="nav-item__label" data-i18n="nav_device">Device</span>
+        <span class="nav-item__pill"></span>
+      </button>
+
+      <button class="nav-item" data-page="settings" aria-label="Settings">
+        <span class="nav-item__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </span>
+        <span class="nav-item__label" data-i18n="nav_settings">Settings</span>
+        <span class="nav-item__pill"></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ───────── SHEET OVERLAY ───────── -->
+  <div class="sheet-overlay" id="sheetOverlay" aria-hidden="true"></div>
+
+  <!-- ───────── THEME SHEET ───────── -->
+  <div class="bottom-sheet" id="themeSheet" role="dialog" aria-modal="true" aria-label="Choose theme">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-header__title" data-i18n="sheet_theme_title">Theme</span>
+      <button class="sheet-header__close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="sheet-option" data-theme-option="auto">
+        <div class="sheet-option__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <span class="sheet-option__label" data-i18n="theme_opt_auto">Auto (System)</span>
+        <svg class="sheet-option__check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="sheet-option" data-theme-option="dark">
+        <div class="sheet-option__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+        <span class="sheet-option__label" data-i18n="theme_opt_dark">Dark</span>
+        <svg class="sheet-option__check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="sheet-option" data-theme-option="light">
+        <div class="sheet-option__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <span class="sheet-option__label" data-i18n="theme_opt_light">Light</span>
+        <svg class="sheet-option__check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="sheet-option" data-theme-option="amoled">
+        <div class="sheet-option__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <span class="sheet-option__label" data-i18n="theme_opt_amoled">AMOLED Black</span>
+        <svg class="sheet-option__check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────── LANGUAGE SHEET (options built dynamically from registered languages) ───────── -->
+  <div class="bottom-sheet" id="langSheet" role="dialog" aria-modal="true" aria-label="Choose language">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-header__title" data-i18n="sheet_lang_title">Language</span>
+      <button class="sheet-header__close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body"><!-- populated by buildLangSheet() in theme.js --></div>
+  </div>
+
+  <!-- ───────── RIPPLE ───────── -->
+  <div class="ripple-container" id="rippleContainer" aria-hidden="true"></div>
+
+  <!-- ───────── SCRIPTS (order matters) ───────── -->
+  <script src="js/state.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/lang/en.js"></script>
+  <script src="js/lang/fa.js"></script>
+  <script src="js/lang/ar.js"></script>
+  <script src="js/lang/de.js"></script>
+  <script src="js/lang/es.js"></script>
+  <script src="js/lang/pt-BR.js"></script>
+  <script src="js/lang/id.js"></script>
+  <script src="js/lang/th.js"></script>
+  <script src="js/lang/tr.js"></script>
+  <script src="js/lang/zh.js"></script>
+  <script src="js/copg-data.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/apppicker.js"></script>
+  <script src="js/devicepicker.js"></script>
+  <script src="js/cpupicker.js"></script>
+  <script src="js/gpupicker.js"></script>
+  <script src="js/uapicker.js"></script>
+  <script src="js/tzpicker.js"></script>
+  <script src="js/gpspicker.js"></script>
+  <script src="js/langpicker.js"></script>
+  <script src="js/carrierpicker.js"></script>
+  <script src="js/proxypicker.js"></script>
+  <script src="js/console.js"></script>
+  <script src="js/gestures.js"></script>
+  <script src="js/library.js"></script>
+  <script src="js/backup.js"></script>
+  <script src="js/status.js"></script>
+  <script src="js/helpers.js"></script>
+  <script src="js/qrcode.js"></script>
+  <script src="js/license.js"></script>
+  <script src="js/gaidsheet.js"></script>
+  <script src="js/globalimeisheet.js"></script>
+  <script src="js/installpatchessheet.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/boot.js"></script>
+</body>
+</html>
