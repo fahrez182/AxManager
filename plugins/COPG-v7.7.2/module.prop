@@ -1,0 +1,9 @@
+id=COPG
+name=✨ COPG SPOOF ✨
+version=7.7.2
+versionCode=772
+author=AlirezaParsi
+description=Spoof your device for games/apps to unlock new features. Website: https://vendors.copg.my
+support=https://t.me/theaosp
+updateJson=https://raw.githubusercontent.com/AlirezaParsi/COPG/refs/heads/JSON/update.json
+minMagisk=20.4
