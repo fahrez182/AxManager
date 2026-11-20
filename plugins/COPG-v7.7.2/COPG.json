@@ -1,0 +1,377 @@
+{
+ "PACKAGES_THISDEVICE": [
+  "com.epicgames.fortnite:cpu=sd8elite",
+  "com.miraclegames.farlight84:cpu=sd8elite",
+  "com.bbl.mobilebanking:blocked",
+  "com.netease.yysls:gpu=adreno830",
+  "com.tencent.mhadv:gpu=adreno840:blocked",
+  "com.garena.game.mho:gpu=adreno840:blocked"
+ ],
+ "PACKAGES_THISDEVICE_DEVICE": {},
+ "PACKAGES_REDMAGIC_9_PRO": [
+  "com.supercell.brawlstars:blocked",
+  "com.blizzard.diablo.immortal:blocked",
+  "com.netease.newspike:blocked:gpu=adreno830",
+  "com.gamedevltd.destinywarfare:blocked",
+  "com.pikpok.dr2.play:blocked",
+  "com.CarXTech.highWay:blocked",
+  "com.nekki.shadowfight3:blocked",
+  "com.nekki.shadowfightarena:blocked",
+  "com.gameloft.android.ANMP.GloftA8HM:blocked",
+  "com.nekki.shadowfight:blocked",
+  "com.ea.game.nfs14_row:blocked",
+  "com.supercell.squad:blocked",
+  "com.blitzteam.battleprime:blocked",
+  "com.tencent.tmgp.gnyx:blocked",
+  "com.ss.android.ugc.trill:blocked",
+  "com.zhiliaoapp.musically:blocked",
+  "com.garena.game.df:blocked"
+ ],
+ "PACKAGES_REDMAGIC_9_PRO_DEVICE": {
+  "NAME": "REDMAGIC 9 Pro",
+  "BRAND": "nubia",
+  "MANUFACTURER": "ZTE",
+  "MODEL": "NX769J",
+  "DEVICE": "NX769J",
+  "PRODUCT": "NX769J",
+  "FINGERPRINT": "nubia/NX769J/NX769J:14/UKQ1.230917.001/20240813.173312:user/release-keys"
+ },
+ "PACKAGES_BLACK_SHARK_4_(CHINA)": [],
+ "PACKAGES_BLACK_SHARK_4_(CHINA)_DEVICE": {
+  "NAME": "Black Shark 4 (China)",
+  "BRAND": "blackshark",
+  "MANUFACTURER": "blackshark",
+  "MODEL": "Shark PRS-H0",
+  "DEVICE": "PRS-H0",
+  "PRODUCT": "PRS-H0",
+  "FINGERPRINT": "blackshark/PRS-H0/PRS-H0:13/TQ3A.230805.001/20230315:user/release-keys"
+ },
+ "PACKAGES_XIAOMI_11T_PRO": [
+  "com.levelinfinite.hotta.gp:blocked",
+  "com.supercell.clashofclans:blocked",
+  "com.vng.mlbbvn:blocked"
+ ],
+ "PACKAGES_XIAOMI_11T_PRO_DEVICE": {
+  "NAME": "Xiaomi 11T Pro",
+  "BRAND": "Xiaomi",
+  "MANUFACTURER": "Xiaomi",
+  "MODEL": "2107113SG",
+  "DEVICE": "vili",
+  "PRODUCT": "vili_global",
+  "FINGERPRINT": "Xiaomi/vili_global/vili:13/RKQ1.211001.001/20230410:user/release-keys"
+ },
+ "PACKAGES_XIAOMI_13_PRO": [
+  "com.levelinfinite.sgameGlobal:blocked",
+  "com.netflix.mediaclient:blocked",
+  "com.netflix.ninja:blocked"
+ ],
+ "PACKAGES_XIAOMI_13_PRO_DEVICE": {
+  "NAME": "Xiaomi 13 Pro",
+  "BRAND": "Xiaomi",
+  "MANUFACTURER": "Xiaomi",
+  "MODEL": "2210132G",
+  "DEVICE": "nuwa",
+  "PRODUCT": "nuwa_global",
+  "FINGERPRINT": "Xiaomi/nuwa_global/nuwa:13/TKQ1.221114.001/V14.0.8.0.TMCMIXM:user/release-keys"
+ },
+ "PACKAGES_XIAOMI_14": [
+  "com.tencent.tmgp.sgame:blocked"
+ ],
+ "PACKAGES_XIAOMI_14_DEVICE": {
+  "NAME": "Xiaomi 14",
+  "BRAND": "Xiaomi",
+  "MANUFACTURER": "Xiaomi",
+  "MODEL": "23116PN5BC",
+  "DEVICE": "houji",
+  "PRODUCT": "houji",
+  "FINGERPRINT": "Xiaomi/houji/houji:14/UKQ1.231003.002/OS1.0.30.0.UNCCNXM:user/release-keys"
+ },
+ "PACKAGES_ONEPLUS_8_PRO_5G": [
+  "com.riotgames.league.wildrift:blocked",
+  "com.riotgames.league.wildrifttw:blocked",
+  "com.riotgames.league.wildriftvn:blocked"
+ ],
+ "PACKAGES_ONEPLUS_8_PRO_5G_DEVICE": {
+  "NAME": "OnePlus 8 Pro 5G",
+  "BRAND": "OnePlus",
+  "MANUFACTURER": "OnePlus",
+  "MODEL": "IN2023",
+  "DEVICE": "OnePlus8Pro",
+  "PRODUCT": "IN2023",
+  "FINGERPRINT": "OnePlus/IN2023/OnePlus8Pro:13/RKQ1.211119.001/20230501:user/release-keys"
+ },
+ "PACKAGES_ROG_PHONE_6D_ULTIMATE": [
+  "com.madfingergames.legends:blocked",
+  "com.pearlabyss.blackdesertm:blocked",
+  "com.pearlabyss.blackdesertm.gl:blocked"
+ ],
+ "PACKAGES_ROG_PHONE_6D_ULTIMATE_DEVICE": {
+  "NAME": "ROG Phone 6D Ultimate",
+  "BRAND": "asus",
+  "MANUFACTURER": "asus",
+  "MODEL": "AI2203",
+  "DEVICE": "AI2203",
+  "PRODUCT": "WW_AI2203",
+  "FINGERPRINT": "asus/WW_AI2203/AI2203:14/UP1A.231005.007/20240315:user/release-keys"
+ },
+ "PACKAGES_ROG_PHONE_8": [],
+ "PACKAGES_ROG_PHONE_8_DEVICE": {
+  "NAME": "ROG Phone 8",
+  "BRAND": "asus",
+  "MANUFACTURER": "asus",
+  "MODEL": "ASUS_AI2401",
+  "DEVICE": "AI2401",
+  "PRODUCT": "WW_AI2401",
+  "FINGERPRINT": "asus/WW_AI2401/AI2401:14/UKQ1.231108.001/20240705:user/release-keys"
+ },
+ "PACKAGES_BLACK_SHARK_KTUS_A0": [
+  "com.proximabeta.mf.uamo"
+ ],
+ "PACKAGES_BLACK_SHARK_KTUS_A0_DEVICE": {
+  "NAME": "Black Shark KTUS-A0",
+  "BRAND": "blackshark",
+  "MANUFACTURER": "blackshark",
+  "MODEL": "Shark KTUS-A0",
+  "DEVICE": "KTUS-A0",
+  "PRODUCT": "KTUS-A0",
+  "FINGERPRINT": "blackshark/KTUS-A0/KTUS-A0:13/TQ3A.230805.001/20230601:user/release-keys"
+ },
+ "PACKAGES_LEGION_Y700_(2023)": [
+  "com.activision.callofduty.shooter:blocked"
+ ],
+ "PACKAGES_LEGION_Y700_(2023)_DEVICE": {
+  "NAME": "Legion Y700 (2023)",
+  "BRAND": "Lenovo",
+  "MANUFACTURER": "Lenovo",
+  "MODEL": "TB-9707F",
+  "DEVICE": "TB-9707F",
+  "PRODUCT": "TB-9707F",
+  "FINGERPRINT": "Lenovo/TB-9707F/TB-9707F:13/TQ3A.230805.001/20230901:user/release-keys"
+ },
+ "PACKAGES_XIAOMI_13": [
+  "com.tencent.lolm:blocked"
+ ],
+ "PACKAGES_XIAOMI_13_DEVICE": {
+  "NAME": "Xiaomi 13",
+  "BRAND": "Xiaomi",
+  "MANUFACTURER": "Xiaomi",
+  "MODEL": "2211133G",
+  "DEVICE": "fuxi",
+  "PRODUCT": "fuxi_eea",
+  "FINGERPRINT": "Xiaomi/fuxi_eea/fuxi:13/TKQ1.221114.001/OS2.0.102.0.VMCEUXM:user/release-keys"
+ },
+ "PACKAGES_ONEPLUS_13": [
+  "com.proxima.dfm:blocked"
+ ],
+ "PACKAGES_ONEPLUS_13_DEVICE": {
+  "NAME": "OnePlus 13",
+  "BRAND": "OnePlus",
+  "MANUFACTURER": "OnePlus",
+  "MODEL": "PJZ110",
+  "DEVICE": "OP5D0DL1",
+  "PRODUCT": "PJZ110",
+  "FINGERPRINT": "OnePlus/PJZ110/OP5D0DL1:15/AP3A.240617.008/V.1bd19a1-1-2:user/release-keys"
+ },
+ "PACKAGES_REDMAGIC_11_PRO": [
+  "com.kurogame.wutheringwaves.global:blocked",
+  "com.vng.codmvn:blocked",
+  "com.tencent.tmgp.kr.codm:blocked",
+  "com.garena.game.codm:blocked",
+  "com.pubg.krmobile:blocked",
+  "com.rekoo.pubgm:blocked",
+  "com.tencent.tmgp.pubgmhd:blocked",
+  "com.vng.pubgmobile:blocked",
+  "com.tencent.ig:blocked"
+ ],
+ "PACKAGES_REDMAGIC_11_PRO_DEVICE": {
+  "NAME": "REDMAGIC 11 Pro",
+  "BRAND": "REDMAGIC",
+  "MANUFACTURER": "Nubia",
+  "MODEL": "NX809J",
+  "DEVICE": "NX809J",
+  "PRODUCT": "NX809J-UN",
+  "FINGERPRINT": "REDMAGIC/NX809J-UN/NX809J:16/BP2A.250605.031.A3/20251017.000000:user/release-keys"
+ },
+ "PACKAGES_REALME_15_PRO_5G": [
+  "com.ngame.allstar.eu:blocked",
+  "com.clashoftitansandroid.india:blocked",
+  "com.garena.game.kgvn:blocked",
+  "com.garena.game.kgid:blocked",
+  "com.garena.game.kgth:blocked",
+  "com.tencent.ngjp:blocked",
+  "com.garena.game.kgtw:blocked",
+  "com.tencent.ngame.chty:blocked",
+  "com.garena.game.kgvntest:blocked",
+  "com.levelinfinite.aov:blocked",
+  "com.tencent.aovindia:blocked",
+  "com.garena.game.kgms:blocked",
+  "com.tencent.aovjp:blocked",
+  "com.garena.game.kgph:blocked"
+ ],
+ "PACKAGES_REALME_15_PRO_5G_DEVICE": {
+  "NAME": "Realme 15 Pro 5G",
+  "BRAND": "realme",
+  "MANUFACTURER": "realme",
+  "MODEL": "RMX5101",
+  "DEVICE": "RE60B4L1",
+  "PRODUCT": "RMX5101IN",
+  "FINGERPRINT": "realme/RMX5101IN/RE60B4L1:15/AP3A.240617.008/V.R4T2.26cec0e-80bb4e-80b757:user/release-keys"
+ },
+ "PACKAGES_GALAXY_Z_FOLD_5": [
+  "com.ea.gp.fifamobile:cow:blocked"
+ ],
+ "PACKAGES_GALAXY_Z_FOLD_5_DEVICE": {
+  "NAME": "Galaxy Z Fold 5",
+  "BRAND": "samsung",
+  "MANUFACTURER": "samsung",
+  "MODEL": "SM-F9460",
+  "DEVICE": "q2q",
+  "PRODUCT": "q2qzh",
+  "FINGERPRINT": "samsung/q2qzh/q2q:15/UP1A.231005.007/F946BXXU1BWK4:user/release-keys"
+ },
+ "PACKAGES_GALAXY_TAB_S9_ULTRA": [
+  "com.pubg.imobile:blocked"
+ ],
+ "PACKAGES_GALAXY_TAB_S9_ULTRA_DEVICE": {
+  "NAME": "Galaxy Tab S9 Ultra",
+  "BRAND": "samsung",
+  "MANUFACTURER": "samsung",
+  "MODEL": "SM-X916B",
+  "DEVICE": "gts9ultra",
+  "PRODUCT": "gts9ultraxx",
+  "FINGERPRINT": "samsung/gts9ultraxx/gts9ultra:16/BP2A.250605.031/X916BXXU6EZE3:user/release-keys"
+ },
+ "PACKAGES_SONY_XPERIA_1_III": [
+  "com.gameloft.android.ANMP.GloftA9HM:blocked"
+ ],
+ "PACKAGES_SONY_XPERIA_1_III_DEVICE": {
+  "NAME": "Sony Xperia 1 III",
+  "BRAND": "Sony",
+  "MANUFACTURER": "Sony",
+  "MODEL": "A101SO",
+  "DEVICE": "pdx215",
+  "PRODUCT": "A101SO",
+  "FINGERPRINT": "Sony/A101SO/pdx215:13/61.2.B.0.683/0470464051:user/release-keys"
+ },
+ "PACKAGES_INFINIX_GT_50_PRO_5G": [
+  "com.dts.freefireth:blocked",
+  "com.dts.freefiremax:blocked",
+  "com.mobile.legends:blocked",
+  "com.mobile.legends.usa:blocked",
+  "com.vng.mlbbvn:blocked",
+  "com.moonton.mobilelegends.ymzg:blocked",
+  "com.moonton.mobilelegends.samsung:blocked",
+  "com.moonton.mobilelegends.huawei:blocked"
+ ],
+ "PACKAGES_INFINIX_GT_50_PRO_5G_DEVICE": {
+  "NAME": "Infinix GT 50 Pro 5G",
+  "BRAND": "INFINIX",
+  "MANUFACTURER": "INFINIX",
+  "MODEL": "Infinix X6891",
+  "DEVICE": "X6891",
+  "PRODUCT": "X6891",
+  "FINGERPRINT": "Infinix/X6891/X6891:15/AP3A.240617.008/20250520.123456:user/release-keys"
+ },
+ "PACKAGES_HUAWEI_MATE_80_PRO_MAX": [],
+ "PACKAGES_HUAWEI_MATE_80_PRO_MAX_DEVICE": {
+  "NAME": "HUAWEI Mate 80 Pro Max",
+  "BRAND": "HUAWEI",
+  "MANUFACTURER": "HUAWEI",
+  "MODEL": "SGT-AL10",
+  "DEVICE": "SGT-AL10",
+  "PRODUCT": "SGT-AL10",
+  "FINGERPRINT": "HUAWEI/SGT-AL10/SGT-AL10:OpenHarmony-6.1.0.115/6.1.1.115:user/release-keys"
+ },
+ "PACKAGES_PIXEL_XL": [
+  "com.google.android.apps.photos:cow"
+ ],
+ "PACKAGES_PIXEL_XL_DEVICE": {
+  "NAME": "Pixel XL",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel XL",
+  "DEVICE": "marlin",
+  "PRODUCT": "marlin",
+  "FINGERPRINT": "google/marlin/marlin:10/QP1A.191005.007.A3/5972272:user/release-keys"
+ },
+ "PACKAGES_PIXEL_9": [],
+ "PACKAGES_PIXEL_9_DEVICE": {
+  "NAME": "Pixel 9",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 9",
+  "DEVICE": "tokay",
+  "PRODUCT": "tokay",
+  "FINGERPRINT": "google/tokay/tokay:16/BP3A.250905.014/13873947:user/release-keys"
+ },
+ "PACKAGES_PIXEL_9_PRO": [],
+ "PACKAGES_PIXEL_9_PRO_DEVICE": {
+  "NAME": "Pixel 9 Pro",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 9 Pro",
+  "DEVICE": "caiman",
+  "PRODUCT": "caiman",
+  "FINGERPRINT": "google/caiman/caiman:16/BP3A.250905.014/13873947:user/release-keys"
+ },
+ "PACKAGES_PIXEL_9_PRO_XL": [],
+ "PACKAGES_PIXEL_9_PRO_XL_DEVICE": {
+  "NAME": "Pixel 9 Pro XL",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 9 Pro XL",
+  "DEVICE": "komodo",
+  "PRODUCT": "komodo",
+  "FINGERPRINT": "google/komodo/komodo:16/BP3A.250905.014/13873947:user/release-keys"
+ },
+ "PACKAGES_PIXEL_9_PRO_FOLD": [],
+ "PACKAGES_PIXEL_9_PRO_FOLD_DEVICE": {
+  "NAME": "Pixel 9 Pro Fold",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 9 Pro Fold",
+  "DEVICE": "comet",
+  "PRODUCT": "comet",
+  "FINGERPRINT": "google/comet/comet:16/BP3A.250905.014/13873947:user/release-keys"
+ },
+ "PACKAGES_PIXEL_10": [],
+ "PACKAGES_PIXEL_10_DEVICE": {
+  "NAME": "Pixel 10",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 10",
+  "DEVICE": "frankel",
+  "PRODUCT": "frankel",
+  "FINGERPRINT": "google/frankel/frankel:16/CP1A.260505.005/15081906:user/release-keys"
+ },
+ "PACKAGES_PIXEL_10_PRO": [],
+ "PACKAGES_PIXEL_10_PRO_DEVICE": {
+  "NAME": "Pixel 10 Pro",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 10 Pro",
+  "DEVICE": "blazer",
+  "PRODUCT": "blazer",
+  "FINGERPRINT": "google/blazer/blazer:16/CP1A.260505.005/15081906:user/release-keys"
+ },
+ "PACKAGES_PIXEL_10_PRO_XL": [],
+ "PACKAGES_PIXEL_10_PRO_XL_DEVICE": {
+  "NAME": "Pixel 10 Pro XL",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 10 Pro XL",
+  "DEVICE": "mustang",
+  "PRODUCT": "mustang",
+  "FINGERPRINT": "google/mustang/mustang:16/CP1A.260505.005/15081906:user/release-keys"
+ },
+ "PACKAGES_PIXEL_10_PRO_FOLD": [],
+ "PACKAGES_PIXEL_10_PRO_FOLD_DEVICE": {
+  "NAME": "Pixel 10 Pro Fold",
+  "BRAND": "google",
+  "MANUFACTURER": "Google",
+  "MODEL": "Pixel 10 Pro Fold",
+  "DEVICE": "rango",
+  "PRODUCT": "rango",
+  "FINGERPRINT": "google/rango/rango:16/CP1A.260505.005/15081906:user/release-keys"
+ }
+}
