@@ -1,0 +1,97 @@
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   console.css — developer/debug console sheet
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sheet--console {
+  max-height:92vh; height:92vh;      /* vh fallback for engines without dvh (old Android 11 WebView) */
+  max-height:92dvh; height:92dvh;    /* modern engines: dynamic viewport */
+  display:flex; flex-direction:column;
+  padding-bottom:0;            /* the input row owns the safe-area inset */
+  overflow:hidden;             /* keep the rounded top corners clipping children */
+}
+
+/* ── Toolbar ── */
+.console-toolbar {
+  display:flex; align-items:center; gap:8px;
+  padding:4px 14px 10px; flex-shrink:0;
+  border-bottom:1px solid var(--glass-border);
+  overflow-x:auto; scrollbar-width:none;          /* fit a 4th button on narrow phones */
+}
+.console-toolbar::-webkit-scrollbar { display:none; }
+.con-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 12px; border-radius:var(--radius-full);
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+  color:var(--text-secondary); font-family:var(--font-sans);
+  font-size:.74rem; font-weight:600; cursor:pointer; white-space:nowrap;
+  flex-shrink:0;
+  outline:none; appearance:none; -webkit-appearance:none;
+  transition:background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+             border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--spring);
+}
+.con-btn:active { transform:scale(.94); }
+.con-btn:hover  { background:var(--glass-bg-hover); color:var(--text-primary); }
+.con-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  background:var(--text-tertiary); transition:background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast);
+}
+/* Logcat active state */
+#conLogcat.active {
+  background:rgba(52,211,153,.14); border-color:rgba(52,211,153,.4); color:var(--accent-success);
+}
+#conLogcat.active .con-dot {
+  background:var(--accent-success); box-shadow:0 0 8px rgba(52,211,153,.8);
+  animation:pulse-dot 1.4s var(--ease-out) infinite;
+}
+
+/* ── Output ── */
+.console-output {
+  flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:10px 14px;
+  font-family:var(--font-mono); font-size:.72rem; line-height:1.5;
+  background:var(--bg-base);
+  scrollbar-width:thin;
+}
+.console-output::-webkit-scrollbar { width:0; }
+.con-line {
+  display:flex; gap:8px; align-items:flex-start;
+  padding:1px 0; white-space:pre-wrap; word-break:break-word;
+  animation:fadeIn var(--dur-fast) var(--ease-out);
+}
+.con-ts  { color:var(--text-tertiary); flex-shrink:0; opacity:.7; -webkit-user-select:none; user-select:none; }
+.con-msg { flex:1; min-width:0; color:var(--text-secondary); }
+
+/* line types */
+.con-info    .con-msg { color:var(--text-secondary); }
+.con-out     .con-msg { color:var(--text-primary); }
+.con-success .con-msg { color:var(--accent-success); }
+.con-warning .con-msg { color:#FBBF24; }
+.con-error   .con-msg { color:var(--accent-danger); }
+.con-cmd     .con-msg { color:var(--accent-primary); font-weight:600; }
+
+/* ── Input ── */
+.console-input {
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+  padding:10px 12px calc(var(--inset-bottom,0px) + 12px);
+  border-top:1px solid var(--glass-border);
+  background:var(--bg-surface-1);
+}
+.console-input__prompt {
+  color:var(--accent-primary); font-family:var(--font-mono);
+  font-size:.9rem; font-weight:700; flex-shrink:0; padding-left:4px;
+}
+.console-input input {
+  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  color:var(--text-primary); font-family:var(--font-mono); font-size:.8rem;
+  direction:ltr;
+}
+.console-input input::placeholder { color:var(--text-tertiary); }
+.con-run {
+  flex-shrink:0; width:40px; height:40px; border-radius:var(--radius-md);
+  display:grid; place-items:center; cursor:pointer;
+  background:var(--accent-primary); color:#0A0A12; border:none;
+  outline:none; appearance:none; -webkit-appearance:none;
+  transition:transform var(--dur-fast) var(--spring), filter var(--dur-fast);
+}
+.con-run:active { transform:scale(.9); }
+.con-run:hover  { filter:brightness(1.08); }
+[data-theme="light"] .con-run { color:#fff; }
