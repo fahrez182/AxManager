@@ -1,8 +1,8 @@
-package frb.axeron.manager.core
+package com.dumper.android.core
 
 import android.app.Application
 import android.content.Context
-import frb.axeron.manager.BuildConfig
+import com.dumper.android.BuildConfig
 import com.topjohnwu.superuser.Shell
 
 class App : Application() {
