@@ -1,0 +1,93 @@
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   cards.css — System card, Console, About expand
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ── System rows ── */
+.sys-card { padding:4px 0; }
+.sys-row {
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  transition:background var(--dur-fast) var(--ease-out);cursor:default;
+}
+.sys-row:active { background:var(--glass-bg-hover); }
+.sys-row__icon {
+  width:28px;height:28px;border-radius:8px;
+  background:rgba(255,255,255,.05);
+  display:grid;place-items:center;flex-shrink:0;color:var(--accent-primary);
+}
+.sys-row__label { flex:1;font-size:.825rem;color:var(--text-secondary);font-weight:400; }
+/* Same width/placement as before; the only change is that a value too long to
+   fit scrolls horizontally (swipe) instead of being clipped — layout unchanged. */
+.sys-row__value {
+  font-size:.82rem;font-weight:600;color:var(--text-primary);
+  text-align:right;max-width:52%;white-space:nowrap;
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.sys-row__value::-webkit-scrollbar { display:none; }
+.sys-row__value--mono { font-family:var(--font-mono);font-size:.7rem;color:var(--accent-glow); }
+
+/* ── Console card ── */
+.console-card {
+  position:relative;cursor:pointer;overflow:hidden;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--spring);
+}
+.console-card:hover  { background:var(--glass-bg-hover);border-color:var(--glass-border-active); }
+.console-card:active { transform:scale(0.97); }
+.console-card__inner { display:flex;align-items:center;gap:14px;padding:11px 18px;position:relative;z-index:1; }
+.console-card__icon-wrap {
+  width:34px;height:34px;border-radius:var(--radius-sm);
+  background:rgba(129,140,248,.12);border:1px solid rgba(129,140,248,.2);
+  display:grid;place-items:center;flex-shrink:0;color:var(--accent-primary);
+}
+.console-card__label { flex:1;font-size:.9rem;font-weight:600;color:var(--text-primary);font-family:var(--font-mono);letter-spacing:-.01em; }
+.console-card__arrow { color:var(--text-tertiary);transition:transform var(--dur-fast) var(--spring),color var(--dur-fast) var(--ease-out); }
+.console-card:hover .console-card__arrow { transform:translateX(3px);color:var(--accent-primary); }
+.console-card__scanline {
+  position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(129,140,248,.015) 2px,rgba(129,140,248,.015) 4px);
+}
+
+/* ── About expandable card ── */
+.about-card { cursor:pointer; }
+.about-card:hover { background:var(--glass-bg-hover); }
+
+.about-header {
+  display:flex;align-items:center;gap:14px;padding:16px 16px 14px;
+}
+.about-header__icon {
+  width:42px;height:42px;border-radius:var(--radius-md);
+  background:linear-gradient(135deg,rgba(129,140,248,.2),rgba(167,139,250,.15));
+  border:1px solid rgba(129,140,248,.25);
+  display:grid;place-items:center;flex-shrink:0;color:var(--accent-primary);
+  font-size:1.1rem;
+}
+.about-header__info { flex:1;min-width:0; }
+.about-header__name { font-size:.95rem;font-weight:700;color:var(--text-primary);letter-spacing:-.01em; }
+.about-header__ver  { font-size:.72rem;color:var(--accent-primary);font-family:var(--font-mono);margin-top:1px; }
+.about-header__chevron {
+  color:var(--text-tertiary);flex-shrink:0;
+  transition:transform var(--dur-med) var(--spring),color var(--dur-fast);
+}
+.about-card.expanded .about-header__chevron { transform:rotate(180deg);color:var(--accent-primary); }
+
+.about-body {
+  max-height:0;overflow:hidden;
+  transition:max-height var(--dur-slow) var(--ease-out), opacity var(--dur-med) var(--ease-out);
+  opacity:0;
+}
+.about-card.expanded .about-body { max-height:400px; opacity:1; }
+
+.about-row {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;
+}
+.about-row__label { font-size:.78rem;color:var(--text-secondary); }
+.about-row__value { font-size:.78rem;font-weight:600;color:var(--text-primary);font-family:var(--font-mono); }
+.about-row__value--accent { color:var(--accent-primary); }
+.about-row__value--success { color:var(--accent-success); }
+.about-desc {
+  padding:10px 16px 16px;font-size:.78rem;color:var(--text-tertiary);line-height:1.55;
+  border-top:1px solid var(--glass-border);margin-top:2px;
+}
