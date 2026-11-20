@@ -1,0 +1,121 @@
+/* helpers.css — Integrations / Module Helpers dashboard (window.Helpers) */
+
+.hlp-intro {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.hlp-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--glass-bg);
+}
+
+.hlp-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 13px;
+  border-bottom: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background var(--dur-fast, .15s) var(--ease-out, ease);
+}
+.hlp-row:last-child { border-bottom: none; }
+.hlp-row:active { background: var(--glass-bg-hover); }
+
+/* static info card — not a button */
+.hlp-row--static { cursor: default; }
+.hlp-row--static:active { background: none; }
+/* …unless it needs action (e.g. NoMount too old) — tap opens an explanation */
+.hlp-row--action { cursor: pointer; }
+.hlp-row--action:active { background: var(--glass-bg-hover); }
+
+.hlp-row__main { flex: 1; min-width: 0; }
+.hlp-row__top { display: flex; align-items: center; gap: 8px; }
+.hlp-row__name {
+  font-size: 14px; font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hlp-row__ver {
+  flex-shrink: 0;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.hlp-row__role {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+/* type badge — tinted by category, accent-colored text */
+.hlp-type {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.hlp-type--metamodule {
+  color: var(--accent-glow);
+  background: color-mix(in srgb, var(--accent-glow) 16%, transparent);
+}
+.hlp-type--kernel {
+  color: var(--accent-glow);
+  background: color-mix(in srgb, var(--accent-glow) 16%, transparent);
+}
+.hlp-type--zygisk {
+  color: var(--accent-secondary);
+  background: color-mix(in srgb, var(--accent-secondary) 16%, transparent);
+}
+.hlp-type--lsposed {
+  color: var(--accent-secondary);
+  background: color-mix(in srgb, var(--accent-secondary) 16%, transparent);
+}
+.hlp-type--root {
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
+}
+
+/* status pill — colored dot + label */
+.hlp-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hlp-pill::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.hlp-pill--active {
+  color: var(--accent-success);
+  background: color-mix(in srgb, var(--accent-success) 14%, transparent);
+}
+.hlp-pill--outdated {
+  color: #F59E0B;
+  background: color-mix(in srgb, #F59E0B 14%, transparent);
+}
+.hlp-pill--installed {
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+}
+.hlp-pill--absent {
+  color: var(--text-tertiary);
+  background: color-mix(in srgb, var(--text-tertiary) 14%, transparent);
+}
