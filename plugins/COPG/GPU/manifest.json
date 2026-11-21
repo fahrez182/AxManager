@@ -1,0 +1,4 @@
+[
+  { "key": "adreno830", "name": "Adreno 830 (Snapdragon 8 Elite)",       "renderer": "Adreno (TM) 830", "vendor": "Qualcomm", "vendor_id": "0x5143" },
+  { "key": "adreno840", "name": "Adreno 840 (Snapdragon 8 Elite Gen 5)",  "renderer": "Adreno (TM) 840", "vendor": "Qualcomm", "vendor_id": "0x5143" }
+]
