@@ -1,0 +1,73 @@
+Processor       : AArch64 Processor rev 0 (aarch64)
+Features        : fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x1
+CPU part        : 0xd0c
+CPU revision    : 0
+
+processor       : 0
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x1
+CPU part        : 0xd0c
+CPU revision    : 0
+
+processor       : 1
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x2
+CPU part        : 0xd0a
+CPU revision    : 0
+
+processor       : 2
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x2
+CPU part        : 0xd0a
+CPU revision    : 0
+
+processor       : 3
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x2
+CPU part        : 0xd0a
+CPU revision    : 0
+
+processor       : 4
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x3
+CPU part        : 0xd0b
+CPU revision    : 0
+
+processor       : 5
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x3
+CPU part        : 0xd0b
+CPU revision    : 0
+
+processor       : 6
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x3
+CPU part        : 0xd0b
+CPU revision    : 0
+
+processor       : 7
+BogoMIPS        : 26.00
+CPU implementer : 0x48
+CPU architecture: 8
+CPU variant     : 0x3
+CPU part        : 0xd0b
+CPU revision    : 0
+
+Hardware        : HiSilicon Kirin 9000S
