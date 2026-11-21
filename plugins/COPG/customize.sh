@@ -50,4 +50,6 @@ set_perm_recursive "$MODPATH" 0 0 0755 0644 2>/dev/null
 chmod 0755 "$MODPATH/controller" "$MODPATH/copg_lic" "$MODPATH/service.sh" 2>/dev/null
 chmod 0755 "$MODPATH/proxy/copg_proxy.sh" 2>/dev/null
 chmod 0755 "$MODPATH/micshare/mapinject" 2>/dev/null
+chmod 0755 "$MODPATH/micshare/mapinject_arm64" 2>/dev/null
+chmod 0755 "$MODPATH/controller" "$MODPATH/copg_lic_arm64" 2>/dev/null
 ui_print "  ✓  Install done"
