@@ -1,77 +1,58 @@
 cmake_minimum_required(VERSION 3.10)
 
-# =================================================================
-# PROJECT: AxManager 
-# STATUS: High-Performance Sovereign System
-# GOAL: Meta-Reality & Advanced Memory Spoofing
-# =================================================================
+# نام پروژه
+project(AxManagerProject VERSION 1.0.0 LANGUAGES CXX)
 
-project(AxManager)
-
-# تنظیم استاندارد C++ برای استفاده از قابلیت‌های پیشرفته ریاضی و سیستم
+# تنظیم استاندارد C++ (بسیار مهم برای کدهای سطح پایین)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# پیدا کردن کتابخانه لاگ اندروید برای نمایش پیام‌های ما در Logcat
-find_library(log-lib log)
+# تنظیمات بهینه‌سازی برای سرعت حداکثری (Performance Priority)
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -flto")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
-# =================================================================
-# 1. INCLUDE DIRECTORIES (نقشه راه دسترسی به تمام کدها)
-# =================================================================
-include_directories(
-    include
-    include/axmanager
-    include/axmanager/core
-    include/axmanager/memory
-    include/axmanager/memory/core
-)
+# مشخص کردن محل فایل‌های هدر (Include Directories)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# =================================================================
-# 2. SOURCE FILES (لیست تمام قطعاتی که تا الان ساخته‌ایم)
-# =================================================================
+# --- لیست فایل‌های سورس (Sources) ---
+# من تمام ماژول‌هایی که تا الان ساختیم را اینجا لیست می‌کنم
 
-# --- بخش هسته اصلی (Core Modules: Env, SoC, Input, Shield) ---
+# 1. Core Engines (محیط، سخت‌افزار، ورودی، آنتی‌چیت)
 set(CORE_SOURCES
+    main.cpp
     include/axmanager/core/EnvironmentSimulator.cpp
     include/axmanager/core/SoCTuner.cpp
     include/axmanager/core/InputResponseEngine.cpp
     include/axmanager/core/AntiCheatShield.cpp
 )
 
-# --- بخش مدیریت حافظه (Memory Modules: Shadow Memory) ---
+# 2. Memory Management & Advanced Modules (حافظه، اسکنر، هوک)
 set(MEMORY_SOURCES
     include/axmanager/memory/core/ShadowMemoryEngine.cpp
-    include/axmanager/memory/core/include/axmanager/memory/core/PatternScanner.cpp
+    include/axmanager/memory/core/PatternScanner.cpp
     include/axmanager/memory/core/InlineHookEngine.cpp
 )
 
-# ترکیب تمام ماژول‌ها در یک لیست واحد برای ساخت کتابخانه اصلی
-set(ALL_AX_SOURCES
-    ${CORE_SOURCES}
-    ${MEMORY_SOURCES}
+# ترکیب تمام سورس‌ها
+set(ALL_SOURCES ${CORE_SOURCES} ${MEMORY_SOURCES})
+
+# --- ساخت کتابخانه اصلی (Shared Library) ---
+# این فایل اصلی است که سایر اپلیکیشن‌ها یا موتورهای بازی به آن نیاز دارند
+add_library(axmanager_core SHARED ${ALL_SOURCES})
+
+# لینک کردن کتابخانه‌های سیستم اندروید و کتابخانه‌های ضروری
+target_link_libraries(axmanager_core
+    log            # برای استفاده از __android_log_print
+    android        # برای دسترسی‌های سطح سیستم اندروید
+    m              # کتابخانه ریاضی (Math library)
 )
 
-# =================================================================
-# 3. BUILD TARGET (ساخت کتابخانه اصلی AxManager)
-# =================================================================
+# تنظیمات اضافی برای معماری ARM64 (بسیار مهم برای بازی‌ها)
+if(ANDROID)
+    set_target_properties(axmanager_core PROPERTIES LINK_FLAGS "-Wl,--export-dynamic")
+endif()
 
-add_library(
-    axmanager_core
-    SHARED
-    ${ALL_AX_SOURCES}
-)
-
-# لینک کردن کتابخانه لاگ اندروید به پروژه
-target_link_libraries(
-    axmanager_core
-    ${log-lib}
-)
-
-# =================================================================
-# 4. FINAL CONFIRMATION (تایید نهایی در هنگام کامپایل)
-# =================================================================
-message(STATUS "--------------------------------------------------")
-message(STATUS " AxManager Build Configuration Loaded Successfully")
-message(STATUS " Status: Ready for Meta-Reality Evolution")
-message(STATUS " Modules: [Memory, Env, SoC, Input, Shield] - INTEGRATED")
-message(STATUS "--------------------------------------------------")
+# نمایش پیام موفقیت در هنگام کامپایل
+message(STATUS "AxManager Core Library Configuration Loaded Successfully!")
+message(STATUS "Total Source Files Linked: ${ALL_SOURCES}")
