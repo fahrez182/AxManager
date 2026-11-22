@@ -1,15 +1,23 @@
 cmake_minimum_required(VERSION 3.10)
 
+# =================================================================
+# PROJECT: AxManager 
+# STATUS: High-Performance Sovereign System
+# GOAL: Meta-Reality & Advanced Memory Spoofing
+# =================================================================
+
 project(AxManager)
 
-# تنظیم نسخه C++ به 17 یا بالاتر برای پشتیبانی از ویژگی‌های جدید
+# تنظیم استاندارد C++ برای استفاده از قابلیت‌های پیشرفته ریاضی و سیستم
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# پیدا کردن کتابخانه لاگ اندروید
+# پیدا کردن کتابخانه‌های سیستمی اندروید
 find_library(log-lib log)
 
-# تعریف مسیرهای اصلی (Include Directories)
+# =================================================================
+# 1. INCLUDE DIRECTORIES (نقشه راه دسترسی به کدها)
+# =================================================================
 include_directories(
     include
     include/axmanager
@@ -18,30 +26,56 @@ include_directories(
     include/axmanager/memory/core
 )
 
-# لیست تمام فایل‌های منبع (Source Files)
-# من تمام فایل‌هایی که تا الان ساختیم را اینجا اضافه کردم
-set(SOURCE_FILES
-    # ماژول‌های اصلی (Core Modules)
+# =================================================================
+# 2. SOURCE FILES (لیست تمام اعضای خانواده AxManager)
+# =================================================================
+
+set(CORE_SOURCES
+    # --- ماژول مدیریت محیط (Environment Simulator) ---
     include/axmanager/core/EnvironmentSimulator.cpp
+    
+    # --- ماژول مدیریت سخت‌افزار و فرکانس (SoC Tuner) ---
     include/axmanager/core/SoCTuner.cpp
     
-    # ماژول‌های حافظه (Memory Modules)
-    include/axmanager/memory/core/ShadowMemoryEngine.cpp
-    # اگر فایل‌های هدر با پسوند .cpp داری اینجا اضافه کن
+    # --- ماژول مدیریت ورودی و حذف تأخیر (Input Response Engine) ---
+    include/axmanager/core/InputResponseEngine.cpp
+    
+    # --- ماژول محافظتی (Anti-Cheat Shield) - آماده برای اضافه شدن ---
+    # include/axmanager/core/AntiCheatShield.cpp 
 )
 
-# ساخت کتابخانه اصلی AxManager
+set(MEMORY_SOURCES
+    # --- ماژول اصلی حافظه سایه (Shadow Memory Engine) ---
+    include/axmanager/memory/core/ShadowMemoryEngine.cpp
+)
+
+# ترکیب تمام منابع در یک لیست واحد
+set(ALL_AX_SOURCES
+    ${CORE_SOURCES}
+    ${MEMORY_SOURCES}
+)
+
+# =================================================================
+# 3. BUILD TARGET (ساخت هسته اصلی AxManager)
+# =================================================================
+
 add_library(
     axmanager_core
     SHARED
-    ${SOURCE_FILES}
+    ${ALL_AX_SOURCES}
 )
 
-# لینک کردن کتابخانه‌های مورد نیاز به AxManager
+# لینک کردن کتابخانه‌های مورد نیاز (مانند سیستم لاگ اندروید)
 target_link_libraries(
     axmanager_core
     ${log-lib}
 )
 
-# پیام برای تایید در هنگام Build
-message(STATUS "AxManager: All modules (Memory, Env, SoC) have been integrated successfully.")
+# =================================================================
+# 4. FINAL CONFIRMATION
+# =================================================================
+message(STATUS "--------------------------------------------------")
+message(STATUS " AxManager Build Configuration Loaded Successfully")
+message(STATUS " Status: Ready for Meta-Reality Evolution")
+message(STATUS " Modules: [Memory, Env, SoC, Input] - INTEGRATED")
+message(STATUS "--------------------------------------------------")
