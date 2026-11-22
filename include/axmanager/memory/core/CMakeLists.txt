@@ -12,11 +12,11 @@ project(AxManager)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# پیدا کردن کتابخانه‌های سیستمی اندروید
+# پیدا کردن کتابخانه لاگ اندروید برای نمایش پیام‌های ما در Logcat
 find_library(log-lib log)
 
 # =================================================================
-# 1. INCLUDE DIRECTORIES (نقشه راه دسترسی به کدها)
+# 1. INCLUDE DIRECTORIES (نقشه راه دسترسی به تمام کدها)
 # =================================================================
 include_directories(
     include
@@ -27,36 +27,30 @@ include_directories(
 )
 
 # =================================================================
-# 2. SOURCE FILES (لیست تمام اعضای خانواده AxManager)
+# 2. SOURCE FILES (لیست تمام قطعاتی که تا الان ساخته‌ایم)
 # =================================================================
 
+# --- بخش هسته اصلی (Core Modules: Env, SoC, Input, Shield) ---
 set(CORE_SOURCES
-    # --- ماژول مدیریت محیط (Environment Simulator) ---
     include/axmanager/core/EnvironmentSimulator.cpp
-    
-    # --- ماژول مدیریت سخت‌افزار و فرکانس (SoC Tuner) ---
     include/axmanager/core/SoCTuner.cpp
-    
-    # --- ماژول مدیریت ورودی و حذف تأخیر (Input Response Engine) ---
     include/axmanager/core/InputResponseEngine.cpp
-    
-    # --- ماژول محافظتی (Anti-Cheat Shield) - آماده برای اضافه شدن ---
-    # include/axmanager/core/AntiCheatShield.cpp 
+    include/axmanager/core/AntiCheatShield.cpp
 )
 
+# --- بخش مدیریت حافظه (Memory Modules: Shadow Memory) ---
 set(MEMORY_SOURCES
-    # --- ماژول اصلی حافظه سایه (Shadow Memory Engine) ---
     include/axmanager/memory/core/ShadowMemoryEngine.cpp
 )
 
-# ترکیب تمام منابع در یک لیست واحد
+# ترکیب تمام ماژول‌ها در یک لیست واحد برای ساخت کتابخانه اصلی
 set(ALL_AX_SOURCES
     ${CORE_SOURCES}
     ${MEMORY_SOURCES}
 )
 
 # =================================================================
-# 3. BUILD TARGET (ساخت هسته اصلی AxManager)
+# 3. BUILD TARGET (ساخت کتابخانه اصلی AxManager)
 # =================================================================
 
 add_library(
@@ -65,17 +59,17 @@ add_library(
     ${ALL_AX_SOURCES}
 )
 
-# لینک کردن کتابخانه‌های مورد نیاز (مانند سیستم لاگ اندروید)
+# لینک کردن کتابخانه لاگ اندروید به پروژه
 target_link_libraries(
     axmanager_core
     ${log-lib}
 )
 
 # =================================================================
-# 4. FINAL CONFIRMATION
+# 4. FINAL CONFIRMATION (تایید نهایی در هنگام کامپایل)
 # =================================================================
 message(STATUS "--------------------------------------------------")
 message(STATUS " AxManager Build Configuration Loaded Successfully")
 message(STATUS " Status: Ready for Meta-Reality Evolution")
-message(STATUS " Modules: [Memory, Env, SoC, Input] - INTEGRATED")
+message(STATUS " Modules: [Memory, Env, SoC, Input, Shield] - INTEGRATED")
 message(STATUS "--------------------------------------------------")
