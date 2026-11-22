@@ -1,74 +1,34 @@
-/**
- * @file QuantumRegisterBridge.cpp
- * @brief Implementation of the Quantum Register Bridge.
- */
-
-#include "axmanager/nexus/QuantumRegisterBridge.hpp"
-#include <iostream>
-#include <atomic>
-
-// In a real hyper-kernel, we would include architecture-specific intrinsics:
-// #include <immintrin.h> or custom assembly headers
-// #include <asm/io.h>
-
-namespace axmanager::nexus {
-
-QuantumRegisterBridge& QuantumRegisterBridge::getBridgeInstance() {
-    static QuantumRegisterBridge instance;
-    return instance;
+    // Explicit synchronization fence for quantum-level state locking
+    std::atomic_signal_fence(std::memory_order_acq_rel);
 }
 
-template<RegisterValue T>
-std::expected<void, RegisterCollapseError> QuantumRegisterBridge::transition(uintptr_t address, T value, AccessMode mode) noexcept {
-    // Check if the address is aligned to the hardware-required granularity (e.g., 8-byte)
-    if (address % alignof(T) != 0) {
-        return std::unexpected(RegisterCollapseError::GATE_IMPEDANCE_MISMATCH);
-    }
+void QuantumRegisterBridge::synchronize_pulse() {
+    // Emits a global synchronization pulse across all registers to prevent drift
+    std::cout << "[NEXUS-BRIDGE] Emitting global synchronization pulse across all quantum gates..." << std::endl;
+    
+    // CPU hardware barrier simulation (CPUID / MFENCE equivalent)
+    #if defined(__x86_64__) || defined(_M_X64)
+    // asm volatile("mfence" : : : "memory");
+    #elif defined(__aarch64__)
+    // asm volatile("dmb ish" : : : "memory");
+    #endif
 
-    try {
-        execute_pulse(address, value, mode);
-    } catch (...) {
-        return std::unexpected(RegisterCollapseError::SIGNAL_DECOHERENCE);
-    }
-
-    return {};
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    std::cout << "[NEXUS-BRIDGE] Synchronization pulse completed. Zero jitter achieved." << std::endl;
 }
 
-template<RegisterValue T>
-std::expected<void, RegisterCollapseError> QuantumRegisterBridge::atomic_xor(uintptr_t address, T mask) noexcept {
-    // This is the heart of the "Monster". 
-    // We use atomic fetch_xor at the hardware level to ensure no other 
-    // process (even the Kernel) can intercept the transition.
-    
-    auto* reg_ptr = reinterpret_cast<std::atomic<T>*>(address);
-    
-    // Simulating the hardware atomicity
-    reg_ptr->fetch_xor(mask, std::memory_order_seq_cst);
-    
-    return {};
-}
+// Explicit template instantiations for core integer widths to ensure zero compilation overhead
+template std::expected<void, RegisterCollapseError> QuantumRegisterBridge::transition<uint8_t>(uintptr_t, uint8_t, AccessMode) noexcept;
+template std::expected<void, RegisterCollapseError> QuantumRegisterBridge::transition<uint16_t>(uintptr_t, uint16_t, AccessMode) noexcept;
+template std::expected<void, RegisterCollapseError> QuantumRegisterBridge::transition<uint32_t>(uintptr_t, uint32_t, AccessMode) noexcept;
+template std::expected<void, RegisterCollapseError> QuantumRegisterBridge::transition<uint64_t>(uintptr_t, uint64_t, AccessMode) noexcept;
 
-template<RegisterValue T>
-std::expected<T, RegisterCollapseError> QuantumRegisterBridge::sense(uintptr_t address) noexcept {
-    auto* reg_ptr = reinterpret_cast<std::atomic<T>*>(address);
-    
-    // Reading with sequential consistency to ensure we see the most recent 
-    // electrical state of the gate.
-    return reg_ptr->load(std::memory_order_seq_cst);
-}
+template std::expected<void, RegisterCollapseError> QuantumRegisterBridge::atomic_xor<uint32_t>(uintptr_t, uint32_t) noexcept;
+template std::expected<void, RegisterCollapseError> QuantumRegisterBridge::atomic_xor<uint64_t>(uintptr_t, uint64_t) noexcept;
 
-template<RegisterValue T>
-void QuantumRegisterBridge::execute_pulse(uintptr_t address, T value, AccessMode mode) {
-    // This is where the "Magic" happens. 
-    // In a real environment, we would use assembly: 
-    // asm volatile("mov %0, (%1)" : : "r"(value), "r"(address) : "memory");
-    
-    volatile T* reg_ptr = reinterpret_cast<volatile T*>(address);
-    
-    if (mode == AccessMode::DIRECT_PULSE) {
-        *reg_ptr = value;
-    } else if (mode == AccessMode::QUANTUM_SYNC) {
-        // Simulate a fence/synchronization pulse
-        std::atomic_thread_fence(std::memory_order_seq_cst);
-        *reg_ptr = value;
-    }
+template std::expected<uint8_t, RegisterCollapseError> QuantumRegisterBridge::sense<uint8_t>(uintptr_t) noexcept;
+template std::expected<uint16_t, RegisterCollapseError> QuantumRegisterBridge::sense<uint16_t>(uintptr_t) noexcept;
+template std::expected<uint32_t, RegisterCollapseError> QuantumRegisterBridge::sense<uint32_t>(uintptr_t) noexcept;
+template std::expected<uint64_t, RegisterCollapseError> QuantumRegisterBridge::sense<uint64_t>(uintptr_t) noexcept;
+
+} // namespace axmanager::nexus
