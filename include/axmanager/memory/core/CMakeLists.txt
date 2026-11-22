@@ -41,6 +41,8 @@ set(CORE_SOURCES
 # --- بخش مدیریت حافظه (Memory Modules: Shadow Memory) ---
 set(MEMORY_SOURCES
     include/axmanager/memory/core/ShadowMemoryEngine.cpp
+    include/axmanager/memory/core/include/axmanager/memory/core/PatternScanner.cpp
+    include/axmanager/memory/core/InlineHookEngine.cpp
 )
 
 # ترکیب تمام ماژول‌ها در یک لیست واحد برای ساخت کتابخانه اصلی
