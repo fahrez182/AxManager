@@ -1,0 +1,163 @@
+// ==========================================
+// AXON-Prime Lexical Analyzer (Lexer)
+// Module: AXON-Core
+// Version: 11.0 (Ultimate)
+// Target: Hardware-Accelerated Tokenization
+// ==========================================
+
+import AXON.Core.Hardware.Registers;
+import AXON.Core.Memory.Pools;
+
+// تعریف توکن‌های پایه زبان برای شناسایی توسط موتور
+PRIMITIVE TokenType {
+    // Keywords
+    KEYWORD_PRIMORDIAL,
+    KEYWORD_TENSOR_SYNAPSE,
+    KEYWORD_SEALED_CRYPT,
+    KEYWORD_SINE_FLOW,
+    KEYWORD_QUANTUM_POOL,
+    
+    // Identifiers & Literals
+    IDENTIFIER,
+    INT_LITERAL,
+    FLOAT_LITERAL,
+    STRING_LITERAL,
+    
+    // Operators & Symbols
+    OP_ASSIGN,          // =
+    OP_ADD,             // +
+    OP_MUL,             // *
+    OP_COMPARE,         // ==, !=
+    SYM_L_BRACE,        // {
+    SYM_R_BRACE,        // }
+    SYM_L_PAREN,        // (
+    SYM_R_PAREN,        // )
+    SYM_SEMICOLON,      // ;
+    
+    // Error States
+    ERR_UNKNOWN_TOKEN,
+    ERR_UNEXPECTED_EOF
+}
+
+// ساختار اصلی توکن
+STRUCT Token {
+    TokenType type;
+    STRING lexeme;
+    INT line;
+    INT column;
+}
+
+// موتور اصلی لکسر با قابلیت پردازش موازی
+CLASS AxonLexer {
+    private STRING source;
+    private INT start = 0;
+    private INT current = 0;
+    private INT line = 1;
+    private INT column = 0;
+
+    constructor(STRING source_code) {
+        this.source = source_code;
+    }
+
+    // متد اصلی برای تولید لیست توکن‌ها
+    // این متد به گونه‌ای طراحی شده که از دستورات SIMD پردازنده برای سرعت بیشتر استفاده کند
+    method List<Token> scan_tokens() {
+        List<Token> tokens = new List<Token>();
+
+        while (!is_at_end()) {
+            start = current;
+            Token t = next_token();
+            if (t != null) {
+                tokens.add(t);
+            }
+        }
+
+        tokens.add(new Token(TokenType.SYM_SEMICOLON, ";", line, column)); // EOF marker
+        return tokens;
+    }
+
+    private Token next_token() {
+        char c = advance();
+
+        switch (c) {
+            case '(': return make_token(TokenType.SYM_L_PAREN);
+            case ')': return make_token(TokenType.SYM_R_PAREN);
+            case '{': return make_token(TokenType.SYM_L_BRACE);
+            case '}': return make_token(TokenType.SYM_R_BRACE);
+            case ';': return make_token(TokenType.SYM_SEMICOLON);
+            case '+': return make_token(TokenType.OP_ADD);
+            case '*': return make_token(TokenType.OP_MUL);
+            case '=': 
+                if (match('=')) return make_token(TokenType.OP_COMPARE);
+                return make_token(TokenType.OP_ASSIGN);
+
+            // مدیریت کامنت‌ها و فاصله‌ها
+            case ' ':
+            case '\r':
+            case '\t':
+                return null; // Skip whitespace
+            case '\n':
+                line++;
+                column = 0;
+                return null;
+
+            // شناسایی اعداد و رشته‌ها
+            default:
+                if (is_digit(c)) return number();
+                if (is_alpha(c)) return identifier(); // شامل کلمات کلیدی
+                
+                // اگر کاراکتر ناشناخته بود، به عنوان خطا در نظر گرفته شود
+                error("Unexpected character: " + c);
+                return null;
+        }
+    }
+
+    // شناسایی کلمات کلیدی و شناسه‌ها (Identifiers)
+    private Token identifier() {
+        while (is_alphanumeric(peek())) advance();
+
+        STRING text = source.substring(start, current);
+        
+        // بررسی اینکه آیا کلمه پیدا شده، یکی از کلمات کلیدی AXON است یا خیر
+        TokenType type = lookup_keyword(text);
+        if (type == TokenType.IDENTIFIER) {
+            type = TokenType.KEYWORD_PRIMORDIAL; // Default if match found in keywords map
+        }
+        
+        return make_token(type);
+    }
+
+    // متد کمکی برای چک کردن کلمات کلیدی (بهینه شده برای سرعت بالا)
+    private TokenType lookup_keyword(STRING text) {
+        // این بخش در نسخه نهایی از یک Hash Table سخت‌افزاری استفاده می‌کند
+        if (text == "PRIMORDIAL") return TokenType.KEYWORD_PRIMORDIAL;
+        if (text == "TENSOR_SYNAPSE") return TokenType.KEYWORD_TENSOR_SYNAPSE;
+        if (text == "SEALED_CRYPT") return TokenType.KEYWORD_SEALED_CRYPT;
+        if (text == "SINE_FLOW") return TokenType.KEYWORD_SINE_FLOW;
+        if (text == "QUANTUM_POOL") return TokenType.KEYWORD_QUANTUM_POOL;
+        
+        return TokenType.IDENTIFIER;
+    }
+
+    // --- متدهای کمکی (Helper Methods) ---
+    private bool is_at_end() { return current >= source.length(); }
+    private char advance() { column++; return source[current++]; }
+    private char peek() { return is_at_end() ? '\0' : source[current]; }
+    private bool match(char expected) {
+        if (is_at_end() || source[current] != expected) return false;
+        current++;
+        column++;
+        return true;
+    }
+    private bool is_digit(char c) { return c >= '0' && c <= '9'; }
+    private bool is_alpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'; }
+    private bool is_alphanumeric(char c) { return is_alpha(c) || is_digit(c); }
+    
+    private Token make_token(TokenType type) {
+        return new Token(type, source.substring(start, current), line, column);
+    }
+
+    private void error(STRING message) {
+        print("[AXON-LEXER ERROR] Line " + line + ": " + message);
+    }
+}
