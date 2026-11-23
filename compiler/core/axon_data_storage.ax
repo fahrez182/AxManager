@@ -1,0 +1,94 @@
+// ==========================================
+// AXON-Prime Data & Hyper-Storage Engine
+// Module: AXON-Data
+// Version: 11.0 (Ultimate)
+// Target: Ultra-Fast Persistence & Quantum-Safe Database
+// ==========================================
+
+import AXON.Core.Hardware.NVMe_Direct; // دسترسی مستقیم به کنترلر حافظه
+import AXON.Core.Hardware.DMA;          // انتقال داده بدون درگیر کردن CPU
+
+// تعریف ساختار ذخیره‌سازی
+PRIMITIVE StorageTier {
+    VOLATILE,       // حافظه موقت (RAM/Cache)
+    PERSISTENT,     // حافظه دائمی (SSD/NVMe)
+    IMMUTABLE,      // داده‌های تغییرناپذیر (WORM - Write Once Read Many)
+    ARCHIVE         // آرشیو بسیار کند اما با ظرفیت بسیار بالا
+}
+
+// ساختار یک رکورد داده (Data Record)
+STRUCT DataRecord {
+    INT record_id;
+    INT timestamp;
+    INT checksum;    // برای جلوگیری از خرابی داده (Bit-rot protection)
+    DATA payload;     // محتوای اصلی داده
+}
+
+// موتور مدیریت داده و پایگاه داده بومی
+CLASS AxonDataEngine {
+    private NVMe_Handle storage_controller;
+
+    constructor() {
+        // برقراری ارتباط مستقیم با کنترلر ذخیره‌سازی
+        this.storage_controller = NVMe_Direct.initialize_controller();
+    }
+
+    // ذخیره یک رکورد داده با تضمین عدم تغییر (Immutability)
+    method void persist_record(DataRecord record, StorageTier tier) {
+        // محاسبه چک‌سام سخت‌افزاری برای جلوگیری از خرابی داده (Data Integrity)
+        record.checksum = Hardware.Compute.CRC64(record.payload);
+
+        switch (tier) {
+            case StorageTier.IMMUTABLE:
+                // ذخیره در بخش‌های Write-Once حافظه (برای امنیت و لاگ‌ها)
+                storage_controller.write_permanent(record);
+            
+            case StorageTier.PERSISTENT:
+                // ذخیره استاندارد با سرعت بالا
+                storage_controller.write_direct(record);
+
+            case StorageTier.VOLATILE:
+                // ذخیره در لایه کش سریع
+                Hardware.Cache.store(record);
+
+            default:
+                this.cache_for_later(record);
+        }
+    }
+
+    // بازیابی داده با سرعت حداکثری از طریق DMA
+    method DataRecord fetch_record(INT record_id) {
+        // جستجو در جدول مکان‌نمایی سخت‌افزاری (Hardware Index)
+        INT address = storage_controller.lookup_address(record_id);
+        
+        if (address == NULL) return null;
+
+        // انتقال مستقیم داده از حافظه به ریجیستر (بدون کپی‌های اضافی در RAM)
+        DataRecord retrieved = DMA.read_from_address(address);
+
+        // تایید سلامت داده (Integrity Check)
+        if (verify_integrity(retrieved)) {
+            return retrieved;
+        } else {
+            trigger_error(ERROR_TYPE.DATA_CORRUPTION);
+            return null;
+        }
+    }
+
+    // --- متدهای داخلی (Storage Management) ---
+
+    private method bool verify_integrity(DataRecord record) {
+        // مقایسه چک‌سام ذخیره شده با محاسبات لحظه‌ای سخت‌افزار
+        return Hardware.Compute.CRC64(record.payload) == record.checksum;
+    }
+
+    private method void trigger_error(ERROR_TYPE type) {
+        // ثبت خطا در لاگ‌های سیستم و اعلام به ماژول امنیت
+        AxonCrypt.log_error(type);
+    }
+
+    private method void cache_for_later(DataRecord record) {
+        // انتقال به صف انتظار برای ذخیره در اولین فرصت مناسب
+        this.transmit_queue.push(record);
+    }
+}
