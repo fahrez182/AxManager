@@ -1,0 +1,110 @@
+From f61e29732cb95132963c4724be71f4499a32ca17 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 18 May 2026 01:50:09 +0300
+Subject: [PATCH] feat: allowlist: escape persistent_allow_list to kthread
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/policy/allowlist.c | 49 ++++++++++++++++++---------------------
+ 1 file changed, 22 insertions(+), 27 deletions(-)
+
+diff --git a/kernel/policy/allowlist.c b/kernel/policy/allowlist.c
+index c1f27f0..b458d22 100644
+--- a/kernel/policy/allowlist.c
++++ b/kernel/policy/allowlist.c
+@@ -16,12 +16,14 @@
+ #include <linux/compiler_types.h>
+ #include <linux/hashtable.h>
+ #include <linux/kref.h>
++#include <linux/kthread.h>
+ 
+ #include "klog.h" // IWYU pragma: keep
+ #include "ksu.h"
+ #include "runtime/ksud_boot.h"
+ #include "selinux/selinux.h"
+ #include "policy/allowlist.h"
++#include "policy/app_profile.h"
+ #include "manager/manager_identity.h"
+ #include "infra/su_mount_ns.h"
+ 
+@@ -416,8 +418,7 @@ bool ksu_get_allow_list(int *array, u16 length, u16 *out_length, u16 *out_total,
+     return true;
+ }
+ 
+-// TODO: move to kernel thread or work queue
+-static void do_persistent_allow_list(struct callback_head *_cb)
++static inline void do_persistent_allow_list()
+ {
+     u32 magic = FILE_MAGIC;
+     u32 version = FILE_FORMAT_VERSION;
+@@ -443,48 +444,42 @@ static void do_persistent_allow_list(struct callback_head *_cb)
+         goto close_file;
+     }
+ 
+-    mutex_lock(&allowlist_mutex);
+     hash_for_each (allow_list, i, p, list) {
+         pr_info("save allow list, name: %s uid :%d, allow: %d\n", p->profile.key, p->profile.curr_uid,
+                 p->profile.allow_su);
+ 
+         kernel_write(fp, &p->profile, sizeof(p->profile), &off);
+     }
+-    mutex_unlock(&allowlist_mutex);
+ 
+ close_file:
+     filp_close(fp, 0);
+ out:
+     revert_creds(saved);
+-    kfree(_cb);
+ }
+ 
+-void ksu_persistent_allow_list()
++static int persistent_allow_list_pre(void *data)
+ {
+-    struct task_struct *tsk;
++    pr_info("do_persistent_allow_list: pid: %d started\n", current->pid);
++
++    /*
++     * repurpose the mutex that was inside do_persistent_allow_list
++     * this way we get a single instance access.
++     * however, there is no need for mutex_trylock-fail-ret pattern for this one
++     * we just let other threads to wait-stall
++     *
++     */
++    mutex_lock(&allowlist_mutex);
++    do_persistent_allow_list();
++    mutex_unlock(&allowlist_mutex);
+ 
+-    rcu_read_lock();
+-    tsk = get_pid_task(find_vpid(1), PIDTYPE_PID);
+-    if (!tsk) {
+-        rcu_read_unlock();
+-        pr_err("save_allow_list find init task err\n");
+-        return;
+-    }
+-    rcu_read_unlock();
++    pr_info("do_persistent_allow_list: pid: %d exit\n", current->pid);
+ 
+-    struct callback_head *cb = kzalloc(sizeof(struct callback_head), GFP_KERNEL);
+-    if (!cb) {
+-        pr_err("save_allow_list alloc cb err\b");
+-        goto put_task;
+-    }
+-    cb->func = do_persistent_allow_list;
+-    if (task_work_add(tsk, cb, TWA_RESUME)) {
+-        kfree(cb);
+-        pr_warn("save_allow_list add task_work failed\n");
+-    }
++    return 0;
++}
+ 
+-put_task:
+-    put_task_struct(tsk);
++void ksu_persistent_allow_list()
++{
++    kthread_run(persistent_allow_list_pre, NULL, "allowlist");
+ }
+ 
+ void ksu_load_allow_list()
+-- 
+2.53.0
+
