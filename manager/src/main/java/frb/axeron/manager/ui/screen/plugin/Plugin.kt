@@ -328,7 +328,7 @@ fun PluginScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlo
             }
             if (tempUris.isEmpty()) return@rememberLauncherForActivityResult
 
-            var limited = tempUris
+            var limited: List<Uri> = tempUris
             if (tempUris.size > PluginScreenConfig.MAX_PICK_COUNT) {
                 limited = tempUris.take(PluginScreenConfig.MAX_PICK_COUNT)
                 scope.launch {
@@ -732,4 +732,4 @@ fun ItemPreviewDark() {
             onExpandToggle = {},
         )
     }
-}        
+}
