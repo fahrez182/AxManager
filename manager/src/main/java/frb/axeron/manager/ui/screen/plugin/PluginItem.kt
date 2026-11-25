@@ -502,6 +502,7 @@ fun PluginItem(
                             )
                         }
                     }
+                    val safeDesc = (plugin.prop.description ?: "").toString().trim()
 
                     Spacer(modifier = Modifier.height(12.dp))
 
