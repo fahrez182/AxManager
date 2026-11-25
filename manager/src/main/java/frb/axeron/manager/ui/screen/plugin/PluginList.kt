@@ -548,9 +548,9 @@ fun PluginList(
                     confirm = updateText,
                     dragHandle = true,
                 )
-            }.getOrDefault(ConfirmResult.Cancelled)
+}.getOrDefault(ConfirmResult.Dismissed)
 
-            if (confirmResult != ConfirmResult.Confirmed) {
+if (confirmResult != ConfirmResult.Confirmed) {
                 return
             }
 
