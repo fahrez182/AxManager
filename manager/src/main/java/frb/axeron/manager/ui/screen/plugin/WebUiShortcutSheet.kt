@@ -841,7 +841,7 @@ fun WebUiShortcutSheet(
                                     confirm = openSettings,
                                     dismiss = cancel
                                 )
-                            }.getOrDefault(ConfirmResult.Cancelled)
+                            }.getOrDefault(ConfirmResult.Dismissed)
                             if (result == ConfirmResult.Confirmed) {
                                 runCatching { openShortcutPermissionSettings(appContext) }
                                     .onFailure { Log.e(WebUiShortcutConfig.TAG, "open settings failed", it) }
