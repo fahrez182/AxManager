@@ -1,0 +1,90 @@
+diff --git a/kernel/supercall/dispatch.c b/kernel/supercall/dispatch.c
+index eb0eebd..9cae449 100644
+--- a/kernel/supercall/dispatch.c
++++ b/kernel/supercall/dispatch.c
+@@ -648,6 +648,68 @@ static int add_try_umount(void __user *arg)
+         return 0;
+     }
+ 
++    /* 
++     * [AxManager Hardened] 
++     * Allows userspace to safely probe the required buffer size 
++     * before attempting a list pull.
++     */
++    case KSU_UMOUNT_GETSIZE: {
++        if (!cmd.arg)
++            return -EFAULT;
++        
++        size_t total_size = 0;
++
++        down_read(&mount_list_lock);
++        list_for_each_entry(entry, &mount_list, list) {
++            // محاسبه دقیق با احتساب Null Terminator برای جلوگیری از Overrun
++            total_size += strnlen(entry->umountable, PAGE_SIZE) + 1;
++        }
++        up_read(&mount_list_lock);
++
++        if (copy_to_user((size_t __user *)cmd.arg, &total_size, sizeof(total_size)))
++            return -EFAULT;
++
++        return 0;
++    }
++
++    /* 
++     * [AxManager Hardened]
++     * Safe pointer walking implementation. 
++     * Prevents buffer overflows by validating user space bounds.
++     */
++    case KSU_UMOUNT_GETLIST: {
++        if (!cmd.arg)
++            return -EFAULT;
++            
++        char __user *user_buf = (char __user *)cmd.arg;
++        size_t max_safe_size = PAGE_SIZE; // محدودیت امنیتی برای جلوگیری از دسترسی غیرمجاز
++        size_t current_offset = 0;
++
++        down_read(&mount_list_lock);
++        list_for_each_entry(entry, &mount_list, list) {
++            size_t entry_len = strnlen(entry->umountable, PAGE_SIZE);
++            
++            // چک کردن اینکه آیا فضای کاربر برای این ورودی کافی است یا خیر (Security Check)
++            if (current_offset + entry_len + 1 > max_safe_size) {
++                up_read(&mount_list_lock);
++                return -ENOMEM; // فضا کافی نیست
++            }
++
++            // کپی امن داده‌ها
++            if (copy_to_user(user_buf + current_offset, entry->umountable, entry_len + 1)) {
++                up_read(&mount_list_lock);
++                return -EFAULT;
++            }
++
++            current_offset += (entry_len + 1);
++        }
++        up_read(&mount_list_lock);
++
++        return 0;
++    }
++
+     default: {
+         pr_err("cmd_add_try_umount: invalid operation %u\n", cmd.mode);
+         return -EINVAL;
+diff --git a/kernel/supercall/supercall.h b/kernel/supercall/supercall.h
+index 483e506..072356b 100644
+--- a/kernel/supercall/supercall.h
++++ b/kernel/supercall/supercall.h
+@@ -23,3 +23,5 @@ int ksu_supercall_reboot_handler(void __user **arg);
+ void ksu_supercalls_init(void);
+ void ksu_supercalls_exit(void);
+ #endif // __KSU_H_SUPERCALL
++#define KSU_UMOUNT_GETSIZE 0x6B  // استفاده از مقدار hex استاندارد
++#define KSU_UMOUNT_GETLIST 0x6C
+// این بخش باید در فایل مربوط به مدیریت لیست‌ها باشد تا کد بالا کار کند
+struct mount_entry {
+    struct list_head list;     // برای پیمایش در لیست
+    char *umountable;           // رشته‌ای که مسیر فایل را نگه می‌دارد
+    // سایر فیلدها...
+};
+
+// و یک قفل (Lock) برای جلوگیری از Race Condition (که در کد بالا اصلاح کردم)
+static DEFINE_MUTEX(mount_list_lock);
