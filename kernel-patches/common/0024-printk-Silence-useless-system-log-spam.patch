@@ -1,0 +1,38 @@
+From ed6afd98edc11ec7cdd10432866ef447fbf53921 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 23:30:53 +0300
+Subject: [PATCH 24/24] printk: Silence useless system log spam
+
+When charging, healthd and dashd will spam every several secs, it's sooooo noisy and useless.
+
+If you launch a userspace app, there will give a logd message, silence it.
+
+Signed-off-by: Wahid Khan <wahidzk0091@gmail.com>
+Signed-off-by: atndko <z1281552865@gmail.com>
+Signed-off-by: Vaisakh Murali <mvaisakh@statixos.com>
+Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/printk/printk.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
+index 7088c5ac5..38c123314 100644
+--- a/kernel/printk/printk.c
++++ b/kernel/printk/printk.c
+@@ -711,6 +711,12 @@ static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
+ 		}
+ 	}
+ 
++	if ((strstr(line, "healthd")) || (strstr(line, "logd")) ||
++		 strstr(line, "dashd")) {
++		kfree(buf);
++		return len;
++	}
++
+ 	devkmsg_emit(facility, level, "%s", line);
+ 	kfree(buf);
+ 	return ret;
+-- 
+2.55.0
+
