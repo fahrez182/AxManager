@@ -49,5 +49,23 @@ class GameGraphicsModule(private val injector: AxBladeInjector) {
         ).joinToString(" && ")
 
         return injector.injectModuleToGame(packageName, resetPayload)
+        // این تابع را داخل کلاس GameGraphicsModule اضافه کن
+suspend fun resetToDefault(packageName: String): InjectionResult {
+    return try {
+        // ۱. بازگرداندن رزولوشن به حالت اصلی گوشی (مثلاً بدون تغییر DPI)
+        // دستور 'wm size reset' رزولوشن را به حالت کارخانه برمی‌گرداند
+        val resetSizeResult = executeCommand("wm size reset")
+        
+        // ۲. بازگرداندن DPI به حالت اصلی
+        // دستور 'wm density reset' تراکم پیکسلی را به حالت کارخانه برمی‌گرداند
+        val resetDensityResult = executeCommand("wm density reset")
+
+        if (resetSizeResult.isSuccess && resetDensityResult.isSuccess) {
+            InjectionResult.Success
+        } else {
+            InjectionResult.Failure("خطا در بازگشت تنظیمات سیستم")
+        }
+    } catch (e: Exception) {
+        InjectionResult.Failure(e.message ?: "خطای ناشناخته")
     }
 }
