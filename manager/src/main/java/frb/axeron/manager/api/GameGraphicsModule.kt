@@ -1,3 +1,19 @@
+package frb.axeron.manager.api
+
+/**
+ * ماژول تخصصی تزریق تنظیمات گرافیکی و فریم‌ریت
+ * این ماژول از تکنیک "System Parameter Injection" استفاده می‌کند تا هیچ ردپایی در بازی نماند.
+ */
+class GameGraphicsModule(private val injector: AxBladeInjector) {
+
+    /**
+     * فعال‌سازی حالت Ultra Performance (برای ۱۲۰ فریم و کیفیت MAX)
+     * @param packageName نام پکیج بازی (مثلاً برای کالاف)
+     */
+    suspend fun enableUltraPerformance(packageName: String): InjectionResult {
+        
+        // ما دستورات را به صورت یک زنجیره (Chain) می‌سازیم تا در یک لحظه اعمال شوند
+        // ۱. اجبار سیستم به استفاده
         // ۱. اجبار سیستم به استفاده از حداکثر نرخ نوسازی صفحه (Peak Refresh Rate)
         // ۲. تنظیمات گرافیکی سیستمی برای کارت گرافیک (GPU Optimization)
         // ۳. تزریق پارامترهای اجرایی بازی برای جلوگیری از افت فریم در بتل رویال و مولتی‌پلیر
