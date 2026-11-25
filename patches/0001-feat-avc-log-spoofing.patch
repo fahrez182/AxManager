@@ -1,0 +1,327 @@
+From 94aa72cdbcaf9e30a74209921bd12ec387510ba2 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Fri, 15 May 2026 16:13:52 +0300
+Subject: [PATCH] feat: avc log spoofing
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/Kbuild                      |   4 +-
+ kernel/extras.c                    | 221 +++++++++++++++++++++++++++++
+ kernel/hook/syscall_hook_manager.c |   2 +
+ kernel/hook/syscall_hook_manager.h |   3 +
+ kernel/runtime/boot_event.c        |   2 +
+ uapi/feature.h                     |   2 +
+ 6 files changed, 233 insertions(+), 1 deletion(-)
+ create mode 100644 kernel/extras.c
+
+diff --git a/kernel/Kbuild b/kernel/Kbuild
+index fd31bb5..e64e4f7 100644
+--- a/kernel/Kbuild
++++ b/kernel/Kbuild
+@@ -63,6 +63,8 @@ ccflags-y += -DCONFIG_KSU_DEBUG=1
+ endif
+ endif
+ 
++kernelsu-objs += extras.o
++
+ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
+ ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
+ 
+@@ -148,6 +150,6 @@ endif
+ ccflags-y += -DKSU_NEW_DCACHE_FLUSH=$(KSU_NEW_DCACHE_FLUSH)
+ 
+ ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes
+-ccflags-y += -Wno-declaration-after-statement -Wno-unused-function
++ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-unused-variable
+ 
+ # Keep a new line here!! Because someone may append config
+diff --git a/kernel/extras.c b/kernel/extras.c
+new file mode 100644
+index 0000000..30b1111
+--- /dev/null
++++ b/kernel/extras.c
+@@ -0,0 +1,221 @@
++#include <linux/security.h>
++#include <linux/atomic.h>
++#include <linux/version.h>
++
++#include "policy/feature.h"
++#include "include/klog.h"
++#include "runtime/ksud_boot.h"
++#include "infra/seccomp_cache.h"
++
++/* changelog
++ *
++ * 20260430 - intercept ksu sid
++ *
++ */
++
++static u32 su_sid = 0;
++static u32 ksu_sid = 0;
++static u32 priv_app_sid = 0;
++
++// init as disabled by default
++static atomic_t disable_spoof = ATOMIC_INIT(1);
++
++void ksu_avc_spoof_enable();
++void ksu_avc_spoof_disable();
++
++static bool ksu_avc_spoof_enabled = true;
++static bool boot_completed = false;
++
++static int avc_spoof_feature_get(u64 *value)
++{
++	*value = ksu_avc_spoof_enabled ? 1 : 0;
++	return 0;
++}
++
++static int avc_spoof_feature_set(u64 value)
++{
++	bool enable = value != 0;
++
++	if (enable == ksu_avc_spoof_enabled) {
++		pr_info("avc_spoof: no need to change\n");
++		return 0;
++	}
++
++	ksu_avc_spoof_enabled = enable;
++
++	if (boot_completed) {
++		if (enable) {
++			ksu_avc_spoof_enable();
++		} else {
++			ksu_avc_spoof_disable();
++		}
++	}
++
++	pr_info("avc_spoof: set to %d\n", enable);
++
++	return 0;
++}
++
++static const struct ksu_feature_handler avc_spoof_handler = {
++	.feature_id = KSU_FEATURE_AVC_SPOOF,
++	.name = "avc_spoof",
++	.get_handler = avc_spoof_feature_get,
++	.set_handler = avc_spoof_feature_set,
++};
++
++static int get_sid()
++{
++	// dont load at all if we cant get sids
++	int err = security_secctx_to_secid("u:r:su:s0", strlen("u:r:su:s0"), &su_sid);
++	if (err) {
++		pr_info("avc_spoof/get_sid: su_sid not found!\n");
++		return -1;
++	}
++	pr_info("avc_spoof/get_sid: su_sid: %u\n", su_sid);
++
++	err = security_secctx_to_secid("u:r:ksu:s0", strlen("u:r:ksu:s0"), &ksu_sid);
++	if (err) {
++		pr_info("avc_spoof/get_sid: ksu_sid not found!\n");
++		return -1;
++	}
++	pr_info("avc_spoof/get_sid: ksu_sid: %u\n", ksu_sid);
++
++	err = security_secctx_to_secid("u:r:priv_app:s0:c512,c768", strlen("u:r:priv_app:s0:c512,c768"), &priv_app_sid);
++	if (err) {
++		pr_info("avc_spoof/get_sid: priv_app_sid not found!\n");
++		return -1;
++	}
++	pr_info("avc_spoof/get_sid: priv_app_sid: %u\n", priv_app_sid);
++	return 0;
++}
++
++int ksu_handle_slow_avc_audit(u32 *tsid)
++{
++	if (atomic_read(&disable_spoof))
++		return 0;
++
++	// if tsid is su, we just replace it
++	// unsure if its enough, but this is how it is aye?
++	if (*tsid == su_sid || *tsid == ksu_sid) {
++		pr_info("avc_spoof/slow_avc_audit: replacing tsid: %u with priv_app_sid: %u\n", *tsid, priv_app_sid);
++		*tsid = priv_app_sid;
++	}
++
++	return 0;
++}
++
++#ifdef CONFIG_KPROBES
++#include <linux/kprobes.h>
++#include <linux/slab.h>
++#include "arch.h"
++static struct kprobe *slow_avc_audit_kp;
++//	.symbol_name = "slow_avc_audit",
++//	.pre_handler = slow_avc_audit_pre_handler,
++static int slow_avc_audit_pre_handler(struct kprobe *p, struct pt_regs *regs)
++{
++	if (atomic_read(&disable_spoof))
++		return 0;
++
++	/* 
++	 * for < 4.17 int slow_avc_audit(u32 ssid, u32 tsid
++	 * for >= 4.17 int slow_avc_audit(struct selinux_state *state, u32 ssid, u32 tsid
++	 * for >= 6.4 int slow_avc_audit(u32 ssid, u32 tsid
++	 * not to mention theres also DKSU_HAS_SELINUX_STATE
++	 * since its hard to make sure this selinux state thing 
++	 * cross crossing with 4.17 ~ 6.4's where slow_avc_audit
++	 * changes abi (tsid in arg2 vs arg3)
++	 */
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
++	u32 *tsid = (u32 *)&PT_REGS_PARM2(regs);
++	ksu_handle_slow_avc_audit(tsid);
++#else
++	u32 *tsid = (u32 *)&PT_REGS_PARM3(regs);
++	ksu_handle_slow_avc_audit(tsid);
++#endif
++
++	return 0;
++}
++
++// copied from upstream
++static struct kprobe *init_kprobe(const char *name,
++				  kprobe_pre_handler_t handler)
++{
++	struct kprobe *kp = kzalloc(sizeof(struct kprobe), GFP_KERNEL);
++	if (!kp)
++		return NULL;
++	kp->symbol_name = name;
++	kp->pre_handler = handler;
++
++	int ret = register_kprobe(kp);
++	pr_info("sucompat: register_%s kprobe: %d\n", name, ret);
++	if (ret) {
++		kfree(kp);
++		return NULL;
++	}
++
++	return kp;
++}
++static void destroy_kprobe(struct kprobe **kp_ptr)
++{
++	struct kprobe *kp = *kp_ptr;
++	if (!kp)
++		return;
++	unregister_kprobe(kp);
++	synchronize_rcu();
++	kfree(kp);
++	*kp_ptr = NULL;
++}
++#endif // CONFIG_KPROBES
++
++void ksu_avc_spoof_disable(void)
++{
++#ifdef CONFIG_KPROBES
++	pr_info("avc_spoof/exit: unregister slow_avc_audit kprobe!\n");
++	destroy_kprobe(&slow_avc_audit_kp);
++#endif
++	atomic_set(&disable_spoof, 1);
++	pr_info("avc_spoof/exit: slow_avc_audit spoofing disabled!\n");
++}
++
++void ksu_avc_spoof_enable(void) 
++{
++	int ret = get_sid();
++	if (ret) {
++		pr_info("avc_spoof/init: sid grab fail!\n");
++		return;
++	}
++
++#ifdef CONFIG_KPROBES
++	pr_info("avc_spoof/init: register slow_avc_audit kprobe!\n");
++	slow_avc_audit_kp = init_kprobe("slow_avc_audit", slow_avc_audit_pre_handler);
++#endif	
++	// once we get the sids, we can now enable the hook handler
++	atomic_set(&disable_spoof, 0);
++	
++	pr_info("avc_spoof/init: slow_avc_audit spoofing enabled!\n");
++}
++
++void ksu_avc_spoof_late_init()
++{
++	boot_completed = true;
++	
++    if (ksu_avc_spoof_enabled) {
++		ksu_avc_spoof_enable();
++	}
++}
++
++void __init ksu_avc_spoof_init()
++{
++	if (ksu_register_feature_handler(&avc_spoof_handler)) {
++		pr_err("Failed to register avc spoof feature handler\n");
++	}
++}
++
++void __exit ksu_avc_spoof_exit()
++{
++	if (ksu_avc_spoof_enabled) {
++		ksu_avc_spoof_disable();
++	}
++	ksu_unregister_feature_handler(KSU_FEATURE_AVC_SPOOF);
++}
+diff --git a/kernel/hook/syscall_hook_manager.c b/kernel/hook/syscall_hook_manager.c
+index 26ca600..d46f1ce 100644
+--- a/kernel/hook/syscall_hook_manager.c
++++ b/kernel/hook/syscall_hook_manager.c
+@@ -151,6 +151,7 @@ void __init ksu_syscall_hook_manager_init(void)
+ 
+     ksu_setuid_hook_init();
+     ksu_sucompat_init();
++    ksu_avc_spoof_init();
+ }
+ 
+ void __exit ksu_syscall_hook_manager_exit(void)
+@@ -176,4 +177,5 @@ void __exit ksu_syscall_hook_manager_exit(void)
+ 
+     ksu_sucompat_exit();
+     ksu_setuid_hook_exit();
++    ksu_avc_spoof_exit();
+ }
+diff --git a/kernel/hook/syscall_hook_manager.h b/kernel/hook/syscall_hook_manager.h
+index 47fb055..af3ae2c 100644
+--- a/kernel/hook/syscall_hook_manager.h
++++ b/kernel/hook/syscall_hook_manager.h
+@@ -7,4 +7,7 @@
+ void ksu_syscall_hook_manager_init(void);
+ void ksu_syscall_hook_manager_exit(void);
+ 
++void ksu_avc_spoof_init(void);
++void ksu_avc_spoof_exit(void);
++
+ #endif
+diff --git a/kernel/runtime/boot_event.c b/kernel/runtime/boot_event.c
+index cf7ac2c..bf71e70 100644
+--- a/kernel/runtime/boot_event.c
++++ b/kernel/runtime/boot_event.c
+@@ -61,10 +61,12 @@ void on_module_mounted(void)
+     ksu_module_mounted = true;
+ }
+ 
++extern void ksu_avc_spoof_late_init();
+ void on_boot_completed(void)
+ {
+     ksu_boot_completed = true;
+     pr_info("on_boot_completed!\n");
+     track_throne(true);
+     ksu_selinux_hide_drop_backup_if_unused();
++    ksu_avc_spoof_late_init();
+ }
+diff --git a/uapi/feature.h b/uapi/feature.h
+index df2f68c..9cf271b 100644
+--- a/uapi/feature.h
++++ b/uapi/feature.h
+@@ -8,6 +8,8 @@ enum ksu_feature_id {
+     KSU_FEATURE_ADB_ROOT = 3,
+     KSU_FEATURE_SELINUX_HIDE = 4,
+ 
++    KSU_FEATURE_AVC_SPOOF = 10003,
++
+     KSU_FEATURE_MAX
+ };
+ 
+-- 
+2.53.0
+
