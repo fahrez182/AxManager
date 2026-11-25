@@ -1,0 +1,40 @@
+From 0be054bf2a41872228bd365251d303adf7d513e2 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 22:54:42 +0300
+Subject: [PATCH 12/24] f2fs/gc: Reduce GC thread urgent sleep time to 50ms
+
+Android sets the value to 50ms via vold's IdleMaint service. Since
+500ms is too long for GC to colllect all invalid segments in time
+which results in performance degradation.
+
+On un-encrypted device, vold fails to set this value to 50ms thus
+degrades the performance over time.
+
+Based on [1].
+
+[1] https://github.com/topjohnwu/Magisk/pull/5462
+Signed-off-by: Panchajanya1999 <rsk52959@gmail.com>
+Change-Id: I80f2c29558393d726d5e696aaf285096c8108b23
+Signed-off-by: Panchajanya1999 <rsk52959@gmail.com>
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ fs/f2fs/gc.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/gc.h b/fs/f2fs/gc.h
+index 28a009428..f8c6201ac 100644
+--- a/fs/f2fs/gc.h
++++ b/fs/f2fs/gc.h
+@@ -10,7 +10,7 @@
+ 						 * whether IO subsystem is idle
+ 						 * or not
+ 						 */
+-#define DEF_GC_THREAD_URGENT_SLEEP_TIME	500	/* 500 ms */
++#define DEF_GC_THREAD_URGENT_SLEEP_TIME	50	/* 50 ms */
+ #define DEF_GC_THREAD_MIN_SLEEP_TIME	30000	/* milliseconds */
+ #define DEF_GC_THREAD_MAX_SLEEP_TIME	60000
+ #define DEF_GC_THREAD_NOGC_SLEEP_TIME	300000	/* wait 5 min */
+-- 
+2.55.0
+
