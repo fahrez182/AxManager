@@ -548,9 +548,9 @@ fun PluginList(
                     confirm = updateText,
                     dragHandle = true,
                 )
-}.getOrDefault(ConfirmResult.Dismissed)
+            }.getOrDefault(ConfirmResult.Dismissed)
 
-if (confirmResult != ConfirmResult.Confirmed) {
+            if (confirmResult != ConfirmResult.Confirmed) {
                 return
             }
 
@@ -633,7 +633,8 @@ if (confirmResult != ConfirmResult.Confirmed) {
                     confirm = uninstall,
                     dismiss = cancel
                 )
-            }.getOrDefault(ConfirmResult.Cancelled)
+            }.getOrDefault(ConfirmResult.Dismissed)
+
             if (confirmResult != ConfirmResult.Confirmed) {
                 return
             }
@@ -695,7 +696,8 @@ if (confirmResult != ConfirmResult.Confirmed) {
                     confirm = restore,
                     dismiss = cancel
                 )
-            }.getOrDefault(ConfirmResult.Cancelled)
+            }.getOrDefault(ConfirmResult.Dismissed)
+
             if (confirmResult != ConfirmResult.Confirmed) {
                 return
             }
