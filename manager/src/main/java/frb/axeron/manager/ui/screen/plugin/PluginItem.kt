@@ -1,6 +1,8 @@
 package frb.axeron.manager.ui.screen.plugin
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -43,19 +45,25 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -85,6 +93,13 @@ import frb.axeron.shared.PathHelper
 import kotlinx.coroutines.launch
 import java.io.File
 
+// [ارتقا-سطح۲۰۰] قرارداد داخلی بدون تغییر API عمومی
+private const val TAG_ITEM = "PluginItem"
+private object PluginItemConfig {
+    const val ACTION_THROTTLE_MS = 800L
+    const val EXPAND_THROTTLE_MS = 200L
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginConfig(
@@ -92,7 +107,10 @@ fun PluginConfig(
     plugin: PluginInfo,
     onDismissRequest: () -> Unit
 ) {
-    var showShortcutSheet by remember { mutableStateOf(false) }
+    // [حفظ‌شده + ارتقا] با کلید id تا با عوض‌شدن پلاگین ریست شود و با چرخش نپرد
+    var showShortcutSheet by rememberSaveable(plugin.prop.id) { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+
     if (showShortcutSheet) {
         WebUiShortcutSheet(
             plugin = plugin,
@@ -113,6 +131,7 @@ fun PluginConfig(
                     description = stringResource(R.string.add_web_ui_shortcut_msg),
                     onClick = {
                         if (plugin.hasWebUi) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             // Swap this sheet for the shortcut editor.
                             onDismissRequest()
                             showShortcutSheet = true
@@ -147,7 +166,35 @@ fun PluginItem(
     expanded: Boolean,
     onExpandToggle: () -> Unit,
 ) {
-    var showExtraSetDialog by remember { mutableStateOf(false) }
+    // [حفظ‌شده + ارتقا] هویت پایدار به‌ازای هر پلاگین
+    var showExtraSetDialog by rememberSaveable(plugin.prop.id) { mutableStateOf(false) }
+
+    // [ارتقا-سطح۲۰۰] هوست‌شده در بالای آیتم تا با ریکامپوزیشن داخلی گم نشود
+    val context = LocalContext.current
+    val appContext = remember(context) { context.applicationContext }
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val confirmDialog = rememberConfirmDialog()
+    val reigniteSheet = rememberReigniteSheet()
+    var confirmBusy by rememberSaveable { mutableStateOf(false) }
+    var lastActionMs by remember { mutableLongStateOf(0L) }
+    var lastExpandMs by remember { mutableLongStateOf(0L) }
+
+    fun canDoAction(): Boolean {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastActionMs < PluginItemConfig.ACTION_THROTTLE_MS) return false
+        lastActionMs = now
+        return true
+    }
+    fun canExpand(): Boolean {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastExpandMs < PluginItemConfig.EXPAND_THROTTLE_MS) return false
+        lastExpandMs = now
+        return true
+    }
+    fun devLog(msg: String) {
+        if (settings.isDeveloperModeEnabled) Log.d(TAG_ITEM, msg)
+    }
 
     PluginConfig(
         showExtraSetDialog,
@@ -161,7 +208,12 @@ fun PluginItem(
             .fillMaxWidth()
             .clip(AxCardShape)
             .combinedClickable(
-                onClick = onExpandToggle,
+                onClick = {
+                    if (!canExpand()) return@combinedClickable
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onExpandToggle()
+                },
+                role = Role.Button
             ),
         shape = AxCardShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -171,11 +223,27 @@ fun PluginItem(
             modifier = Modifier
                 .fillMaxWidth()
         ) {
-            val context = LocalContext.current
-            val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-            val useBanner = prefs.getBoolean("use_banner", true)
+            // [حفظ‌شده + ارتقا] خوانش کش‌شده + هوک همیشه در یک ترتیب
+            val useBanner = remember(context) {
+                runCatching {
+                    context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                        .getBoolean("use_banner", true)
+                }.getOrDefault(true)
+            }
             // URL or file bytes, read off the main thread; shared with the shortcut sheet.
-            val banner = if (useBanner) rememberPluginBanner(plugin) else null
+            val bannerRaw = rememberPluginBanner(plugin)
+            val banner = if (useBanner) bannerRaw else null
+            val bannerModel = remember(banner) {
+                banner?.let {
+                    runCatching {
+                        ImageRequest.Builder(appContext)
+                            .data(it)
+                            .crossfade(true)
+                            .allowHardware(false)
+                            .build()
+                    }.getOrNull() ?: it
+                }
+            }
 
             if (banner != null) {
                 val colorScheme = MaterialTheme.colorScheme
@@ -188,7 +256,7 @@ fun PluginItem(
                     contentAlignment = Alignment.Center
                 ) {
                     AsyncImage(
-                        model = banner,
+                        model = bannerModel ?: banner,
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -205,9 +273,7 @@ fun PluginItem(
                                     colors = listOf(
                                         fadeColor.copy(alpha = 0.0f),
                                         fadeColor.copy(alpha = alpha)
-                                    ),
-                                    startY = 0f,
-                                    endY = Float.POSITIVE_INFINITY
+                                    )
                                 )
                             )
                     )
@@ -226,10 +292,6 @@ fun PluginItem(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        val confirmDialog = rememberConfirmDialog()
-                        val reigniteSheet = rememberReigniteSheet()
-                        val scope = rememberCoroutineScope()
-
                         val pluginVersion = stringResource(R.string.plugin_version)
                         val pluginAuthor = stringResource(R.string.plugin_author)
                         val pluginId = stringResource(R.string.plugin_id)
@@ -237,6 +299,11 @@ fun PluginItem(
                         val pluginAxeronSupport = stringResource(R.string.plugin_axeron_support)
                         val pluginUpdateJson = stringResource(R.string.plugin_update_json)
                         val pluginUpdateJsonEmpty = stringResource(R.string.plugin_update_json_empty)
+
+                        // [ارتقا] نام امن برای جلوگیری از خط خالی یا کرش لایه‌اوت
+                        val safeName = plugin.prop.name.ifBlank { plugin.prop.id.ifBlank { "—" } }
+                        val safeAuthor = plugin.prop.author.ifBlank { "—" }
+                        val safeDesc = plugin.prop.description.orEmpty()
 
                         Column(
                             modifier = Modifier.fillMaxWidth(0.8f)
@@ -247,12 +314,14 @@ fun PluginItem(
                             ) {
                                 ExtraLabel(
                                     iconVector = Icons.Outlined.Tune,
-                                    text = formatSize(plugin.size),
+                                    text = runCatching { formatSize(plugin.size) }.getOrDefault("—"),
                                     style = ExtraLabelDefaults.style.copy(
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     ),
                                     onClick = {
+                                        if (!canDoAction()) return@ExtraLabel
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         showExtraSetDialog = true
                                     }
                                 )
@@ -274,23 +343,32 @@ fun PluginItem(
                                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                                         ),
                                         onClick = {
+                                            if (!canDoAction() || confirmBusy) return@ExtraLabel
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             scope.launch {
-                                                val result = confirmDialog.awaitConfirm(
-                                                    title,
-                                                    content = content,
-                                                    confirm = confirm,
-                                                    neutral = neutral
-                                                )
-                                                if (result == ConfirmResult.Neutral) {
-                                                    val success = reigniteSheet.reignite()
-
-                                                    if (success) {
-                                                        viewModel.fetchModuleList()
+                                                confirmBusy = true
+                                                try {
+                                                    val result = confirmDialog.awaitConfirm(
+                                                        title,
+                                                        content = content,
+                                                        confirm = confirm,
+                                                        neutral = neutral
+                                                    )
+                                                    if (result == ConfirmResult.Neutral) {
+                                                        val success = runCatching { reigniteSheet.reignite() }
+                                                            .onFailure { Log.e(TAG_ITEM, "reignite failed", it) }
+                                                            .getOrDefault(false)
+                                                        if (success) {
+                                                            runCatching { viewModel.fetchModuleList() }
+                                                                .onFailure { Log.e(TAG_ITEM, "fetch failed", it) }
+                                                        }
                                                     }
-
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG_ITEM, "confirm failed", e)
+                                                } finally {
+                                                    confirmBusy = false
                                                 }
                                             }
-
                                         }
                                     )
                                 }
@@ -329,27 +407,33 @@ fun PluginItem(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = plugin.prop.name,
+                                text = safeName,
                                 fontSize = MaterialTheme.typography.titleMedium.fontSize,
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
 
                             Text(
-                                text = "$pluginVersion: ${plugin.prop.version}",
+                                text = "$pluginVersion: ${plugin.prop.version.ifBlank { "—" }}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
 
                             Text(
-                                text = "$pluginAuthor: ${plugin.prop.author}",
+                                text = "$pluginAuthor: $safeAuthor",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                 fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
 
                             AnimatedVisibility(
@@ -359,11 +443,13 @@ fun PluginItem(
                             ) {
                                 Column {
                                     Text(
-                                        text = "$pluginId: ${plugin.prop.id}",
+                                        text = "$pluginId: ${plugin.prop.id.ifBlank { "—" }}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
 
                                     Text(
@@ -375,11 +461,13 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = "$pluginAxeronSupport: ${plugin.prop.axeronPlugin}",
+                                        text = "$pluginAxeronSupport: ${plugin.prop.axeronPlugin.ifBlank { "—" }}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
 
                                     Text(
@@ -387,12 +475,12 @@ fun PluginItem(
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
-
                             }
-
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -404,7 +492,12 @@ fun PluginItem(
                             Switch(
                                 enabled = (if (plugin.enabled) !plugin.updateDisable else !plugin.updateEnable) && !plugin.remove && !plugin.updateInstall,
                                 checked = plugin.enabled && !plugin.remove,
-                                onCheckedChange = onCheckChanged,
+                                onCheckedChange = { checked ->
+                                    if (!canDoAction()) return@Switch
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    runCatching { onCheckChanged(checked) }
+                                        .onFailure { Log.e(TAG_ITEM, "toggle failed", it) }
+                                },
                                 interactionSource = if (!plugin.hasWebUi) interactionSource else null
                             )
                         }
@@ -412,18 +505,21 @@ fun PluginItem(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(
-                        text = plugin.prop.description,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 4
-                    )
+                    if (safeDesc.isNotBlank()) {
+                        Text(
+                            text = safeDesc,
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                            fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            // [ارتقا] در حالت باز کامل نشان بده، در حالت جمع ۴ خط
+                            maxLines = if (expanded) Int.MAX_VALUE else 4
+                        )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
 
                     if (expanded) {
                         Spacer(modifier = Modifier.height(6.dp))
@@ -443,17 +539,27 @@ fun PluginItem(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !plugin.remove && plugin.enabled && !plugin.update,
                                     onClick = {
-                                        navigator!!.navigate(
-                                            FlashScreenDestination(FlashIt.PluginAction(plugin))
-                                        )
-                                        viewModel.markNeedRefresh()
+                                        if (!canDoAction()) return@FilledTonalButton
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        try {
+                                            if (navigator == null) {
+                                                devLog("navigator null, skip action")
+                                                return@FilledTonalButton
+                                            }
+                                            navigator.navigate(
+                                                FlashScreenDestination(FlashIt.PluginAction(plugin))
+                                            )
+                                            runCatching { viewModel.markNeedRefresh() }
+                                        } catch (e: Exception) {
+                                            Log.e(TAG_ITEM, "navigate action failed", e)
+                                        }
                                     },
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
                                 ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         imageVector = Icons.Outlined.Terminal,
-                                        contentDescription = null
+                                        contentDescription = stringResource(R.string.action)
                                     )
                                     if (!plugin.hasWebUi && updateUrl.isEmpty()) {
                                         Text(
@@ -473,7 +579,10 @@ fun PluginItem(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !plugin.remove && plugin.enabled && !plugin.update,
                                     onClick = {
-                                        onClick(plugin)
+                                        if (!canDoAction()) return@FilledTonalButton
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        runCatching { onClick(plugin) }
+                                            .onFailure { Log.e(TAG_ITEM, "open webui failed", it) }
                                     },
                                     interactionSource = interactionSource,
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -481,7 +590,7 @@ fun PluginItem(
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         imageVector = Icons.Filled.Web,
-                                        contentDescription = null
+                                        contentDescription = stringResource(R.string.web_ui)
                                     )
                                     if (!plugin.hasActionScript && updateUrl.isEmpty()) {
                                         Text(
@@ -501,7 +610,10 @@ fun PluginItem(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !plugin.update,
                                     onClick = {
-                                        onUpdate(plugin)
+                                        if (!canDoAction()) return@Button
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        runCatching { onUpdate(plugin) }
+                                            .onFailure { Log.e(TAG_ITEM, "update failed", it) }
                                     },
                                     shape = ButtonDefaults.textShape,
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -509,7 +621,7 @@ fun PluginItem(
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         imageVector = Icons.Outlined.Download,
-                                        contentDescription = null
+                                        contentDescription = stringResource(R.string.update)
                                     )
                                     if (!plugin.hasActionScript || !plugin.hasWebUi) {
                                         Text(
@@ -528,14 +640,17 @@ fun PluginItem(
                                 FilledTonalButton(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     onClick = {
-                                        onRestore(plugin)
+                                        if (!canDoAction()) return@FilledTonalButton
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        runCatching { onRestore(plugin) }
+                                            .onFailure { Log.e(TAG_ITEM, "restore failed", it) }
                                     },
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
                                 ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         imageVector = Icons.Outlined.Restore,
-                                        contentDescription = null
+                                        contentDescription = stringResource(R.string.restore)
                                     )
                                     if (!plugin.hasActionScript && !plugin.hasWebUi && updateUrl.isEmpty()) {
                                         Text(
@@ -551,14 +666,17 @@ fun PluginItem(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = true,
                                     onClick = {
-                                        onUninstall(plugin)
+                                        if (!canDoAction()) return@FilledTonalButton
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        runCatching { onUninstall(plugin) }
+                                            .onFailure { Log.e(TAG_ITEM, "uninstall failed", it) }
                                     },
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
                                 ) {
                                     Icon(
                                         modifier = Modifier.size(20.dp),
                                         imageVector = Icons.Outlined.Delete,
-                                        contentDescription = null
+                                        contentDescription = stringResource(R.string.uninstall)
                                     )
                                     if (!plugin.hasActionScript && !plugin.hasWebUi && updateUrl.isEmpty()) {
                                         Text(
@@ -575,5 +693,13 @@ fun PluginItem(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "PluginItem light")
+@Composable
+private fun PluginItemPreviewLight() {
+    MaterialTheme {
+        PluginConfig(showDialog = false, plugin = PluginInfo()) {}
     }
 }
