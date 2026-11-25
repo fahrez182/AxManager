@@ -1,0 +1,32 @@
+From 80670604677ab0e6d304bff123a08477057e0bc5 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 23:03:43 +0300
+Subject: [PATCH 17/24] arm64: Align clear_page() to 16 bytes
+
+    With automatic zeroing of pages upon allocation enabled, time spent in
+    clear_page() is significant according to perf top. Since clear_page() is
+    used in loops, align it to 16 bytes, which significantly reduces CPU time
+    spent in clear_page()
+
+    Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ arch/arm64/lib/clear_page.S | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/lib/clear_page.S b/arch/arm64/lib/clear_page.S
+index ebde40e7f..cfbbdead5 100644
+--- a/arch/arm64/lib/clear_page.S
++++ b/arch/arm64/lib/clear_page.S
+@@ -14,6 +14,7 @@
+  * Parameters:
+  *	x0 - dest
+  */
++	.p2align 4
+ SYM_FUNC_START(__pi_clear_page)
+ 	mrs	x1, dczid_el0
+ 	tbnz	x1, #4, 2f	/* Branch if DC ZVA is prohibited */
+-- 
+2.55.0
+
