@@ -1,0 +1,81 @@
+name: "Restore ccache"
+description: "Restore ccache + ThinLTO cache for one build matrix variant from the ci-ccache-store release."
+
+inputs:
+  repo:
+    description: "owner/repo to read the release from"
+    required: true
+  token:
+    description: "GitHub token with contents:read"
+    required: true
+  variant:
+    description: "matrix.name for this build - used as the cache key"
+    required: true
+
+outputs:
+  restored:
+    description: "true if a cache asset was found and restored, false on a cold start"
+    value: ${{ steps.restore.outputs.restored }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: restore
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repo }}
+        MATRIX_NAME: ${{ inputs.variant }}
+      run: |
+        set -uo pipefail
+        mkdir -p ~/.ccache /dev/shm/thinlto-cache
+        CACHE_KEY="${MATRIX_NAME//+/_}"
+        ASSET_BASE="ccache-${CACHE_KEY}.tar.zst"
+        PARTS_DIR=/tmp/ccache-parts
+        rm -rf "$PARTS_DIR"
+        mkdir -p "$PARTS_DIR"
+
+        if ! gh release download ci-ccache-store \
+            --repo "$REPO" \
+            --pattern "${ASSET_BASE}.manifest" \
+            --dir "$PARTS_DIR" 2>/dev/null; then
+          echo "No cache manifest found for $CACHE_KEY, starting cold"
+          echo "restored=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        PART_COUNT=$(cat "$PARTS_DIR/${ASSET_BASE}.manifest")
+        echo "Manifest says $PART_COUNT part(s) for $CACHE_KEY"
+
+        # Fetch parts by exact, zero-padded name (matching split -d -a 3)
+        # instead of a wildcard, so a stale higher-numbered part left over
+        # from a previous, larger cache never gets pulled in and appended.
+        DOWNLOAD_OK=true
+        for i in $(seq -f "%03g" 0 $((PART_COUNT - 1))); do
+          if ! gh release download ci-ccache-store \
+              --repo "$REPO" \
+              --pattern "${ASSET_BASE}.part.${i}" \
+              --dir "$PARTS_DIR" 2>/dev/null; then
+            echo "::warning::Missing part $i for $CACHE_KEY, aborting restore"
+            DOWNLOAD_OK=false
+            break
+          fi
+        done
+
+        if [ "$DOWNLOAD_OK" = "true" ]; then
+          echo "Restoring cache from $PART_COUNT part(s)"
+          # Cat exact, zero-padded part names in a loop instead of globbing
+          # *.part.*, so no stale or out-of-order part can sneak in.
+          if for i in $(seq -f "%03g" 0 $((PART_COUNT - 1))); do
+               cat "$PARTS_DIR/${ASSET_BASE}.part.${i}"
+             done | tar --zstd -xf - -C /; then
+            echo "restored=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::tar extraction failed, treating as cold start"
+            echo "restored=false" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo "restored=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        rm -rf "$PARTS_DIR"
