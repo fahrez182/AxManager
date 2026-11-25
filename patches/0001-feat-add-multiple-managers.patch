@@ -1,0 +1,88 @@
+From d3c97c7b9ec7529c51e69da663ac6081214fc18b Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Fri, 23 Oct 2026 10:53:03 +0300
+Subject: [PATCH] feat: add multiple managers
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/manager/apk_sign.c     | 10 ++++++++-
+ kernel/manager/manager_hash.h | 41 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 1 deletion(-)
+ create mode 100644 kernel/manager/manager_hash.h
+
+diff --git a/kernel/manager/apk_sign.c b/kernel/manager/apk_sign.c
+index b4f6934..d406cf4 100644
+--- a/kernel/manager/apk_sign.c
++++ b/kernel/manager/apk_sign.c
+@@ -22,6 +22,7 @@
+ #include "manager/apk_sign.h"
+ #include "uapi/app_profile.h"
+ #include "klog.h" // IWYU pragma: keep
++#include "manager/manager_hash.h"
+ 
+ struct sdesc {
+     struct shash_desc shash;
+@@ -325,5 +326,12 @@ int get_pkg_from_apk_dir_path(char *pkg, const char *path)
+ 
+ bool is_manager_apk(char *path)
+ {
+-    return check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH);
++    size_t i;
++
++    for (i = 0; i < MANAGER_SIGNATURES_COUNT; i++) {
++        if (check_v2_signature(path, manager_signatures[i].size, manager_signatures[i].hash))
++            return true;
++    }
++
++    return false;
+ }
+diff --git a/kernel/manager/manager_hash.h b/kernel/manager/manager_hash.h
+new file mode 100644
+index 0000000..7ba63e2
+--- /dev/null
++++ b/kernel/manager/manager_hash.h
+@@ -0,0 +1,41 @@
++#ifndef __KSU_H_MANAGER_HASH
++#define __KSU_H_MANAGER_HASH
++
++#include <linux/types.h>
++
++struct manager_signature {
++	unsigned size;
++	const char *hash;
++};
++
++static const struct manager_signature manager_signatures[] = {
++	// Primary (from Kbuild)
++	{
++		.size = EXPECTED_SIZE,
++		.hash = EXPECTED_HASH,
++	},
++	// wksu
++	{
++		.size = 0x381,
++		.hash = "52d52d8c8bfbe53dc2b6ff1c613184e2c03013e090fe8905d8e3d5dc2658c2e4",
++	},
++	// 5ec1cff
++	{
++		.size = 384,
++		.hash = "7e0c6d7278a3bb8e364e0fcba95afaf3666cf5ff3c245a3b63c8833bd0445cc4",
++	},
++	// rsuntk
++	{
++		.size = 0x396,
++		.hash = "f415f4ed9435427e1fdf7f1fccd4dbc07b3d6b8751e4dbcec6f19671f427870b",
++	},
++	// KOWX712
++	{
++		.size = 0x375,
++		.hash = "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588",
++	},
++};
++
++#define MANAGER_SIGNATURES_COUNT (sizeof(manager_signatures) / sizeof(struct manager_signature))
++
++#endif
+-- 
+2.56.0
+
