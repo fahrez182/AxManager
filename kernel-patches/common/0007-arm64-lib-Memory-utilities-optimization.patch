@@ -1,0 +1,48 @@
+From d1e0a83102f848289cc6c3d1bcd14f6478a7551f Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 22:45:41 +0300
+Subject: [PATCH 07/24] arm64: lib: Memory utilities optimization
+
+Optimize memcpy and memmove, to prefetch several cache lines.
+We can achieve 15% memcpy speed improvement with the preload method.
+
+Change-Id: I2259b98a33eba0b7466920b3f270f953e609cf13
+Signed-off-by: Hong-Mei Li <a21834@motorola.com>
+Reviewed-on: http://gerrit.mot.com/740766
+SLTApproved: Slta Waiver <sltawvr@motorola.com>
+SME-Granted: SME Approvals Granted
+Tested-by: Jira Key <jirakey@motorola.com>
+Reviewed-by: Zhi-Ming Yuan <a14194@motorola.com>
+Submit-Approved: Jira Key <jirakey@motorola.com>
+
+Signed-off-by: Alex Naidis <alex.naidis@linux.com>
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: utsavbalar1231 <utsavbalar1231@gmail.com>
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ arch/arm64/lib/copy_template.S | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm64/lib/copy_template.S b/arch/arm64/lib/copy_template.S
+index 488df234c..427935ae6 100644
+--- a/arch/arm64/lib/copy_template.S
++++ b/arch/arm64/lib/copy_template.S
+@@ -39,6 +39,7 @@ C_h	.req	x12
+ D_l	.req	x13
+ D_h	.req	x14
+ 
++	prfm    pldl1strm, [src, #(1*L1_CACHE_BYTES)]
+ 	mov	dst, dstin
+ 	cmp	count, #16
+ 	/*When memory length is less than 16, the accessed are not aligned.*/
+@@ -169,6 +170,7 @@ D_h	.req	x14
+ 	ldp1	C_l, C_h, src, #16
+ 	stp1	D_l, D_h, dst, #16
+ 	ldp1	D_l, D_h, src, #16
++	prfm    pldl1strm, [src, #(4*L1_CACHE_BYTES)]
+ 	subs	count, count, #64
+ 	b.ge	1b
+ 	stp1	A_l, A_h, dst, #16
+-- 
+2.55.0
+
