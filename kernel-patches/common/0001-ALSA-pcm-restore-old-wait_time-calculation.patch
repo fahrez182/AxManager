@@ -1,0 +1,90 @@
+From 9e3351dc83c0794db11874adc56c5530eb375f6b Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Wed, 19 Aug 2026 04:15:25 +0300
+Subject: [PATCH] ALSA: pcm: restore old wait_time calculation
+
+The upstream fix in 0d18de045 ("ALSA: pcm: fix wait_time calculations")
+changed the timeout logic in wait_for_avail() and snd_pcm_drain() from
+a long (effectively broken) timeout to a much shorter and more accurate
+one based on buffer_size.
+
+On Google Pixel devices (Tensor) this causes audible audio stutters /
+dropouts on the internal speaker path under certain conditions, while
+Bluetooth remains unaffected. Restore the previous calculation that was
+present up to android14-6.1.166 to regain stable speaker playback.
+
+This effectively reverts 0d18de045eba0dce19cd30b114d121ffe815f949.
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ sound/core/pcm_lib.c    | 11 ++++++-----
+ sound/core/pcm_native.c | 10 +++++-----
+ 2 files changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/sound/core/pcm_lib.c b/sound/core/pcm_lib.c
+index af1eb136f..02fd65993 100644
+--- a/sound/core/pcm_lib.c
++++ b/sound/core/pcm_lib.c
+@@ -1878,14 +1878,15 @@ static int wait_for_avail(struct snd_pcm_substream *substream,
+ 		if (substream->wait_time) {
+ 			wait_time = substream->wait_time;
+ 		} else {
+-			wait_time = 100;
++			wait_time = 10;
+ 
+ 			if (runtime->rate) {
+-				long t = runtime->buffer_size * 1100 / runtime->rate;
++				long t = runtime->period_size * 2 /
++					 runtime->rate;
+ 				wait_time = max(t, wait_time);
+ 			}
++			wait_time = msecs_to_jiffies(wait_time * 1000);
+ 		}
+-		wait_time = msecs_to_jiffies(wait_time);
+ 	}
+ 
+ 	for (;;) {
+@@ -1933,8 +1934,8 @@ static int wait_for_avail(struct snd_pcm_substream *substream,
+ 		}
+ 		if (!tout) {
+ 			pcm_dbg(substream->pcm,
+-				"%s timeout (DMA or IRQ trouble?)\n",
+-				is_playback ? "playback write" : "capture read");
++				"%s write error (DMA or IRQ trouble?)\n",
++				is_playback ? "playback" : "capture");
+ 			err = -EIO;
+ 			break;
+ 		}
+diff --git a/sound/core/pcm_native.c b/sound/core/pcm_native.c
+index aff87d233..79f446f29 100644
+--- a/sound/core/pcm_native.c
++++ b/sound/core/pcm_native.c
+@@ -2184,12 +2184,12 @@ static int snd_pcm_drain(struct snd_pcm_substream *substream,
+ 		if (drain_no_period_wakeup)
+ 			tout = MAX_SCHEDULE_TIMEOUT;
+ 		else {
+-			tout = 100;
+-			if (drain_rate) {
+-				long t = drain_bufsz * 1100 / drain_rate;
++			tout = 10;
++			if (runtime->rate) {
++				long t = runtime->period_size * 2 / runtime->rate;
+ 				tout = max(t, tout);
+ 			}
+-			tout = msecs_to_jiffies(tout);
++			tout = msecs_to_jiffies(tout * 1000);
+ 		}
+ 		tout = schedule_timeout(tout);
+ 
+@@ -2212,7 +2212,7 @@ static int snd_pcm_drain(struct snd_pcm_substream *substream,
+ 				result = -ESTRPIPE;
+ 			else {
+ 				dev_dbg(substream->pcm->card->dev,
+-					"playback drain timeout (DMA or IRQ trouble?)\n");
++					"playback drain error (DMA or IRQ trouble?)\n");
+ 				snd_pcm_stop(substream, SNDRV_PCM_STATE_SETUP);
+ 				result = -EIO;
+ 			}
+-- 
+2.55.0
+
