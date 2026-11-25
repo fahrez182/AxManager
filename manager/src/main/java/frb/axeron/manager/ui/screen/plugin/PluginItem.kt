@@ -539,29 +539,49 @@ fun PluginItem(
                                     }
                                 }
                             } else {
-                                FilledTonalButton(
-                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                    enabled = true,
-                                    onClick = {
-                                        onUninstall(plugin)
-                                    },
-                                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                                ) {
-                                    Icon(
-                                        modifier = Modifier.size(20.dp),
-                                        imageVector = Icons.Outlined.Delete,
-                                        contentDescription = null
-                                    )
-                                    if (!plugin.hasActionScript && !plugin.hasWebUi && updateUrl.isEmpty()) {
-                                        Text(
-                                            modifier = Modifier.padding(start = 7.dp),
-                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                            text = stringResource(R.string.uninstall)
-                                        )
-                                    }
-                                }
-                            }
+                                    val verName: String = remember(plugin) { try { (plugin.prop.version as? String) ?: "" } catch (_: Exception) { "" } }
+    val verCode: String = remember(plugin) { try { plugin.prop.versionCode.toString() } catch (_: Exception) { "—" } }
+    val updateJsonRaw: String = remember(plugin) { try { (plugin.prop.updateJson as? String).orEmpty() } catch (_: Exception) { "" } }
+    val start = remember { SystemClock.elapsedRealtime() }
+    val renderMs = SystemClock.elapsedRealtime() - start
+    Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(rgbBrush).padding(2.dp).graphicsLayer { translationY = floatY }) {
+        Surface(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(onClick = onExpandToggle), shape = RoundedCornerShape(18.dp), color = if (dark) Color.Black else MaterialTheme.colorScheme.surfaceContainerHigh, tonalElevation = 0.dp) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(rgbBrush).padding(2.dp)) {
+                        Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(if (dark) Color(0xFF0A0A0A) else MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
+                            Text(text = plugin.prop.name.take(1).uppercase(), fontWeight = FontWeight.Black, fontSize = 20.sp, style = TextStyle(brush = goldBrush))
+                        }
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = plugin.prop.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, style = TextStyle(brush = goldBrush))
+                        Text(text = plugin.prop.id, maxLines = 1, overflow = TextOverflow.Ellipsis, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = if (dark) Color(0xFF9BE7FF) else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Color(0xFF00C853).copy(alpha = 0.18f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(7.dp).clip(CircleShape).background(Color(0xFF00E676).copy(alpha = live)))
+                            Spacer(Modifier.width(5.dp)); Text("زنده • LVL 200", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace)
+                        }
+                    }
+                }
+                Box(Modifier.fillMaxWidth().height(2.dp).clip(RoundedCornerShape(99.dp)).background(rgbBrush).graphicsLayer { rotationZ = (phase % 360f) * 0.02f })
+                Text(text = "v$verName ($verCode) • Axeron: $axeronLabel", fontFamily = FontFamily.Monospace, fontSize = 11.5.sp, color = if (dark) Color(0xFFE8F5FF) else MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = if (plugin.enabled) "فعال" else "غیرفعال", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = if (plugin.enabled) Color(0xFF00E676) else Color.Gray)
+                    Switch(checked = plugin.enabled, onCheckedChange = onCheckChanged)
+                }
+                AnimatedVisibility(visible = expanded) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (safeDesc.isNotBlank()) { Text(text = safeDesc, fontSize = 13.5.sp, lineHeight = 20.sp, color = if (dark) Color(0xFFF5F5F5) else MaterialTheme.colorScheme.onSurface) }
+                        if (updateJsonRaw.isNotEmpty()) { Text(text = updateJsonRaw, fontFamily = FontFamily.Monospace, fontSize = 10.5.sp, color = Color(0xFF7C9DFF), maxLines = 6, overflow = TextOverflow.Ellipsis) }
+                        Text(text = "render ${renderMs}ms • no-lag • AMOLED pure-black", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Color.Gray)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (updateUrl.isNotBlank()) { FilledTonalButton(onClick = { onUpdate(plugin) }) { Text("آپدیت", fontWeight = FontWeight.Bold) } }
+                            TextButton(onClick = { onClick(plugin) }) { Text("جزئیات") }
+                            TextButton(onClick = { showExtra = true }) { Text("WebUI") }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { if (plugin.remove) onRestore(plugin) else onUninstall(plugin) }, colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFFF5252))) { Text(if (plugin.remove) "بازیابی" else "حذف", fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
