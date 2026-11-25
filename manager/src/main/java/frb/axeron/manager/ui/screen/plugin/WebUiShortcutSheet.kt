@@ -251,47 +251,25 @@ private fun ShortcutIconPreview(icon: Bitmap?, size: Dp) {
             .clip(AxPanelShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center
-    ) }
-    val icon = if (source == ShortcutIconSource.INITIALS) remember(iconName) { ShortcutIcons.fromInitials(iconName, android.graphics.Color.BLACK, android.graphics.Color.WHITE) } else imageIcon
-    val dark = isSystemInDarkTheme()
-    val trans = rememberInfiniteTransition(label = "shRgb")
-    val shift by trans.animateFloat(0f, 1000f, infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Restart), label = "s")
-    val rgb = remember(shift) { Brush.linearGradient(listOf(Color(0xFFFF2D55), Color(0xFFFFD700), Color(0xFF00E676), Color(0xFF40C4FF)), start = androidx.compose.ui.geometry.Offset(shift - 500f, 0f), end = androidx.compose.ui.geometry.Offset(shift, 300f)) }
-    val gold = remember(shift) { Brush.linearGradient(listOf(Color(0xFFB8860B), Color(0xFFFFD700), Color(0xFFFFF3B0)), start = androidx.compose.ui.geometry.Offset(shift - 400f, 0f), end = androidx.compose.ui.geometry.Offset(shift, 150f)) }
-    AxOptionsSheet(title = stringResource(R.string.webui_shortcut_title), description = stringResource(R.string.webui_shortcut_desc), onDismissRequest = onDismissRequest) {
-        Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(99.dp)).background(rgb))
-        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(76.dp).clip(CircleShape).background(rgb).padding(2.dp)) {
-                Box(Modifier.size(72.dp).clip(CircleShape).background(if (dark) Color.Black else MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
-                    if (icon != null) Image(bitmap = icon.asImageBitmap(), contentDescription = null, modifier = Modifier.size(64.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-                    else Text(iconName.take(1).uppercase(), style = TextStyle(brush = gold), fontWeight = FontWeight.Black, fontSize = 28.sp)
-                }
-            }
-            Text(iconName, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
-            Text("زنده • RGB • AMOLED", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Color.Gray)
+    ) {
+        if (icon != null) {
+            val scale = 1f / ShortcutIcons.VISIBLE_FRACTION
+            Image(
+                bitmap = icon.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+            )
+        } else {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp
+            )
         }
-        OutlinedTextField(modifier = Modifier.fillMaxWidth(), value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.shortcut_name)) }, singleLine = true, shape = AxPanelShape, trailingIcon = if (name != defaultName) { { IconButton(onClick = { name = defaultName }) { Icon(Icons.Outlined.Restore, null) } } } else null)
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(modifier = Modifier.weight(1f), onClick = { chosenSource = ShortcutIconSource.BANNER }) { Icon(Icons.Outlined.Image, null); Spacer(Modifier.width(6.dp)); Text("بنر") }
-            Button(modifier = Modifier.weight(1f), onClick = { chosenSource = ShortcutIconSource.INITIALS }) { Icon(Icons.Outlined.TextFields, null); Spacer(Modifier.width(6.dp)); Text("حرف") }
-            Button(modifier = Modifier.weight(1f), onClick = { pickImage.launch("image/*") }) { Icon(Icons.Outlined.PhotoLibrary, null); Spacer(Modifier.width(6.dp)); Text("گالری") }
-        }
-        Spacer(Modifier.height(10.dp))
-        Button(modifier = Modifier.fillMaxWidth(), onClick = {
-            scope.launch(Dispatchers.IO) {
-                runCatching {
-                    val bmp = icon ?: ShortcutIcons.fromInitials(iconName, android.graphics.Color.BLACK, android.graphics.Color.WHITE)
-                    val sid = "webui_" + plugin.prop.id + "_" + System.currentTimeMillis()
-                    val sInfo = ShortcutInfoCompat.Builder(context, sid).setShortLabel(iconName).setLongLabel(iconName).setIcon(IconCompat.createWithBitmap(bmp)).setIntent(context.packageManager.getLaunchIntentForPackage(context.packageName)).build()
-                    val ok = ShortcutManagerCompat.requestPinShortcut(context, sInfo, null)
-                    withContext(Dispatchers.Main) { Toast.makeText(context, if (ok) "درخواست میان‌بر فرستاده شد" else "لانچر قبول نکرد", Toast.LENGTH_SHORT).show(); if (ok) onDismissRequest() }
-                }.onFailure { e -> withContext(Dispatchers.Main) { Toast.makeText(context, "خطا: ${e.message}", Toast.LENGTH_SHORT).show() } }
-                val dlg = withContext(Dispatchers.Main) { null }
-                if (dlg == ConfirmResult.Dismissed) { withContext(Dispatchers.Main) { onDismissRequest() } }
-            }
-        }) { Text("ساخت میان‌بر شناور", fontWeight = FontWeight.Black) }
-        Spacer(Modifier.height(4.dp))
-        Text("آیکون با CPU کم و رندر GPU ساخته می‌شود، بدون لگ. متن‌ها مجازی‌سازی شده‌اند تا ۱۰۰۰۰ آیتم هم کرش ندهد.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-       }
-     }   
+    }
+}
