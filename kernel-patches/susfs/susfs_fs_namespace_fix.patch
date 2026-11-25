@@ -27,8 +27,8 @@ index 27996ea..215a6ac 100644
   #include "internal.h"
 + #include <trace/hooks/blk.h>
   
- +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
- +extern bool susfs_is_current_ksu_domain(void);
+ +#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MOUNT
+ +extern bool susfs_is_current_AXMANAGER_domain(void);
 -- 
 2.55.0
 
