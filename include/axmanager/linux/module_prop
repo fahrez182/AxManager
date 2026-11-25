@@ -1,0 +1,7 @@
+id=AxLinuxEmu
+name=AxLinuxEmu
+version=v2.0-android16
+versionCode=200
+author=AxManager
+description=Linux x86_64 emu for AxManager - mmap 16K, futex, TLS, JIT cache. Host arm64, guest x86_64 .so
+axeronPlugin=1
