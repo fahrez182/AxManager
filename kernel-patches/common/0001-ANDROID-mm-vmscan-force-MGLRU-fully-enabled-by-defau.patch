@@ -1,0 +1,48 @@
+From 50fd2c023c1a8cfee570c6aa6d48b6fcd6cbd74a Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Tue, 11 Aug 2026 15:32:52 +0300
+Subject: [PATCH] ANDROID: mm: vmscan: force MGLRU fully enabled by default
+
+On devices where init.rc writes 0 to /sys/kernel/mm/lru_gen/enabled
+at boot and no persist.device_config.mglru_native trigger later
+raises it, MGLRU never gets enabled without a manual write.
+
+Force store_enabled() to always request all lru_gen_caps bits
+(CORE, MM_WALK, NONLEAF_YOUNG) regardless of what was written, and
+always call lru_gen_change_state(true) for CORE. Unsupported caps
+are still dropped by the existing capability checks, same as a
+manual `echo 7 > enabled` would do. Writes continue to return
+success so init.rc's write does not surface an error.
+
+Test: cat /sys/kernel/mm/lru_gen/enabled reads back the maximum
+value supported by the running kernel/hardware after boot,
+regardless of init.rc's write or DeviceConfig state.
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ mm/vmscan.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 74a933fa0..ced168850 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -5887,11 +5887,14 @@ static ssize_t store_enabled(struct kobject *kobj, struct kobj_attribute *attr,
+ 	else if (kstrtouint(buf, 0, &caps))
+ 		return -EINVAL;
+ 
++	/* Force MGLRU on: request all caps, kernel caps to what's supported */
++	caps |= BIT(LRU_GEN_CORE) | BIT(LRU_GEN_MM_WALK) | BIT(LRU_GEN_NONLEAF_YOUNG);
++
+ 	for (i = 0; i < NR_LRU_GEN_CAPS; i++) {
+ 		bool enabled = caps & BIT(i);
+ 
+ 		if (i == LRU_GEN_CORE)
+-			lru_gen_change_state(enabled);
++			lru_gen_change_state(true); /* always enable core */
+ 		else if (enabled)
+ 			static_branch_enable(&lru_gen_caps[i]);
+ 		else
+-- 
+2.55.0
+
