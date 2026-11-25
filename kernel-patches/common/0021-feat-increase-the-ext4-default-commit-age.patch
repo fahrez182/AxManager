@@ -1,0 +1,36 @@
+From 6aecc66155bccd4e441e6ca6b39454450b5f7e7f Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 23:21:20 +0300
+Subject: [PATCH 21/24] feat: increase the ext4 default commit age
+
+Both the VM and EXT4 have a "commit to disk after X seconds" time.
+Currently the EXT4 time is shorter than our VM time, which is a bit
+suboptional,
+it's better for performance to let the VM do the writeouts in bulk
+rather than something deep in the journalling layer.
+
+(DISTRO TWEAK -- NOT FOR UPSTREAM)
+
+Signed-off-by: Arjan van de Ven <arjan@linux.intel.com>
+Signed-off-by: Jose Carlos Venegas Munoz <jose.carlos.venegas.munoz@intel.com>
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ include/linux/jbd2.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 5bf7ada75..11bfa0742 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -45,7 +45,7 @@
+ /*
+  * The default maximum commit age, in seconds.
+  */
+-#define JBD2_DEFAULT_MAX_COMMIT_AGE 5
++#define JBD2_DEFAULT_MAX_COMMIT_AGE 30
+ 
+ #ifdef CONFIG_JBD2_DEBUG
+ /*
+-- 
+2.55.0
+
