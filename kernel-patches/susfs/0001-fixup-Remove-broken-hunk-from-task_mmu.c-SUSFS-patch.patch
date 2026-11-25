@@ -20,9 +20,9 @@ index 365c5cf..34d90cc 100644
  #include <linux/overflow.h>
  #include <linux/buildid.h>
  #include <trace/hooks/mm.h>
-+#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
++#if defined(CONFIG_AXMANAGER_SUSFS_SUS_KSTAT) || defined(CONFIG_AXMANAGER_SUSFS_SUS_MAP) || defined(CONFIG_AXMANAGER_SUSFS_OPEN_REDIRECT)
 +#include <linux/susfs_def.h>
-+#endif // #if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
++#endif // #if defined(CONFIG_AXMANAGER_SUSFS_SUS_KSTAT) || defined(CONFIG_AXMANAGER_SUSFS_SUS_MAP) || defined(CONFIG_AXMANAGER_SUSFS_OPEN_REDIRECT)
  
  #include <asm/elf.h>
  #include <asm/tlb.h>
@@ -30,13 +30,13 @@ index 365c5cf..34d90cc 100644
  	seq_putc(m, ' ');
  }
  
-+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_KSTAT
 +extern void susfs_sus_kstat_spoof_show_map_vma(struct inode *inode, dev_t *out_dev, unsigned long *out_ino);
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_KSTAT
++#ifdef CONFIG_AXMANAGER_SUSFS_OPEN_REDIRECT
 +extern struct srcu_struct susfs_srcu_open_redirect;
 +extern int susfs_open_redirect_spoof_show_map_vma_srcu(struct inode *inode, unsigned long *out_ino, dev_t *out_dev, char **out_spoofed_name);
-+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_OPEN_REDIRECT
 +
  static void
  show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
@@ -46,7 +46,7 @@ index 365c5cf..34d90cc 100644
  	if (vma->vm_file) {
  		const struct inode *inode = file_user_inode(vma->vm_file);
 -
-+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++#ifdef CONFIG_AXMANAGER_SUSFS_OPEN_REDIRECT
 +		if (SUSFS_IS_INODE_OPEN_REDIRECT(inode)) {
 +			char *spoofed_redirected_name = NULL;
 +			int srcu_idx = srcu_read_lock(&susfs_srcu_open_redirect);
@@ -70,17 +70,17 @@ index 365c5cf..34d90cc 100644
 +			}
 +			srcu_read_unlock(&susfs_srcu_open_redirect, srcu_idx);
 +		}
-+#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_OPEN_REDIRECT
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +		if (SUSFS_IS_INODE_SUS_MAP(inode))
 +			return;
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  		dev = inode->i_sb->s_dev;
  		ino = inode->i_ino;
  		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
-+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_KSTAT
 +		susfs_sus_kstat_spoof_show_map_vma((struct inode *)inode, &dev, &ino);
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_KSTAT
  	}
  
  	start = vma->vm_start;
@@ -88,14 +88,14 @@ index 365c5cf..34d90cc 100644
  
  	vma_start = vma->vm_start;
  	do {
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +		if (vma->vm_file && SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file)))
 +			goto bypass_orig_flow;
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  		smap_gather_stats(vma, &mss, 0);
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +bypass_orig_flow:
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  		last_vma_end = vma->vm_end;
  
  		/*
@@ -103,7 +103,7 @@ index 365c5cf..34d90cc 100644
  
  			/* Case 4 above */
  			if (vma->vm_end > last_vma_end) {
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +				if (!vma->vm_file || !(SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file)))) {
 +					smap_gather_stats(vma, &mss, last_vma_end);
 +					last_vma_end = vma->vm_end;
@@ -111,7 +111,7 @@ index 365c5cf..34d90cc 100644
 +#else
  				smap_gather_stats(vma, &mss, last_vma_end);
  				last_vma_end = vma->vm_end;
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  			}
  		}
  	} for_each_vma(vmi, vma);
@@ -119,9 +119,9 @@ index 365c5cf..34d90cc 100644
  	while (count && (start_vaddr < end_vaddr)) {
  		int len;
  		unsigned long end;
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +		struct vm_area_struct *vma;
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  
  		pm.pos = 0;
  		end = (start_vaddr + PAGEMAP_WALK_SIZE) & PAGEMAP_WALK_MASK;
@@ -129,15 +129,15 @@ index 365c5cf..34d90cc 100644
  		ret = mmap_read_lock_killable(mm);
  		if (ret)
  			goto out_free;
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +		vma = vma_lookup(mm, start_vaddr);
 +		if (vma && vma->vm_file && SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file)))
 +			goto bypass_orig_flow;
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  		ret = walk_page_range(mm, start_vaddr, end, &pagemap_ops, &pm);
-+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
 +bypass_orig_flow:
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
++#endif // #ifdef CONFIG_AXMANAGER_SUSFS_SUS_MAP
  		mmap_read_unlock(mm);
  		start_vaddr = end;
  
