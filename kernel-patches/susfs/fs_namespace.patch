@@ -1,0 +1,40 @@
+From 1a3c891ab1d25f9d023b4ecf02501be608e09c31 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 17 Aug 2026 00:02:27 +0300
+Subject: [PATCH] fix: fs/namespace.c patch
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ fs/namespace.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 4d910be7c..8374a7358 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -32,11 +32,22 @@
+ #include <linux/fs_context.h>
+ #include <linux/shmem_fs.h>
+ #include <linux/mnt_idmapping.h>
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++#include <linux/susfs_def.h>
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ 
+ #include "pnode.h"
+ #include "internal.h"
+ #include <trace/hooks/blk.h>
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++extern bool susfs_is_current_ksu_domain(void);
++extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
++
++#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
++
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++
+ /* Maximum number of mounts in a mount namespace */
+ static unsigned int sysctl_mount_max __read_mostly = 100000;
+ 
+-- 
+2.54.0
+
