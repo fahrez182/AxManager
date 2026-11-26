@@ -1,3 +1,4 @@
+<!-- OTG activation acts as a USB host; optional so phones without it can still install. -->
 <uses-feature
     android:name="android.hardware.usb.host"
     android:required="false" />
@@ -133,6 +134,7 @@
     <activity
         android:name=".ui.CrashActivity"
         android:excludeFromRecents="true"
+        android:exported="false"
         android:process=":crash"
         android:theme="@style/Theme.AxManager" />
 
@@ -183,9 +185,7 @@
     <service
         android:name=".adb.BootWatchdogService"
         android:directBootAware="true"
-        android:exported="false"
-        android:foregroundServiceType="shortService"
-        tools:ignore="NewApi" />
+        android:exported="false" />
 
     <service
         android:name=".ui.screen.FloatingService"
@@ -201,4 +201,5 @@
             <action android:name="android.service.quicksettings.action.QS_TILE" />
         </intent-filter>
     </service>
+
 </application>
