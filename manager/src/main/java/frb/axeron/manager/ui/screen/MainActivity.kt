@@ -28,20 +28,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main) // اگر نام لایوت را عوض کردی، اینجا هم تغییر بده
+        setContentView(R.layout.activity_main)
 
-        // مقداردهی ویجت‌ها
+        // مقداردهی ویجت‌ها از لایوت
         btnBoost = findViewById(R.id.btnBoost)
         btnReset = findViewById(R.id.btnReset)
         tvStatus = findViewById(R.id.tvStatus)
         rgModes = findViewById(R.id.rgModes)
         etCustomDpi = findViewById(R.id.etCustomDpi)
 
-        // مقداردهی موتورها
-        injector = AxBladeInjector(this)
+        // مقداردهی موتورهای اجرایی (بدون آرگومان اضافی برای جلوگیری از خطای Too many arguments)
+        injector = AxBladeInjector()
         resolutionManager = AutoResolutionManager(this, injector)
 
-        // مدیریت دکمه بوست
+        // مدیریت دکمه اعمال بوست / ابعاد
         btnBoost.setOnClickListener {
             tvStatus.text = "Status: Injecting Boost..."
             
@@ -49,11 +49,11 @@ class MainActivity : AppCompatActivity() {
             
             lifecycleScope.launch {
                 val result = if (customText.isNotEmpty()) {
-                    // اگر کاربر عدد دستی وارد کرده بود
+                    // اگر کاربر عدد DPI دستی وارد کرده بود
                     val userDpi = customText.toIntOrNull() ?: 320
                     resolutionManager.applyCustomBoost(userDpi)
                 } else {
-                    // در غیر این صورت استفاده از حالت‌های پیش‌فرض
+                    // در غیر این صورت استفاده از حالت‌های پیش‌فرض گزینه‌ها
                     val selectedMode = when (rgModes.checkedRadioButtonId) {
                         R.id.rbUltra -> "ULTRA_FPS"
                         R.id.rbHigh -> "HIGH_FPS"
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // مدیریت دکمه ریست
+        // مدیریت دکمه ریست و بازنشانی سیستم
         btnReset.setOnClickListener {
             tvStatus.text = "Status: Resetting System..."
             lifecycleScope.launch {
