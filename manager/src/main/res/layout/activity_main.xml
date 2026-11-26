@@ -10,167 +10,111 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp"
+        android:padding="24dp"
         android:gravity="center_horizontal">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
             android:text="AX MANAGER"
             android:textColor="#FFD700"
             android:textSize="28sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="24dp"/>
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="Blade Engine - CODM Optimizer"
+            android:textColor="#888888"
+            android:textSize="14sp" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:hint="Custom DPI"
-            android:textColorHint="#888888"
-            style="?attr/textInputLayoutStyle">
+            android:layout_marginBottom="20dp"
+            android:hint="Custom DPI (e.g. 400)"
+            app:hintTextColor="#FFD700">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etCustomDpi"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#FFFFFF"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textColor="#FFFFFF" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             android:text="Performance Mode"
             android:textColor="#FFFFFF"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="16sp" />
 
         <RadioGroup
             android:id="@+id/rgModes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_marginBottom="24dp"
             android:gravity="center"
-            android:layout_marginBottom="24dp">
+            android:orientation="horizontal">
 
             <RadioButton
                 android:id="@+id/rbSmooth"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Smooth"
-                android:textColor="#FFFFFF"
                 android:checked="true"
-                android:layout_margin="8dp"/>
+                android:text="Smooth"
+                android:textColor="#FFFFFF" />
 
             <RadioButton
                 android:id="@+id/rbHigh"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
                 android:text="High"
-                android:textColor="#FFFFFF"
-                android:layout_margin="8dp"/>
+                android:textColor="#FFFFFF" />
 
             <RadioButton
                 android:id="@+id/rbUltra"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
                 android:text="Ultra"
-                android:textColor="#FFFFFF"
-                android:layout_margin="8dp"/>
+                android:textColor="#FFFFFF" />
         </RadioGroup>
 
         <Button
             android:id="@+id/btnBoost"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:text="APPLY BOOST"
+            android:layout_marginBottom="12dp"
             android:backgroundTint="#FFD700"
-            android:textColor="#000000"
-            android:layout_marginBottom="12dp"/>
+            android:text="APPLY OPTIMIZATION"
+            android:textColor="#121212"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnReset"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="RESET TO DEFAULT"
+            android:layout_height="55dp"
+            android:layout_marginBottom="24dp"
             android:backgroundTint="#B71C1C"
+            android:text="RESET DEFAULT"
             android:textColor="#FFFFFF"
-            android:layout_marginBottom="16dp"/>
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Status: Ready"
-            android:textAlignment="center"
+            android:gravity="center"
+            android:padding="12dp"
+            android:text="Status: Ready to inject"
             android:textColor="#00E676"
-            android:textSize="16sp"
-            android:layout_marginBottom="16dp" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#333333"
-            android:layout_marginBottom="16dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="بخش 120 امن بدون بلید"
-            android:textColor="#FFD700"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:id="@+id/tvFpsNumber"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="60"
-            android:textColor="#FFFFFF"
-            android:textSize="48sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="عدد فعلی - باید 120 شود"
-            android:textColor="#888888"
-            android:layout_marginBottom="12dp" />
-
-        <Button
-            android:id="@+id/btnFps120"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="فعال کردن 120 کامل"
-            android:backgroundTint="#FFD700"
-            android:textColor="#000000"
-            android:layout_marginBottom="12dp" />
-
-        <Button
-            android:id="@+id/btnRestartGame"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="ریستارت بازی"
-            android:backgroundTint="#1976D2"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="12dp" />
-
-        <Button
-            android:id="@+id/btnFloating"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="نمایش پنجره شناور روی لابی"
-            android:backgroundTint="#333333"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="12dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="اول وارد لابی بتل شوید بعد دکمه را بزنید"
-            android:textColor="#888888"
-            android:textAlignment="center" />
+            android:textSize="14sp" />
 
     </LinearLayout>
 </ScrollView>
