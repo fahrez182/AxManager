@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.screen
 
+import frb.axeron.manager.ui.screen.ActivateScreenDestination
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -885,13 +886,6 @@ private fun WakeLockStrip(held: Boolean, onChange: (Boolean) -> Unit) {
             color = if (held) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-}
-// در قسمت Import ها این را اضافه کن:
-import frb.axeron.manager.ui.screen.ActivateScreenDestination
-
-// در بدنه دکمه (onClick):
-onClick = {
-    navigator.navigate(ActivateScreenDestination)
 }
 /** What the server's callback proved so far; it lands after the screen is composed. */
 private data class ServerVerification(val verified: Boolean, val callbackUid: Int)
