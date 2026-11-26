@@ -5,6 +5,7 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import frb.axeron.manager.R // <--- این خط خیلی مهم است (منابع پروژه)
 import frb.axeron.manager.api.AxBladeInjector
 import frb.axeron.manager.api.GameGraphicsModule
 import frb.axeron.manager.api.InjectionResult
