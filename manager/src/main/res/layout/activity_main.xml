@@ -10,32 +10,50 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center_horizontal">
+        android:padding="20dp">
 
+        <!-- Logo/Title Area -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="AX MANAGER"
-            android:textColor="#FFD700"
-            android:textSize="28sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="Blade Engine - CODM Optimizer"
-            android:textColor="#888888"
-            android:textSize="14sp" />
-
-        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:hint="Custom DPI (e.g. 400)"
-            app:hintTextColor="#FFD700">
+            android:text="AXMANAGER"
+            android:textColor="#FFD700"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="30dp"/>
+
+        <!-- Status Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="15dp"
+                android:text="Status: Ready"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:gravity="center" />
+        </androidx.cardview.widget.CardView>
+
+        <!-- Custom DPI Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Custom DPI (Optional)"
+            android:textColorHint="#888888"
+            app:boxStrokeColor="#FFD700"
+            app:hintTextColor="#FFD700"
+            android:layout_marginBottom="20dp">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etCustomDpi"
@@ -45,76 +63,69 @@
                 android:textColor="#FFFFFF" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Preset Modes -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="Performance Mode"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
+            android:text="Select Performance Mode"
+            android:textColor="#FFD700"
+            android:layout_marginBottom="10dp"/>
 
         <RadioGroup
             android:id="@+id/rgModes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:orientation="horizontal"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:layout_marginBottom="30dp">
 
             <RadioButton
                 android:id="@+id/rbSmooth"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checked="true"
                 android:text="Smooth"
-                android:textColor="#FFFFFF" />
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="10dp"
+                android:buttonTint="#FFD700"/>
 
             <RadioButton
                 android:id="@+id/rbHigh"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
                 android:text="High"
-                android:textColor="#FFFFFF" />
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="10dp"
+                android:buttonTint="#FFD700"/>
 
             <RadioButton
                 android:id="@+id/rbUltra"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
                 android:text="Ultra"
-                android:textColor="#FFFFFF" />
+                android:textColor="#FFFFFF"
+                android:buttonTint="#FFD700"/>
         </RadioGroup>
 
+        <!-- Action Buttons -->
         <Button
             android:id="@+id/btnBoost"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:layout_marginBottom="12dp"
+            android:text="APPLY BOOST"
             android:backgroundTint="#FFD700"
-            android:text="APPLY OPTIMIZATION"
-            android:textColor="#121212"
-            android:textStyle="bold" />
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:layout_marginBottom="15dp"
+            app:cornerRadius="8dp" />
 
         <Button
             android:id="@+id/btnReset"
             android:layout_width="match_parent"
-            android:layout_height="55dp"
-            android:layout_marginBottom="24dp"
-            android:backgroundTint="#B71C1C"
-            android:text="RESET DEFAULT"
+            android:layout_height="60dp"
+            android:text="RESET DEFAULTS"
+            android:backgroundTint="#333333"
             android:textColor="#FFFFFF"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:padding="12dp"
-            android:text="Status: Ready to inject"
-            android:textColor="#00E676"
-            android:textSize="14sp" />
+            app:cornerRadius="8dp" />
 
     </LinearLayout>
 </ScrollView>
