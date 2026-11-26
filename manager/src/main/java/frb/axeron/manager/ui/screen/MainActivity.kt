@@ -28,15 +28,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // اطمینان حاصل کن که لایوت درست لود می‌شود
         setContentView(R.layout.activity_main)
 
+        // متصل کردن ویجت‌ها به XML
         btnBoost = findViewById(R.id.btnBoost)
         btnReset = findViewById(R.id.btnReset)
         tvStatus = findViewById(R.id.tvStatus)
         rgModes = findViewById(R.id.rgModes)
         etCustomDpi = findViewById(R.id.etCustomDpi)
 
-        // مقداردهی با Context
+        // مقداردهی اولیه موتورها
         injector = AxBladeInjector(this)
         resolutionManager = AutoResolutionManager(this, injector)
 
@@ -57,6 +59,7 @@ class MainActivity : AppCompatActivity() {
                     resolutionManager.applyProBoost(mode)
                 }
 
+                // بازگشت به ترد اصلی برای تغییر متن UI
                 withContext(Dispatchers.Main) {
                     when (result) {
                         is InjectionResult.Success -> tvStatus.text = "Status: Success!"
