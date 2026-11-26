@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.axmanager.app"> <!-- حتما چک کن که پکیج نام پروژه تو دقیقاً همین باشد -->
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Features & Permissions -->
     <uses-feature
         android:name="android.hardware.usb.host"
         android:required="false" />
@@ -22,11 +20,11 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- Custom Permission -->
     <permission
         android:name="frb.axeron.manager.permission.MANAGER"
         android:protectionLevel="signature" />
@@ -47,11 +45,12 @@
         android:theme="@style/Theme.AxManager"
         tools:targetApi="33">
 
-        <!-- Main Entry Points -->
+        <!-- MainActivity به عنوان صفحه اصلی تنظیم شد تا دکمه‌ها مستقیماً بالا بیایند -->
         <activity
-            android:name=".ui.AxActivity"
+            android:name=".ui.screen.MainActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.AxManager">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -59,11 +58,10 @@
         </activity>
 
         <activity
-            android:name=".ui.screen.MainActivity"
+            android:name=".ui.AxActivity"
             android:exported="false"
-            android:theme="@style/Theme.AxManager" />
+            android:launchMode="singleTask" />
 
-        <!-- Specialized Activities -->
         <activity
             android:name=".ui.OpenZipActivity"
             android:excludeFromRecents="true"
@@ -146,7 +144,6 @@
             android:process=":crash"
             android:theme="@style/Theme.AxManager" />
 
-        <!-- Receivers -->
         <receiver
             android:name="frb.axeron.manager.receiver.BinderRequestReceiver"
             android:directBootAware="true"
@@ -154,25 +151,6 @@
             android:exported="true"
             tools:ignore="ExportedReceiver" />
 
-        <receiver
-            android:name=".receiver.BootCompleteReceiver"
-            android:directBootAware="true"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="frb.axeron.manager.permission.MANAGER">
-            <intent-filter>
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".receiver.ShortcutPinnedReceiver"
-            android:exported="false" />
-
-        <!-- Providers -->
         <provider
             android:name=".AxManagerProvider"
             android:authorities="${applicationId}.server"
@@ -192,7 +170,24 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Services -->
+        <receiver
+            android:name=".receiver.BootCompleteReceiver"
+            android:directBootAware="true"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="frb.axeron.manager.permission.MANAGER">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".receiver.ShortcutPinnedReceiver"
+            android:exported="false" />
+
         <service
             android:name=".adb.BootWatchdogService"
             android:directBootAware="true"
