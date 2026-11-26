@@ -1,26 +1,45 @@
 package frb.axeron.manager.api
 
 import android.content.Context
-import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
-sealed class InjectionResult {
-    object Success : InjectionResult()
-    data class Failure(val reason: String) : InjectionResult()
-}
+class AxBladeInjector(private val context: Context? = null) {
 
-class AxBladeInjector(private val context: Context) {
-    private val TAG = "AxBladeInjector"
+    enum class InjectionStatus { IDLE, INJECTING, SUCCESS, FAILURE, GAME_NOT_FOUND }
 
-    fun injectCommand(command: String, tag: String = "DEFAULT"): InjectionResult {
-        Log.i(TAG, "[$tag] Executing: $command")
-        return try {
-            InjectionResult.Success
+    suspend fun injectModuleToGame(packageName: String, modulePayload: String): InjectionResult = withContext(Dispatchers.IO) {
+        try {
+            val lower = modulePayload.lowercase()
+            val blocked = listOf("pgrep", "renice", "drop_caches", "setprop debug.hwui", "/proc/", "su -c")
+            for (b in blocked) {
+                if (lower.contains(b)) {
+                    return@withContext InjectionResult.Failure("BLOCKED_FOR_SAFETY: $b")
+                }
+            }
+            try {
+                val p = Runtime.getRuntime().exec(arrayOf("sh", "-c", modulePayload))
+                val err = p.errorStream.bufferedReader().readText()
+                val done = p.waitFor(8, TimeUnit.SECONDS)
+                if (!done) {
+                    try { p.destroyForcibly() } catch (_: Exception) {}
+                    return@withContext InjectionResult.Failure("TIMEOUT")
+                }
+                if (err.isNotBlank() && err.contains("permission", true)) {
+                    return@withContext InjectionResult.Failure(err.trim())
+                }
+                InjectionResult.Success("OK")
+            } catch (e: Exception) {
+                InjectionResult.Failure(e.message ?: "EXEC_ERROR")
+            }
         } catch (e: Exception) {
-            InjectionResult.Failure(e.message ?: "Unknown error")
+            InjectionResult.Failure(e.message ?: "UNKNOWN")
         }
     }
+}
 
-    fun performInMemoryInjection(targetPackage: String): Boolean {
-        return true
-    }
+sealed class InjectionResult {
+    data class Success(val data: String) : InjectionResult()
+    data class Failure(val reason: String) : InjectionResult()
 }
