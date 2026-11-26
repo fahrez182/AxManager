@@ -886,7 +886,13 @@ private fun WakeLockStrip(held: Boolean, onChange: (Boolean) -> Unit) {
         )
     }
 }
+// در قسمت Import ها این را اضافه کن:
+import frb.axeron.manager.ui.screen.ActivateScreenDestination
 
+// در بدنه دکمه (onClick):
+onClick = {
+    navigator.navigate(ActivateScreenDestination)
+}
 /** What the server's callback proved so far; it lands after the screen is composed. */
 private data class ServerVerification(val verified: Boolean, val callbackUid: Int)
 
