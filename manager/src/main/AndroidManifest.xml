@@ -6,7 +6,6 @@
 <uses-permission
     android:name="android.permission.FOREGROUND_SERVICE"
     tools:ignore="ForegroundServicesPolicy" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
