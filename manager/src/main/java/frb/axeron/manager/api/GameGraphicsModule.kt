@@ -1,71 +1,48 @@
 package frb.axeron.manager.api
 
-/**
- * ماژول تخصصی تزریق تنظیمات گرافیکی و فریم‌ریت
- * این ماژول از تکنیک "System Parameter Injection" استفاده می‌کند تا هیچ ردپایی در بازی نماند.
- */
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 class GameGraphicsModule(private val injector: AxBladeInjector) {
 
     /**
-     * فعال‌سازی حالت Ultra Performance (برای ۱۲۰ فریم و کیفیت MAX)
-     * @param packageName نام پکیج بازی (مثلاً برای کالاف)
+     * فعال‌سازی حالت حداکثری (120FPS + MAX Graphics)
      */
-    suspend fun enableUltraPerformance(packageName: String): InjectionResult {
-        
-        // ما دستورات را به صورت یک زنجیره (Chain) می‌سازیم تا در یک لحظه اعمال شوند
-        // ۱. اجبار سیستم به استفاده
-        // ۱. اجبار سیستم به استفاده از حداکثر نرخ نوسازی صفحه (Peak Refresh Rate)
-        // ۲. تنظیمات گرافیکی سیستمی برای کارت گرافیک (GPU Optimization)
-        // ۳. تزریق پارامترهای اجرایی بازی برای جلوگیری از افت فریم در بتل رویال و مولتی‌پلیر
-        
-        val commandPayload = listOf(
-            // قفل کردن روی بالاترین رفرش‌ریت صفحه (120Hz / 144Hz)
-            "settings put system peak_refresh_rate 144.0",
-            "settings put system min_refresh_rate 144.0",
+    suspend fun enableUltraPerformance(packageName: String): InjectionResult = withContext(Dispatchers.IO) {
+        try {
+            // ۱. تزریق دستورات گرافیکی برای افزایش فریم‌ریت
+            val injectResult = injector.injectCommand(packageName, "settings put global min_refresh_rate 120.0; settings put global peak_refresh_rate 120.0")
             
-            // بهینه‌سازی پردازنده گرافیکی (GPU Force Rendering) برای کیفیت MAX
-            "setprop debug.hwui.render_dirty_regions false",
-            "setprop debug.hwui.use_partial_updates false",
-            
-            // تزریق دستور اجرایی برای افزایش پرایوریتی (Priority) پردازش بازی
-            "renice -n -20 \$(pgrep -f $packageName)",
-            
-            // پاکسازی کش حافظه موقت برای جلوگیری از لگ هنگام لندینگ در بتل رویال
-            "sync && echo 3 > /proc/sys/vm/drop_caches"
-        ).joinToString(" && ")
-
-        // ارسال از طریق موتور تزریق پیشرفته Blade به داخل محیط بازی
-        return injector.injectModuleToGame(packageName, commandPayload)
+            if (injectResult is InjectionResult.Success) {
+                // ۲. تغییر رزولوشن برای افزایش سرعت پردازش (در صورت نیاز)
+                injector.injectCommand(packageName, "wm size reset; wm density reset")
+                InjectionResult.Success
+            } else {
+                InjectionResult.Failure("تزریق فریم‌ریت ناموفق بود.")
+            }
+        } catch (e: Exception) {
+            InjectionResult.Failure(e.message ?: "خطای غیرمنتظره")
+        }
     }
 
     /**
-     * بازگرداندن تنظیمات به حالت عادی (برای زمانی که از بازی خارج می‌شوی)
+     * بازگشت به حالت عادی (Reset)
      */
-    suspend fun resetToDefault(packageName: String): InjectionResult {
-        val resetPayload = listOf(
-            "settings put system peak_refresh_rate 60.0",
-            "setprop debug.hwui.render_dirty_regions true",
-            "sync"
-        ).joinToString(" && ")
+    suspend fun resetToDefault(packageName: String): InjectionResult = withContext(Dispatchers.IO) {
+        try {
+            // بازگشت رزولوشن و تراکم به حالت کارخانه
+            val res1 = injector.injectCommand(packageName, "wm size reset")
+            val res2 = injector.injectCommand(packageName, "wm density reset")
+            // بازگشت نرخ نوسازی به حالت استاندارد (مثلاً ۹۰)
+            val res3 = injector.injectCommand(packageName, "settings put global min_refresh_rate 60.0; settings put global peak_refresh_rate 90.0")
 
-        return injector.injectModuleToGame(packageName, resetPayload)
-        // این تابع را داخل کلاس GameGraphicsModule اضافه کن
-suspend fun resetToDefault(packageName: String): InjectionResult {
-    return try {
-        // ۱. بازگرداندن رزولوشن به حالت اصلی گوشی (مثلاً بدون تغییر DPI)
-        // دستور 'wm size reset' رزولوشن را به حالت کارخانه برمی‌گرداند
-        val resetSizeResult = executeCommand("wm size reset")
-        
-        // ۲. بازگرداندن DPI به حالت اصلی
-        // دستور 'wm density reset' تراکم پیکسلی را به حالت کارخانه برمی‌گرداند
-        val resetDensityResult = executeCommand("wm density reset")
-
-        if (resetSizeResult.isSuccess && resetDensityResult.isSuccess) {
-            InjectionResult.Success
-        } else {
-            InjectionResult.Failure("خطا در بازگشت تنظیمات سیستم")
+            if (res1 is InjectionResult.Success && res2 is InjectionResult.Success && res3 is InjectionResult.Success) {
+                InjectionResult.Success
+            } else {
+                InjectionResult.Failure("برخی تنظیمات بازنگشتند.")
+            }
+        } catch (e: Exception) {
+            InjectionResult.Failure(e.message ?: "خطا در بازگشت")
         }
-    } catch (e: Exception) {
-        InjectionResult.Failure(e.message ?: "خطای ناشناخته")
     }
 }
