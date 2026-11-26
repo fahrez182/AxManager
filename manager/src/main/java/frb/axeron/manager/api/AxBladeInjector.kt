@@ -2,6 +2,7 @@ package frb.axeron.manager.api
 
 import kotlinx.coroutines.*
 import java.io.*
+import java.util.concurrent.TimeUnit // <--- رفع ارور گم شدن TimeUnit
 
 /**
  * AX-BLADE INJECTOR: SPECIALIZED FOR GAME MEMORY INJECTION
@@ -29,11 +30,8 @@ class AxBladeInjector {
                 return@withContext InjectionResult.Failure("GAME_NOT_RUNNING")
             }
 
-            // ۲. شبیه‌سازی تزریق در سطح Blade
-            // در اینجا ما از تکنیک "Command Chaining" استفاده می‌کنیم تا دستور ماژول 
-            // مستقیماً در محیط اجرای بازی (Game Context) اجرا شود
-            val injectionCommand = "su -c \"$modulePayload\"" 
-            // نکته: اگر روت نداشته باشی، موتور از ADB Proxy که در AxTurboEngine بود استفاده می‌کند
+            // ۲. اجرای دستور ماژول در سطح سیستم/پنجره بازی
+            val injectionCommand = "sh -c \"$modulePayload\"" 
 
             val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", injectionCommand))
             
@@ -53,6 +51,14 @@ class AxBladeInjector {
         }
     }
 
+    /**
+     * نام این تابع را از injectCommand به injectModuleToGame تغییر دادیم 
+     * تا با سایر کلاس‌های ماژول هماهنگ باشد.
+     */
+    suspend fun injectCommand(packageName: String, command: String): InjectionResult {
+        return injectModuleToGame(packageName, command)
+    }
+
     private fun isProcessRunning(packageName: String): Boolean {
         return try {
             val process = Runtime.getRuntime().exec("pgrep -f $packageName")
@@ -65,6 +71,6 @@ class AxBladeInjector {
 }
 
 sealed class InjectionResult {
-    data class Success(val data: String) : InjectionResult()
+    data class Success(val data: String = "") : InjectionResult()
     data class Failure(val reason: String) : InjectionResult()
 }
