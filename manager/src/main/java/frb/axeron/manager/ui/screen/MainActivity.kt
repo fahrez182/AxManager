@@ -2,7 +2,6 @@ package frb.axeron.manager.ui.screen
 
 import android.os.Bundle
 import android.widget.Button
-import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -24,14 +23,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // اتصال المان‌های ویژوال به متغیرها
+        // اتصال المان‌های صفحه به کد
         etCustomDpi = findViewById(R.id.etCustomDpi)
         rgModes = findViewById(R.id.rgModes)
         btnBoost = findViewById(R.id.btnBoost)
         btnReset = findViewById(R.id.btnReset)
         tvStatus = findViewById(R.id.tvStatus)
 
-        // دکمه اعمال تنظیمات و بهینه‌سازی
+        // دکمه اعمال بهینه‌سازی و DPI
         btnBoost.setOnClickListener {
             val dpiStr = etCustomDpi.text.toString().trim()
             val dpi = if (dpiStr.isNotEmpty()) dpiStr.toInt() else 360
@@ -44,29 +43,30 @@ class MainActivity : AppCompatActivity() {
             }
 
             try {
-                // استفاده از موتورهای Blade و Resolution برای اعمال فرمان بدون نیاز به Root
-                AxBladeInjector.injectCommand("wm density $dpi")
-                AutoResolutionManager.applyPreset(modeName, dpi)
+                // ارسال دستورات به موتور Blade و مدیریت رزولوشن با متدهای استاندارد
+                AxBladeInjector.getInstance().executeCommand("wm density $dpi")
+                AutoResolutionManager.setResolution(dpi, modeName)
 
-                tvStatus.text = "Status: Successfully Applied ($modeName, DPI: $dpi)"
-                Toast.makeText(this, "Optimization Applied!", Toast.LENGTH_SHORT).show()
+                tvStatus.text = "Status: Applied Successfully ($modeName, DPI: $dpi)"
+                Toast.makeText(this, "CODM Optimized Successfully!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                tvStatus.text = "Status: Error -> ${e.message}"
-                Toast.makeText(this, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                tvStatus.text = "Status: Error -> ${e.localizedMessage}"
+                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
 
         // دکمه بازنشانی به حالت پیش‌فرض
         btnReset.setOnClickListener {
             try {
-                AxBladeInjector.injectCommand("wm density reset")
-                AutoResolutionManager.resetDefaults()
-                
+                AxBladeInjector.getInstance().executeCommand("wm density reset")
+                AutoResolutionManager.resetToDefault()
+
                 etCustomDpi.setText("")
                 tvStatus.text = "Status: Reset to Default"
                 Toast.makeText(this, "Reset Successful", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                tvStatus.text = "Status: Reset Error"
+                tvStatus.text = "Status: Reset Failed"
+                Toast.makeText(this, "Reset Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
