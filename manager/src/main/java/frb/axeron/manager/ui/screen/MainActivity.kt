@@ -56,10 +56,56 @@ class MainActivity : AppCompatActivity() {
                         Toast.makeText(this@MainActivity, "گوشی به حالت عادی برگشت.", Toast.LENGTH_LONG).show()
                     }
                     is InjectionResult.Failure -> {
-                        Toast.makeText(this@MainActivity, "خطا در ریست: ${result.reason}", Toast.LENGTH_LONG).show()
+                       Toast.makeText(this@MainActivity, "خطا در ریست: ${result.reason}", Toast.LENGTH_LONG).show()
                     }
+                val btnBoost = findViewById<Button>(R.id.btnBoost)
+val btnReset = findViewById<Button>(R.id.btnReset)
+val tvStatus = findViewById<TextView>(R.id.tvStatus)
+val rgModes = findViewById<RadioGroup>(R.id.rgModes)
+val etCustomDpi = findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etCustomDpi)
+
+val injector = AxBladeInjector(this)
+val resolutionManager = AutoResolutionManager(this, injector)
+
+btnBoost.setOnClickListener {
+    tvStatus.text = "Status: Injecting Boost..."
+    
+    val customText = etCustomDpi.text.toString()
+    
+    lifecycleScope.launch {
+        val result = if (customText.isNotEmpty()) {
+            // اگر عدد دلخواه وارد کرده بود، از آن استفاده کن
+            val userDpi = customText.toIntOrNull() ?: 320
+            resolutionManager.applyCustomBoost(userDpi)
+        } else {
+            // در غیر این صورت از حالت انتخابی RadioGroup استفاده کن
+            val selectedMode = when (rgModes.checkedRadioButtonId) {
+                R.id.rbUltra -> "ULTRA_FPS"
+                R.id.rbHigh -> "HIGH_FPS"
+                else -> "SMOOTH"
+            }
+            resolutionManager.applyProBoost(selectedMode)
+        }
+
+        withContext(Dispatchers.Main) {
+            when (result) {
+                is InjectionResult.Success -> {
+                    tvStatus.text = "Status: Success! (Active)"
+                }
+                is InjectionResult.Failure -> {
+                    tvStatus.text = "Status: Failed - ${result.reason}"
                 }
             }
+        }
+    }
+}
+
+btnReset.setOnClickListener {
+    tvStatus.text = "Status: Resetting System..."
+    lifecycleScope.launch {
+        val result = resolutionManager.reset()
+        withContext(Dispatchers.Main) {
+            tvStatus.text = if (result is InjectionResult.Success) "Status: Restored to Default" else "Status: Reset Failed"
         }
     }
 }
