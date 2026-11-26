@@ -36,7 +36,7 @@ class MainActivity : AppCompatActivity() {
         rgModes = findViewById(R.id.rgModes)
         etCustomDpi = findViewById(R.id.etCustomDpi)
 
-        // مقداردهی صحیح با استفاده از Context
+        // مقداردهی با Context
         injector = AxBladeInjector(this)
         resolutionManager = AutoResolutionManager(this, injector)
 
@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     when (result) {
                         is InjectionResult.Success -> tvStatus.text = "Status: Success!"
-                        is InjectionResult.Failure -> tvStatus.text = "Status: Error: ${result.reason}"
+                        is InjectionResult.Failure -> tvStatus.text = "Status: Failed - ${result.reason}"
                     }
                 }
             }
@@ -71,7 +71,11 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 val result = resolutionManager.reset()
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = if (result is InjectionResult.Success) "Status: Reset Done" else "Status: Reset Failed"
+                    tvStatus.text = if (result is InjectionResult.Success) {
+                        "Status: Reset Done"
+                    } else {
+                        "Status: Reset Failed"
+                    }
                 }
             }
         }
