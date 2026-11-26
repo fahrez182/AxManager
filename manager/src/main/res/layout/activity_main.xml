@@ -20,7 +20,7 @@
             android:textColor="#FFD700"
             android:textSize="28sp"
             android:textStyle="bold"
-            android:layout_marginBottom="32dp"/>
+            android:layout_marginBottom="24dp"/>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
@@ -51,7 +51,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:layout_marginBottom="32dp">
+            android:layout_marginBottom="24dp">
 
             <RadioButton
                 android:id="@+id/rbSmooth"
@@ -95,7 +95,7 @@
             android:text="RESET TO DEFAULT"
             android:backgroundTint="#B71C1C"
             android:textColor="#FFFFFF"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="16dp"/>
 
         <TextView
             android:id="@+id/tvStatus"
@@ -104,7 +104,73 @@
             android:text="Status: Ready"
             android:textAlignment="center"
             android:textColor="#00E676"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#333333"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="بخش 120 امن بدون بلید"
+            android:textColor="#FFD700"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvFpsNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="60"
+            android:textColor="#FFFFFF"
+            android:textSize="48sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="عدد فعلی - باید 120 شود"
+            android:textColor="#888888"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnFps120"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="فعال کردن 120 کامل"
+            android:backgroundTint="#FFD700"
+            android:textColor="#000000"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnRestartGame"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="ریستارت بازی"
+            android:backgroundTint="#1976D2"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnFloating"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="نمایش پنجره شناور روی لابی"
+            android:backgroundTint="#333333"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="اول وارد لابی بتل شوید بعد دکمه را بزنید"
+            android:textColor="#888888"
+            android:textAlignment="center" />
 
     </LinearLayout>
 </ScrollView>
