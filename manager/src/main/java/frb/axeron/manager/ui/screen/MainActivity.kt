@@ -30,22 +30,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // مقداردهی ویجت‌ها
         btnBoost = findViewById(R.id.btnBoost)
         btnReset = findViewById(R.id.btnReset)
         tvStatus = findViewById(R.id.tvStatus)
         rgModes = findViewById(R.id.rgModes)
         etCustomDpi = findViewById(R.id.etCustomDpi)
 
-        // --- اصلاح اصلی اینجاست ---
-        // ارسال 'this' به عنوان context برای رفع خطای سازنده (Constructor)
-        injector = AxBladeInjector(this) 
+        // مقداردهی صحیح با استفاده از Context
+        injector = AxBladeInjector(this)
         resolutionManager = AutoResolutionManager(this, injector)
 
-        // مدیریت دکمه اعمال بوست
         btnBoost.setOnClickListener {
-            tvStatus.text = "Status: Injecting Boost..."
-            
+            tvStatus.text = "Status: Injecting..."
             val customText = etCustomDpi.text.toString()
             
             lifecycleScope.launch {
@@ -53,38 +49,29 @@ class MainActivity : AppCompatActivity() {
                     val userDpi = customText.toIntOrNull() ?: 320
                     resolutionManager.applyCustomBoost(userDpi)
                 } else {
-                    val selectedMode = when (rgModes.checkedRadioButtonId) {
+                    val mode = when (rgModes.checkedRadioButtonId) {
                         R.id.rbUltra -> "ULTRA_FPS"
                         R.id.rbHigh -> "HIGH_FPS"
                         else -> "SMOOTH"
                     }
-                    resolutionManager.applyProBoost(selectedMode)
+                    resolutionManager.applyProBoost(mode)
                 }
 
                 withContext(Dispatchers.Main) {
                     when (result) {
-                        is InjectionResult.Success -> {
-                            tvStatus.text = "Status: Success! (Active)"
-                        }
-                        is InjectionResult.Failure -> {
-                            tvStatus.text = "Status: Failed - ${result.reason}"
-                        }
+                        is InjectionResult.Success -> tvStatus.text = "Status: Success!"
+                        is InjectionResult.Failure -> tvStatus.text = "Status: Error: ${result.reason}"
                     }
                 }
             }
         }
 
-        // مدیریت دکمه ریست
         btnReset.setOnClickListener {
-            tvStatus.text = "Status: Resetting System..."
+            tvStatus.text = "Status: Resetting..."
             lifecycleScope.launch {
                 val result = resolutionManager.reset()
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = if (result is InjectionResult.Success) {
-                        "Status: Restored to Default"
-                    } else {
-                        "Status: Reset Failed"
-                    }
+                    tvStatus.text = if (result is InjectionResult.Success) "Status: Reset Done" else "Status: Reset Failed"
                 }
             }
         }
