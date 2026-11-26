@@ -1,4 +1,3 @@
-<!-- OTG activation acts as a USB host; optional so phones without it can still install. -->
 <uses-feature
     android:name="android.hardware.usb.host"
     android:required="false" />
@@ -7,7 +6,6 @@
 <uses-permission
     android:name="android.permission.FOREGROUND_SERVICE"
     tools:ignore="ForegroundServicesPolicy" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
@@ -42,8 +40,6 @@
     android:theme="@style/Theme.AxManager"
     tools:targetApi="33">
 
-    <!-- singleTask: one AxActivity, in AxManager's own task. Zips from other apps arrive
-         through OpenZipActivity below, never directly. -->
     <activity
         android:name=".ui.AxActivity"
         android:exported="true"
@@ -54,14 +50,11 @@
         </intent-filter>
     </activity>
 
-    <!-- صفحه بوست و دکمه 120 -->
     <activity
         android:name=".ui.screen.MainActivity"
         android:exported="false"
         android:theme="@style/Theme.AxManager" />
 
-    <!-- Invisible hop for zips opened from other apps: it runs in the sender's task (empty
-         affinity, no history, not in recents) and forwards to AxActivity in a new task. -->
     <activity
         android:name=".ui.OpenZipActivity"
         android:excludeFromRecents="true"
@@ -71,10 +64,8 @@
         android:theme="@style/Theme.Transparent.NoUI">
         <intent-filter>
             <action android:name="android.intent.action.VIEW" />
-
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-
             <data android:mimeType="application/zip" />
             <data android:scheme="content" />
         </intent-filter>
@@ -93,8 +84,6 @@
         </intent-filter>
     </activity>
 
-    <!-- An app asks for AxManager here, for a result (AxRuntime.REQUEST_ACCESS): the only way
-         an app learns it is here before it is allowed. -->
     <activity
         android:name=".ui.RequestAccessActivity"
         android:excludeFromRecents="true"
@@ -106,8 +95,6 @@
         </intent-filter>
     </activity>
 
-    <!-- Opened by component only (WebUIActivity.intentFor, its shortcuts): no filter for
-         other apps to find it by. -->
     <activity
         android:name=".ui.webui.WebUIActivity"
         android:autoRemoveFromRecents="true"
@@ -115,8 +102,6 @@
         android:exported="true"
         android:theme="@style/Theme.AxManager.WebUI" />
 
-    <!-- For plugins (`am start` as the server's uid): shell and root hold the permission, an
-         app doesn't, so none can show a toast as AxManager. -->
     <activity
         android:name=".Toast"
         android:enabled="true"
@@ -131,7 +116,6 @@
         </intent-filter>
     </activity>
 
-    <!-- "Save snippet" in the text selection toolbar; not exported, so AxManager only. -->
     <activity
         android:name=".ui.SaveSnippetActivity"
         android:excludeFromRecents="true"
@@ -152,8 +136,6 @@
         android:process=":crash"
         android:theme="@style/Theme.AxManager" />
 
-    <!-- The relay for app_process clients, reached by component
-         (AxeronApiConstant.server.RELAY_RECEIVER): no filter for other apps to find it by. -->
     <receiver
         android:name="frb.axeron.manager.receiver.BinderRequestReceiver"
         android:directBootAware="true"
@@ -194,14 +176,10 @@
         </intent-filter>
     </receiver>
 
-    <!-- Pinned-shortcut confirmation; only reached through our own PendingIntent. -->
     <receiver
         android:name=".receiver.ShortcutPinnedReceiver"
         android:exported="false" />
 
-    <!-- Started by the boot receiver only: shows the start after a reboot, step by step.
-         Direct boot aware, as the receiver is: the locked boot broadcast comes before the
-         unlock, when the system won't start a service that isn't. -->
     <service
         android:name=".adb.BootWatchdogService"
         android:directBootAware="true"
@@ -209,15 +187,9 @@
         android:foregroundServiceType="shortService"
         tools:ignore="NewApi" />
 
-    <!-- پنجره شناور روی لابی بتل -->
     <service
         android:name=".ui.screen.FloatingService"
-        android:exported="false"
-        android:foregroundServiceType="specialUse">
-        <property
-            android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-            android:value="floating panel over game lobby for 120fps toggle" />
-    </service>
+        android:exported="false" />
 
     <service
         android:name=".features.quicksettings.AxeronTileService"
