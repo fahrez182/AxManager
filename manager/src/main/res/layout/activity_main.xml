@@ -1,119 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0F0F0F"
-    android:padding="20dp"
-    android:gravity="center_horizontal">
+    android:padding="24dp"
+    android:gravity="center_horizontal"
+    android:background="#121212">
 
-    <!-- لوگو یا عنوان برنامه -->
+    <!-- عنوان برنامه -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="AxManager"
-        android:textColor="#D4AF37"
-        android:textSize="34sp"
+        android:text="AxManager - Blade Engine"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:layout_marginTop="40dp"
-        android:layout_marginBottom="10dp"/>
+        android:textColor="#FFD700"
+        android:layout_marginBottom="24dp" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Super-Root &amp; Stealth Edition"
-        android:textColor="#888888"
-        android:textSize="14sp"
-        android:layout_marginBottom="40dp"/>
-
-    <!-- کارت دکمه فعال‌سازی (Boost) -->
-    <androidx.cardview.widget.CardView
+    <!-- فیلد ورود دستی DPI -->
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="15dp"
-        app:cardElevation="8dp"
-        android:layout_marginBottom="20dp">
+        android:hint="Custom DPI (e.g. 300)"
+        android:layout_marginBottom="16dp">
 
-        <LinearLayout
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCustomDpi"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:inputType="number"
+            android:textColor="#FFFFFF" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Boost Performance"
-                android:textColor="#000000"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="120 FPS &amp; MAX Graphics"
-                android:textColor="#555555"
-                android:textSize="12sp"/>
-
-            <Button
-                android:id="@+id/btnActivateFPS"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                android:backgroundTint="#D4AF37"
-                android:text="ACTIVATE NOW"
-                android:textColor="#000000"
-                android:textStyle="bold" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- کارت دکمه ریست (Reset) -->
-    <androidx.cardview.widget.CardView
+    <!-- انتخاب حالت‌های فریم‌ریت -->
+    <RadioGroup
+        android:id="@+id/rgModes"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="15dp"
-        app:cardElevation="8dp">
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="24dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <RadioButton
+            android:id="@+id/rbSmooth"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:text="Smooth"
+            android:textColor="#FFFFFF"
+            android:checked="true"
+            android:layout_marginEnd="16dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="System Reset"
-                android:textColor="#000000"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+        <RadioButton
+            android:id="@+id/rbHigh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="High FPS"
+            android:textColor="#FFFFFF"
+            android:layout_marginEnd="16dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Restore Default Resolution &amp; DPI"
-                android:textColor="#555555"
-                android:textSize="12sp"/>
+        <RadioButton
+            android:id="@+id/rbUltra"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ultra"
+            android:textColor="#FFFFFF" />
 
-            <Button
-                android:id="@+id/btnResetSettings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                android:backgroundTint="#CC0000"
-                android:text="RESET TO NORMAL"
-                android:textColor="#FFFFFF"
-                android:textStyle="bold" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+    </RadioGroup>
 
+    <!-- دکمه اعمال بوست -->
+    <Button
+        android:id="@+id/btnBoost"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Apply Boost / Resolution"
+        android:backgroundTint="#FFD700"
+        android:textColor="#000000"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <!-- دکمه بازنشانی (Reset) -->
+    <Button
+        android:id="@+id/btnReset"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Reset to Default"
+        android:backgroundTint="#B71C1C"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="24dp" />
+
+    <!-- متن نمایش وضعیت -->
     <TextView
+        android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:text="Powered by AxTurboEngine"
-        android:textColor="#333333"
-        android:textSize="10sp"/>
+        android:text="Status: Ready"
+        android:textSize="16sp"
+        android:textColor="#00E676" />
 
 </LinearLayout>
