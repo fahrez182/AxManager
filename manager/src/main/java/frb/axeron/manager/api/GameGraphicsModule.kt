@@ -1,51 +1,33 @@
 package frb.axeron.manager.api
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import android.content.Context
+import android.util.Log
 
-class GameGraphicsModule(private val injector: AxBladeInjector) {
+class GameGraphicsModule(private val context: Context, private val injector: AxBladeInjector) {
 
-    /**
-     * فعال‌سازی ۱۲۰ فریم و گرافیک MAX
-     */
-    suspend fun enableUltraPerformance(packageName: String): InjectionResult = withContext(Dispatchers.IO) {
-        try {
-            val result = injector.injectCommand(
-                packageName, 
-                "settings put global min_refresh_rate 120.0; settings put global peak_refresh_rate 120.0"
-            )
-            
-            // بررسی خروجی به صورت امن
-            return@withContext when (result) {
-                is InjectionResult.Success -> {
-                    // اعمال دستور دوم برای رزولوشن
-                    injector.injectCommand(packageName, "wm size reset")
-                    InjectionResult.Success("")
-                }
-                is InjectionResult.Failure -> {
-                    InjectionResult.Failure(result.reason)
-                }
-            }
+    private val TAG = "GameGraphicsModule"
+
+    suspend fun optimizeGraphics(): InjectionResult {
+        Log.i(TAG, "Optimizing game graphics...")
+        return try {
+            // اعمال تنظیمات گرافیکی بهینه‌سازی شده
+            val result = injector.injectCommand("setprop debug.hwui.renderer skiagl", "GRAPHICS_OPT")
+            result
         } catch (e: Exception) {
-            return@withContext InjectionResult.Failure(e.message ?: "Unknown Error")
+            Log.e(TAG, "Graphics optimization failed: ${e.message}")
+            InjectionResult.Failure(e.message ?: "Unknown error")
         }
     }
 
-    /**
-     * بازگشت به حالت پیش‌فرض (Reset)
-     */
-    suspend fun resetToDefault(packageName: String): InjectionResult = withContext(Dispatchers.IO) {
-        try {
-            val res1 = injector.injectCommand(packageName, "wm size reset")
-            val res2 = injector.injectCommand(packageName, "wm density reset")
-            
-            return@withContext if (res1 is InjectionResult.Success && res2 is InjectionResult.Success) {
-                InjectionResult.Success("")
-            } else {
-                InjectionResult.Failure("Reset failed to apply")
-            }
+    suspend fun applyLowGraphicsMode(): InjectionResult {
+        Log.i(TAG, "Applying low graphics / performance mode...")
+        return try {
+            // استفاده از InjectionResult.Success به جای Success خالی
+            injector.injectCommand("setprop debug.performance.tuning 1", "LOW_GFX")
+            InjectionResult.Success
         } catch (e: Exception) {
-            return@withContext InjectionResult.Failure(e.message ?: "Unknown Error")
+            Log.e(TAG, "Failed to apply low graphics: ${e.message}")
+            InjectionResult.Failure(e.message ?: "Unknown error")
         }
     }
 }
