@@ -15,94 +15,80 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import frb.axeron.manager.ui.LocalViewModelGlobal // ایمپورت جدید
-import frb.axeron.manager.api.AxBladeInjector
-import frb.axeron.manager.api.AutoResolutionManager
-import frb.axeron.manager.api.InjectionResult
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun ActivateScreen(
-    navigator: DestinationsNavigator
-    // پارامتر viewModelGlobal از اینجا حذف شد تا KSP ارور ندهد
-) {
-    // دریافت ViewModelGlobal از طریق CompositionLocal
-    val viewModelGlobal = LocalViewModelGlobal.current 
-    
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+fun ActivateScreen() {
     val scrollState = rememberScrollState()
 
-    val injector = remember { AxBladeInjector(context) }
-    val resolutionManager = remember { AutoResolutionManager(context, injector) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "AX-BOOST ACTIVATION",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
 
-    var customDpi by remember { mutableStateOf("") }
-    var selectedMode by remember { mutableStateOf("ULTRA_FPS") }
-    var statusText by remember { mutableStateOf("Status: Ready for Blade Boost") }
+        // کارت فعال‌سازی Blade
+        ActivationCard(
+            title = "AX-BLADE ENGINE",
+            description = "Inject high-performance gaming drivers",
+            icon = Icons.Default.Bolt,
+            onAction = { /* اینجا کد اینجکتور را صدا می‌زنیم */ }
+        )
 
-    val goldColor = Color(0xFFFFD700)
-    val darkBackground = Color(0xFF121212)
-    val cardBackground = Color(0xFF1E1E1E)
+        Spacer(modifier = Modifier.height(16.dp))
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("AXMANAGER // BLADE", color = goldColor, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = goldColor)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = darkBackground)
-            )
-        },
-        containerColor = darkBackground
-    ) { paddingValues ->
-        Column(
+        // کارت تنظیمات DPI
+        ActivationCard(
+            title = "DPI OPTIMIZER",
+            description = "Scale resolution for smoother FPS",
+            icon = Icons.Default.Settings,
+            onAction = { /* اینجا کد DPI را صدا می‌زنیم */ }
+        )
+    }
+}
+
+@Composable
+fun ActivationCard(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onAction: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // ... (بقیه کدهای مربوط به UI دقیقا مثل قبل است و تغییری نمی‌کند)
-            // فقط مطمئن شو که در قسمت دکمه Apply، از همان viewModelGlobal استفاده می‌کنی
-            
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = cardBackground)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                     Text("CODM Blade & DPI Booster", color = goldColor, fontWeight = FontWeight.Bold)
-                     // ... (بقیه کدهای UI که در پیام قبل دادم را اینجا قرار بده)
-                     // فقط دقت کن که دکمه APPLY دقیقا با همین منطق باشد:
-                     
-                     // دکمه Apply (بخش اصلی)
-                     Button(
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        onClick = {
-                            coroutineScope.launch {
-                                statusText = "Applying..."
-                                val result = if (customDpi.isNotEmpty()) {
-                                    resolutionManager.applyCustomBoost(customDpi.toIntOrNull() ?: 360)
-                                } else {
-                                    resolutionManager.applyProBoost(selectedMode)
-                                }
-                                statusText = when (result) {
-                                    is InjectionResult.Success -> "Success: ${result.data}"
-                                    is InjectionResult.Failure -> "Error: ${result.reason}"
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = goldColor)
-                    ) {
-                        Text("APPLY BOOST", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(text = description, fontSize = 14.sp, color = Color.Gray)
+            }
+            IconButton(onClick = onAction) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
             }
         }
     }
