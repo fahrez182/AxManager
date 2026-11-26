@@ -30,18 +30,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // مقداردهی ویجت‌ها از لایوت
+        // مقداردهی ویجت‌ها
         btnBoost = findViewById(R.id.btnBoost)
         btnReset = findViewById(R.id.btnReset)
         tvStatus = findViewById(R.id.tvStatus)
         rgModes = findViewById(R.id.rgModes)
         etCustomDpi = findViewById(R.id.etCustomDpi)
 
-        // مقداردهی موتورهای اجرایی (بدون آرگومان اضافی برای جلوگیری از خطای Too many arguments)
-        injector = AxBladeInjector()
+        // --- اصلاح اصلی اینجاست ---
+        // ارسال 'this' به عنوان context برای رفع خطای سازنده (Constructor)
+        injector = AxBladeInjector(this) 
         resolutionManager = AutoResolutionManager(this, injector)
 
-        // مدیریت دکمه اعمال بوست / ابعاد
+        // مدیریت دکمه اعمال بوست
         btnBoost.setOnClickListener {
             tvStatus.text = "Status: Injecting Boost..."
             
@@ -49,11 +50,9 @@ class MainActivity : AppCompatActivity() {
             
             lifecycleScope.launch {
                 val result = if (customText.isNotEmpty()) {
-                    // اگر کاربر عدد DPI دستی وارد کرده بود
                     val userDpi = customText.toIntOrNull() ?: 320
                     resolutionManager.applyCustomBoost(userDpi)
                 } else {
-                    // در غیر این صورت استفاده از حالت‌های پیش‌فرض گزینه‌ها
                     val selectedMode = when (rgModes.checkedRadioButtonId) {
                         R.id.rbUltra -> "ULTRA_FPS"
                         R.id.rbHigh -> "HIGH_FPS"
@@ -75,7 +74,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // مدیریت دکمه ریست و بازنشانی سیستم
+        // مدیریت دکمه ریست
         btnReset.setOnClickListener {
             tvStatus.text = "Status: Resetting System..."
             lifecycleScope.launch {
