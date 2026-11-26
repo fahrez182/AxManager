@@ -1,4 +1,3 @@
-<!-- OTG activation acts as a USB host; optional so phones without it can still install. -->
 <uses-feature
     android:name="android.hardware.usb.host"
     android:required="false" />
@@ -7,6 +6,7 @@
 <uses-permission
     android:name="android.permission.FOREGROUND_SERVICE"
     tools:ignore="ForegroundServicesPolicy" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
@@ -201,5 +201,4 @@
             <action android:name="android.service.quicksettings.action.QS_TILE" />
         </intent-filter>
     </service>
-
 </application>
