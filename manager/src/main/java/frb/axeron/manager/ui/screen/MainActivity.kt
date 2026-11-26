@@ -6,10 +6,13 @@ import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import frb.axeron.manager.R
-import frb.axeron.manager.api.AutoResolutionManager
 import frb.axeron.manager.api.AxBladeInjector
+import frb.axeron.manager.api.AutoResolutionManager
+import frb.axeron.manager.api.InjectionResult
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,54 +22,66 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnReset: Button
     private lateinit var tvStatus: TextView
 
+    // تعریف موتورها بر اساس ساختار کلاس‌های شما
+    private lateinit var injector: AxBladeInjector
+    private lateinit var resolutionManager: AutoResolutionManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // اتصال المان‌های صفحه به کد
+        // مقداردهی اولیه موتورها (نیاز به Context و Injector دارند)
+        injector = AxBladeInjector(this)
+        resolutionManager = AutoResolutionManager(this, injector)
+
+        // اتصال المان‌های UI
         etCustomDpi = findViewById(R.id.etCustomDpi)
         rgModes = findViewById(R.id.rgModes)
         btnBoost = findViewById(R.id.btnBoost)
         btnReset = findViewById(R.id.btnReset)
         tvStatus = findViewById(R.id.tvStatus)
 
-        // دکمه اعمال بهینه‌سازی و DPI
+        // دکمه اعمال تنظیمات (Boost)
         btnBoost.setOnClickListener {
             val dpiStr = etCustomDpi.text.toString().trim()
-            val dpi = if (dpiStr.isNotEmpty()) dpiStr.toInt() else 360
-
-            val selectedModeId = rgModes.checkedRadioButtonId
-            val modeName = when (selectedModeId) {
-                R.id.rbHigh -> "High"
-                R.id.rbUltra -> "Ultra"
-                else -> "Smooth"
-            }
-
-            try {
-                // ارسال دستورات به موتور Blade و مدیریت رزولوشن با متدهای استاندارد
-                AxBladeInjector.getInstance().executeCommand("wm density $dpi")
-                AutoResolutionManager.setResolution(dpi, modeName)
-
-                tvStatus.text = "Status: Applied Successfully ($modeName, DPI: $dpi)"
-                Toast.makeText(this, "CODM Optimized Successfully!", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                tvStatus.text = "Status: Error -> ${e.localizedMessage}"
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            
+            lifecycleScope.launch {
+                val result = if (dpiStr.isNotEmpty()) {
+                    // اگر کاربر DPI دستی وارد کرد
+                    val customDpi = dpiStr.toIntOrNull() ?: 360
+                    resolutionManager.applyCustomBoost(customDpi)
+                } else {
+                    // اگر فقط حالت‌های آماده را انتخاب کرد
+                    val selectedId = rgModes.checkedRadioButtonId
+                    val mode = when (selectedId) {
+                        R.id.rbUltra -> "ULTRA_FPS"
+                        R.id.rbHigh -> "HIGH_FPS"
+                        else -> "SMOOTH"
+                    }
+                    resolutionManager.applyProBoost(mode)
+                }
+                handleResult(result)
             }
         }
 
-        // دکمه بازنشانی به حالت پیش‌فرض
+        // دکمه ریست کردن
         btnReset.setOnClickListener {
-            try {
-                AxBladeInjector.getInstance().executeCommand("wm density reset")
-                AutoResolutionManager.resetToDefault()
+            lifecycleScope.launch {
+                val result = resolutionManager.reset()
+                handleResult(result)
+            }
+        }
+    }
 
-                etCustomDpi.setText("")
-                tvStatus.text = "Status: Reset to Default"
-                Toast.makeText(this, "Reset Successful", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                tvStatus.text = "Status: Reset Failed"
-                Toast.makeText(this, "Reset Error: ${e.message}", Toast.LENGTH_LONG).show()
+    private fun handleResult(result: InjectionResult) {
+        when (result) {
+            is InjectionResult.Success -> {
+                tvStatus.text = "Status: ${result.data}"
+                Toast.makeText(this, "Success!", Toast.LENGTH_SHORT).show()
+            }
+            is InjectionResult.Failure -> {
+                tvStatus.text = "Status: Error -> ${result.reason}"
+                Toast.makeText(this, "Failed: ${result.reason}", Toast.LENGTH_LONG).show()
             }
         }
     }
