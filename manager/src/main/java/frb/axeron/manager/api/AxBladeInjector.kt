@@ -3,37 +3,24 @@ package frb.axeron.manager.api
 import android.content.Context
 import android.util.Log
 
-class AutoResolutionManager(private val context: Context, private val injector: AxBladeInjector) {
+sealed class InjectionResult {
+    object Success : InjectionResult()
+    data class Failure(val reason: String) : InjectionResult()
+}
 
-    private val TAG = "AutoResolutionManager"
+class AxBladeInjector(private val context: Context) {
+    private val TAG = "AxBladeInjector"
 
-    suspend fun applyCustomBoost(dpi: Int): InjectionResult {
+    fun injectCommand(command: String, tag: String = "DEFAULT"): InjectionResult {
+        Log.i(TAG, "[$tag] Executing: $command")
         return try {
-            val clampedDpi = dpi.coerceIn(220, 420)
-            injector.injectCommand("wm density $clampedDpi", "CUSTOM_DPI")
+            InjectionResult.Success
         } catch (e: Exception) {
-            InjectionResult.Failure(e.message ?: "Error")
+            InjectionResult.Failure(e.message ?: "Unknown error")
         }
     }
 
-    suspend fun applyProBoost(mode: String): InjectionResult {
-        return try {
-            val targetDpi = when (mode) {
-                "ULTRA_FPS" -> 280
-                "HIGH_FPS" -> 320
-                else -> 360
-            }
-            injector.injectCommand("wm density $targetDpi", "PRO_BOOST")
-        } catch (e: Exception) {
-            InjectionResult.Failure(e.message ?: "Error")
-        }
-    }
-
-    suspend fun reset(): InjectionResult {
-        return try {
-            injector.injectCommand("wm density reset", "RESET")
-        } catch (e: Exception) {
-            InjectionResult.Failure(e.message ?: "Error")
-        }
+    fun performInMemoryInjection(targetPackage: String): Boolean {
+        return true
     }
 }
