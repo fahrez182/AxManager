@@ -25,13 +25,19 @@ import frb.axeron.manager.api.AutoResolutionManager
 import frb.axeron.manager.api.InjectionResult
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun ActivateScreen(
-    navigator: DestinationsNavigator,
-    viewModelGlobal: ViewModelGlobal
-) {
+fun PrivilegeDetailScreen(navigator: DestinationsNavigator) {
+    // دریافت مرجع جهانی بدون نیاز به ورودی تابع!
+    val viewModels = LocalViewModelGlobal.current 
+    
+    // حالا به هر چیزی دسترسی دارید:
+    val privVM = viewModels.privilegeViewModel
+    val settingsVM = viewModels.settingsViewModel
+
+    // بقیه کد...
+}
+
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
