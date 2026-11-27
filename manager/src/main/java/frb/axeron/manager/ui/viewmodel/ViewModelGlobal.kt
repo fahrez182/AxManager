@@ -1,8 +1,6 @@
 package frb.axeron.manager.ui.viewmodel
 
-import androidx.compose.runtime.staticCompositionLocalOf
-
-// این کلاس همان ظرف شماست
+//IDK I'm just using it to make the code look compact
 class ViewModelGlobal(
     val settingsViewModel: SettingsViewModel,
     val appsViewModel: AppsViewModel,
@@ -10,8 +8,3 @@ class ViewModelGlobal(
     val activateViewModel: ActivateViewModel,
     val pluginViewModel: PluginViewModel
 )
-
-// این بخش جادویی است: یک Local برای دسترسی جهانی بدون پاس دادن پارامتر
-val LocalViewModelGlobal = staticCompositionLocalOf<ViewModelGlobal> {
-    error("No ViewModelGlobal provided")
-}
