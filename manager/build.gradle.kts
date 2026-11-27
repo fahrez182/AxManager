@@ -148,10 +148,22 @@ dependencies {
     implementation(libs.capsule)
 }
 android {
-    // ... بقیه تنظیمات
+    // ... بقیه کدها
 
-    packagingOptions {
-        doNotStrip "*/libaxreignite.so"
-        doNotStrip "*/libaxshboot.so"
+    packaging {
+        jniLibs {
+            keepDebugSymbols.add("*/libaxreignite.so")
+            keepDebugSymbols.add("*/libaxshboot.so")
+        }
     }
+    
+    // اگر روش بالا جواب نداد، از این روش استفاده کنید (جایگزین روش بالا):
+    /*
+    packaging {
+        resources {
+            excludes += "*/libaxreignite.so"
+            excludes += "*/libaxshboot.so"
+        }
+    }
+    */
 }
