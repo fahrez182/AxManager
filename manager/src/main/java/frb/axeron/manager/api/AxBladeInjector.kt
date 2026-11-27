@@ -1,45 +1,21 @@
 package frb.axeron.manager.api
 
 import android.content.Context
+import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
-class AxBladeInjector(private val context: Context? = null) {
-
-    enum class InjectionStatus { IDLE, INJECTING, SUCCESS, FAILURE, GAME_NOT_FOUND }
-
-    suspend fun injectModuleToGame(packageName: String, modulePayload: String): InjectionResult = withContext(Dispatchers.IO) {
-        try {
-            val lower = modulePayload.lowercase()
-            val blocked = listOf("pgrep", "renice", "drop_caches", "setprop debug.hwui", "/proc/", "su -c")
-            for (b in blocked) {
-                if (lower.contains(b)) {
-                    return@withContext InjectionResult.Failure("BLOCKED_FOR_SAFETY: $b")
-                }
-            }
-            try {
-                val p = Runtime.getRuntime().exec(arrayOf("sh", "-c", modulePayload))
-                val err = p.errorStream.bufferedReader().readText()
-                val done = p.waitFor(8, TimeUnit.SECONDS)
-                if (!done) {
-                    try { p.destroyForcibly() } catch (_: Exception) {}
-                    return@withContext InjectionResult.Failure("TIMEOUT")
-                }
-                if (err.isNotBlank() && err.contains("permission", true)) {
-                    return@withContext InjectionResult.Failure(err.trim())
-                }
-                InjectionResult.Success("OK")
-            } catch (e: Exception) {
-                InjectionResult.Failure(e.message ?: "EXEC_ERROR")
-            }
-        } catch (e: Exception) {
-            InjectionResult.Failure(e.message ?: "UNKNOWN")
-        }
+class AxBladeInjector(private val context: Context) {
+  suspend fun exec(cmd: String): InjectionResult = withContext(Dispatchers.IO) {
+    try {
+      val r = Shell.cmd(cmd).exec()
+      if (r.isSuccess) {
+        InjectionResult.Success(r.out.joinToString("\n").ifEmpty { "OK" })
+      } else {
+        InjectionResult.Failure("exit=${r.code}: ${(r.out + r.err).joinToString()}")
+      }
+    } catch (e: Exception) {
+      InjectionResult.Failure(e.message ?: "exec failed")
     }
-}
-
-sealed class InjectionResult {
-    data class Success(val data: String) : InjectionResult()
-    data class Failure(val reason: String) : InjectionResult()
+  }
 }
