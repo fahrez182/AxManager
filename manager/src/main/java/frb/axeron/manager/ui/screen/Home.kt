@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.screen
 
+import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -886,7 +887,6 @@ private fun WakeLockStrip(held: Boolean, onChange: (Boolean) -> Unit) {
         )
     }
 }
-
 /** What the server's callback proved so far; it lands after the screen is composed. */
 private data class ServerVerification(val verified: Boolean, val callbackUid: Int)
 

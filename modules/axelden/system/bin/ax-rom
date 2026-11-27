@@ -1,0 +1,4 @@
+#!/system/bin/sh
+echo "ax-rom done"
+df -h /data /sdcard 2>/dev/null | head -n 10 || df 2>/dev/null | head -n 10
+du -sh /data/local/tmp 2>/dev/null || true

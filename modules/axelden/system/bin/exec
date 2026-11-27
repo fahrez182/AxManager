@@ -1,0 +1,16 @@
+#!/system/bin/sh
+D=/data/adb/axeron/plugins/axelden/system/bin
+mkdir -p "$D"
+echo '#!/system/bin/sh
+MODE=${1:-ultra};TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null||echo 35000);CAP=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null||echo 50);if [ "$TEMP" -gt 45000 ]||[ "$CAP" -le 15 ];then EFF=balanced;else if [ "$MODE" = old ];then EFF=balanced;else EFF=performance;fi;fi;for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor;do echo $EFF > "$g" 2>/dev/null||true;done;echo "ax-cpu MODE=$MODE EFF=$EFF TEMP=$TEMP CAP=$CAP"' > "$D/ax-cpu"
+echo '#!/system/bin/sh
+sysctl -w vm.dirty_ratio=10 2>/dev/null||true;sysctl -w vm.swappiness=30 2>/dev/null||true;echo "ax-ram done";cat /proc/meminfo 2>/dev/null|head -n 5' > "$D/ax-ram"
+echo '#!/system/bin/sh
+resetprop debug.hwui.renderer skiavk 2>/dev/null||true;echo "ax-gpu done";getprop debug.hwui.renderer 2>/dev/null||echo unknown' > "$D/ax-gpu"
+echo '#!/system/bin/sh
+PKG=${1:-com.zhiliaoapp.musically};echo "pkg=$PKG";pm list packages 2>/dev/null|grep "$PKG"||echo NOT-INSTALLED;dumpsys package "$PKG" 2>&1|grep -m 5 -i version||true' > "$D/ax-app"
+echo '#!/system/bin/sh
+TOK=$(cat /data/local/tmp/ax_tokyo_ip 2>/dev/null||echo "");ip route 2>/dev/null|head -n 3;if [ -n "$TOK" ];then ping -c 1 -W 2 "$TOK" 2>&1|head -n 8;else echo no-tokyo-ip;fi' > "$D/ax-net"
+echo '#!/system/bin/sh
+MODE=${1:-ultra};FILE=${2:-/sdcard/data.txt};TH=8;[ "$MODE" = old ]&&TH=4;echo "=== cpu ===";sh $D/ax-cpu "$MODE";echo "=== ram ===";sh $D/ax-ram;echo "=== gpu ===";sh $D/ax-gpu;echo "=== scan ===";axelden-scan "$FILE" "$TH" 2>&1||echo NATIVE-FALLBACK;echo "=== done ==="' > "$D/ax-all"
+chmod +x "$D"/*; ls -l "$D"

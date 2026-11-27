@@ -1,0 +1,248 @@
+From 9d160891aae0bbc587c6fa1d113abddc71529b69 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Fri, 15 May 2026 22:38:37 +0300
+Subject: [PATCH] feat: throne_tracker: offload to kthread
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/Kconfig                  | 10 +++++
+ kernel/manager/throne_tracker.c | 79 +++++++++++++++++++++++++++++++--
+ kernel/manager/throne_tracker.h | 52 ++++++++++++++++++++--
+ kernel/selinux/rules.c          | 11 +++++
+ 4 files changed, 145 insertions(+), 7 deletions(-)
+
+diff --git a/kernel/Kconfig b/kernel/Kconfig
+index c770166..087b3b9 100644
+--- a/kernel/Kconfig
++++ b/kernel/Kconfig
+@@ -18,6 +18,16 @@ config AXMANAGER_DEBUG
+ 	help
+ 	  Enable KernelSU debug mode.
+ 
++config AXMANAGER_THRONE_TRACKER_ALWAYS_THREADED
++	bool "Always run throne tracker in a kthread"
++	depends on AXMANAGER
++	default y
++	help
++	  Runs throne_tracker in a separate kthread, including the first run.
++	  Significantly decreases boot time, but may delay crowning slightly
++	  on some FDE / FBEv1 setups.
++	  If unsure, say n.
++
+ config AXMANAGER_DISABLE_MANAGER
+ 	bool "Disable KernelSU manager integration"
+ 	depends on AXMANAGER
+diff --git a/kernel/manager/throne_tracker.c b/kernel/manager/throne_tracker.c
+index 1ae6c24..85813f0 100644
+--- a/kernel/manager/throne_tracker.c
++++ b/kernel/manager/throne_tracker.c
+@@ -5,6 +5,15 @@
+ #include <linux/string.h>
+ #include <linux/types.h>
+ #include <linux/version.h>
++#ifdef CONFIG_AXMANAGER_THRONE_TRACKER_ALWAYS_THREADED
++#include <linux/kthread.h>
++#include <linux/sched.h>
++#endif
++#include <linux/compiler.h>  // WRITE_ONCE
++#include <linux/delay.h>     // msleep
++#include <linux/preempt.h>   // in_atomic()
++#include <linux/irqflags.h>  // irqs_disabled()
++#include <linux/atomic.h>    // cmpxchg
+ 
+ #include "policy/allowlist.h"
+ #include "manager/apk_sign.h"
+@@ -243,9 +252,22 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
+     return exist;
+ }
+ 
+-void track_throne(bool prune_only)
++static void track_throne_function(bool prune_only)
+ {
+-    struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
++    struct file *fp = NULL;
++    int t;
++    long err = -ENOENT;
++
++    // Retry (open; avoids races with pkg. mgr. packages.list update(s); hint: is_lock_held)
++    for (t = 0;
++         t < 10 && IS_ERR(fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0));
++         t++) {
++            err = PTR_ERR(fp);
++            if (!is_lock_held(SYSTEM_PACKAGES_LIST_PATH) &&
++                err != -EBUSY && err != -EAGAIN && err != -ENOENT)
++                    break;
++            msleep(100);
++    }
+     if (IS_ERR(fp)) {
+         pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__, PTR_ERR(fp));
+         return;
+@@ -271,7 +293,7 @@ void track_throne(bool prune_only)
+         }
+         buf[count] = '\0';
+ 
+-        struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);
++        struct uid_data *data = kzalloc(sizeof(*data), GFP_KERNEL);
+         if (!data) {
+             filp_close(fp, 0);
+             goto out;
+@@ -339,6 +361,57 @@ out:
+     }
+ }
+ 
++#ifdef CONFIG_AXMANAGER_THRONE_TRACKER_ALWAYS_THREADED
++static struct task_struct *throne_thread;
++static int throne_tracker_thread(void *data);
++
++// Wrapper
++void track_throne(bool prune_only)
++{
++    struct task_struct *t;
++
++    /*
++     * Single-flight; do nothing if thread running
++     *                race closure via sentinel set: ERR_PTR(-EINPROGRESS)
++     *
++     */
++    if (cmpxchg(&throne_thread, NULL,
++                    (struct task_struct *)ERR_PTR(-EINPROGRESS)) != NULL)
++            return;
++
++    t = kthread_run(throne_tracker_thread,
++                    (void *)(unsigned long)prune_only,
++                    "throne_tracker");
++
++    if (IS_ERR(t))
++            WRITE_ONCE(throne_thread, NULL);
++    else
++            WRITE_ONCE(throne_thread, t);
++}
++
++// Threaded
++static int throne_tracker_thread(void *data)
++{
++    bool prune_only = (bool)(unsigned long)data;
++
++    pr_info("%s: pid: %d started (prune_only=%d)\n",
++            __func__, current->pid, prune_only);
++
++    track_throne_function(prune_only);
++
++    // clear slot
++    WRITE_ONCE(throne_thread, NULL);
++
++    pr_info("%s: pid: %d exit\n", __func__, current->pid);
++    return 0;
++}
++#else
++void track_throne(bool prune_only)
++{
++    track_throne_function(prune_only);
++}
++#endif // CONFIG_AXMANAGER_THRONE_TRACKER_ALWAYS_THREADED
++
+ void __init AXMANAGER_throne_tracker_init()
+ {
+     // nothing to do
+diff --git a/kernel/manager/throne_tracker.h b/kernel/manager/throne_tracker.h
+index 3ca346c..616ba87 100644
+--- a/kernel/manager/throne_tracker.h
++++ b/kernel/manager/throne_tracker.h
+@@ -2,12 +2,15 @@
+ #define __AXMANAGER_H_UID_OBSERVER
+ 
+ #include <linux/types.h>
++#include <linux/namei.h>
++#include <linux/spinlock.h>
++
+ #ifdef CONFIG_AXMANAGER_DISABLE_MANAGER
+-static inline void AXMANAGER_throne_tracker_init()
++static inline void AXMANAGER_throne_tracker_init(void)
+ {
+ }
+ 
+-static inline void AXMANAGER_throne_tracker_exit()
++static inline void AXMANAGER_throne_tracker_exit(void)
+ {
+ }
+ 
+@@ -16,11 +19,52 @@ static inline void track_throne(bool prune_only)
+     (void)prune_only;
+ }
+ #else
+-void AXMANAGER_throne_tracker_init();
++void AXMANAGER_throne_tracker_init(void);
+ 
+-void AXMANAGER_throne_tracker_exit();
++void AXMANAGER_throne_tracker_exit(void);
+ 
+ void track_throne(bool prune_only);
++
++/*
++ * small helper to check if lock is held / file stability
++ * false - file is stable
++ * true  - file is being deleted / renamed | written / replaced
++ *
++ */
++static inline bool is_lock_held(const char *path)
++{
++	struct path kpath;
++
++	// kern_path returns 0 on success
++	if (kern_path(path, 0, &kpath))
++		return true;
++
++	// just being defensive
++	if (!kpath.dentry) {
++		path_put(&kpath);
++		return true;
++	}
++
++	// Dentry (deleted / renamed)
++	if (!spin_trylock(&kpath.dentry->d_lock)) {
++		pr_info("%s: lock held, bail out!\n", __func__);
++		path_put(&kpath);
++		return true;
++	}
++
++	// trylock succeeded; no dentry locked
++
++	spin_unlock(&kpath.dentry->d_lock);
++
++	// Inode (written / replaced)
++	if (inode_is_locked(kpath.dentry->d_inode)) {
++		path_put(&kpath);
++		return true;
++	}
++
++	path_put(&kpath);
++	return false;
++}
+ #endif
+ 
+ #endif
+diff --git a/kernel/selinux/rules.c b/kernel/selinux/rules.c
+index a096f4d..5145e69 100644
+--- a/kernel/selinux/rules.c
++++ b/kernel/selinux/rules.c
+@@ -148,6 +148,17 @@ void apply_kernelsu_rules()
+     AXMANAGER_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "getpgid");
+     AXMANAGER_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "sigkill");
+ 
++    // throne_tracker kthread; /data | /data/app traversal; apk / packages.list access
++    AXMANAGER_allow(db, "kernel", "kernel", "capability", "dac_read_search");
++    AXMANAGER_allow(db, "kernel", "system_data_file", "dir", "search");
++    AXMANAGER_allow(db, "kernel", "packages_list_file", "file", "read");
++    AXMANAGER_allow(db, "kernel", "packages_list_file", "file", "open");
++    AXMANAGER_allow(db, "kernel", "apk_data_file", "dir", "read");
++    AXMANAGER_allow(db, "kernel", "apk_data_file", "dir", "open");
++    AXMANAGER_allow(db, "kernel", "apk_data_file", "dir", "search");
++    AXMANAGER_allow(db, "kernel", "apk_data_file", "file", "read");
++    AXMANAGER_allow(db, "kernel", "apk_data_file", "file", "open");
++
+     rcu_assign_pointer(selinux_state.policy, pol);
+     synchronize_rcu();
+     AXMANAGER_destroy_sepolicy(old_pol);
+-- 
+2.53.0
+

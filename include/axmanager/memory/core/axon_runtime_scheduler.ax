@@ -1,0 +1,113 @@
+// ==========================================
+// AXON-Prime Runtime Scheduler
+// Module: AXON-Core
+// Version: 11.0 (Ultimate)
+// Target: Zero-Latency Task Execution
+// ==========================================
+
+import AXON.Core.Hardware.Timers; // دسترسی به TSC و APIC
+import AXON.Core.Memory.Pools;
+
+// تعریف اولویت‌های اجرای تسک‌ها (Task Priority)
+PRIMITIVE ExecutionPriority {
+    REALTIME,    // برای کارهای سخت‌افزاری و لحظه‌ای (Highest)
+    CRITICAL,    // برای هسته سیستم و امنیت
+    STANDARD,    // برای کارهای عادی کاربر
+    BACKGROUND   // برای پردازش‌های پس‌زمینه و کم‌مصرف
+}
+
+// ساختار یک تسک (Task Control Block - TCB)
+STRUCT Task {
+    INT task_id;
+    ExecutionPriority priority;
+    FUNCTION entry_point;      // آدرس شروع اجرای کد
+    FUNCTION context_switch;   // تابع ذخیره وضعیت (Register State)
+    FLOAT estimated_cycles;    // برآورد چرخه‌های پردازنده برای بهینه‌سازی
+}
+
+// موتور اصلی زمان‌بندی (The Scheduler Engine)
+CLASS AxonScheduler {
+    private List<Task> ready_queue;  // صف تسک‌های آماده اجرا
+    private List<Task> waiting_queue; // صف تسک‌های منتظر I/O
+    private Task current_running_task;
+    
+    // دسترسی مستقیم به تایمر سخت‌افزاری برای دقت نانوثانیه
+    private TSC_Timer hardware_timer;
+
+    constructor() {
+        this.ready_queue = new List<Task>();
+        this.waiting_queue = new List<Task>();
+        this.hardware_timer = new TSC_Timer();
+    }
+
+    // اضافه کردن تسک جدید به سیستم
+    method void schedule_task(Task new_task) {
+        // تزریق تسک به صف بر اساس اولویت (Priority-Based Insertion)
+        if (new_task.priority == ExecutionPriority.REALTIME) {
+            ready_queue.insert_at_front(new_task);
+        } else {
+            ready_queue.sort_by_priority(new_task);
+        }
+    }
+
+    // حلقه اصلی مدیریت اجرا (The Execution Loop)
+    // این بخش باید با بالاترین اولویت در هسته اجرا شود
+    method void run_loop() {
+        while (true) {
+            if (ready_queue.is_empty()) {
+                enter_low_power_state(); // اگر کاری نبود، مصرف انرژی را به شدت کم کن
+                continue;
+            }
+
+            // انتخاب تسک بعدی (Highest Priority First)
+            Task next_task = ready_queue.pop_front();
+            
+            // انجام Context Switch (تعویض سریع بین تسک‌ها)
+            perform_context_switch(next_task);
+
+            // اجرای تسک
+            execute_task_cycle(next_task);
+        }
+    }
+
+    // مدیریت Context Switch در سطح رجیستر (Hardware-Level)
+    private method void perform_context_switch(Task next_task) {
+        if (current_running_task != null) {
+            // ذخیره وضعیت فعلی در حافظه (Stack/Registers)
+            current_running_task.context_switch();
+        }
+        
+        current_running_task = next_task;
+        // بارگذاری رجیسترهای تسک جدید در CPU
+        load_cpu_registers(next_task);
+    }
+
+    // اجرای چرخه کار با دقت بر اساس تایمر سخت‌افزاری
+    private method void execute_task_cycle(Task task) {
+        INT start_cycle = hardware_timer.get_tsc();
+        
+        // اجرای دستورات تسک
+        task.entry_point();
+        
+        INT end_cycle = hardware_timer.get_tsc();
+        
+        // محاسبه زمان صرف شده برای بهینه‌سازی‌های بعدی هوش مصنوعی
+        task.estimated_cycles = end_cycle - start_cycle;
+        
+        if (task.estimated_cycles > THRESHOLD_MAX_LATENCY) {
+            // اگر تسک خیلی طول کشید، آن را مدیریت کن تا سیستم قفل نشود
+            rebalance_load(task);
+        }
+    }
+
+    // حالت کاهش مصرف انرژی (Power Optimization)
+    private method void enter_low_power_state() {
+        // استفاده از دستورات CPU برای ورود به حالت C-State (Deep Sleep)
+        execute_instruction("MWAIT"); 
+    }
+
+    private method void rebalance_load(Task heavy_task) {
+        // جابجایی تسک سنگین به یک هسته دیگر برای جلوگیری از بلاک شدن هسته اصلی
+        move_to_secondary_core(heavy_task);
+    }
+}

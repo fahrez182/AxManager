@@ -1,0 +1,72 @@
+// ==========================================
+// AXON-Prime Base Types & Primordial Definitions
+// Module: AXON-Core
+// Version: 11.0 (Ultimate)
+// Target: Hardware-Native Data Types
+// ==========================================
+
+import AXON.Core.Hardware.Registers;
+
+// تعریف ویژگی‌های داده‌های PRIMORDIAL (داده‌های پیوسته با سخت‌افزار)
+PRIMITIVE DataConstraint {
+    IMMUTABLE,    // داده‌ای که هرگز تغییر نمی‌کند (Constant در سطح سخت‌افزار)
+    VOLATILE,     // داده‌ای که مستقیماً از ورودی سخت‌افزار (I/O) خوانده می‌شود
+    ATOMIC,       // داده‌ای که در عملیات‌های چند‌رشته‌ای (Multi-threading) امن است
+    HARDWARE_LOCKED // داده‌ای که در یک رجیستر فیزیکی قفل شده است
+}
+
+// ۱. انواع عددی با دقت فوق‌العاده بالا
+// برخلاف Float معمولی، این‌ها با دقت تعیین شده توسط سخت‌افزار کار می‌کنند
+PRIMITIVE NumericType {
+    // عدد صحیح ۶۴ بیتی با قابلیت قفل شدن روی رجیستر
+    INT64_P : [64-bit, DataConstraint.ATOMIC];
+    
+    // عدد صحیح ۱۲۸ بیتی برای محاسبات رمزنگاری و بسیار سنگین
+    INT128_P : [128-bit, DataConstraint.HARDWARE_LOCKED];
+    
+    // عدد اعشاری با دقت شناور (بسیار دقیق‌تر از Double در C++)
+    // استفاده از فرمت IEEE 754 با قابلیت تنظیم دقت توسط کاربر
+    FLOAT_P : [64-bit_precision, DataConstraint.VOLATILE];
+}
+
+// ۲. انواع داده‌ای برای هوش مصنوعی و محاسبات ماتریسی
+// این‌ها مستقیماً با واحدهای پردازش تنسور (Tensor Units) هماهنگ هستند
+PRIMITIVE AIType {
+    // یک بردار (Vector) که مستقیماً در رجیسترهای SIMD قرار می‌گیرد
+    VECTOR_P : [width: 512-bit, pattern: SIMD_AVX512];
+    
+    // یک ماتریس که در حافظه به صورت متصل (Contiguous) ذخیره می‌شود
+    MATRIX_P : [rows: dynamic, cols: dynamic, layout: ROW_MAJOR];
+}
+
+// ۳. انواع داده‌ای امنیتی و رمزنگاری
+PRIMITIVE SecureType {
+    // یک بلوک داده که در حافظه رمزنگاری شده است (Encrypted in RAM)
+    // حتی اگر کسی به RAM دسترسی پیدا کند، محتوا قابل خواندن نیست
+    CIPHER_P : [encryption: AES_256_GCM, visibility: HIDDEN];
+    
+    // یک کلید که فقط در داخل رجیسترهای امن (Secure Enclave) قابل مشاهده است
+    KEY_P : [location: SECURE_ENCLAVE, access: HARDWARE_ONLY];
+}
+
+// ۴. انواع داده‌ای برای مدیریت زمان و سیستم
+PRIMITIVE SystemType {
+    // نشانگر زمان با دقت نانوثانیه (بر پایه TSC)
+    TIMESTAMP_P : [unit: NANOSECOND, source: CPU_TSC];
+    
+    // یک اشاره‌گر (Pointer) که به جای آدرس مجازی، آدرس فیزیکی را نگه می‌دارد
+    PHYS_PTR_P : [type: PHYSICAL_ADDRESS, protection: READ_ONLY];
+}
+
+// تعریف ساختار کلی یک متغیر در AXON-Prime
+// این ساختار تمام اطلاعات لازم برای مدیریت یک متغیر را در خود دارد
+STRUCT AxonVariable {
+    VOID* address;           // آدرس حافظه
+    DataType type;           // نوع داده (از لیست‌های بالا)
+    DataConstraint constraint; // محدودیت‌های امنیتی و سخت‌افزاری
+    INT lifecycle_bits;      // تعداد دوره‌های چرخه (برای مدیریت خودکار حافظه)
+}
+
+// ==========================================
+// پایان ماژول انواع پایه
+// ==========================================

@@ -1,0 +1,102 @@
+// ==========================================
+// AXON-Prime Resource & Power Management
+// Module: AXON-Resource
+// Version: 11.0 (Ultimate)
+// Target: Dynamic Power Scaling & Intelligent Resource Allocation
+// ==========================================
+
+import AXON.Core.Hardware.CPU_Freq; // کنترل فرکانس پردازنده
+import AXON.Core.Hardware.Power_Rail; // مدیریت خطوط ولتاژ
+import AXON.Core.Hardware.Thermal_Sensor; // سنسورهای حرارتی
+
+// تعریف اولویت‌های تخصیص منابع
+PRIMITIVE ResourcePriority {
+    ULTRA_LOW,      // مصرف حداقل انرژی (برای کارهای پس‌زمینه)
+    BALANCED,       // تعادل بین سرعت و مصرف انرژی
+    PERFORMANCE,    // تمرکز بر سرعت (حذف محدودیت‌های انرژی)
+    TURBO           // حداکثر توان (استفاده از Overclocking مدیریت شده)
+}
+
+// ساختار یک واحد از منبع (CPU/GPU/Memory)
+STRUCT ResourceUnit {
+    INT unit_id;
+    INT current_load;    // درصد بار پردازشی فعلی
+    INT thermal_level;   // سطح حرارتی فعلی
+    INT power_draw;      // میزان مصرف توان فعلی (mW)
+}
+
+// موتور مدیریت منابع و بهینه‌سازی انرژی
+CLASS AxonResourceManager {
+    private List<ResourceUnit> system_units;
+    private ResourcePriority global_policy;
+
+    constructor() {
+        this.system_units = Hardware.get_all_resource_units();
+        this.global_policy = ResourcePriority.BALANCED;
+    }
+
+    // تخصیص هوشمند منابع به یک فرآیند یا ماژول
+    method void allocate_resources(INT process_id, ResourcePriority priority) {
+        // پیدا کردن بهترین واحد (Core) با کمترین بار و دمای مناسب
+        ResourceUnit optimal_unit = find_optimal_unit(priority);
+        
+        // تنظیم اولویت فرآیند در سطح سخت‌افزار
+        Hardware.assign_process_to_unit(process_id, optimal_unit.unit_id);
+        
+        // تنظیم پروفایل توان بر اساس اولویت
+        apply_power_profile(priority);
+    }
+
+    // مدیریت خودکار توان و دما (Dynamic Voltage and Frequency Scaling)
+    method void optimize_power_consumption() {
+        for (ResourceUnit unit : system_units) {
+            // اگر دما بالا بود، فرکانس را کاهش بده (Thermal Throttling)
+            if (unit.thermal_level > THERMAL_THRESHOLD_CRITICAL) {
+                reduce_frequency(unit.unit_id);
+                decrease_voltage(unit.unit_id);
+            } 
+            // اگر بار پردازشی بالا بود و دما مناسب، توان را افزایش بده
+            else if (unit.current_load > LOAD_THRESHOLD_HIGH && unit.thermal_level < THERMAL_THRESHOLD_SAFE) {
+                boost_performance(unit.unit_id);
+            }
+        }
+    }
+
+    // --- متدهای کنترل سخت‌افزاری ---
+
+    private method ResourceUnit find_optimal_unit(ResourcePriority priority) {
+        // الگوریتم انتخاب واحد بر اساس ترکیبی از [کمترین بار + کمترین دما + بالاترین پایداری]
+        return system_units.sort_by_efficiency().first();
+    }
+
+    private method void apply_power_profile(ResourcePriority priority) {
+        switch (priority) {
+            case ResourcePriority.ULTRA_LOW:
+                CPU_Freq.set_mode(MODE.UNDERVOLT_LOW_FREQ);
+                break;
+            case ResourcePriority.PERFORMANCE:
+                CPU_Freq.set_mode(MODE.STABLE_HIGH_FREQ);
+                break;
+            case ResourcePriority.TURBO:
+                // فعال‌سازی حالت اوورکلاک کنترل شده
+                CPU_Freq.set_mode(MODE.TURBO_BOOST);
+                Power_Rail.increase_voltage_limit();
+                break;
+            default:
+                CPU_Freq.set_mode(MODE.BALANCED);
+                break;
+        }
+    }
+
+    private method void reduce_frequency(INT unit_id) {
+        CPU_Freq.set_frequency(unit_id, CPU_Freq.get_current(unit_id) * 0.8);
+    }
+
+    private method void boost_performance(INT unit_id) {
+        CPU_Freq.set_frequency(unit_id, CPU_Freq.get_max_safe(unit_id));
+    }
+
+    private method void decrease_voltage(INT unit_id) {
+        Power_Rail.set_voltage(unit_id, Power_Rail.get_current(unit_id) - 50); // کاهش ۵۰ میلی‌ولت
+    }
+}

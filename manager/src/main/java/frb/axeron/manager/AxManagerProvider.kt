@@ -22,37 +22,26 @@ class AxManagerProvider : AxeronProvider() {
     companion object {
         private const val EXTRA_BINDER = "moe.shizuku.privileged.api.intent.extra.BINDER"
         private const val METHOD_SEND_USER_SERVICE = "sendUserService"
-
-        /**
-         * Asked over `adb shell content call` by a phone doing OTG activation on this one, so
-         * TCP/IP follows *this* phone's TCP mode setting. Keys are parsed by OtgActivator.
-         */
         const val METHOD_GET_TCP_CONFIG = "getTcpConfig"
         const val KEY_TCP_MODE = "tcp_mode"
         const val KEY_TCP_PORT = "tcp_port"
-
         private val LOGGER = Logger("AxManagerProvider")
     }
 
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         if (method == METHOD_GET_TCP_CONFIG) return tcpConfig()
         if (extras == null) return null
-
         return if (method == METHOD_SEND_USER_SERVICE) {
             LOGGER.d("sendUserService")
             try {
                 extras.classLoader = BinderContainer::class.java.classLoader
-
                 val token = extras.getString(USER_SERVICE_ARG_TOKEN) ?: return null
                 val pgid = extras.getInt(USER_SERVICE_ARG_PGID)
                 val binder = BundleCompat.getParcelable(extras, EXTRA_BINDER, BinderContainer::class.java)
                     ?.binder ?: return null
-
                 val countDownLatch = CountDownLatch(1)
                 var reply: Bundle? = Bundle()
-
                 val listener = object : Axeron.OnBinderReceivedListener {
-
                     override fun onBinderReceived() {
                         try {
                             Axeron.attachUserService(binder, Bundle().apply {
@@ -66,16 +55,12 @@ class AxManagerProvider : AxeronProvider() {
                             LOGGER.e(e, "attachUserService $token")
                             reply = null
                         }
-
                         Axeron.removeBinderReceivedListener(this)
-
                         countDownLatch.countDown()
                     }
                 }
-
                 Axeron.addBinderReceivedListenerSticky(listener, workerHandler)
-
-                return try {
+                try {
                     countDownLatch.await(5, TimeUnit.SECONDS)
                     reply
                 } catch (e: TimeoutException) {
@@ -91,7 +76,6 @@ class AxManagerProvider : AxeronProvider() {
         }
     }
 
-    /** Only adb's shell (or root) gets an answer; nothing secret, but no reason to widen it. */
     private fun tcpConfig(): Bundle? {
         val uid = Binder.getCallingUid()
         if (uid != Process.SHELL_UID && uid != Process.ROOT_UID) {

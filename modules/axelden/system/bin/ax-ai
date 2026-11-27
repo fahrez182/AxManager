@@ -1,0 +1,9 @@
+#!/system/bin/sh
+HIST="/data/local/tmp/axelden_hist.txt"
+T=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 35000)
+echo "$T" >> "$HIST" 2>/dev/null || true
+tail -n 5 "$HIST" > "$HIST.tmp" 2>/dev/null && mv "$HIST.tmp" "$HIST" 2>/dev/null || true
+P=$(tail -n 2 "$HIST" 2>/dev/null | head -n 1)
+[ -z "$P" ] && P=$T
+PRED=$((T + (T - P) * 2))
+if [ "$PRED" -gt 45000 ]; then echo "ax-ai PRED=$PRED suggest=balanced"; else echo "ax-ai PRED=$PRED suggest=$1"; fi

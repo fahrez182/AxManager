@@ -35,7 +35,11 @@ android {
             )
         }
     }
-
+    externalNativeBuild {
+    cmake {
+        path = file("src/main/cpp/CMakeLists.txt")
+    }
+}
     // Release: an APK per ABI plus a universal one. Only the ABIs the server ships its binaries
     // for (server/src/main/jniLibs). Off for other builds, so Studio's run installs one APK.
     // Every APK keeps the same versionCode: the server's update check goes by it.
@@ -43,7 +47,7 @@ android {
         abi {
             isEnable = splitAbis
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            include("arm64-v8a")
             isUniversalApk = true
         }
     }

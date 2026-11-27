@@ -1,0 +1,7 @@
+#!/system/bin/sh
+PKG=${1:-com.zhiliaoapp.musically}
+echo "pkg=$PKG"
+pm list packages 2>/dev/null | grep "$PKG" || echo NOT-INSTALLED
+dumpsys package "$PKG" 2>&1 | grep -m 5 -i version || true
+cmd appops get "$PKG" RUN_ANY_IN_BACKGROUND 2>&1 | head -n 5 || true
+settings get global window_animation_scale 2>/dev/null || true

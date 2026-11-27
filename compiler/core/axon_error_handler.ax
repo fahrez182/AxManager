@@ -1,0 +1,104 @@
+// ==========================================
+// AXON-Prime Error Management & Self-Healing
+// Module: AXON-Error
+// Version: 11.0 (Ultimate)
+// Target: Autonomous Fault Detection & System Recovery
+// ==========================================
+
+import AXON.Core.Hardware.Interrupts;
+import AXON.Core.Hardware.Registers;
+import AXON.Core.Hardware.Memory.Protected;
+
+// تعریف انواع خطاهای سیستمی
+PRIMITIVE ErrorType {
+    MEMORY_CORRUPTION,   // خرابی در بیت‌های حافظه (Bit-rot)
+    CPU_EXCEPTION,       // خطاهای محاسباتی پردازنده
+    IO_FAILURE,          // خطای سخت‌افزاری در ورودی/خروجی
+    SECURITY_BREACH,     // تلاش برای دسترسی غیرمجاز
+    LOGIC_INCONSISTENCY  // عدم هماهنگی منطقی در اجرای دستورات
+}
+
+// سطح شدت خطا
+PRIMITIVE Severity {
+    LOW,         // فقط ثبت در لاگ (Logging)
+    MEDIUM,      // تلاش برای بازنشانی بخش (Sub-system Reset)
+    CRITICAL,    // ایزوله کردن بخش آسیب‌دیده (Isolation)
+    FATAL        // توقف اضطراری و فعال‌سازی پروتکل محافظت از هسته
+}
+
+// ساختار گزارش خطا
+STRUCT ErrorReport {
+    ErrorType type;
+    Severity severity;
+    INT fault_address;   // آدرس حافظه یا رجیستری که خطا در آن رخ داده
+    INT timestamp;
+    DATA context_snapshot; // کپی از وضعیت سیستم در لحظه وقوع خطا
+}
+
+// موتور مدیریت خطا و خود-اصلاحی
+CLASS AxonErrorHandler {
+    
+    constructor() {
+        // اتصال به وقفه (Interrupt) خطاهای سخت‌افزاری
+        Interrupts.bind_handler(INTERRUPT_TYPE.HARDWARE_FAULT, this.handle_fault);
+    }
+
+    // مدیریت اصلی خطاها
+    method void handle_fault(ErrorReport report) {
+        log_error_to_secure_storage(report);
+
+        switch (report.severity) {
+            case Severity.LOW:
+                // فقط ثبت خطا بدون دخالت در روند اجرا
+                return;
+
+            case Severity.MEDIUM:
+                // تلاش برای بازنشانی (Reset) ماژول مربوطه
+                attempt_subsystem_reset(report.type);
+                break;
+
+            case Severity.CRITICAL:
+                // ایزوله کردن بخش آسیب‌دیده برای جلوگیری از سرایت خطا به هسته
+                isolate_faulty_component(report.fault_address);
+                // جایگزینی با یک مسیر جایگزین (Fallback Path)
+                activate_fallback_mechanism(report.type);
+                break;
+
+            case Severity.FATAL:
+                // توقف تمام فرآیندها و فعال‌سازی پروتکل پاکسازی کامل حافظه
+                emergency_system_shutdown(report);
+                break;
+        }
+    }
+
+    // --- متدهای خود-اصلاحی (Self-Healing) ---
+
+    private method void attempt_subsystem_reset(ErrorType type) {
+        // تلاش برای بازنشانی سخت‌افزاری ماژول آسیب‌دیده
+        Hardware.reset_module_by_type(type);
+    }
+
+    private method void isolate_faulty_component(INT address) {
+        // استفاده از MMU برای غیرفعال کردن دسترسی به آدرس آسیب‌دیده
+        Memory.protect_range(address, MemoryMode.NO_ACCESS);
+        // اعلان به سایر هسته‌ها برای اجتناب از این محدوده حافظه
+        AxonSync.broadcast_isolation_zone(address);
+    }
+
+    private method void activate_fallback_mechanism(ErrorType type) {
+        // تغییر مسیر اجرای کد به یک نسخه امن یا جایگزین (Redundancy)
+        Execution.switch_to_safe_mode(type);
+    }
+
+    private method void emergency_system_shutdown(ErrorReport report) {
+        // پاکسازی تمام کلیدهای رمزنگاری و حافظه‌های حساس قبل از توقف
+        AxonCrypt.purge_all_keys();
+        Hardware.flush_all_caches();
+        Hardware.halt_cpu();
+    }
+
+    private method void log_error_to_secure_storage(ErrorReport report) {
+        // ذخیره گزارش در بخشی از حافظه که فقط قابل خواندن است (WORM)
+        AxonData.persist_record(report, StorageTier.IMMUTABLE);
+    }
+}

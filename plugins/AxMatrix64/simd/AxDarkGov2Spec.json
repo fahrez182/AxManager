@@ -1,0 +1,15 @@
+{
+  "project": "AxDubai Dark Gov V2 2026",
+  "edition": "foreign-dark-official",
+  "base": "AxManager v3.0.0",
+  "target": "v3.2.0-dark-v2",
+  "repo": "https://github.com/amyrhsyntwklw8-prog/AxManager/tree/main",
+  "arch": ["aarch64", "x86_64-AMD64"],
+  "theme": ["dark", "light", "official", "rgb"],
+  "colors": "32bit-4294967296",
+  "languages": ["fa", "en"],
+  "hardware": ["CPU", "RAM", "ROM", "storage", "NPU", "temp"],
+  "engine": "libaxdark2.so -O3 -flto",
+  "license": "Apache-2.0",
+  "expiry": "unlimited"
+}

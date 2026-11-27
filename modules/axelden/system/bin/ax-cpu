@@ -1,0 +1,14 @@
+#!/system/bin/sh
+MODE=${1:-ultra}
+OK=0; FAIL=0
+TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 35000)
+CAP=$(cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 50)
+if [ "$TEMP" -gt 45000 ] || [ "$CAP" -le 15 ]; then EFF=balanced; else
+if [ "$MODE" = "old" ]; then EFF=balanced; else EFF=performance; fi
+fi
+for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo $EFF > "$g" 2>/dev/null || true; done
+V1=$( [ "$MODE" = "old" ] && echo 1.0 || echo 0.5 )
+settings put global window_animation_scale $V1 2>/dev/null
+N=$(settings get global window_animation_scale 2>/dev/null)
+if [ "$N" = "$V1" ]; then OK=$((OK+1)); else FAIL=$((FAIL+1)); fi
+echo "ax-cpu MODE=$MODE EFF=$EFF TEMP=$TEMP CAP=$CAP OK=$OK FAIL=$FAIL"

@@ -1,0 +1,88 @@
+From 558fcc4b5f814bbcd4805d94d2b61ba835a34e2a Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 18 May 2026 13:14:21 +0300
+Subject: [PATCH] feat: supercalls: allow userspace to pull list entries
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/supercall/dispatch.c  | 53 ++++++++++++++++++++++++++++++++++++
+ kernel/supercall/supercall.h |  2 ++
+ 2 files changed, 55 insertions(+)
+
+diff --git a/kernel/supercall/dispatch.c b/kernel/supercall/dispatch.c
+index eb0eebd..9cae449 100644
+--- a/kernel/supercall/dispatch.c
++++ b/kernel/supercall/dispatch.c
+@@ -648,6 +648,59 @@ static int add_try_umount(void __user *arg)
+         return 0;
+     }
+ 
++    // this way userspace can deduce the memory it has to prepare.
++    case AXMANAGER_UMOUNT_GETSIZE: {
++        // check for pointer first
++        if (!cmd.arg)
++            return -EFAULT;
++        
++        size_t total_size = 0; // size of list in bytes
++
++        down_read(&mount_list_lock);
++        list_for_each_entry(entry, &mount_list, list) {
++            total_size = total_size + strlen(entry->umountable) + 1; // + 1 for \0
++        }
++        up_read(&mount_list_lock);
++
++        // debug
++        // pr_info("cmd_add_try_umount: total_size: %zu\n", total_size);
++            
++        if (copy_to_user((size_t __user *)cmd.arg, &total_size, sizeof(total_size)))
++            return -EFAULT;
++
++        return 0;
++    }
++        
++    // WARNING! this is straight up pointerwalking.
++    // this way we dont need to redefine the ioctl defs.
++    // this also avoids us needing to kmalloc
++    // userspace have to send pointer to memory (malloc/alloca) or pointer to a VLA.
++    case AXMANAGER_UMOUNT_GETLIST: {
++        // check for pointer first
++        if (!cmd.arg)
++            return -EFAULT;
++            
++        char *user_buf = (char *)cmd.arg;
++
++        down_read(&mount_list_lock);
++        list_for_each_entry(entry, &mount_list, list) {
++
++            //debug
++            //pr_info("cmd_add_try_umount: entry: %s\n", entry->umountable);
++            
++            if (copy_to_user((char __user *)user_buf, entry->umountable, strlen(entry->umountable) + 1 )) {
++                up_read(&mount_list_lock);
++                return -EFAULT;
++            }
++
++            // walk it! +1 for null terminator
++            user_buf = user_buf + strlen(entry->umountable) + 1;
++        }
++        up_read(&mount_list_lock);
++
++        return 0;
++    }
++
+     default: {
+         pr_err("cmd_add_try_umount: invalid operation %u\n", cmd.mode);
+         return -EINVAL;
+diff --git a/kernel/supercall/supercall.h b/kernel/supercall/supercall.h
+index 483e506..072356b 100644
+--- a/kernel/supercall/supercall.h
++++ b/kernel/supercall/supercall.h
+@@ -23,3 +23,5 @@ int AXMANAGER_supercall_reboot_handler(void __user **arg);
+ void AXMANAGER_supercalls_init(void);
+ void AXMANAGER_supercalls_exit(void);
+ #endif // __AXMANAGER_H_SUPERCALL
++#define AXMANAGER_UMOUNT_GETSIZE 107   // get list size // shit is u8 we cant fit 10k+ on it
++#define AXMANAGER_UMOUNT_GETLIST 108   // get list
+-- 
+2.53.0
+

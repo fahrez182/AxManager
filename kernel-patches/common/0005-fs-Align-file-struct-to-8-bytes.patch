@@ -1,0 +1,31 @@
+From bb03889d932e8760d7a448bda0183f6c4305d510 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 22:41:19 +0300
+Subject: [PATCH 05/24] fs: Align file struct to 8 bytes
+
+    This improves hackbench results by about 5% on average.
+
+    Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+    Signed-off-by: Forenche <prahul2003@gmail.com>
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ include/linux/fs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 4b4f3d24d..e042a25b8 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -983,7 +983,7 @@ struct file {
+ 	ANDROID_KABI_RESERVE(1);
+ 	ANDROID_KABI_RESERVE(2);
+ } __randomize_layout
+-  __attribute__((aligned(4)));	/* lest something weird decides that 2 is OK */
++  __attribute__((aligned(8)));
+ 
+ struct file_handle {
+ 	__u32 handle_bytes;
+-- 
+2.55.0
+

@@ -1,0 +1,136 @@
+From 6b73ff6f991b9df63faa230fbeddd38561ba873e Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 7 Sep 2026 12:59:17 +0300
+Subject: [PATCH] wifi: rtw88: rtw8723x: avoid shared loop variable name in
+ debug helper
+
+__rtw8723x_debug_txpwr_limit() uses six separate C99 for-loops, each
+declaring its own scoped `int i`. Depending on toolchain/preprocessing
+behavior in some build configurations, these can end up colliding in
+a single enclosing scope, causing:
+
+  error: redefinition of 'i'
+
+Rename each loop's index variable uniquely (i1..i6) so the loops
+cannot collide regardless of scoping behavior. No functional change.
+
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ drivers/net/wireless/realtek/rtw88/rtw8723x.c | 74 +++++++++++++++++++++++++++---------------------------
+ 1 file changed, 37 insertions(+), 37 deletions(-)
+
+diff --git a/drivers/net/wireless/realtek/rtw88/rtw8723x.c b/drivers/net/wireless/realtek/rtw88/rtw8723x.c
+index f97b9cc..bbb48bd 100644
+--- a/drivers/net/wireless/realtek/rtw88/rtw8723x.c
++++ b/drivers/net/wireless/realtek/rtw88/rtw8723x.c
+@@ -110,70 +110,70 @@ static void __rtw8723x_debug_txpwr_limit(struct rtw_dev *rtwdev,
+ 	/* CCK base */
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "CCK base\n");
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "RF    G0  G1  G2  G3  G4  G5\n");
+-	for (int i = 0; i < tx_path_count; i++)
++	for (int i1 = 0; i1 < tx_path_count; i1++)
+ 		rtw_dbg(rtwdev, RTW_DBG_EFUSE,
+ 			"[%c]: %3u %3u %3u %3u %3u %3u\n",
+-			'A' + i,
+-			table[i].pwr_idx_2g.cck_base[0],
+-			table[i].pwr_idx_2g.cck_base[1],
+-			table[i].pwr_idx_2g.cck_base[2],
+-			table[i].pwr_idx_2g.cck_base[3],
+-			table[i].pwr_idx_2g.cck_base[4],
+-			table[i].pwr_idx_2g.cck_base[5]);
++			'A' + i1,
++			table[i1].pwr_idx_2g.cck_base[0],
++			table[i1].pwr_idx_2g.cck_base[1],
++			table[i1].pwr_idx_2g.cck_base[2],
++			table[i1].pwr_idx_2g.cck_base[3],
++			table[i1].pwr_idx_2g.cck_base[4],
++			table[i1].pwr_idx_2g.cck_base[5]);
+ 	/* CCK diff */
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "CCK diff\n");
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "RF   1S 2S 3S 4S\n");
+-	for (int i = 0; i < tx_path_count; i++)
++	for (int i2 = 0; i2 < tx_path_count; i2++)
+ 		rtw_dbg(rtwdev, RTW_DBG_EFUSE,
+ 			"[%c]: %2d %2d %2d %2d\n",
+-			'A' + i, 0 /* no diff for 1S */,
+-			table[i].pwr_idx_2g.ht_2s_diff.cck,
+-			table[i].pwr_idx_2g.ht_3s_diff.cck,
+-			table[i].pwr_idx_2g.ht_4s_diff.cck);
++			'A' + i2, 0 /* no diff for 1S */,
++			table[i2].pwr_idx_2g.ht_2s_diff.cck,
++			table[i2].pwr_idx_2g.ht_3s_diff.cck,
++			table[i2].pwr_idx_2g.ht_4s_diff.cck);
+ 	/* BW40-1S base */
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "BW40-1S base\n");
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "RF    G0  G1  G2  G3  G4\n");
+-	for (int i = 0; i < tx_path_count; i++)
++	for (int i3 = 0; i3 < tx_path_count; i3++)
+ 		rtw_dbg(rtwdev, RTW_DBG_EFUSE,
+ 			"[%c]: %3u %3u %3u %3u %3u\n",
+-			'A' + i,
+-			table[i].pwr_idx_2g.bw40_base[0],
+-			table[i].pwr_idx_2g.bw40_base[1],
+-			table[i].pwr_idx_2g.bw40_base[2],
+-			table[i].pwr_idx_2g.bw40_base[3],
+-			table[i].pwr_idx_2g.bw40_base[4]);
++			'A' + i3,
++			table[i3].pwr_idx_2g.bw40_base[0],
++			table[i3].pwr_idx_2g.bw40_base[1],
++			table[i3].pwr_idx_2g.bw40_base[2],
++			table[i3].pwr_idx_2g.bw40_base[3],
++			table[i3].pwr_idx_2g.bw40_base[4]);
+ 	/* OFDM diff */
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "OFDM diff\n");
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "RF   1S 2S 3S 4S\n");
+-	for (int i = 0; i < tx_path_count; i++)
++	for (int i4 = 0; i4 < tx_path_count; i4++)
+ 		rtw_dbg(rtwdev, RTW_DBG_EFUSE,
+ 			"[%c]: %2d %2d %2d %2d\n",
+-			'A' + i,
+-			table[i].pwr_idx_2g.ht_1s_diff.ofdm,
+-			table[i].pwr_idx_2g.ht_2s_diff.ofdm,
+-			table[i].pwr_idx_2g.ht_3s_diff.ofdm,
+-			table[i].pwr_idx_2g.ht_4s_diff.ofdm);
++			'A' + i4,
++			table[i4].pwr_idx_2g.ht_1s_diff.ofdm,
++			table[i4].pwr_idx_2g.ht_2s_diff.ofdm,
++			table[i4].pwr_idx_2g.ht_3s_diff.ofdm,
++			table[i4].pwr_idx_2g.ht_4s_diff.ofdm);
+ 	/* BW20 diff */
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "BW20 diff\n");
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "RF   1S 2S 3S 4S\n");
+-	for (int i = 0; i < tx_path_count; i++)
++	for (int i5 = 0; i5 < tx_path_count; i5++)
+ 		rtw_dbg(rtwdev, RTW_DBG_EFUSE,
+ 			"[%c]: %2d %2d %2d %2d\n",
+-			'A' + i,
+-			table[i].pwr_idx_2g.ht_1s_diff.bw20,
+-			table[i].pwr_idx_2g.ht_2s_diff.bw20,
+-			table[i].pwr_idx_2g.ht_3s_diff.bw20,
+-			table[i].pwr_idx_2g.ht_4s_diff.bw20);
++			'A' + i5,
++			table[i5].pwr_idx_2g.ht_1s_diff.bw20,
++			table[i5].pwr_idx_2g.ht_2s_diff.bw20,
++			table[i5].pwr_idx_2g.ht_3s_diff.bw20,
++			table[i5].pwr_idx_2g.ht_4s_diff.bw20);
+ 	/* BW40 diff */
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "BW40 diff\n");
+ 	rtw_dbg(rtwdev, RTW_DBG_EFUSE, "RF   1S 2S 3S 4S\n");
+-	for (int i = 0; i < tx_path_count; i++)
++	for (int i6 = 0; i6 < tx_path_count; i6++)
+ 		rtw_dbg(rtwdev, RTW_DBG_EFUSE,
+ 			"[%c]: %2d %2d %2d %2d\n",
+-			'A' + i, 0 /* no diff for 1S */,
+-			table[i].pwr_idx_2g.ht_2s_diff.bw40,
+-			table[i].pwr_idx_2g.ht_3s_diff.bw40,
+-			table[i].pwr_idx_2g.ht_4s_diff.bw40);
++			'A' + i6, 0 /* no diff for 1S */,
++			table[i6].pwr_idx_2g.ht_2s_diff.bw40,
++			table[i6].pwr_idx_2g.ht_3s_diff.bw40,
++			table[i6].pwr_idx_2g.ht_4s_diff.bw40);
+ }
+ 
+ static void efuse_debug_dump(struct rtw_dev *rtwdev,
+-- 
+2.55.0
+

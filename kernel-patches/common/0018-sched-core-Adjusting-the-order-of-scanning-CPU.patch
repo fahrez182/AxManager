@@ -1,0 +1,39 @@
+From c435284c912aeba20cd8b785069810ac72bac597 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 23:14:17 +0300
+Subject: [PATCH 18/24] sched/core: Adjusting the order of scanning CPU
+
+When select_idle_capacity() starts scanning for an idle CPU, it starts
+with target CPU that has already been checked in select_idle_sibling().
+So we start checking from the next CPU and try the target CPU at the end.
+Similarly for task_numa_assign(), we have just checked numa_migrate_on
+of dst_cpu, so start from the next CPU. This also works for
+steal_cookie_task(), the first scan must fail and start directly
+from the next one.
+
+Signed-off-by: Hao Jia <jiahao.os@bytedance.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Reviewed-by: Vincent Guittot <vincent.guittot@linaro.org>
+Acked-by: Mel Gorman <mgorman@techsingularity.net>
+Link: https://lore.kernel.org/r/20221216062406.7812-3-jiahao.os@bytedance.com
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ kernel/sched/fair.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index d39deceb0..458904c0d 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -6921,7 +6921,7 @@ select_idle_capacity(struct task_struct *p, struct sched_domain *sd, int target)
+ 	util_min = uclamp_eff_value(p, UCLAMP_MIN);
+ 	util_max = uclamp_eff_value(p, UCLAMP_MAX);
+ 
+-	for_each_cpu_wrap(cpu, cpus, target) {
++	for_each_cpu_wrap(cpu, cpus, target + 1) {
+ 		unsigned long cpu_cap = capacity_of(cpu);
+ 
+ 		if (!available_idle_cpu(cpu) && !sched_idle_cpu(cpu))
+-- 
+2.55.0
+

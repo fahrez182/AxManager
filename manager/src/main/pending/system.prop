@@ -1,0 +1,6 @@
+# VOID GMS Optimizer - System Properties
+# Loaded by Magisk/KSU/APatch on boot.
+# 100% SAFE: only identifier flags. No kernel or framework changes.
+ro.voidgms.installed=true
+ro.voidgms.version=3.0.0
+persist.sys.voidgms.enabled=true

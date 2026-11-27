@@ -1,0 +1,163 @@
+From 28472d9e0e07f63fa4f61163e5f9c1d198e48d51 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Sat, 1 Aug 2026 20:31:57 +0300
+Subject: [PATCH 1/2] mac80211/cfg80211: Add monitor mode and packet injection
+ support
+
+- Allow monitor mode channel changes with other interfaces active
+- Fix packet injection sequence number handling
+- Improve RX filtering for monitor mode
+- Required for Kali Linux/Nethunter compatibility
+
+Source: https://github.com/loystonpais/android_kernel_qcom_sm8350/commit/9df0b6db14dd235d1f7c1dc4b71e057b6e34dadf
+---
+ .../wireless/realtek/rtl818x/rtl8187/dev.c    | 11 ++++++++++-
+ drivers/net/wireless/zydas/zd1211rw/zd_mac.c  | 18 ++++++++++++------
+ net/mac80211/cfg.c                            |  3 ++-
+ net/mac80211/tx.c                             | 19 +++++++++++++++----
+ net/wireless/chan.c                           |  6 ++++--
+ 5 files changed, 43 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/net/wireless/realtek/rtl818x/rtl8187/dev.c b/drivers/net/wireless/realtek/rtl818x/rtl8187/dev.c
+index fd67c11bb..93bf683c2 100644
+--- a/drivers/net/wireless/realtek/rtl818x/rtl8187/dev.c
++++ b/drivers/net/wireless/realtek/rtl818x/rtl8187/dev.c
+@@ -248,8 +248,17 @@ static void rtl8187_tx(struct ieee80211_hw *dev,
+ 	flags |= RTL818X_TX_DESC_FLAG_NO_ENC;
+ 
+ 	flags |= ieee80211_get_tx_rate(dev, info)->hw_value << 24;
++
++	// When this flag is set the firmware waits untill ALL fragments have
++	// reached the USB device. Then it sends the first fragment and waits
++	// for ACKS's. Of course in monitor mode it won't detect these ACK's.
+ 	if (ieee80211_has_morefrags(tx_hdr->frame_control))
+-		flags |= RTL818X_TX_DESC_FLAG_MOREFRAG;
++	{
++		// If info->control.vif is NULL it's most likely in monitor mode
++		if (likely(info->control.vif != NULL && info->control.vif->type != NL80211_IFTYPE_MONITOR)) {
++			flags |= RTL818X_TX_DESC_FLAG_MOREFRAG;
++		}
++	}
+ 
+ 	/* HW will perform RTS-CTS when only RTS flags is set.
+ 	 * HW will perform CTS-to-self when both RTS and CTS flags are set.
+diff --git a/drivers/net/wireless/zydas/zd1211rw/zd_mac.c b/drivers/net/wireless/zydas/zd1211rw/zd_mac.c
+index 57269c317..867a65931 100644
+--- a/drivers/net/wireless/zydas/zd1211rw/zd_mac.c
++++ b/drivers/net/wireless/zydas/zd1211rw/zd_mac.c
+@@ -229,14 +229,19 @@ void zd_mac_clear(struct zd_mac *mac)
+ static int set_rx_filter(struct zd_mac *mac)
+ {
+ 	unsigned long flags;
+-	u32 filter = STA_RX_FILTER;
++	struct zd_ioreq32 ioreqs[] = {
++		{CR_RX_FILTER, STA_RX_FILTER},
++		{ CR_SNIFFER_ON, 0U },
++	};
+ 
+ 	spin_lock_irqsave(&mac->lock, flags);
+-	if (mac->pass_ctrl)
+-		filter |= RX_FILTER_CTRL;
++	if (mac->pass_ctrl) {
++		ioreqs[0].value |= 0xFFFFFFFF;
++		ioreqs[1].value = 0x1;
++	}
+ 	spin_unlock_irqrestore(&mac->lock, flags);
+ 
+-	return zd_iowrite32(&mac->chip, CR_RX_FILTER, filter);
++	return zd_iowrite32a(&mac->chip, ioreqs, ARRAY_SIZE(ioreqs));
+ }
+ 
+ static int set_mac_and_bssid(struct zd_mac *mac)
+@@ -1046,7 +1051,8 @@ int zd_mac_rx(struct ieee80211_hw *hw, const u8 *buffer, unsigned int length)
+ 	/* Caller has to ensure that length >= sizeof(struct rx_status). */
+ 	status = (struct rx_status *)
+ 		(buffer + (length - sizeof(struct rx_status)));
+-	if (status->frame_status & ZD_RX_ERROR) {
++	if ((status->frame_status & ZD_RX_ERROR) || 
++		(status->frame_status & ~0x21)) {
+ 		if (mac->pass_failed_fcs &&
+ 				(status->frame_status & ZD_RX_CRC32_ERROR)) {
+ 			stats.flag |= RX_FLAG_FAILED_FCS_CRC;
+@@ -1390,7 +1396,7 @@ struct ieee80211_hw *zd_mac_alloc_hw(struct usb_interface *intf)
+ 	ieee80211_hw_set(hw, MFP_CAPABLE);
+ 	ieee80211_hw_set(hw, HOST_BROADCAST_PS_BUFFERING);
+ 	ieee80211_hw_set(hw, RX_INCLUDES_FCS);
+-	ieee80211_hw_set(hw, SIGNAL_UNSPEC);
++	ieee80211_hw_set(hw, SIGNAL_DBM);
+ 
+ 	hw->wiphy->interface_modes =
+ 		BIT(NL80211_IFTYPE_MESH_POINT) |
+diff --git a/net/mac80211/cfg.c b/net/mac80211/cfg.c
+index 37a573c2e..7125cc404 100644
+--- a/net/mac80211/cfg.c
++++ b/net/mac80211/cfg.c
+@@ -926,7 +926,8 @@ static int ieee80211_set_monitor_channel(struct wiphy *wiphy,
+ 							 chandef,
+ 							 IEEE80211_CHANCTX_EXCLUSIVE);
+ 		}
+-	} else if (local->open_count == local->monitors) {
++       // Patch: Always allow channel change, even if a normal virtual interface is present
++       } else /*if (local->open_count == local->monitors)*/ {
+ 		local->_oper_chandef = *chandef;
+ 		ieee80211_hw_config(local, 0);
+ 	}
+diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
+index 2e99a1063..0524401a7 100644
+--- a/net/mac80211/tx.c
++++ b/net/mac80211/tx.c
+@@ -852,11 +852,19 @@ ieee80211_tx_h_sequence(struct ieee80211_tx_data *tx)
+ 
+ 	/*
+ 	 * Packet injection may want to control the sequence
+-	 * number, if we have no matching interface then we
+-	 * neither assign one ourselves nor ask the driver to.
++	 * number, so if an injected packet is found, skip
++	 * renumbering it. Also make the packet NO_ACK to avoid
++	 * excessive retries (ACKing and retrying should be
++	 * handled by the injecting application).
++	 * FIXME This may break hostapd and some other injectors.
++	 * This should be done using a radiotap flag.
+ 	 */
+-	if (unlikely(info->control.vif->type == NL80211_IFTYPE_MONITOR))
++	if (unlikely((info->flags & IEEE80211_TX_CTL_INJECTED) &&
++	   !(tx->sdata->u.mntr.flags & MONITOR_FLAG_COOK_FRAMES))) {
++		if (!ieee80211_has_morefrags(hdr->frame_control))
++			info->flags |= IEEE80211_TX_CTL_NO_ACK;
+ 		return TX_CONTINUE;
++	}
+ 
+ 	if (unlikely(ieee80211_is_ctl(hdr->frame_control)))
+ 		return TX_CONTINUE;
+@@ -2097,7 +2105,10 @@ void ieee80211_xmit(struct ieee80211_sub_if_data *sdata,
+ 		}
+ 	}
+ 
+-	ieee80211_set_qos_hdr(sdata, skb);
++	// Don't overwrite QoS header in monitor mode
++  if (likely(info->control.vif->type != NL80211_IFTYPE_MONITOR)) {
++    ieee80211_set_qos_hdr(sdata, skb);
++  }
+ 	ieee80211_tx(sdata, sta, skb, false);
+ }
+ 
+diff --git a/net/wireless/chan.c b/net/wireless/chan.c
+index 0b7e81db3..34b9881d6 100644
+--- a/net/wireless/chan.c
++++ b/net/wireless/chan.c
+@@ -1393,8 +1393,10 @@ int cfg80211_set_monitor_channel(struct cfg80211_registered_device *rdev,
+ {
+ 	if (!rdev->ops->set_monitor_channel)
+ 		return -EOPNOTSUPP;
+-	if (!cfg80211_has_monitors_only(rdev))
+-		return -EBUSY;
++	// Always allow user to change channel, even if there is another normal
++	// virtual interface using the device.
++	//if (!cfg80211_has_monitors_only(rdev))
++	//	return -EBUSY;
+ 
+ 	return rdev_set_monitor_channel(rdev, chandef);
+ }
+-- 
+2.55.0
+

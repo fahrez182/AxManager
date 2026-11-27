@@ -1,0 +1,6 @@
+#!/system/bin/sh
+sysctl -w vm.dirty_ratio=10 2>/dev/null || true
+sysctl -w vm.dirty_background_ratio=5 2>/dev/null || true
+sysctl -w vm.swappiness=30 2>/dev/null || true
+echo "ax-ram done"
+cat /proc/meminfo 2>/dev/null | head -n 5

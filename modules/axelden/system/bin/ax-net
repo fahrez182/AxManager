@@ -1,0 +1,7 @@
+#!/system/bin/sh
+echo "ax-net done"
+ip route 2>/dev/null | head -n 5 || true
+getprop net.dns1 2>/dev/null || true
+ping -c 1 -W 2 8.8.8.8 2>&1 | head -n 5 || echo no-ping
+TOK=$(cat /data/local/tmp/ax_tokyo_ip 2>/dev/null || echo "")
+if [ -n "$TOK" ]; then ping -c 1 -W 2 "$TOK" 2>&1 | head -n 8 || true; else echo "no-tokyo-ip"; fi

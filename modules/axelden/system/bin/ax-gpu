@@ -1,0 +1,6 @@
+#!/system/bin/sh
+resetprop debug.hwui.renderer skiavk 2>/dev/null || true
+resetprop persist.sys.ui.hw 1 2>/dev/null || true
+echo "ax-gpu done"
+getprop debug.hwui.renderer 2>/dev/null || echo unknown
+dumpsys SurfaceFlinger 2>/dev/null | grep -m 3 -i refresh || echo no-sf

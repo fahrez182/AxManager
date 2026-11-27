@@ -71,10 +71,10 @@ class CrashActivity : ComponentActivity() {
     }
 
     private fun restartApp() {
-        val intent = Intent(this, AxActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
-        startActivity(intent)
+val intent = Intent(this, AxActivity::class.java).apply {
+    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+}
+startActivity(intent)
         finish()
         exitProcess(0)
     }

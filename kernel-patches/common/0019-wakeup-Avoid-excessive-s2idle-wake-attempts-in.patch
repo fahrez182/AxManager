@@ -1,0 +1,36 @@
+From 353507d7931b0ddf34ffc52eb4982b48e59681dd Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 23:15:33 +0300
+Subject: [PATCH 19/24] wakeup: Avoid excessive s2idle wake attempts in 
+ pm_system_wakeup()
+
+Calling s2idle_wake() once after pm_abort_suspend is incremented is all
+that's needed to wake up from s2idle. Avoid multiple unnecessary attempts
+to wake from s2idle by only doing the wakeup when pm_abort_suspend hits 1.
+The s2idle machinery already provides the synchronization needed to make
+this safe.
+
+Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ drivers/base/power/wakeup.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/base/power/wakeup.c b/drivers/base/power/wakeup.c
+index 5b93536ff..0d0838b8a 100644
+--- a/drivers/base/power/wakeup.c
++++ b/drivers/base/power/wakeup.c
+@@ -936,8 +936,8 @@ EXPORT_SYMBOL_GPL(pm_wakeup_pending);
+ 
+ void pm_system_wakeup(void)
+ {
+-	atomic_inc(&pm_abort_suspend);
+-	s2idle_wake();
++	if (atomic_inc_return_relaxed(&pm_abort_suspend) == 1)
++		s2idle_wake();
+ }
+ EXPORT_SYMBOL_GPL(pm_system_wakeup);
+ 
+-- 
+2.55.0
+

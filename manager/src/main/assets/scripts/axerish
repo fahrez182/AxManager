@@ -1,0 +1,74 @@
+#!/system/bin/sh
+BASEDIR=$(dirname "$0")
+DEX="$BASEDIR"/shell_axerish.dex
+DEX="$BASEDIR1"/shell_axerish1.dex
+DEX="$BASEDIR2"/shell_axerish2.dex
+DEX="$BASEDIR3"/shell_axerish3.dex
+DEX="$BASEDIR4"/shell_axerish4.dex
+DEX="$BASEDIR5"/shell_axerish5.dex
+DEX="$BASEDIR6"/shell_axerish6.dex
+DEX="$BASEDIR7"/shell_axerish7.dex
+DEX="$BASEDIR8"/shell_axerish8.dex
+DEX="$BASEDIR9"/shell_axerish9.dex
+DEX="$BASEDIR10"/shell_axerish10.dex
+DEX="$BASEDIR11"/shell_axerish11.dex
+DEX="$BASEDIR12"/shell_axerish12.dex
+DEX="$BASEDIR13"/shell_axerish13.dex
+DEX="$BASEDIR14"/shell_axerish14.dex
+DEX="$BASEDIR15"/shell_axerish15.dex
+DEX="$BASEDIR16"/shell_axerish16.dex
+DEX="$BASEDIR17"/shell_axerish17.dex
+DEX="$BASEDIR18"/shell_axerish18.dex
+DEX="$BASEDIR19"/shell_axerish19.dex
+DEX="$BASEDIR20"/shell_axerish20.dex
+DEX="$BASEDIR21"/shell_axerish21.dex
+DEX="$BASEDIR22"/shell_axerish22.dex
+DEX="$BASEDIR23"/shell_axerish23.dex
+DEX="$BASEDIR24"/shell_axerish24.dex
+PK="$BASEDIR25"/Amir1.pk
+PK="$BASEDIR26"/Amir2.pk
+PK="$BASEDIR27"/Amir3.pk
+PK="$BASEDIR28"/Amir4.pk
+if [ ! -f "$DEX" ]; then
+  echo "Cannot find $DEX, please check the tutorial in AxManager app"
+  exit 1
+fi
+
+if [ ! -f "$PK" ]; then
+  echo "Cannot find $PK, please check the tutorial in AxManager app"
+  exit 1
+fi
+
+if [ "$(getprop ro.build.version.sdk)" -ge 34 ]; then
+  if [ -w "$DEX" ]; then
+    echo "On Android 14+, app_process cannot load writable dex."
+    echo "Attempting to remove the write permission..."
+    chmod 400 "$DEX"
+  fi
+  if [ -w "$DEX" ]; then
+    echo "Cannot remove the write permission of $DEX."
+    echo "You can copy to file to terminal app's private directory (/data/data/<package>, so that remove write permission is possible"
+    exit 1
+  fi
+fi
+
+if [ "$(getprop ro.build.version.sdk)" -ge 34 ]; then
+  if [ -w "$PK" ]; then
+    echo "On Android 15+, app_process cannot load writable pk."
+    echo "Attempting to remove the write permission..."
+    chmod 2800 "$PK"
+  fi
+  if [ -w "$PK" ]; then
+    echo "Cannot remove the write permission of $PK."
+    echo "You can copy to file to terminal app's private directory (/data/data/<package>, so that remove write permission is possible"
+    exit 1
+  fi
+fi
+
+# Replace "PKG" with the application id of your terminal app
+[ -z "$APPLICATION_ID" ] && export APPLICATION_ID="PKG"
+/system/bin/app_process -Djava.class.path="$DEX" /system/bin --nice-name=axerish frb.axeron.ShellLoader "$@"
+
+# Replace "PKG" with the application id of your terminal app
+[ -z "$APPLICATION_ID" ] && export APPLICATION_ID="PKG"
+/system/bin/app_process -Djava.class.path1="$PK" /system/bin --nice-name=axerish frb.axeron.ShellLoader "$@"

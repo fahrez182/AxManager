@@ -1,0 +1,138 @@
+ELF(04�,4 
+(444@@ttt`)`)`)`9`9�l+lKlK8*8:8:��R�td`)`9`9�Q�td�����p00/system/bin/linker�Androidr2914206865
+,29?ELSZ`gpw}����������c
+�>i
+�__libc_init__cxa_atexit__register_atforkfopenfclosefputsfreadgetuidprintfremovefgetssscanfsnprintfstrstrlstatopendirstrncpyreaddirstrcmpclosedirputsmemcmpfwritefputc__aeabi_memclr8libc.soLIBCLIBC_N/data/data/com.termux/files/usr/bin/../../usr/liblibdl.so`9d9h9l9p9t9x9|9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9�9:::::::: :$:0:4:�:�:�:pK$����l ;;;;;; ;$;(;	,;
+0;4;8;
+<;@;D;H;L;P;T;X;\;`;d;h;NEXT_BUDDY
+TTWU_QUEUE
+[+] I/O schedulers applied.
+%s/force_clk_on/proc/sys/vm/extra_free_kbytesNO_HRTICK
+WAKEUP_PREEMPTION
+202564000000%s/throttlinga/proc/sys/kernel/sched_child_runs_firstinteractive/proc/gpufreqv2/[+] GPU optimization applied.
+/proc/sys/kernel/sched_min_granularity_ns/sys/kernel/debug/sched_features/proc/sys/vm/dirty_ratio%s/%s/proc/sys/kernel/panic_on_oops/proc/sys/vm/vfs_cache_pressure[+] CPU governors applied.
+%sgpm_mode/proc/sys/vm/overcommit_ratio15/proc/sys/net/ipv4/tcp_available_congestion_control/proc/sys/kernel/sched_tunable_scaling/proc/sys/vm/page-cluster/dev/stune/top-app/schedtune.boost[*] Tweaks started...
+MemTotal:3000schedutil/proc/sys/net/ipv4/tcp_fastopen/proc/gpufreq//proc/sys/kernel/random/read_wakeup_threshold30502000000/proc/sys/kernel/printk_devkmsg80reno.mali.gpualways_on64/dev/stune/top-app/schedtune.prefer_idle/proc/sys/net/ipv4/tcp_syncookies0 0 0off/proc/sys/vm/dirty_writeback_centisecs/proc/sys/vm/stat_interval/proc/sys/net/ipv4/tcp_ecn%s/power_policy[-] GPU path not found.
+[*] Applying tweaks... Check %s for details.
+[+] Network tweaks applied.
+%s/force_rail_on3[*] Success! Log saved to %s
+/proc/meminfo/proc/sys/vm/dirty_expire_centisecs/proc/sys/vm/dirty_background_ratio/sys/module/ged/parameters/gx_boost_on1/proc/sys/kernel/sched_wakeup_granularity_ns128/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor/sys/block/sd%c/queue/nr_requests/sys/block/mmcblk%d/queue/nr_requests/proc/sys/kernel/sched_nr_migrate/proc/sys/kernel/random/write_wakeup_threshold/sys/block/sd%c/queue/read_ahead_kb/proc/sys/vm/swappinesscubic/storage/emulated/0/Android/BKT.log/proc/sys/kernel/sched_autogroup_enabled/proc/sys/vm/panic_on_oom/sys/block/mmcblk%d/queue/schedulernoner10240/sys/block/sd%c/queue/schedulerbbr/sys/devices/sys/class/misc%slimit_table0/proc/sys/kernel/sched_migration_cost_ns5000000mq-deadline/sys/block/mmcblk%d/queue/read_ahead_kbwestwood%saging_mode
+Telegram: @RiProG | Channel: @RiOpSo | Group: @RiOpSoDisc/proc/sys/kernel/sched_latency_ns100000[+] Kernel & VM tweaks applied.
+512/sys/module/ged/parameters/boost_gpu_enableERROR: This program requires ROOT access!/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_governors[*] All tweaks finished.
+wkgsl-3d0%s/dvfsMemTotal: %lld/proc/sys/kernel/perf_cpu_time_max_percent/proc/sys/kernel/panicbfq/proc/sys/net/ipv4/tcp_congestion_control%s/force_no_nap10/sys/module/ged/parameters/ged_boost_enable/proc/sys/kernel/sched_schedstatsdisable�����
+������H-�
+����M�P��
+�� ��
+0�� ���
+A� ��,����( �� ��B�Q������� ���� ��L�|(x(�8\(H-�
+���P���H���/�H-�
+������� ���� ��H��=������8H-�
+���0��0��H��9�t80H-����,@��@��(����P�
+@Q�����0�/�PU����0����'�'�O-�����M�#�M�6�P�
+�����e����K�����N��@����2��������P�
+@��l���� ����0��Y����P����L�H��H�������<��p��8����$p���(p���P�
+n����pP��@��`������ ���P�
+����	 ��2�P���������p��( K���������
+���������������	������p��W�
+�A��	��P����P����
+`����������������l
+��l��������P�
+@��T
+���� ����0������8
+��8�������P�
+@�� 
+���� ����0�������
+���������P�
+@�����
+�� ����0�������������������P�
+@������ ����0�������(P�$`�������������y�P�=p@�
+
+���@����� W��� ���� ������0�����s�(P�$`���������h�P�
+
+���@���� W��� ���� ������0�����\�(P�$`�\��\������Q�P�
+
+H��@��D�� W��� ���� ������0�����E���������<�P�
+@���� �� ����0�����5��^���K�ட�JoN�P�����
+�������X�1
+�.������0�� ��D��������P�%
+�K�p��ON���� ��0����������������3�\.��������� ��0��(���
+���P����
+0��p��Y����������������������������P�
+P������ ����0��2�����Ѝ���K�J�N�a`������`��qV�l
+�-��	����0�� ������	������P����
+�K�p��ON���� ��0��������������X}����p������P�	@}���K�N�p������P�(
+����p�	�����P�
+�����
+���
+����,��	����0�� ����	����(@�$P��P�
+
+p��	�=@�P�������������������,��	����0�� ���	����(@�$P��P���
+p��	�=@� ��P�0����H��H�������������s����(����K�JoN�����������Z�j
+,������
+0�� �����������[�P����
+�K�P��ON���� ��0����]�������Q�[����P����p�P�	�[���K�N�P����h�P�����P�����9�P�
+�����	��;�	��5�L+������
+0�� ��O�����(p�$@�&���P�=�@�
+P��Y��������������� �����*������
+0�� ��4�����(@�$p��P���
+P��Y��� ��
+��0������������I��������
+����������P�
+P��p
+���� ����0��8�����T
+��T��������P�X
+�K�P��ON���� ��0��������������Z����P������P��Y���K�N�P������P�	�I���K�N�@�������Y��P�P��P��	���������P�
+@����������	���������P�
+@��1���������d	��d��������P�
+@��3���������8	��8��������P�
+@��0���������	����������P�
+@������� ����0������~��K���N����K�P�⪏N����p���@��	��������������	A�����P����������
+�	P�������P����
+����p�������/��@��W��O����bJp��`G�A�����P�@
+���@����.Q�A
+�����(����P��p��6�� ��`������Y�@���P�0�����-������P��U�P�'������
+�	P�!���
+����Y�P�
+���
+����?�P�|��
+����9�P�
+�K���N��/�>��K���@��)N����C�@��p���P��T���W���ʊ���W�������&�P����
+����p�������/�!��O��p������p��x���W��PH���#�pW�����T�Y
+t���K�N����P�x
+\&���K�JON��K� ���?N�������<��������P�
+@��0���������&���K�JON��K� ���?N���������������P�
+@��1���������%���K�JON��K� ���?N��������������P�
+@��1���������x%���K�JON��K� ���?N������X��������P�W
+@��1������P�����������P��
+@����������7����������������l���������������������������$����W���E�����������������������������������������$���K�JON��K� ���?N�����z�������R�P�
+@��0�������N�\$���K�JON��K� ���?N�����e�<������=�P�
+@��$��	�� ����0�����6�D������@����X�P�������
+�	P�
+
+�C������@����J�P�G������
+�	P�A�#���K�J_N��� ��0����2�������
+�P�
+P��h���� ����0��M����L#���K�J_N��� ��0�����0��������P�
+P������ ����0��6������"���K�J_N��� ��0��������������P�
+@��1����&���������������P�
+@��1�������������������P�
+@��1��������`��`�������P�
+@��1���������4��4�������P�
+@�������� ��0�����������������P�
+@������� ����0����������������������K��������=�����������������������������}���Z���}�����������2���x�������]���������������Z���s�����������n�������������������������������m���O�������}������������������l�����������!����������r�������������������������������\������������������V�����������������������~����b�����������e���A������G����������i���a�����������������������C���-���H�������1���a���4���W������x���j�������i������u�������A������
+���>���W���������������'����������_������������-�����H������������������Ə�ʌ�0������Ə�ʌ�$������Ə�ʌ�������Ə�ʌ�������Ə�ʌ�������Ə�ʌ��������Ə�ʌ��������Ə�ʌ��������Ə�ʌ��������Ə�ʌ��������Ə�ʌ�������Ə�ʌ�������Ə�ʌ�������Ə�ʌ�������Ə�ʌ�������Ə�ʌ�|������Ə�ʌ�p������Ə�ʌ�d������Ə�ʌ�X������Ə�ʌ�L������Ə�ʌ�@������Ə�ʌ�4������Ə�ʌ�(������Ə�ʌ�������Ə�ʌ�������W��Q
+�Q
+>
+}5�	WS
+5��
+}z%�
+�}�	}=���
+��
+e
+}��x��	]Y(�}}}
+Q
+R_�����o\����o8L��: <
+���o$���o����o����oP�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'�'����A;aeabi1C2.09
+A	
+"&.ARM.exidx.text.got.note.android.ident.got.plt.rel.plt.bss.ARM.attributes.dynstr.gnu.version_r.interp.data.rel.ro.rel.dyn.gnu.version.dynsym.gnu.hash.relro_padding.dynamic.shstrtab.rodata.dataitt����  �����o��4Z���o��0����o$$R<<~	\\�p�04	BLL��2
+00�8�'�'�q`9`)��8:8*��:�*+�:�*p�l;l+��lKl+=xKx+Bpx+<��+�

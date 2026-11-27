@@ -73,10 +73,6 @@ import kotlinx.coroutines.withContext
 
 private enum class ShortcutIconSource { BANNER, INITIALS, GALLERY }
 
-/**
- * Creates (or updates) a WebUI home-screen shortcut with a custom name and an icon taken
- * from the plugin banner (center-cropped), the name's initials, or an image the user picks.
- */
 @Composable
 fun WebUiShortcutSheet(
     plugin: PluginInfo,
@@ -97,7 +93,6 @@ fun WebUiShortcutSheet(
     var chosenSource by remember { mutableStateOf<ShortcutIconSource?>(null) }
     var galleryUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Default: the banner when the plugin has one, otherwise initials.
     val source = chosenSource
         ?: if (banner != null) ShortcutIconSource.BANNER else ShortcutIconSource.INITIALS
 
@@ -112,7 +107,6 @@ fun WebUiShortcutSheet(
     val initialsForeground = MaterialTheme.colorScheme.onPrimaryContainer.toArgb()
     val iconName = name.ifBlank { defaultName }
 
-    // Image sources reload only when the image changes; initials follow the typed name.
     val imageIcon by produceState<Bitmap?>(null, source, banner, galleryUri) {
         val model = when (source) {
             ShortcutIconSource.BANNER -> banner
@@ -138,7 +132,6 @@ fun WebUiShortcutSheet(
         description = stringResource(R.string.webui_shortcut_desc),
         onDismissRequest = onDismissRequest
     ) {
-        // Preview as it will roughly look on the launcher.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -185,7 +178,6 @@ fun WebUiShortcutSheet(
                     enabled = banner != null,
                     onClick = { chosenSource = ShortcutIconSource.BANNER }
                 )
-
                 ShortcutIconSource.INITIALS -> OptionTile(
                     modifier = modifier,
                     icon = Icons.Outlined.TextFields,
@@ -194,7 +186,6 @@ fun WebUiShortcutSheet(
                     selected = source == ShortcutIconSource.INITIALS,
                     onClick = { chosenSource = ShortcutIconSource.INITIALS }
                 )
-
                 ShortcutIconSource.GALLERY -> OptionTile(
                     modifier = modifier,
                     icon = Icons.Outlined.PhotoLibrary,
@@ -202,8 +193,6 @@ fun WebUiShortcutSheet(
                     subtitle = if (galleryUri == null) stringResource(R.string.shortcut_icon_pick) else null,
                     selected = source == ShortcutIconSource.GALLERY,
                     onClick = {
-                        // First tap (or tapping the active tile) opens the picker; a previously
-                        // picked image is simply reselected.
                         if (galleryUri != null && source != ShortcutIconSource.GALLERY) {
                             chosenSource = ShortcutIconSource.GALLERY
                         } else {
@@ -225,7 +214,6 @@ fun WebUiShortcutSheet(
                 val bitmap = icon ?: return@Button
                 when (createWebUIShortcut(context, plugin, iconName.trim(), bitmap)) {
                     ShortcutResult.REQUESTED, ShortcutResult.UPDATED -> onDismissRequest()
-                    // Keep the sheet open so the user can retry right after granting.
                     ShortcutResult.PERMISSION_DENIED -> scope.launch {
                         val result = permissionDialog.awaitConfirm(
                             title = permissionTitle,
@@ -237,7 +225,6 @@ fun WebUiShortcutSheet(
                             openShortcutPermissionSettings(context)
                         }
                     }
-
                     ShortcutResult.FAILED -> Unit
                 }
             }
@@ -256,7 +243,6 @@ fun WebUiShortcutSheet(
     }
 }
 
-/** Shows only the center (visible) part of the adaptive layer, masked like a launcher icon. */
 @Composable
 private fun ShortcutIconPreview(icon: Bitmap?, size: Dp) {
     Box(

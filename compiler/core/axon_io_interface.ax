@@ -1,0 +1,89 @@
+// ==========================================
+// AXON-Prime I/O & Peripheral Interface
+// Module: AXON-IO
+// Version: 11.0 (Ultimate)
+// Target: Zero-Latency Peripheral Interfacing & Interrupt Management
+// ==========================================
+
+import AXON.Core.Hardware.Interrupts;
+import AXON.Core.Hardware.DMA;
+import AXON.Core.Hardware.Port_IO;
+
+// تعریف انواع دستگاه‌های متصل
+PRIMITIVE IO_Device_Type {
+    HUMAN_INTERFACE, // کیبورد، ماوس، تاچ‌پد
+    DISPLAY,        // نمایشگر و خروجی گرافیکی
+    STORAGE_PORT,   // پورت‌های اتصال حافظه (USB/SATA)
+    NETWORK_PORT,   // پورت‌های شبکه (Ethernet/Wi-Fi)
+    SENSOR_ARRAY    // سنسورهای دما، شتاب‌سنج و غیره
+    // ادامه تعریف انواع دستگاه‌ها
+    GPIO_PIN        // پورت‌های کنترل مستقیم سخت‌افزار
+}
+
+// ساختار یک بسته ورودی/خروجی
+STRUCT IO_Packet {
+    IO_Device_Type device_type;
+    INT device_id;
+    INT operation_code; // کد عملیات (خواندنی یا نوشتنی)
+    DATA payload;       // داده‌های منتقل شده
+}
+
+// موتور مدیریت ورودی/خروجی و تجهیزات جانبی
+CLASS AxonIOEngine {
+    private MAP<INT, IO_Device_Type> registered_devices;
+
+    constructor() {
+        this.registered_devices = new MAP<INT, IO_Device_Type>();
+        initialize_interrupt_listeners();
+    }
+
+    // ارسال داده به یک دستگاه جانبی با استفاده از پورت‌های سخت‌افزاری یا DMA
+    method void write_to_device(IO_Packet packet) {
+        switch (packet.device_type) {
+            case IO_Device_Type.DISPLAY:
+                // ارسال مستقیم به بافر نمایشگر
+                Port_IO.write_block(packet.device_id, packet.payload);
+                break;
+
+            case IO_Device_Type.GPIO_PIN:
+                // تغییر وضعیت پایه‌های سخت‌افزاری (GPIO)
+                Port_IO.set_pin_state(packet.device_id, packet.payload);
+                break;
+
+            default:
+                // استفاده از DMA برای انتقال سریع بلوک‌های داده
+                DMA.transfer_to_device(packet.device_id, packet.payload);
+                break;
+        }
+    }
+
+    // خواندن داده از دستگاه با استفاده از صف‌های وقفه
+    method IO_Packet read_from_device(INT device_id) {
+        IO_Packet packet;
+        packet.device_id = device_id;
+        packet.device_type = registered_devices.get(device_id);
+
+        // خواندن مستقیم از پورت سخت‌افزاری مربوطه
+        packet.payload = Port_IO.read_block(device_id);
+
+        return packet;
+    }
+
+    // --- متدهای داخلی مدیریت وقفه (Interrupt-Driven) ---
+
+    private method void initialize_interrupt_listeners() {
+        // اتصال به وقفه‌های سخت‌افزاری دستگاه‌های جانبی (IRQ Lines)
+        Interrupts.bind_handler(INTERRUPT_TYPE.PERIPHERAL_IRQ, this.handle_peripheral_interrupt);
+    }
+
+    private method void handle_peripheral_interrupt(INT irq_line) {
+        // شناسایی دستگاهی که وقفه ایجاد کرده است
+        INT device_id = Interrupts.resolve_device_from_irq(irq_line);
+        
+        // خواندن فوری داده قبل از بازنشانی وقفه (Zero-Loss Reading)
+        IO_Packet incoming_packet = read_from_device(device_id);
+
+        // ارسال به صف پردازش مرکزی سیستم
+        AxonSync.push_to_processing_queue(incoming_packet);
+    }
+}

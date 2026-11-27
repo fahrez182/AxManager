@@ -59,7 +59,6 @@ fun PluginList(
     settings: SettingsViewModel,
     viewModel: PluginViewModel,
     modifier: Modifier,
-    /** Scaffold padding; applied inside the list so it can scroll under the top bar. */
     contentPadding: PaddingValues,
     onInstallModule: (Uri) -> Unit,
     onClickModule: (plugin: PluginInfo) -> Unit,
@@ -115,7 +114,6 @@ fun PluginList(
             return
         }
 
-        // changelog is not empty, show it and wait for confirm
         val confirmResult = confirmDialog.awaitConfirm(
             title = changelogText,
             content = changelog,
@@ -173,7 +171,6 @@ fun PluginList(
         }
 
         if (success) {
-            // Its WebUI shortcut would point at nothing once re-ignited; retire it now.
             disableWebUIShortcut(context, plugin.prop.id)
             viewModel.fetchModuleList()
         }
@@ -194,7 +191,6 @@ fun PluginList(
     val moduleRestoreConfirm = stringResource(R.string.restore_plugin_confirmation)
 
     suspend fun onModuleRestore(plugin: PluginInfo) {
-
         val confirmResult = confirmDialog.awaitConfirm(
             askRestorePlugin,
             content = moduleRestoreConfirm.format(plugin.prop.name),
@@ -225,14 +221,12 @@ fun PluginList(
         },
         topInset = contentPadding.calculateTopPadding()
     ) {
-
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()).nestedScrollConnection),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            // Scroll under the fading top bar and clear the floating bar (FABs sit inside it).
             contentPadding = PaddingValues(
                 start = 16.dp,
                 top = contentPadding.calculateTopPadding() + 12.dp,
@@ -240,7 +234,6 @@ fun PluginList(
                 bottom = contentPadding.calculateBottomPadding() + LocalFloatingBarInset.current + 16.dp
             ),
         ) {
-            // First item, so it sits right under the search pill and scrolls with the list.
             if (settings.isDeveloperModeEnabled) {
                 item(key = "plugin_dev_info") {
                     PluginDevInfoCard(viewModel.plugins)
@@ -261,7 +254,6 @@ fun PluginList(
                         }
                     }
                 }
-
                 else -> {
                     items(viewModel.pluginList) { plugin ->
                         val scope = rememberCoroutineScope()
@@ -296,7 +288,6 @@ fun PluginList(
                                             )
                                         }
                                     }
-
                                     if (success) {
                                         viewModel.fetchModuleList()
                                     } else {
@@ -326,13 +317,11 @@ fun PluginList(
                                     if (expandedPluginId == plugin.prop.id) null else plugin.prop.id
                             }
                         )
-
                         Spacer(Modifier.height(1.dp))
                     }
                 }
             }
         }
-
         DownloadListener(context, onInstallModule)
     }
 }

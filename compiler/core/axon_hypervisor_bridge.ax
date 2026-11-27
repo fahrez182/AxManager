@@ -1,0 +1,111 @@
+// ==========================================
+// AXON-Prime Hardware Virtualization & Hypervisor Bridge
+// Module: AXON-Virtualization
+// Version: 11.0 (Ultimate)
+// Target: Type-1 Hypervisor Control & Direct VT-x/AMD-V Integration
+// ==========================================
+
+import AXON.Core.Hardware.CPU_Extensions;
+import AXON.Core.Memory.PageTables;
+import AXON.Core.Error.Handler;
+
+// تعریف حالت‌های مجازی‌سازی
+PRIMITIVE VirtualizationMode {
+    DISABLED,       // غیرفعال (اجرای بومی روی برهنه سخت‌افزار)
+    TYPE1_ROOT,     // ریشه هایپرورایزر (حالت کنترل اصلی سطح ۱)
+    GUEST_VIRTUAL,  // مهمان ایزوله شده (Virtual Machine Context)
+    SECURE_ENCLAVE  // محیط امن سخت‌افزاری (Isolated Enclave)
+}
+
+// ساختار کنترلر یک ماشین مجازی یا محیط ایزوله
+STRUCT VirtualMachineContext {
+    INT vm_id;
+    INT vcpu_count;
+    INT extended_page_table_ptr; // اشاره‌گر به جدول صفحات توسعه یافته (EPT)
+    VirtualizationMode mode;
+}
+
+// موتور مجازی‌سازی و مدیریت هایپرورایزر
+CLASS AxonHypervisorBridge {
+    private VirtualizationMode current_hv_mode;
+    private INT active_vms_count;
+
+    constructor() {
+        this.current_hv_mode = VirtualizationMode.DISABLED;
+        this.active_vms_count = 0;
+        initialize_hardware_virtualization();
+    }
+
+    // فعال‌سازی و راه‌اندازی محیط مجازی‌سازی در سطح سخت‌افزار
+    method void enable_hypervisor_root() {
+        if (!CPU_Extensions.supports_hardware_virtualization()) {
+            AxonError.trigger_fault(ErrorType.CPU_EXCEPTION, Severity.FATAL);
+            return;
+        }
+
+        // فعال‌سازی بیت‌های کنترلی VMX در رجیسترهای MSR پردازنده
+        CPU_Extensions.set_msr_bit(MSR_REG.VMX_ENABLE, true);
+        
+        // اجرای دستور VMXON برای ورود پردازنده به حالت ریشه هایپرورایزر
+        CPU_Extensions.execute_vmxon();
+        
+        this.current_hv_mode = VirtualizationMode.TYPE1_ROOT;
+    }
+
+    // ایجاد و راه‌اندازی یک ماشین مجازی جدید با ایزولاسیون کامل
+    method VirtualMachineContext spawn_virtual_machine(INT vcpus, INT memory_size) {
+        VirtualMachineContext vm;
+        vm.vm_id = ++active_vms_count;
+        vm.vcpu_count = vcpus;
+        vm.mode = VirtualizationMode.GUEST_VIRTUAL;
+
+        // تخصیص و تنظیم جدول صفحات توسعه یافته (EPT) برای ترجمه سخت‌افزاری آدرس‌ها
+        vm.extended_page_table_ptr = PageTables.allocate_ept_root();
+
+        // بارگذاری ساختارکنترل ماشین مجازی (VMCS) در حافظه سخت‌افزاری
+        CPU_Extensions.initialize_vmcs(vm.vm_id, vm.extended_page_table_ptr);
+
+        return vm;
+    }
+
+    // اجرای ماشین مجازی و مدیریت رویدادهای خروج از آن (VM-Exits)
+    method void run_vm(VirtualMachineContext vm) {
+        // تغییر کانتکست به مهمان
+        CPU_Extensions.load_vmcs(vm.vm_id);
+
+        // اجرای دستور VMLAUNCH برای شروع اجرای ماشین مجازی
+        INT exit_reason = CPU_Extensions.execute_vm_launch();
+
+        // مدیریت وقفه یا خروج از ماشین مجازی (VM-Exit Handler)
+        handle_vm_exit(exit_reason);
+    }
+
+    // --- متدهای داخلی مدیریت هایپرورایزر ---
+
+    private method void initialize_hardware_virtualization() {
+        // بررسی پشتیبانی سخت‌افزار از Intel VT-x یا AMD-V
+        if (CPU_Extensions.detect_vendor() == VENDOR.INTEL) {
+            CPU_Extensions.configure_intel_vt_x();
+        } else {
+            CPU_Extensions.configure_amd_v();
+        }
+    }
+
+    private method void handle_vm_exit(INT exit_code) {
+        // تحلیل دلیل خروج از VM (مانند درخواست I/O، خطای حافظه یا وقفه خارجی)
+        switch (exit_code) {
+            case VM_EXIT_REASON.IO_INSTRUCTION:
+                // پردازش درخواست I/O مهمان در سطح هایپرورایزر
+                CPU_Extensions.emulate_io_instruction();
+                break;
+            case VM_EXIT_REASON.EPT_VIOLATION:
+                // اصلاح یا مدیریت خطای دسترسی به حافظه مهمان
+                PageTables.handle_ept_fault();
+                break;
+            default:
+                // بازگشت به اجرای ماشین مجازی
+                CPU_Extensions.resume_vm();
+                break;
+        }
+    }
+}

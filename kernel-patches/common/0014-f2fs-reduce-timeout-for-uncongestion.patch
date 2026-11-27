@@ -1,0 +1,41 @@
+From d231a7c5bd1f10970d52ad1a134278394da0cc04 Mon Sep 17 00:00:00 2001
+From: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+Date: Mon, 22 Jun 2026 22:59:24 +0300
+Subject: [PATCH 14/24] f2fs: reduce timeout for uncongestion
+
+On high fs utilization, congestion is hit quite frequently and waiting for a
+whooping 20ms is too expensive, especially on critical paths.
+
+Reduce it to an amount that is unlikely to affect UI rendering paths.
+
+The new times are as follows:
+  100 Hz  => 1 jiffy   (effective: 10 ms)
+  250 Hz  => 2 jiffies (effective: 8 ms)
+  300 Hz  => 2 jiffies (effective: 6 ms)
+  1000 Hz => 6 jiffies (effective: 6 ms)
+
+Co-authored-by: Danny Lin <danny@kdrag0n.dev>
+Signed-off-by: Park Ju Hyung <qkrwngud825@gmail.com>
+Signed-off-by: Ahmed Al-Nassif <mr.ahmed.nassif@gmail.com>
+---
+ fs/f2fs/f2fs.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 68b3fe6b4..3c66e2748 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -599,8 +599,8 @@ enum {
+ 
+ #define MAX_FLUSH_RETRY_COUNT	3	/* maximum flush retry count in f2fs_enable_checkpoint() */
+ 
+-/* congestion wait timeout value, default: 20ms */
+-#define	DEFAULT_IO_TIMEOUT	(msecs_to_jiffies(20))
++/* congestion wait timeout value, default: 6ms */
++#define	DEFAULT_IO_TIMEOUT	(msecs_to_jiffies(6))
+ 
+ /* maximum retry quota flush count */
+ #define DEFAULT_RETRY_QUOTA_FLUSH_COUNT		8
+-- 
+2.55.0
+

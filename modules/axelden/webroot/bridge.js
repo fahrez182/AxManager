@@ -1,0 +1,2 @@
+function axModDir(){try{if(window.ksu&&ksu.moduleInfo){var j=JSON.parse(ksu.moduleInfo());if(j.moduleDir)return j.moduleDir}}catch(e){}return "/data/adb/axeron/plugins/axelden";}
+function axExec(cmd){return new Promise(function(res,rej){var cb="cb_"+Date.now()+"_"+Math.floor(Math.random()*99999);window[cb]=function(er,o,e){try{delete window[cb]}catch(x){} if(er)rej(new Error(e||er));else res(o);};try{ksu.exec(cmd,JSON.stringify({cwd:axModDir()}),cb);setTimeout(function(){if(window[cb]){delete window[cb];rej(new Error("timeout"))}},25000);}catch(e){rej(e);}});}

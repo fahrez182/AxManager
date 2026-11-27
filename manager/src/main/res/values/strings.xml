@@ -10,6 +10,7 @@
     <string name="axeron_environment">Axeron Environment</string>
     <string name="search_label">Search</string>
     <string name="home">Home</string>
+    <string name="vscode_sim">VSCode</string>
     <string name="privilege">Privilege</string>
     <string name="privilege_plural">Privileges</string>
     <string name="plugin">Plugin</string>

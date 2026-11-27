@@ -1,0 +1,82 @@
+ELF��@03@8
+@@@@00ppp0.0.@0.0n0n�@@2@�@� @�/�o�oppR�td0.0n0n�P�td���<<Q�td�����/system/bin/linker64�Androidr2914206865
+,29?ELSZ`gpw}���������c
+�__libc_init__cxa_atexit__register_atforkfopenfclosefputsfreadgetuidprintfremovefgetssscanfsnprintfstrstrlstatopendirstrncpyreaddirstrcmpclosedirputsfwritefputcmemsetlibc.soLIBC/data/data/com.termux/files/usr/bin/../../usr/liblibdl.so0nV8n@nHn�PnXn�`n�hn�pn^xn�n}�n��n��n��n��n�ng�n��n�n��ne�n��n��n��n��n�o�o�o�o2 oF(o'0o68o'@o�Ho�Po]Xo�`o�ho�poMxo��o��o��oG�o��o��o��o��o��o��o�PqXq`q�H�t�q�q�q�q�q�q�q�q�q	�q
+�q�q�q
+�q�q�qrrrr r(r0r8rNEXT_BUDDY
+TTWU_QUEUE
+[+] I/O schedulers applied.
+%s/force_clk_on/proc/sys/vm/extra_free_kbytesNO_HRTICK
+WAKEUP_PREEMPTION
+202564000000%s/throttlinga/proc/sys/kernel/sched_child_runs_firstinteractive/proc/gpufreqv2/[+] GPU optimization applied.
+/proc/sys/kernel/sched_min_granularity_ns/sys/kernel/debug/sched_features/proc/sys/vm/dirty_ratio%s/%s/proc/sys/kernel/panic_on_oops/proc/sys/vm/vfs_cache_pressure[+] CPU governors applied.
+%sgpm_mode/proc/sys/vm/overcommit_ratio15/proc/sys/net/ipv4/tcp_available_congestion_control/proc/sys/kernel/sched_tunable_scaling/proc/sys/vm/page-cluster/dev/stune/top-app/schedtune.boost[*] Tweaks started...
+MemTotal:3000schedutil/proc/sys/net/ipv4/tcp_fastopen/proc/gpufreq//proc/sys/kernel/random/read_wakeup_threshold30502000000/proc/sys/kernel/printk_devkmsg80reno.mali.gpualways_on64/dev/stune/top-app/schedtune.prefer_idle/proc/sys/net/ipv4/tcp_syncookies0 0 0off/proc/sys/vm/dirty_writeback_centisecs/proc/sys/vm/stat_interval/proc/sys/net/ipv4/tcp_ecn%s/power_policy[-] GPU path not found.
+[*] Applying tweaks... Check %s for details.
+[+] Network tweaks applied.
+%s/force_rail_on3[*] Success! Log saved to %s
+/proc/meminfo/proc/sys/vm/dirty_expire_centisecs/proc/sys/vm/dirty_background_ratio/sys/module/ged/parameters/gx_boost_on1/proc/sys/kernel/sched_wakeup_granularity_ns128/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor/sys/block/sd%c/queue/nr_requests/sys/block/mmcblk%d/queue/nr_requests/proc/sys/kernel/sched_nr_migrate/proc/sys/kernel/random/write_wakeup_threshold/sys/block/sd%c/queue/read_ahead_kb/proc/sys/vm/swappinesscubic/storage/emulated/0/Android/BKT.log/proc/sys/kernel/sched_autogroup_enabled/proc/sys/vm/panic_on_oom/sys/block/mmcblk%d/queue/schedulernoner10240/sys/block/sd%c/queue/schedulerbbr/sys/devices/sys/class/misc%slimit_table0/proc/sys/kernel/sched_migration_cost_ns5000000mq-deadline/sys/block/mmcblk%d/queue/read_ahead_kbwestwood%saging_mode/proc/sys/kernel/sched_latency_ns100000[+] Kernel & VM tweaks applied.
+512/sys/module/ged/parameters/boost_gpu_enable/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_governors[*] All tweaks finished.
+wkgsl-3d0%s/dvfsMemTotal: %lld/proc/sys/kernel/perf_cpu_time_max_percent/proc/sys/kernel/panicbfq/proc/sys/net/ipv4/tcp_congestion_control%s/force_no_nap10/sys/module/ged/parameters/ged_boost_enable/proc/sys/kernel/sched_schedstatsdisable
+Telegram: @RiProG | Channel: @RiOpSo | Group: @RiOpSoDiscERROR: This program requires ROOT access!;8@P�p������,�zR|�X-H@H��8 L `(,t$T-H H ����t H-D����H�H�D`X`�����
+��������`X�������������$�������?#����{����(�)��o�@�)�@�(�������=�T �H���"�����B�@���_$�`�����_�_$��� ��� ���_$� �c��?#��{���O���3�(�s�@��@��T�C�i��)�_� ?���t����OA��{¨�#��_��{���o��g��_��W��O�����@��Cэ��4��!��� �RY �s��P��������!\<���o�@�������R"�R������i� �������
+� Ձ��Pq��@������!(��U�`�������U�R�������4����@� �R���e����CH��'�)�9� Uz���T�@��!���C�\���>��X�7��9�6�R�s���A���T�_���,�@���������/���)���������>��!���@��������9�a�R"�R��_���������>��!���@�������:�a�R"�R��P���
+������>��!���@�������p;�A�R"�R��A����������>��!����@��������;�A�R"�R��2������@� �R��
+���!��Q���r�����������	�)Y� ���A�R"�R��������@����� ?���!��Q��������M�������)�;� ���A�R"�R��������@�����!��Q�����������	�)Y� ���A�R"�R�������� ���P����!\<���@������R"�R����������@��*��b���*��ֲ��������{�����=�sq�T��@� �R��
+��*����@���
+�x�`�����@�!�R���R��|�k 8��q���@����������@� �R
+����*����@���
+�^� �����?�����`���Z���� � ��P����!\<�P�@������a�R"�R������J��@���J���*���b���������9�:�Rs�Z_�q@
+T��@� �R��
+��*Q���@���
+�)�`�������@�!�R���R��-�j 8��"���@����B���`���@�����{S����:�����������@���
+�
+���������
+������@� �R��
+��*!��@���@����
+�Q����� �R������)����r��������y� �����������@� �R��
+��*��@���@����
+�Q������� �R������)����ra�R�������;� ���"�R�����������@��*����������*������b�����������9��s�����Z���Bq@
+T��@� �R��
+��*����@���
+���`�������@�!�R���R����j 8������@��������`���@�����{S����������������@���
+�������������������@� �R��
+��*���@���@����
+�Q�z��� �R������)����r��������y� ���v���p���@� �R��
+��*���@���@����
+�Q�_����� �R������)����ra�R�������;� ���"�R������S���� �@��P����!\<�I�@�������@:���R"�R������C�����������!(�:��
+�����@�!�R���R���@���<��j 8��1�����s����@����O�@�����s����@����H�`�����s"���@����A�������������p�����!��������������
+������	�����!������� �R��K��������������!��������`�R��?���������(�����!���������R��3����� � }�P����!\<���@�����������R"�R�� �������@��*�R�!���@��@����*Z� ��P����s�?����������**9�h
+5�{y��@�������5�P�
+@q���T���� ����~@�@�5������R�2�������?9U
+�7�*�QW[{�����@����>A8�q`T�2������R������Q�?q(TK@9yr�T���@���@5�P�
+@q�T������`4������!$�����������!<������@������R����@�8�R��?9�����*�*�~q�T�������*@[5����2����R�����*��?9��*X��5�qL��T����*�*����q�T�@��*�3�M5�!р�_���s����T�
+4��@�����!���k�`���@��@�����B$<�
+�c� �R^���@�����!��
+�5������R��|���2���@��@�����B�:�
+�c� �RJ���@�����!��
+�!����� �R��h������@��@�����B�
+�c� �R6���@�����!��
+�
+����� �R��T���
+���@��@�����B�
+�c� �R"���@�����!��
+������� �R��@�5 ��^�P����!\<���@��������
+��R���@��@�����B��
+�c� �R���@�����!��
+��������R��"�������@��@�����BL
+�
+�c� �R����@�����!��
+���@�������P�!�R"�R�����������X��@���5�P�
+@q�T����sZ�����4=��@����5�P�
+@qAT����s6=���@�����BD�
+� �R������@�����!��
+���@�������� ���R"�R����������@�����BL�
+� �R������@�����!��
+���@�����������R"�R������~���@�����B�
+� �R������@�����!��
+�n����� �R������k�����d�����!��b����� �R������_�����������!��V����� �R������S�����8�����!��J����� �R������G� ��H�P����!\<�>�@�������x=���R"�R��~���8� �G�P����!\<�/�@�������h�!�R"�R��o���)�����h� ��D�P4��*��@��C��OE��WD��_C��gB��oA��{ƨ�_��{��0��@��� � � � �0��@�� �0��@�"� �0��@�B� �0��@�b� �0��@��� �0��@��� �0��@��� �0��@��� �0��@�� �0��@�"� �0��@�B� �0��@�b� �0��@��� �0��@��� �0��@��� �0��@��� �0�A�� �0�A�"� �0�
+A�B� �0�A�b� �0�A��� �0�A��� �0�A��� �0�A��� �������o�@	���o88@hq �
+���o����ox���o����o�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,�,��������.text.got.note.android.ident.got.plt.rela.plt.bss.dynstr.eh_frame_hdr.gnu.version_r.interp.data.rel.ro.rela.dyn.gnu.version.dynsym.gnu.hash.relro_padding.eh_frame.dynamic.shstrtab.rodata.data]pp����  X|���oxx2N���o�� ����o��8��r��@)B88@�2xx"
+@��<�������. �,�,�e0n0.���o�/pPqP1 hqh1��@r@2�
+�@�@23X�X2�X2�

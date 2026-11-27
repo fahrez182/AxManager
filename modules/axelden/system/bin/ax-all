@@ -1,0 +1,13 @@
+#!/system/bin/sh
+MODE=${1:-ultra}
+FILE=${2:-/sdcard/data.txt}
+TH=8; [ "$MODE" = "old" ] && TH=4
+D=$(dirname $0)
+echo "=== ax-cpu ==="; ax-cpu "$MODE" 2>&1 || sh $D/ax-cpu "$MODE" 2>&1
+echo "=== ax-ram ==="; ax-ram 2>&1 || sh $D/ax-ram 2>&1
+echo "=== ax-gpu ==="; ax-gpu 2>&1 || sh $D/ax-gpu 2>&1
+echo "=== ax-net ==="; ax-net 2>&1 || sh $D/ax-net 2>&1
+echo "=== ax-rom ==="; ax-rom 2>&1 || sh $D/ax-rom 2>&1
+echo "=== ax-ai ==="; ax-ai "$MODE" 2>&1 || sh $D/ax-ai "$MODE" 2>&1
+echo "=== ax-scan ==="; axelden-scan "$FILE" "$TH" 2>&1 || echo NATIVE-FALLBACK
+echo "=== done OK ==="

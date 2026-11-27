@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My VSCode 4K Sim</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0e14;color:#e6edf3;font-family:Tahoma,Consolas,monospace}
+header{background:#010409;padding:10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #30363d}
+header b{color:#58a6ff}.bar{background:#0d1117;padding:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input{background:#010409;color:#fff;border:1px solid #30363d;border-radius:8px;padding:8px}
+button{background:#238636;color:#fff;border:0;border-radius:10px;padding:9px 12px}button.blue{background:#1f6feb}button.gray{background:#30363d}button.red{background:#a40e26}
+.main{display:grid;grid-template-columns:260px 1fr;min-height:52vh}.side{background:#0d1117;padding:10px;border-left:1px solid #30363d}
+.editor{display:flex;flex-direction:column}textarea{flex:1;min-height:360px;background:#0b0e14;color:#fff;border:0;padding:12px;direction:ltr;text-align:left;font-family:Consolas,monospace;font-size:15px;line-height:1.9;outline:none}
+.term{background:#000;padding:10px;border-top:2px solid #238636;animation:glow 3s infinite alternate}
+@keyframes glow{from{box-shadow:0 0 0 #000}to{box-shadow:0 -2px 18px #23863655}}
+#out{white-space:pre-wrap;direction:ltr;text-align:left;max-height:340px;overflow:auto;font-size:13px;color:#d6ffdf}
+#cmd{width:100%;background:#0d1117;color:#58ff9b;border:1px solid #30363d;border-radius:8px;padding:10px;margin-top:8px;direction:ltr}
+.tabs{background:#010409;padding:7px 10px;color:#9fb3c8;font-size:13px;border-bottom:1px solid #30363d}
+footer{background:#1f6feb;padding:6px 10px;font-size:12px;display:flex;justify-content:space-between}
+.card{background:#010409;border:1px solid #30363d;border-radius:10px;padding:8px;margin:6px 0;font-size:13px}
+@media(min-width:2000px){body{font-size:19px}textarea{font-size:20px;min-height:560px}#out{font-size:17px}}
+</style>
+</head>
+<body>
+<header><b>★ My VSCode 4K Sim</b><span><button class="gray" onclick="setLang('fa')">فارسی</button> <button class="gray" onclick="setLang('en')">EN</button> <span id="priv">...</span></span></header>
+<div class="bar">
+<select id="lang"><option value="sh">Shell .sh</option><option value="py">Python .py</option><option value="html">HTML .html</option><option value="c">C .c</option><option value="cpp">C++ .cpp</option><option value="java">Java .java</option></select>
+<label><input type="checkbox" id="sysMode" checked> <span id="modeTxt">روی سیستم: روشن / خاموش = داخل شبیه‌ساز</span></label>
+<button onclick="runEditor()">▶ اجرا</button>
+<button class="blue" onclick="powerCheck()">⚡ قدرت و شارژ</button>
+<button class="blue" onclick="apkList()">📦 APK ها</button>
+<button class="gray" onclick="listDir()">📁 فایل‌ها</button>
+<button class="red" onclick="document.getElementById('out').textContent=''">پاک</button>
+</div>
+<div class="main">
+<div class="side">
+<b id="t_exp">فایل‌منجر شبیه‌ساز</b>
+<input id="path" value="/data/local/tmp" placeholder="path">
+<button class="blue" onclick="listDir()">نمایش</button>
+<button class="gray" onclick="openFile()">باز در ویرایشگر</button>
+<button class="gray" onclick="saveAs()">ذخیره</button>
+<button class="gray" onclick="mkDir()">پوشه جدید</button>
+<button class="gray" onclick="renameF()">تغییر نام</button>
+<button class="red" onclick="delF()">حذف</button>
+<div class="card" id="sysinfo">برای شروع دکمه ⚡ را بزن</div>
+<div class="card">
+<b>🚀 پورت شبیه‌ساز آفلاین - بدون وای‌فای</b><br>
+پورت: <input id="port" value="8080" style="width:90px;direction:ltr">
+<button class="blue" onclick="startPort()">روشن روی این پورت</button>
+<button class="gray" onclick="scanPort()">پورت‌های باز</button>
+<button class="red" onclick="stopPort()">خاموش</button>
+<button class="gray" onclick="fastMode()">⚡ حالت سریع</button>
+<div id="portinfo" style="direction:ltr;text-align:left;font-size:12px;margin-top:6px">offline ready - 127.0.0.1</div>
+</div>
+<div class="card">سیمولاتور = پوشه sim/workspace داخل پلاگین. حالت خاموش فقط همان‌جا کار می‌کند و دستورهای rm -rf / , reboot , dd بسته است.</div>
+</div>
+<div class="editor">
+<div class="tabs" id="tab">● main.sh</div>
+<textarea id="code" spellcheck="false">echo "hello from sim"
+id
+getprop ro.product.model
+</textarea>
+<div class="bar">
+<input id="aiq" placeholder="از دستیار بپرس: مثلا باتری را نشان بده" style="flex:1">
+<button class="blue" onclick="aiHelp()">دستیار</button>
+<button class="gray" onclick="previewHtml()">پیش‌نمایش HTML</button>
+</div>
+<div id="preview" class="card" style="display:none"></div>
+</div>
+</div>
+<div class="term"><b style="color:#58ff9b">TERMINAL</b><pre id="out">آماده... اول ⚡ قدرت و شارژ را بزن</pre><input id="cmd" placeholder="ls -la | id | dumpsys battery" onkeydown="if(event.key==='Enter')termRun()"></div>
+<footer><span id="st">ready</span><span>4K • AxManager • sim+axmanager</span></footer>
+<script>
+const T={fa:{syson:"روی سیستم: روشن",app:"داخل شبیه‌ساز: روشن"},en:{syson:"SYSTEM: ON",app:"SIM: ON"}};
+let L='fa';
+function setLang(l){L=l;document.documentElement.lang=l;document.documentElement.dir=l==='fa'?'rtl':'ltr';upd();}
+function upd(){document.getElementById('modeTxt').textContent=document.getElementById('sysMode').checked?T[L].syson:T[L].app;}
+document.getElementById('sysMode').onchange=upd;upd();
+function ex(c){try{if(typeof ksu!=='undefined')return ksu.exec(c);return '[preview] '+c;}catch(e){return 'ERR:'+e}}
+function info(){try{return JSON.parse(ksu.moduleInfo())}catch(e){return{moduleDir:'/data/local/tmp'}}}
+function simDir(){return info().moduleDir+'/sim/workspace'}
+function print(t){document.getElementById('out').textContent=t}
+function danger(s){let b=['rm -rf /','rm -rf /*','dd if=','mkfs','reboot','shutdown',':(){:|:&};:'];s=s.toLowerCase();for(let x of b)if(s.includes(x))return x;return null}
+function powerCheck(){
+let c="echo ===BATTERY===; dumpsys battery | head -n 25; echo ===CPU===; cat /proc/cpuinfo | grep processor | wc -l; echo cores; echo ===MEM===; cat /proc/meminfo | head -n 5; echo ===DISK===; df -h /data | head -n 5; echo ===ID===; id";
+let r=ex(c);print(r);
+document.getElementById('sysinfo').textContent=r.slice(0,600);
+document.getElementById('priv').textContent=ex('id').split('\n')[0].slice(0,70);
+document.getElementById('st').textContent='power checked '+new Date().toLocaleTimeString();
+try{if(r.includes('level: 15')||r.includes('level: 1'))ksu.toast('شارژ کم: حالت کم‌مصرف، تایم‌اوت 10 ثانیه');}catch(e){}
+}
+function listDir(){let p=document.getElementById('path').value;print('$ ls -la '+p+'\n\n'+ex("ls -lh '"+p+"' 2>&1"))}
+function openFile(){let p=document.getElementById('path').value;let d=ex("cat '"+p+"' 2>&1 | head -n 500");document.getElementById('code').value=d;print('opened: '+p)}
+function b64(s){return btoa(unescape(encodeURIComponent(s)))}
+function saveAs(){let p=document.getElementById('path').value;let t=document.getElementById('code').value;print(ex("echo '"+b64(t)+"' | base64 -d > '"+p+"' && echo saved:"+p+" 2>&1"))}
+function mkDir(){let p=document.getElementById('path').value;print(ex("mkdir -p '"+p+"' && echo maked:"+p+" 2>&1"))}
+function renameF(){let p=document.getElementById('path').value;let n=prompt('نام جدید کامل:',p+'_new');if(n)print(ex("mv '"+p+"' '"+n+"' 2>&1 && echo renamed 2>&1"))}
+function delF(){let p=document.getElementById('path').value;if(!confirm('حذف شود؟ '+p))return;print(ex("rm -rf '"+p+"' 2>&1 && echo deleted 2>&1"))}
+function apkList(){let l="";try{l=ksu.listPackages('user')}catch(e){l=ex("pm list packages 2>&1 | head -n 50")}print(l.slice(0,4000)+"\n\nبرای جزئیات در ترمینال بنویس: dumpsys package com.example");}
+function termRun(){
+let c=document.getElementById('cmd').value;document.getElementById('cmd').value='';
+let sys=document.getElementById('sysMode').checked;
+if(!sys){let d=danger(c);if(d){print('⛔ در شبیه‌ساز بسته است:'+d);return}ex("mkdir -p '"+simDir()+"'");c="cd '"+simDir()+"' && timeout 20s "+c+" 2>&1"}else c=c+" 2>&1";
+print('$ '+(sys?'[SYSTEM] ':'[SIM] ')+c+'\n\n'+ex(c));
+}
+function runEditor(){
+let lang=document.getElementById('lang').value;let sys=document.getElementById('sysMode').checked;
+let code=document.getElementById('code').value;
+if(!sys){let d=danger(code);if(d){print('⛔ بسته شد:'+d);return}}
+let ws=simDir();ex("mkdir -p '"+ws+"' 2>&1");
+let m={sh:'main.sh',py:'main.py',html:'index.html',c:'main.c',cpp:'main.cpp',java:'Main.java'};
+let fn=m[lang]||'main.txt';let fp=ws+'/'+fn;
+ex("echo '"+b64(code)+"' | base64 -d > '"+fp+"' && chmod 644 '"+fp+"' 2>&1");
+let cmd='';
+if(lang==='sh')cmd=(sys?"sh '"+fp+"'":"cd '"+ws+"' && timeout 20s sh './"+fn+"'")+" 2>&1";
+else if(lang==='py'){let h=ex("which python3 2>&1");if(h.includes('no')||h.includes('not found')||!h.trim()){print('❌ python3 نیست.\nراه: باینری python3 استاتیک arm64 را در پلاگین system/bin بگذار یا Shell را اجرا کن.\n'+h);return}cmd=(sys?"python3 '"+fp+"'":"cd '"+ws+"' && timeout 20s python3 './"+fn+"'")+" 2>&1"}
+else if(lang==='html'){document.getElementById('preview').style.display='block';document.getElementById('preview').textContent='پیش‌نمایش:';document.getElementById('preview').innerHTML+=code.slice(0,8000);print('HTML preview شد. فایل:'+fp);return}
+else if(lang==='c'||lang==='cpp'){let h=ex("which clang tcc gcc 2>&1");print('کامپایلر موجود:\n'+h+'\nبرای اجرای واقعی C باید clang یا tcc در system/bin پلاگین باشد.\nفایل ذخیره شد:'+fp);return}
+else if(lang==='java'){print('جاوا روی گوشی مستقیم اجرا نمی‌شود. فایل ذخیره شد:'+fp+'\nبرای اجرا به JDK یا Termux + ecj نیاز داری.');return}
+print('$ '+(sys?'[SYSTEM] ':'[SIM] ')+cmd+'\n\n'+ex(cmd));
+}
+function previewHtml(){let v=document.getElementById('code').value;let p=document.getElementById('preview');p.style.display='block';p.innerHTML='<b>preview:</b><hr>'+v.slice(0,10000)}
+function aiHelp(){
+let q=document.getElementById('aiq').value;
+if(!q){print('سوال بنویس');return}
+let a='';
+if(q.includes('باتری'))a="dumpsys battery | head -n 20";
+else if(q.includes('مدل')||q.includes('گوشی'))a="getprop ro.product.model; getprop ro.build.version.release; id";
+else if(q.includes('حافظه'))a="df -h /data; cat /proc/meminfo | head";
+else if(q.includes('برنامه')||q.includes('apk'))a="pm list packages | head -n 30";
+else if(q.includes('فایل'))a="ls -lh '"+simDir()+"'";
+else a="echo دستیار آفلاین: برای '"+q+"'\nپیشنهاد:\nls -la\nid\ndumpsys battery | head -n 20\ngetprop ro.product.model";
+print('🤖 '+q+'\n\nپیشنهاد دستور:\n'+a+'\n\nخروجی:\n'+ex(a+" 2>&1"));
+}
+function startPort(){
+let port=document.getElementById('port').value||'8080';
+if(port==='5555'){print('⛔ 5555 مال TCP Debugging است، 8080 یا 8000 بگذار');return}
+let ws=simDir();ex("mkdir -p '"+ws+"/www' 2>&1");
+ex("echo '<h1>SIM OK '+port+'</h1>' > '"+ws+"/www/index.html' 2>&1");
+let cmd="cd '"+ws+"/www' && (which python3 >/dev/null 2>&1 && nohup python3 -m http.server "+port+" >/dev/null 2>&1 & || busybox httpd -p "+port+" -h . 2>&1 &) ; sleep 1; ss -tln 2>&1 || netstat -tln 2>&1 || cat /proc/net/tcp 2>&1";
+let r=ex(cmd);print('[LOCALHOST:'+port+'] بدون وای‌فای\n\n'+r+'\n\nتست کن:\ncurl -I 127.0.0.1:'+port+'\n'+ex('curl -I 127.0.0.1:'+port+' 2>&1 | head -n 20'));
+document.getElementById('portinfo').textContent='ON 127.0.0.1:'+port+' - no wifi needed';
+}
+function stopPort(){
+let port=document.getElementById('port').value||'8080';
+print(ex("pkill -f 'http.server "+port+"' 2>&1; fuser -k "+port+"/tcp 2>&1; echo stopped:"+port));
+}
+function scanPort(){
+print('=== پورت‌های باز لوکال ===\n'+ex("ss -tln 2>&1 || netstat -tln 2>&1")+ '\n=== حافظه و لود برای حالت سریع ===\n'+ex("cat /proc/loadavg 2>&1; cat /proc/meminfo | head -n 3 2>&1"));
+}
+function fastMode(){
+let r=ex("dumpsys battery | grep level 2>&1; cat /proc/cpuinfo | grep processor | wc -l 2>&1");
+print('⚡ حالت سریع فعال: تایم‌اوت کم، کش سبک\n'+r+'\n'+ex("echo 3 > /proc/sys/vm/drop_caches 2>&1 && echo cache-cleaned || echo need-root-for-cache 2>&1"));
+}  
+setTimeout(powerCheck,600);
+</script>
+</body>
+</html>

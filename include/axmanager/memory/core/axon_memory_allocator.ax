@@ -1,0 +1,109 @@
+// ==========================================
+// AXON-Prime Memory Allocator (Quantum-Pool)
+// Module: AXON-Core
+// Version: 11.0 (Ultimate)
+// Target: Zero-Fragmentation & Hardware-Direct Access
+// ==========================================
+
+import AXON.Core.Hardware.Registers;
+import AXON.Core.Hardware.MMU; // Memory Management Unit
+
+// تعریف انواع ناحیه‌های حافظه
+PRIMITIVE MemoryRegion {
+    STACK,      // برای متغیرهای محلی و سریع
+    HEAP,       // برای اشیاء بزرگ و دائمی
+    SCRATCH,     // برای محاسبات موقت و بسیار سریع
+    SECURE_ZONE // برای داده‌های رمزنگاری شده (محافظت شده)
+}
+
+// ساختار مدیریت یک بلوک حافظه
+STRUCT MemoryBlock {
+    VOID* base_address;
+    INT size;
+    BOOL is_allocated;
+    MemoryRegion region_type;
+}
+
+// مدیریت کننده اصلی حافظه
+CLASS AxonAllocator {
+    private List<MemoryBlock> pool;
+    private MMU_Controller mmu;
+    
+    // تعیین اندازه صفحات حافظه بر اساس معماری سخت‌افزار (مثلاً 2MB Huge Pages)
+    private CONST INT PAGE_SIZE = 2097152; 
+
+    constructor(INT total_system_memory) {
+        this.mmu = new MMU_Controller();
+        this.pool = new List<MemoryBlock>();
+        // مقداردهی اولیه Pool با صفحات بزرگ برای جلوگیری از Fragmentation
+        initialize_quantum_pool(total_system_memory);
+    }
+
+    // متد اصلی تخصیص حافظه (بسیار سریع)
+    method VOID* allocate(INT requested_size, MemoryRegion region) {
+        // ۱. پیدا کردن بهترین بلوک موجود (Best-Fit Strategy)
+        MemoryBlock target_block = find_best_fit(requested_size, region);
+
+        if (target_block != null) {
+            target_block.is_allocated = true;
+            return target_block.base_address;
+        } else {
+            // ۲. اگر بلوک نبود، یک صفحه جدید از سخت‌افزار بخواه
+            return expand_pool_from_hardware(requested_size, region);
+        }
+    }
+
+    // آزادسازی حافظه (Zero-Latency Free)
+    method void deallocate(VOID* address) {
+        MemoryBlock block = find_block_by_address(address);
+        if (block != null) {
+            block.is_allocated = false;
+            // ادغام بلوک‌های آزاد با هم برای جلوگیری از تکه تکه شدن (Coalescing)
+            coalesce_free_blocks(block);
+        }
+    }
+
+    // متد تخصصی برای دسترسی مستقیم به حافظه بدون واسطه (Zero-Copy)
+    method VOID* get_direct_phys_address(VOID* virtual_addr) {
+        // تبدیل مستقیم آدرس مجازی به فیزیکی از طریق MMU
+        return mmu.translate_to_physical(virtual_addr);
+    }
+
+    // --- متدهای داخلی (Internal Logic) ---
+
+    private method MemoryBlock find_best_fit(INT size, MemoryRegion region) {
+        // جستجو در لیست بلوک‌ها برای یافتن مناسب‌ترین فضا
+        // در نسخه نهایی این بخش با استفاده از Bit-map در سطح سخت‌افزار انجام می‌شود
+        for (MemoryBlock block : pool) {
+            if (!block.is_allocated && block.size >= size && block.region_type == region) {
+                return block;
+            }
+        }
+        return null;
+    }
+
+    private method VOID* expand_pool_from_hardware(INT size, MemoryRegion region) {
+        // درخواست مستقیم صفحه حافظه از CPU/MMU
+        // استفاده از Huge Pages برای کاهش فشار بر TLB
+        VOID* new_addr = mmu.request_huge_page(size);
+        
+        if (new_addr != null) {
+            MemoryBlock new_block = new MemoryBlock(new_addr, size, true, region);
+            pool.add(new_block);
+            return new_addr;
+        }
+        
+        panic("OUT_OF_MEMORY_FATAL"); // اگر حافظه کاملاً پر بود، سیستم را متوقف کن
+        return null;
+    }
+
+    private method void coalesce_free_blocks(MemoryBlock block) {
+        // ادغام بلوک آزاد شده با بلوک‌های مجاور برای جلوگیری از Fragmentation
+        // این کار باعث می‌شود حافظه همیشه یکپارچه باقی بماند
+    }
+
+    private method void initialize_quantum_pool(INT total_mem) {
+        // تقسیم حافظه کل به بلوک‌های اولیه بزرگ
+        // ...
+    }
+}

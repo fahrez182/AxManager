@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22)
+project(axdark2)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-O3 -flto -pthread")
+add_library(axdark2 SHARED AxDarkGov2Engine.cpp)
+find_library(log-lib log)
+target_link_libraries(axdark2 ${log-lib})

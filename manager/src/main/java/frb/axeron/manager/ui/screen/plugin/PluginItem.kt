@@ -113,15 +113,12 @@ fun PluginConfig(
                     description = stringResource(R.string.add_web_ui_shortcut_msg),
                     onClick = {
                         if (plugin.hasWebUi) {
-                            // Swap this sheet for the shortcut editor.
                             onDismissRequest()
                             showShortcutSheet = true
                         }
                     }
                 )
             }
-
-            // Reserved for upcoming WebUI options.
             AxCard {
                 SettingsRow(
                     label = stringResource(R.string.web_ui_more_soon),
@@ -174,7 +171,6 @@ fun PluginItem(
             val context = LocalContext.current
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
             val useBanner = prefs.getBoolean("use_banner", true)
-            // URL or file bytes, read off the main thread; shared with the shortcut sheet.
             val banner = if (useBanner) rememberPluginBanner(plugin) else null
 
             if (banner != null) {
@@ -283,14 +279,11 @@ fun PluginItem(
                                                 )
                                                 if (result == ConfirmResult.Neutral) {
                                                     val success = reigniteSheet.reignite()
-
                                                     if (success) {
                                                         viewModel.fetchModuleList()
                                                     }
-
                                                 }
                                             }
-
                                         }
                                     )
                                 }
@@ -383,16 +376,14 @@ fun PluginItem(
                                     )
 
                                     Text(
-                                        text = if (plugin.prop.updateJson.isNotEmpty()) "$pluginUpdateJson: ${plugin.prop.updateJson}" else "$pluginUpdateJson: $pluginUpdateJsonEmpty",
+                                        text = if (!plugin.prop.updateJson.isNullOrEmpty()) "$pluginUpdateJson: ${plugin.prop.updateJson}" else "$pluginUpdateJson: $pluginUpdateJsonEmpty",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-
                             }
-
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -412,16 +403,19 @@ fun PluginItem(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(
-                        text = plugin.prop.description,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 4
-                    )
+                    val safeDesc = plugin.prop.description.orEmpty().trim()
+                    if (safeDesc.isNotBlank()) {
+                        Text(
+                            text = safeDesc,
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                            fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 4
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(6.dp))
 
@@ -464,7 +458,6 @@ fun PluginItem(
                                         )
                                     }
                                 }
-
                                 Spacer(modifier = Modifier.weight(0.1f, true))
                             }
 
@@ -520,7 +513,6 @@ fun PluginItem(
                                         )
                                     }
                                 }
-
                                 Spacer(modifier = Modifier.weight(0.1f, true))
                             }
 
