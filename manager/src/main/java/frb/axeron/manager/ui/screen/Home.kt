@@ -1,6 +1,6 @@
 package frb.axeron.manager.ui.screen
 
-import frb.axeron.manager.ui.screen.ActivateScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ActivateScreenDestination
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
