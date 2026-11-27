@@ -10,12 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-// نکته مهم: اگر خط زیر قرمز شد، یعنی KSP هنوز فایل را نساخته. 
-// اما برای رفع ارور فعلی، ما این ایمپورت را حذف یا اصلاح می‌کنیم.
-// فعلاً این را کامنت می‌کنیم تا Build انجام شود:
-// import com.ramcosta.composedestinations.generated.api.ActivateScreenDestination
 
-@Destination<RootGraph>
+@Destination<RootGraph>(start = true) // مشخص کردن به عنوان صفحه اول
 @Composable
 fun HomeScreen() {
     Column(
@@ -31,8 +27,9 @@ fun HomeScreen() {
         
         Text(text = "Welcome, Amirhossein!")
         
-        // اینجا اگر می‌خواهی به صفحه فعال‌سازی بروی، فعلاً از یک دکمه ساده استفاده می‌کنیم
-        // تا ارور ندهد، بعداً که KSP درست شد، مقصد را اضافه می‌کنیم
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        // دکمه انتقال به بخش‌های دیگر
         Button(onClick = { /* Navigation logic will go here */ }) {
             Text("Go to Activation")
         }
