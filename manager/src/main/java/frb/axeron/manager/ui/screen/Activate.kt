@@ -1,5 +1,6 @@
 package frb.axeron.manager.ui.screen
 
+import frb.axeron.manager.ui.viewmodel.LocalViewModelGlobal
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
