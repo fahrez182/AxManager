@@ -58,40 +58,28 @@ class ActivateViewModel : ViewModel() {
         const val ACTIVATE_FAILED = -1
         const val ACTIVATE_PROCESS = 0
         const val ACTIVATE_SUCCESS = 1
-
-        /** How long an update may take, from the starter's run to the new server's binder. */
         const val UPDATE_TIMEOUT = 15000L
     }
 
-    // As axeronObserve decides it: an Updating set here is kept through the Disable that a
-    // refused server's release sends (see isStillUpdating), so the card would wait forever.
     var activateStatus by mutableStateOf<ActivateStatus>(
         if (Axeron.pingBinder() && !releaseIfRefused()) getStatus(Axeron.getAxeronInfo())
         else ActivateStatus.Disable
     )
     private set
 
-    /** The running update (see startUpdate); above init, whose collector may already set it. */
     private var updateJob: Job? = null
 
     var axeronInfo by mutableStateOf(AxeronInfo())
         private set
 
-    /** Whether the server holds its wakelock, as the server reports it. */
     var wakeLockHeld by mutableStateOf(false)
         private set
 
-    /** Saves the choice so it is applied again on every (re)connect, then asks the server. */
     fun setWakeLock(enabled: Boolean) {
         AxeronSettings.setWakeLock(enabled)
         applyWakeLock(enabled)
     }
 
-    /**
-     * False once the server was asked to hold its wakelock and doesn't: its acquire failed (a
-     * ROM or mode that refuses it), so the toggle has nothing to switch. While it is off there
-     * is no way to tell, and the toggle stays.
-     */
     var wakeLockUsable by mutableStateOf(true)
         private set
 
@@ -123,11 +111,6 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Whether every plugin is stopped once the server dies. The setting is a flag file the
-     * server's death watchdog reads at that moment, so it holds without the app running. It
-     * lives in the current mode's folder and is written through the server, as its own uid.
-     */
     var isStopPluginsWithServer by mutableStateOf(false)
         private set
 
@@ -145,14 +128,9 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-    /** The flag as it is on disk now, not as last shown. */
     private fun readStopPluginsFlag(): Boolean =
         runCatching { Axeron.newFileService()?.exists(stopPluginsFlag()) == true }.getOrDefault(false)
 
-    /**
-     * Stops the server from the power menu. With the stop-plugins setting on, the plugins are
-     * stopped first, in [log] and cancellable, which leaves the death watchdog nothing to do.
-     */
     suspend fun shutdownServer(log: ActionLog): Boolean = withContext(Dispatchers.IO) {
         if (readStopPluginsFlag() && !AxeronPluginService.stopAllPlugins(log::out, log::err)) {
             return@withContext false
@@ -164,13 +142,6 @@ class ActivateViewModel : ViewModel() {
         true
     }
 
-    /**
-     * Restarts the server from the power menu, then ignites in [log]. With the stop-plugins
-     * setting on, the plugins are stopped before the old server goes: left to its death
-     * watchdog, they would be killed while the new server's igniter already skips them as
-     * running, and stay stopped. Cancel is off while the server is replaced, as a starter cut
-     * short after killing the old server leaves none.
-     */
     suspend fun restartServer(log: ActionLog): Boolean = withContext(Dispatchers.IO) {
         if (readStopPluginsFlag() && !AxeronPluginService.stopAllPlugins(log::out, log::err)) {
             return@withContext false
@@ -180,12 +151,10 @@ class ActivateViewModel : ViewModel() {
         val old = Axeron.getBinder()
         val received = CompletableDeferred<Unit>()
         val failed = CompletableDeferred<Unit>()
-        // A new binder, not the old server pushing its own again.
         val listener = Axeron.OnBinderReceivedListener {
             if (Axeron.getBinder() !== old) received.complete(Unit)
         }
         Axeron.addBinderReceivedListener(listener)
-        // The ignite below runs in view instead of the one the new binder would start.
         Axeron.suppressAutoIgnite = true
         val up = try {
             Axeron.relaunchServer({ failed.complete(Unit) }) { line, error ->
@@ -222,12 +191,10 @@ class ActivateViewModel : ViewModel() {
                     if (enable) fs.createNewFile(flag) else fs.delete(flag)
                 }
             }
-            // Show what is really on disk, in case the write failed.
             checkStopPluginsWithServer()
         }
     }
 
-    /** See [Stealth]: shown as on disk, which the request-access activity is kept in line with. */
     var isStealth by mutableStateOf(false)
         private set
 
@@ -278,7 +245,6 @@ class ActivateViewModel : ViewModel() {
         }
     }
 
-
     sealed class ActivateStatus {
         object Disable : ActivateStatus()
         class NeedExtraStep(val axeronInfo: AxeronInfo) : ActivateStatus()
@@ -289,27 +255,13 @@ class ActivateViewModel : ViewModel() {
     private fun getStatus(axeronInfo: AxeronInfo): ActivateStatus {
         val isNeedExtraStep = axeronInfo.isNeedExtraStep() || (axeronInfo.isRunning() && Axeron.checkRemotePermission("android.permission.GRANT_RUNTIME_PERMISSIONS") != PackageManager.PERMISSION_GRANTED)
         return when {
-            axeronInfo.isNeedUpdate() -> {
-                ActivateStatus.Updating(axeronInfo)
-            }
-
-            isNeedExtraStep -> {
-                ActivateStatus.NeedExtraStep(axeronInfo)
-            }
-
-            axeronInfo.isRunning() -> {
-                ActivateStatus.Running(axeronInfo)
-            }
-
+            axeronInfo.isNeedUpdate() -> ActivateStatus.Updating(axeronInfo)
+            isNeedExtraStep -> ActivateStatus.NeedExtraStep(axeronInfo)
+            axeronInfo.isRunning() -> ActivateStatus.Running(axeronInfo)
             else -> ActivateStatus.Disable
         }
     }
 
-    /**
-     * A server that refuses us (left running across a reinstall, it knows our old uid) is taken
-     * as stopped: its binder is let go, nothing is updated through it, and the user starts the
-     * server again, which kills it. Its exit() refuses us too, so destroy() only lets go.
-     */
     private fun releaseIfRefused(): Boolean {
         if (!Axeron.isRefusedByServer()) return false
         Log.w("AxManagerBinder", "server refuses the manager, taking it as stopped")
@@ -323,20 +275,15 @@ class ActivateViewModel : ViewModel() {
         } else if (Axeron.pingBinder()) {
             val axeronInfo = Axeron.getAxeronInfo()
             val status = getStatus(axeronInfo)
-            Log.i("AxManagerBinder", "Initial status determined: ${status::class.simpleName}")
             trySend(status)
         }
         val receivedListener = Axeron.OnBinderReceivedListener {
-            Log.i("AxManagerBinder", "onBinderReceived listener triggered")
-            // destroy() tells the dead listener below, which sends Disable.
             if (releaseIfRefused()) return@OnBinderReceivedListener
             val axeronInfo = Axeron.getAxeronInfo()
             val status = getStatus(axeronInfo)
-            Log.i("AxManagerBinder", "New status after binder received: ${status::class.simpleName}")
             trySend(status)
         }
         val deadListener = Axeron.OnBinderDeadListener {
-            Log.i("AxManagerBinder", "onBinderDead")
             trySend(ActivateStatus.Disable)
         }
         Axeron.addBinderReceivedListener(receivedListener)
@@ -350,53 +297,31 @@ class ActivateViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             axeronObserve().collect { status ->
-                // The old server dies as the starter replaces it: wait for the new one, but only
-                // while the update runs.
                 val isStillUpdating = status is ActivateStatus.Disable &&
                         activateStatus is ActivateStatus.Updating && updateJob?.isActive == true
                 axeronInfo = when (status) {
                     is ActivateStatus.Running -> {
                         checkShizukuIntercept()
-                        // Re-apply the PATH preference on every (re)connect.
                         Axeron.setPreferSystemBinaries(AxeronSettings.getPreferSystemBinaries())
-                        // The server forgets the wakelock when it stops; hold it again if wanted.
                         applyWakeLock(AxeronSettings.getWakeLock())
                         status.axeronInfo
                     }
-
-                    is ActivateStatus.Updating -> {
-                        status.axeronInfo
-                    }
-
-                    is ActivateStatus.NeedExtraStep -> {
-                        status.axeronInfo
-                    }
-
+                    is ActivateStatus.Updating -> status.axeronInfo
+                    is ActivateStatus.NeedExtraStep -> status.axeronInfo
                     else -> {
-                        if (isStillUpdating) {
-                            (activateStatus as ActivateStatus.Updating).axeronInfo
-                        } else {
-                            AxeronInfo()
-                        }
+                        if (isStillUpdating) (activateStatus as ActivateStatus.Updating).axeronInfo
+                        else AxeronInfo()
                     }
                 }
                 if (isStillUpdating) return@collect
-                Log.i("AxManagerBinder", "status: $status")
                 activateStatus = status
                 if (status is ActivateStatus.Updating) startUpdate() else setTryToActivate(false)
             }
         }
     }
 
-    /**
-     * Replaces a server that needs updating, wherever its Updating came from. Gives up at once
-     * when the starter can't be run (a server from before axsh hasn't the call for it), or when
-     * no new server comes within [UPDATE_TIMEOUT]: the card goes to Disable, the old server is
-     * let go, and the user starts the server again, which kills whatever is left of it.
-     */
     private fun startUpdate() {
         if (updateJob?.isActive == true) return
-        Log.i("AxManagerBinder", "Server needs update, starting update process")
         setTryToActivate(true)
         updateJob = viewModelScope.launch {
             val failed = CompletableDeferred<Unit>()
@@ -410,15 +335,9 @@ class ActivateViewModel : ViewModel() {
                 ).first()
             } == true
             if (updated) return@launch
-            Log.w(
-                "AxManagerBinder",
-                if (failed.isCompleted) "server can't be updated in place, giving up"
-                else "server update timed out after $UPDATE_TIMEOUT ms, giving up"
-            )
             activateStatus = ActivateStatus.Disable
             axeronInfo = AxeronInfo()
             setTryToActivate(false)
-            // On a timeout the old server may live on; a new one that came just now is kept.
             if (!failed.isCompleted) withContext(Dispatchers.IO) {
                 if (Axeron.pingBinder() && !Axeron.isUpdated()) Axeron.destroy()
             }
@@ -426,7 +345,6 @@ class ActivateViewModel : ViewModel() {
     }
 
     suspend fun startRoot(): Int = startRootInternal(AxeronSettings.LaunchMethod.ROOT)
-
     suspend fun startRootAsShell(): Int = startRootInternal(AxeronSettings.LaunchMethod.ROOT_AS_SHELL)
 
     private suspend fun startRootInternal(mode: Int): Int = withContext(Dispatchers.IO) {
@@ -436,7 +354,7 @@ class ActivateViewModel : ViewModel() {
 
             ActivationLog.info("Requesting root access…")
             if (!Shell.getShell().isRoot) {
-                ActivationLog.error("Root access wasn't granted (no su, or the request was denied)")
+                ActivationLog.error("Root access wasn't granted")
                 Shell.getCachedShell()?.close()
                 return@withContext ACTIVATE_FAILED
             }
@@ -448,10 +366,6 @@ class ActivateViewModel : ViewModel() {
                 Starter.internalCommand
             }
 
-            ActivationLog.info(
-                if (mode == AxeronSettings.LaunchMethod.ROOT_AS_SHELL) "Running the starter as shell (uid 2000)…"
-                else "Running the starter as root…"
-            )
             val result = Shell.cmd(command).exec()
             result.out.forEach(ActivationLog::output)
             result.err.forEach(ActivationLog::output)
@@ -479,94 +393,66 @@ class ActivateViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    suspend fun startAdbWireless(
-        context: Context
-    ): AdbStateInfo = withContext(Dispatchers.IO) {
+    suspend fun startAdbWireless(context: Context): AdbStateInfo = withContext(Dispatchers.IO) {
         if (tryActivate) return@withContext AdbStateInfo.Process("Trying to activate")
         setTryToActivate(true)
         resetStatus()
 
-        // An app can't switch Wi-Fi on, so the user does, in Wi-Fi settings; the attempt goes on
-        // once it is connected, and only then can pairing be the fallback.
         if (!AdbEnvironment.isWifiConnected(context)) {
-            ActivationLog.warn("Wi-Fi is off — turn it on in the panel, the activation continues once it is connected")
+            ActivationLog.warn("Wi-Fi is off — turn it on")
             requestEnableWifi(context)
             val connected = withTimeoutOrNull(WIFI_WAIT_MS) {
                 while (!AdbEnvironment.isWifiConnected(context)) delay(500)
                 true
             }
             if (connected != true) {
-                ActivationLog.error("Wi-Fi wasn't connected within ${WIFI_WAIT_MS / 1000} s")
+                ActivationLog.error("Wi-Fi wasn't connected")
                 return@withContext AdbStateInfo.Failed("WiFi is required")
             }
-            ActivationLog.success("Wi-Fi is connected")
         }
-
         val resultChannel = kotlinx.coroutines.channels.Channel<AdbStateInfo>(1)
         val job = launch {
-            AdbStarter.startAdbWireless(context) {
-                resultChannel.trySend(it)
-            }
+            AdbStarter.startAdbWireless(context) { resultChannel.trySend(it) }
         }
 
         val result = withTimeoutOrNull(15000) {
             resultChannel.receive()
-        } ?: AdbStateInfo.Failed("Timeout waiting for connection").also {
-            ActivationLog.error("Timed out after 15 s waiting for wireless debugging")
-        }
+        } ?: AdbStateInfo.Failed("Timeout waiting for connection")
 
         job.cancel()
         result
     }
 
-    suspend fun startAdbTcp(
-        context: Context
-    ): AdbStateInfo = withContext(Dispatchers.IO) {
+    suspend fun startAdbTcp(context: Context): AdbStateInfo = withContext(Dispatchers.IO) {
         if (tryActivate) return@withContext AdbStateInfo.Process("Trying to activate")
         setTryToActivate(true)
         try {
             resetStatus()
-
             val tcpPort = AdbEnvironment.getAdbTcpPort()
-
             val resultChannel = kotlinx.coroutines.channels.Channel<AdbStateInfo>(1)
-            AdbStarter.startAdbClient(context, tcpPort) {
-                resultChannel.trySend(it)
-            }
+            AdbStarter.startAdbClient(context, tcpPort) { resultChannel.trySend(it) }
             withTimeoutOrNull(15000) { resultChannel.receive() }
-                ?: AdbStateInfo.Failed("Timeout waiting for connection").also {
-                    ActivationLog.error("Timed out after 15 s waiting for adbd on TCP")
-                }
+                ?: AdbStateInfo.Failed("Timeout waiting for connection")
         } finally {
             setTryToActivate(false)
         }
     }
 
-    suspend fun stopAdbTcp(
-        context: Context, result: (AdbStateInfo) -> Unit = {}
-    ) = withContext(Dispatchers.IO) {
+    suspend fun stopAdbTcp(context: Context, result: (AdbStateInfo) -> Unit = {}) = withContext(Dispatchers.IO) {
         if (tryActivate) return@withContext result(AdbStateInfo.Process("Trying to activate"))
         setTryToActivate(true)
         try {
-            // An explicit Stop always stops (TCP mode only decides what activation switches to),
-            // and the outcome is always reported back.
             val tcpPort = AdbEnvironment.getAdbTcpPort()
-            if (tcpPort > 0) {
-                stopTcp(context, tcpPort, result)
-            } else {
-                result(AdbStateInfo.Failed(context.getString(R.string.adb_tcp_not_active)))
-            }
+            if (tcpPort > 0) stopTcp(context, tcpPort, result)
+            else result(AdbStateInfo.Failed(context.getString(R.string.adb_tcp_not_active)))
         } finally {
             setTryToActivate(false)
         }
     }
 
-    /** How long the user gets to turn Wi-Fi on and see it connect. */
     private val WIFI_WAIT_MS = 60_000L
 
     fun requestEnableWifi(context: Context) {
-        // The Wi-Fi panel is a sheet over the app with the switch on it; below Android 10 only
-        // the settings page exists.
         val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Settings.Panel.ACTION_WIFI
         else Settings.ACTION_WIFI_SETTINGS
         val intent = Intent(action).apply {
@@ -578,49 +464,22 @@ class ActivateViewModel : ViewModel() {
         context.startActivity(intent)
     }
 
-
     @RequiresApi(Build.VERSION_CODES.R)
     fun startPairingService(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             if (!isNotificationEnabled) return@launch
             setLaunchDevSettings(true)
-
             val intent = AdbPairingService.startIntent(context)
             try {
                 context.startForegroundService(intent)
             } catch (e: Throwable) {
-                Log.e("AxManager", "startForegroundService", e)
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                    && e is ForegroundServiceStartNotAllowedException
-                ) {
-                    val mode = context.getSystemService(AppOpsManager::class.java)
-                        .noteOpNoThrow(
-                            "android:start_foreground",
-                            android.os.Process.myUid(),
-                            context.packageName,
-                            null,
-                            null
-                        )
-                    if (mode == AppOpsManager.MODE_ERRORED) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                "OP_START_FOREGROUND is denied. What are you doing?",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
                     context.startService(intent)
                 }
             }
         }
     }
 
-
-    /**
-     * Cek notifikasi aktif atau tidak
-     */
     @RequiresApi(Build.VERSION_CODES.R)
     private fun checkNotificationEnabled(context: Context): Boolean {
         val nm = context.getSystemService(NotificationManager::class.java)
