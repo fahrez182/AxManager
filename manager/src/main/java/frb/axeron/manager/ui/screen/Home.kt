@@ -150,13 +150,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Destination<RootGraph>(start = true)
+@Destination<RootGraph>
 @Composable
-fun HomeScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    val pluginViewModel = viewModelGlobal.pluginViewModel
-    val privilegeViewModel = viewModelGlobal.privilegeViewModel
-    val activateViewModel = viewModelGlobal.activateViewModel
+fun AppearanceScreen(navigator: DestinationsNavigator) { // <--- viewModelGlobal از اینجا حذف شد
+    // اگر می‌خواهید از settingsViewModel استفاده کنید، به جای دریافت از ورودی، آن را نمونه‌سازی کنید:
+    // val settingsViewModel = remember { SettingsViewModel() } 
+    // یا اگر روش دیگری دارید، به جای ViewModelGlobal استفاده کنید
 
     val isRunning = activateViewModel.activateStatus is ActivateViewModel.ActivateStatus.Running
 
