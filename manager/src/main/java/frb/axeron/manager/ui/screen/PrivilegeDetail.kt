@@ -144,18 +144,16 @@ import frb.axeron.shell.KeepAlive
 import frb.axeron.shared.MiuiAppOps
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun PrivilegeDetailScreen(navigator: DestinationsNavigator) {
-    // دریافت مرجع جهانی بدون نیاز به ورودی تابع!
-    val viewModels = LocalViewModelGlobal.current 
-    
-    // حالا به هر چیزی دسترسی دارید:
-    val privVM = viewModels.privilegeViewModel
-    val settingsVM = viewModels.settingsViewModel
-
-    // بقیه کد...
-}
+fun PrivilegeDetailScreen(
+    appInfo: AppsViewModel.AppInfo,
+    navigator: DestinationsNavigator,
+    viewModelGlobal: ViewModelGlobal,
+) {
+    val privilegeViewModel = viewModelGlobal.privilegeViewModel
+    val context = LocalContext.current
 
     // Prefer the live entry so a change reflects immediately.
     val live = privilegeViewModel.privileges[appInfo.uid] ?: appInfo
