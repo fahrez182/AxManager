@@ -146,14 +146,16 @@ import kotlinx.coroutines.launch
 
 @Destination<RootGraph>
 @Composable
-fun PrivilegeDetailScreen(
-    navigator: DestinationsNavigator // فقط این را نگه دارید
-) {
-    // کد داخل تابع...
+fun PrivilegeDetailScreen(navigator: DestinationsNavigator) {
+    // دریافت مرجع جهانی بدون نیاز به ورودی تابع!
+    val viewModels = LocalViewModelGlobal.current 
+    
+    // حالا به هر چیزی دسترسی دارید:
+    val privVM = viewModels.privilegeViewModel
+    val settingsVM = viewModels.settingsViewModel
+
+    // بقیه کد...
 }
-) {
-    val privilegeViewModel = viewModelGlobal.privilegeViewModel
-    val context = LocalContext.current
 
     // Prefer the live entry so a change reflects immediately.
     val live = privilegeViewModel.privileges[appInfo.uid] ?: appInfo
