@@ -100,10 +100,10 @@ import frb.axeron.server.ServerConstants
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun AppearanceScreen(navigator: DestinationsNavigator) { // <--- viewModelGlobal از اینجا حذف شد
-    // اگر می‌خواهید از settingsViewModel استفاده کنید، به جای دریافت از ورودی، آن را نمونه‌سازی کنید:
-    // val settingsViewModel = remember { SettingsViewModel() } 
-    // یا اگر روش دیگری دارید، به جای ViewModelGlobal استفاده کنید
+fun SettingsScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
+    val activateViewModel = viewModelGlobal.activateViewModel
+    val settings = viewModelGlobal.settingsViewModel
+//    val privilegeViewModel = viewModelGlobal.privilegeViewModel
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     var showDevDialog by remember { mutableStateOf(false) }
