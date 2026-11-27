@@ -62,8 +62,11 @@ import frb.axeron.manager.ui.viewmodel.ViewModelGlobal
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun AppearanceScreen(navigator: DestinationsNavigator, viewModelGlobal: ViewModelGlobal) {
-    val settingsViewModel = viewModelGlobal.settingsViewModel
+fun AppearanceScreen(navigator: DestinationsNavigator) { // <--- viewModelGlobal از اینجا حذف شد
+    // اگر می‌خواهید از settingsViewModel استفاده کنید، به جای دریافت از ورودی، آن را نمونه‌سازی کنید:
+    // val settingsViewModel = remember { SettingsViewModel() } 
+    // یا اگر روش دیگری دارید، به جای ViewModelGlobal استفاده کنید
+    
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
     var showColorPicker by remember { mutableStateOf(false) }
