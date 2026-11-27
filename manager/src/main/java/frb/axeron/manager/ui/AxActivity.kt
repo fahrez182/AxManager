@@ -232,21 +232,6 @@ class AxActivity : ComponentActivity() {
                 privilegeViewModel.loadInstalledApps()
             }
         }
-        
-// در داخل setContent در AxActivity
-val settingsVM: SettingsViewModel = viewModel()
-val appsVM: AppsViewModel = viewModel()
-val privVM: PrivilegeViewModel = viewModel()
-val actVM: ActivateViewModel = viewModel()
-val pluginVM: PluginViewModel = viewModel()
-
-// ساختن ظرف اصلی
-val globalVM = ViewModelGlobal(settingsVM, appsVM, privVM, actVM, pluginVM)
-
-CompositionLocalProvider(LocalViewModelGlobal provides globalVM) {
-    // تمام NavHost و صفحات شما باید داخل این بلوک باشند
-    AxNavHost(...) 
-}
 
         val viewModelGlobal = remember {
             ViewModelGlobal(
