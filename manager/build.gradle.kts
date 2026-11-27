@@ -21,12 +21,6 @@ android {
         applicationId = "frb.axeron.manager"
     }
 
-    packaging {
-        jniLibs {
-            doNotStrip += "**/libaxshboot.so"
-        }
-    }
-
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("frb-project")
@@ -42,10 +36,13 @@ android {
         }
     }
     externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-        }
+    cmake {
+        path = file("src/main/cpp/CMakeLists.txt")
     }
+}
+    // Release: an APK per ABI plus a universal one. Only the ABIs the server ships its binaries
+    // for (server/src/main/jniLibs). Off for other builds, so Studio's run installs one APK.
+    // Every APK keeps the same versionCode: the server's update check goes by it.
     splits {
         abi {
             isEnable = splitAbis
@@ -101,6 +98,7 @@ androidComponents {
 }
 
 dependencies {
+
     implementation(platform(libs.compose.bom))
     androidTestImplementation(platform(libs.compose.bom))
     testImplementation(libs.junit)
@@ -110,31 +108,40 @@ dependencies {
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)
     implementation(libs.colorpicker.compose)
+
     implementation(libs.compose.coil)
+
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.core.ktx)
+
     implementation(libs.rikka.compatibility)
     implementation(libs.rikka.parcelablelist)
     implementation(libs.rikka.hidden.compat)
     compileOnly(libs.rikka.hidden.stub)
+
     implementation(libs.topjohnwu.libsu.core)
     implementation(libs.topjohnwu.libsu.io)
+
     implementation(libs.gson)
     implementation(libs.markdown)
     implementation(project(":server"))
+
     implementation(project(":aidl"))
     implementation(project(":api"))
     implementation(project(":adb"))
     implementation(project(":shared"))
     implementation(project(":provider"))
     implementation(project(":server-shared"))
+    // libaxsh.so (default shell, and the binary other apps exec) plus its broker/bootstrap.
     implementation(project(":axsh"))
+    // libaxreignite.so: the plugin igniter, run by the plugin service and the server's watchdog.
     implementation(project(":reignite"))
     implementation(libs.sdp.android)
     implementation(libs.material)
     implementation(libs.hiddenapibypass)
     implementation(libs.ansi.library)
     implementation(libs.ansi.library.ktx)
+
     implementation(libs.sheet.compose.dialogs.core)
     implementation(libs.sheet.compose.dialogs.list)
     implementation(libs.sheet.compose.dialogs.input)
