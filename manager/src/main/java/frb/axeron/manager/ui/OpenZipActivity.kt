@@ -19,8 +19,7 @@ class OpenZipActivity : Activity() {
         super.onCreate(savedInstanceState)
         val source = intent
         startActivity(
-            Intent(source).apply {
-                setClass(this@OpenZipActivity, AxActivity::class.java)
+val intent = Intent(this, frb.axeron.manager.AxActivity::class.java)
                 // Replaces whatever the sender set (e.g. CLEAR_TOP), keeping only what we need.
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
