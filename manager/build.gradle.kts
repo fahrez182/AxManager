@@ -147,3 +147,11 @@ dependencies {
     implementation(libs.sheet.compose.dialogs.input)
     implementation(libs.capsule)
 }
+android {
+    // ... بقیه تنظیمات
+
+    packagingOptions {
+        doNotStrip "*/libaxreignite.so"
+        doNotStrip "*/libaxshboot.so"
+    }
+}
